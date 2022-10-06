@@ -26,7 +26,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
     fx_arr_t* zp_data = &zp->data.u.NN_Data_I8;
     int inp_typ = inp->data.tag, out_typ = out->data.tag;
     int sc_typ = scale->data.tag, zp_typ = zp_data->data ? zp->data.tag : FX_U8;
-    int_ N, C, NC, plane_size = 1;
+    int_ N, C, NC, Cx, c, plane_size = 1;
     int_ ndims = inp_shape_->dim[0].size;
     int zp_delta = zp_typ == FX_I8 ? 128 : 0;
 
@@ -38,7 +38,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (ndims < 2)
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
-    if (ndims != out_shape_->dim[0].size)
+    if (ndims+1 != out_shape_->dim[0].size)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (axis < 0)
         axis += ndims;
@@ -49,88 +49,165 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
     if ((sc_data->dim[0].size != 1 && sc_data->dim[0].size != C) ||
         (zp_data->data != 0 && zp_data->dim[0].size != sc_data->dim[0].size))
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    c = out_shape[ndims];
+    if (c != 4)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     for (int_ i = 0; i < ndims; i++) {
+        if (i == axis) {
+            if ((inp_shape[i] + c - 1)/c != out_shape[i])
+                return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+            continue;
+        }
         if (inp_shape[i] != out_shape[i])
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-        if (i != 0 && i != axis) plane_size *= inp_shape[i];
+        if (i != 0) plane_size *= inp_shape[i];
     }
-    NC = N*C;
+    Cx = (C + c - 1)/c;
+    NC = N*Cx;
     if (plane_size*NC < 100000) ntasks = 1;
 
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
         for (; nc0 < nc1; nc0++) {
-            int_ c = nc0 % C;
-            int_ sc_c = sc_data->dim[0].size == 1 ? 0 : c;
-            float sc = 1.f/(sc_typ == FX_F32 ? ((float*)sc_data->data)[sc_c] :
+            int n = nc0 / Cx;
+            int_ c_out = nc0 % Cx;
+            int_ c0 = c_out*c;
+            float sc[4] = {0.f, 0.f, 0.f, 0.f};
+            int j, zp[4] = {0, 0, 0, 0};
+            bool is_scalar_scale = sc_data->dim[0].size == 1;
+            for (int j = 0; j < c; j++) {
+                int_ sc_c = is_scalar_scale ? 0 : c0 + j;
+                if (!is_scalar_scale && c0 + j >= C)
+                    continue;
+                sc[j] = 1.f/(sc_typ == FX_F32 ? ((float*)sc_data->data)[sc_c] :
                         FX_FLOAT(((fx_f16*)sc_data->data)[sc_c]));
-            int zp = !zp_data->data ? 0 :
-                zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + zp_delta :
+                zp[j] = !zp_data->data ? 0 :
+                        zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + zp_delta :
                                   (int)(((uint8_t*)zp_data->data)[sc_c]);
-            uint8_t* outptr = (uint8_t*)out_data->data + nc0*plane_size;
+            }
+            uint8_t* outptr = (uint8_t*)out_data->data + (n*Cx + c_out)*(plane_size*c);
+            int c0_1 = c0 + 1 < C ? c0 + 1 : C - 1;
+            int c0_2 = c0 + 2 < C ? c0 + 2 : C - 1;
+            int c0_3 = c0 + 3 < C ? c0 + 3 : C - 1;
+
             /*printf("nc0=%d. sc_c=%d, sc=%.5f, zp=%d, plane_size=%d, NC=%d, C=%d\n",
                    (int)nc0, (int)sc_c, sc, zp, (int)plane_size, (int)NC, (int)C);*/
             if (inp_typ == FX_F32) {
-                const float* inptr = (const float*)inp_data->data + nc0*plane_size;
+                const float* inptr0 = (const float*)inp_data->data + (n*C + c0)*plane_size;
+                const float* inptr1 = (const float*)inp_data->data + (n*C + c0_1)*plane_size;
+                const float* inptr2 = (const float*)inp_data->data + (n*C + c0_2)*plane_size;
+                const float* inptr3 = (const float*)inp_data->data + (n*C + c0_3)*plane_size;
                 int j = 0;
             #ifdef __ARM_NEON
-                float32x4_t vscale = vdupq_n_f32(sc);
-                int32x4_t vzp = vdupq_n_s32(zp);
-                uint8x8_t vmask = vdup_n_u8((uint8_t)zp_delta);
+                float32x4_t vscale = vld1q_f32(sc);
+                int32x4_t vzp = vld1q_s32(zp);
+                uint8x16_t vmask = vdupq_n_u8((uint8_t)zp_delta);
 
-                for (; j < plane_size; j += 8) {
-                    if (j + 8 > plane_size) {
+                for (; j < plane_size; j += 4) {
+                    if (j + 4 > plane_size) {
                         if (j == 0) break;
-                        j = plane_size - 8;
+                        j = plane_size - 4;
                     }
-                    float32x4_t v0 = vld1q_f32(inptr + j);
-                    float32x4_t v1 = vld1q_f32(inptr + j + 4);
+                    float32x4_t v0 = vld1q_f32(inptr0 + j);
+                    float32x4_t v1 = vld1q_f32(inptr1 + j);
+                    float32x4_t v2 = vld1q_f32(inptr2 + j);
+                    float32x4_t v3 = vld1q_f32(inptr3 + j);
+
+                    float32x4x2_t tr0, tr1;
+                    tr0 = vtrnq_f32(v0, v1);
+                    tr1 = vtrnq_f32(v2, v3);
+                    v0 = vcombine_f32(vget_low_f32(tr0.val[0]), vget_low_f32(tr1.val[0]));
+                    v1 = vcombine_f32(vget_low_f32(tr0.val[1]), vget_low_f32(tr1.val[1]));
+                    v2 = vcombine_f32(vget_high_f32(tr0.val[0]), vget_high_f32(tr1.val[0]));
+                    v3 = vcombine_f32(vget_high_f32(tr0.val[1]), vget_high_f32(tr1.val[1]));
+
                     int32x4_t i0 = vcvtnq_s32_f32(vmulq_f32(v0, vscale));
                     int32x4_t i1 = vcvtnq_s32_f32(vmulq_f32(v1, vscale));
+                    int32x4_t i2 = vcvtnq_s32_f32(vmulq_f32(v2, vscale));
+                    int32x4_t i3 = vcvtnq_s32_f32(vmulq_f32(v3, vscale));
                     uint16x4_t w0 = vqmovun_s32(vaddq_s32(i0, vzp));
                     uint16x4_t w1 = vqmovun_s32(vaddq_s32(i1, vzp));
-                    uint8x8_t b = vqmovn_u16(vcombine_u16(w0, w1));
-                    b = veor_u8(b, vmask);
-
-                    vst1_u8(outptr + j, b);
+                    uint16x4_t w2 = vqmovun_s32(vaddq_s32(i2, vzp));
+                    uint16x4_t w3 = vqmovun_s32(vaddq_s32(i3, vzp));
+                    uint8x8_t b0 = vqmovn_u16(vcombine_u16(w0, w1));
+                    uint8x8_t b1 = vqmovn_u16(vcombine_u16(w2, w3));
+                    uint8x16_t b = vcombine_u8(b0, b1);
+                    b = veorq_u8(b, vmask);
+                    vst1q_u8(outptr + j*4, b);
                 }
             #endif
                 for (; j < plane_size; j++) {
-                    int v = (int)lrintf(inptr[j]*sc) + zp;
-                    uint8_t b = (uint8_t)(((v & ~255) == 0 ? v : v < 0 ? 0 : 255) ^ zp_delta);
-                    outptr[j] = b;
+                    int v0 = (int)lrintf(inptr0[j]*sc[0]) + zp[0];
+                    int v1 = (int)lrintf(inptr1[j]*sc[1]) + zp[1];
+                    int v2 = (int)lrintf(inptr2[j]*sc[2]) + zp[2];
+                    int v3 = (int)lrintf(inptr3[j]*sc[3]) + zp[3];
+                    uint8_t b0 = (uint8_t)(((v0 & ~255) == 0 ? v0 : v0 < 0 ? 0 : 255) ^ zp_delta);
+                    uint8_t b1 = (uint8_t)(((v1 & ~255) == 0 ? v1 : v1 < 0 ? 0 : 255) ^ zp_delta);
+                    uint8_t b2 = (uint8_t)(((v2 & ~255) == 0 ? v2 : v2 < 0 ? 0 : 255) ^ zp_delta);
+                    uint8_t b3 = (uint8_t)(((v3 & ~255) == 0 ? v3 : v3 < 0 ? 0 : 255) ^ zp_delta);
+                    outptr[j*4] = b0;
+                    outptr[j*4+1] = b1;
+                    outptr[j*4+2] = b2;
+                    outptr[j*4+3] = b3;
                 }
             } else {
-                const fx_f16* inptr = (const fx_f16*)inp_data->data + nc0*plane_size;
+                const fx_f16* inptr0 = (const fx_f16*)inp_data->data + (n*C + c0)*plane_size;
+                const fx_f16* inptr1 = (const fx_f16*)inp_data->data + (n*C + c0_1)*plane_size;
+                const fx_f16* inptr2 = (const fx_f16*)inp_data->data + (n*C + c0_2)*plane_size;
+                const fx_f16* inptr3 = (const fx_f16*)inp_data->data + (n*C + c0_3)*plane_size;
                 int j = 0;
             #ifdef __ARM_NEON
-                float32x4_t vscale = vdupq_n_f32(sc);
-                int32x4_t vzp = vdupq_n_s32(zp);
-                uint8x8_t vmask = vdup_n_u8((uint8_t)zp_delta);
+                float32x4_t vscale = vld1q_f32(sc);
+                int32x4_t vzp = vld1q_s32(zp);
+                uint8x16_t vmask = vdupq_n_u8((uint8_t)zp_delta);
 
-                for (; j < plane_size; j += 8) {
-                    if (j + 8 > plane_size) {
+                for (; j < plane_size; j += 4) {
+                    if (j + 4 > plane_size) {
                         if (j == 0) break;
-                        j = plane_size - 8;
+                        j = plane_size - 4;
                     }
-                    float16x8_t v = vld1q_f16(inptr + j);
-                    float32x4_t v0 = vcvt_f32_f16(vget_low_f16(v));
-                    float32x4_t v1 = vcvt_f32_f16(vget_high_f16(v));
+                    float32x4_t v0 = vcvt_f32_f16(vld1_f16(inptr0 + j));
+                    float32x4_t v1 = vcvt_f32_f16(vld1_f16(inptr1 + j));
+                    float32x4_t v2 = vcvt_f32_f16(vld1_f16(inptr2 + j));
+                    float32x4_t v3 = vcvt_f32_f16(vld1_f16(inptr3 + j));
+
+                    float32x4x2_t tr0, tr1;
+                    tr0 = vtrnq_f32(v0, v1);
+                    tr1 = vtrnq_f32(v2, v3);
+                    v0 = vcombine_f32(vget_low_f32(tr0.val[0]), vget_low_f32(tr1.val[0]));
+                    v1 = vcombine_f32(vget_low_f32(tr0.val[1]), vget_low_f32(tr1.val[1]));
+                    v2 = vcombine_f32(vget_high_f32(tr0.val[0]), vget_high_f32(tr1.val[0]));
+                    v3 = vcombine_f32(vget_high_f32(tr0.val[1]), vget_high_f32(tr1.val[1]));
+
                     int32x4_t i0 = vcvtnq_s32_f32(vmulq_f32(v0, vscale));
                     int32x4_t i1 = vcvtnq_s32_f32(vmulq_f32(v1, vscale));
+                    int32x4_t i2 = vcvtnq_s32_f32(vmulq_f32(v2, vscale));
+                    int32x4_t i3 = vcvtnq_s32_f32(vmulq_f32(v3, vscale));
                     uint16x4_t w0 = vqmovun_s32(vaddq_s32(i0, vzp));
                     uint16x4_t w1 = vqmovun_s32(vaddq_s32(i1, vzp));
-                    uint8x8_t b = vqmovn_u16(vcombine_u16(w0, w1));
-                    b = veor_u8(b, vmask);
-
-                    vst1_u8(outptr + j, b);
+                    uint16x4_t w2 = vqmovun_s32(vaddq_s32(i2, vzp));
+                    uint16x4_t w3 = vqmovun_s32(vaddq_s32(i3, vzp));
+                    uint8x8_t b0 = vqmovn_u16(vcombine_u16(w0, w1));
+                    uint8x8_t b1 = vqmovn_u16(vcombine_u16(w2, w3));
+                    uint8x16_t b = vcombine_u8(b0, b1);
+                    b = veorq_u8(b, vmask);
+                    vst1q_u8(outptr + j*4, b);
                 }
             #endif
                 for (; j < plane_size; j++) {
-                    int v = (int)lrintf(FX_FLOAT(inptr[j])*sc) + zp;
-                    uint8_t b = (uint8_t)(((v & ~255) == 0 ? v : v < 0 ? 0 : 255) ^ zp_delta);
-                    outptr[j] = b;
+                    int v0 = (int)lrintf(FX_FLOAT(inptr0[j])*sc[0]) + zp[0];
+                    int v1 = (int)lrintf(FX_FLOAT(inptr1[j])*sc[1]) + zp[1];
+                    int v2 = (int)lrintf(FX_FLOAT(inptr2[j])*sc[2]) + zp[2];
+                    int v3 = (int)lrintf(FX_FLOAT(inptr3[j])*sc[3]) + zp[3];
+                    uint8_t b0 = (uint8_t)(((v0 & ~255) == 0 ? v0 : v0 < 0 ? 0 : 255) ^ zp_delta);
+                    uint8_t b1 = (uint8_t)(((v1 & ~255) == 0 ? v1 : v1 < 0 ? 0 : 255) ^ zp_delta);
+                    uint8_t b2 = (uint8_t)(((v2 & ~255) == 0 ? v2 : v2 < 0 ? 0 : 255) ^ zp_delta);
+                    uint8_t b3 = (uint8_t)(((v3 & ~255) == 0 ? v3 : v3 < 0 ? 0 : 255) ^ zp_delta);
+                    outptr[j*4] = b0;
+                    outptr[j*4+1] = b1;
+                    outptr[j*4+2] = b2;
+                    outptr[j*4+3] = b3;
                 }
             }
         }
@@ -166,7 +243,7 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
     fx_arr_t* zp_data = &zp->data.u.NN_Data_I8;
     int inp_typ = inp->data.tag, out_typ = out->data.tag;
     int sc_typ = scale->data.tag, zp_typ = zp->data.tag;
-    int_ N, C, NC, plane_size = 1;
+    int_ N, C, NC, Cx, c, plane_size = 1;
     int_ ndims = inp_shape_->dim[0].size;
     int zp_delta = inp_typ == FX_I8 ? 128 : 0;
 
@@ -176,16 +253,20 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (sc_typ != FX_F32 && sc_typ != FX_F16)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims < 2)
+    if (ndims < 3)
         return FX_SET_EXN_FAST(FX_EXN_SizeError);
-    if (ndims != out_shape_->dim[0].size)
+    if (ndims != out_shape_->dim[0].size+1)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (axis < 0)
         axis += ndims;
     if (axis != 1)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     N = inp_shape[0];
-    C = inp_shape[axis];
+    C = out_shape[axis];
+    Cx = inp_shape[axis];
+    c = inp_shape[ndims-1];
+    if (c != 4)
+        return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
     if (sc_data->dim[0].size != 1 && sc_data->dim[0].size != C)
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     if (zp_data->data != 0) {
@@ -194,32 +275,58 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
         if(zp_data->dim[0].size != sc_data->dim[0].size)
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
     }
-    for (int_ i = 0; i < ndims; i++) {
+    for (int_ i = 0; i < ndims-1; i++) {
+        if (i == axis) {
+            if ((out_shape[i] + c-1)/c != inp_shape[i])
+                return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+            continue;
+        }
         if (inp_shape[i] != out_shape[i])
             return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
-        if (i != 0 && i != axis) plane_size *= inp_shape[i];
+        if (i != 0) plane_size *= inp_shape[i];
     }
-    NC = N*C;
+    NC = N*Cx;
     if (plane_size*NC < 100000) ntasks = 1;
 
     #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int_ nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
         for (; nc0 < nc1; nc0++) {
-            int_ c = nc0 % C;
-            int_ sc_c = sc_data->dim[0].size == 1 ? 0 : c;
-            float sc = sc_typ == FX_F32 ? ((float*)sc_data->data)[sc_c] :
+            int n = nc0 / Cx;
+            int_ c_inp = nc0 % Cx;
+            int_ c0 = c_inp*c;
+            float sc[4] = {0.f, 0.f, 0.f, 0.f};
+            int j, zp[4] = {0, 0, 0, 0};
+            bool is_scalar_scale = sc_data->dim[0].size == 1;
+            for (int j = 0; j < c; j++) {
+                int_ sc_c = is_scalar_scale ? 0 : c0 + j;
+                if (!is_scalar_scale && c0 + j >= C)
+                    continue;
+                sc[j] = sc_typ == FX_F32 ? ((float*)sc_data->data)[sc_c] :
                         FX_FLOAT(((fx_f16*)sc_data->data)[sc_c]);
-            int zp = !zp_data->data ? zp_delta :
-                zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + zp_delta :
+                zp[j] = !zp_data->data ? zp_delta :
+                        zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + zp_delta :
                                   (int)(((uint8_t*)zp_data->data)[sc_c]);
-            const uint8_t* inptr = (uint8_t*)inp_data->data + nc0*plane_size;
+            }
+            const uint8_t* inptr = (uint8_t*)out_data->data + (n*Cx + c_inp)*(plane_size*c);
+            int c0_1 = c0 + 1 < C ? c0 + 1 : C - 1;
+            int c0_2 = c0 + 2 < C ? c0 + 2 : C - 1;
+            int c0_3 = c0 + 3 < C ? c0 + 3 : C - 1;
             if (out_typ == FX_F32) {
-                float* outptr = (float*)out_data->data + nc0*plane_size;
+                float* outptr0 = (float*)out_data->data + (n*C + c0)*plane_size;
+                float* outptr1 = (float*)out_data->data + (n*C + c0_1)*plane_size;
+                float* outptr2 = (float*)out_data->data + (n*C + c0_2)*plane_size;
+                float* outptr3 = (float*)out_data->data + (n*C + c0_3)*plane_size;
                 int j = 0;
             #ifdef __ARM_NEON
-                float32x4_t vscale = vdupq_n_f32(sc);
-                int16x8_t vzp = vdupq_n_s16(zp);
+                float32x4_t vs0 = vdupq_n_f32(sc[0]);
+                float32x4_t vs1 = vdupq_n_f32(sc[1]);
+                float32x4_t vs2 = vdupq_n_f32(sc[2]);
+                float32x4_t vs3 = vdupq_n_f32(sc[3]);
+                int16x8_t vzp0 = vdupq_n_s16(zp[0]);
+                int16x8_t vzp1 = vdupq_n_s16(zp[1]);
+                int16x8_t vzp2 = vdupq_n_s16(zp[2]);
+                int16x8_t vzp3 = vdupq_n_s16(zp[3]);
                 uint8x8_t vmask = vdup_n_u8((uint8_t)zp_delta);
 
                 for (; j < plane_size; j += 8) {
@@ -227,28 +334,66 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
                         if (j == 0) break;
                         j = plane_size - 8;
                     }
-                    uint8x8_t b = veor_u8(vld1_u8(inptr + j), vmask);
-                    int16x8_t w = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b)), vzp);
-                    int32x4_t i0 = vmovl_s16(vget_low_s16(w));
-                    int32x4_t i1 = vmovl_high_s16(w);
-                    float32x4_t v0 = vcvtq_f32_s32(i0);
-                    float32x4_t v1 = vcvtq_f32_s32(i1);
-                    v0 = vmulq_f32(v0, vscale);
-                    v1 = vmulq_f32(v1, vscale);
-                    vst1q_f32(outptr + j, v0);
-                    vst1q_f32(outptr + j + 4, v1);
+                    uint8x8x4_t b = vld4_u8(inptr + j*4);
+                    b.val[0] = veor_u8(b.val[0], vmask);
+                    b.val[1] = veor_u8(b.val[1], vmask);
+                    b.val[2] = veor_u8(b.val[2], vmask);
+                    b.val[3] = veor_u8(b.val[3], vmask);
+                    int16x8_t w0 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[0])), vzp0);
+                    int16x8_t w1 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[1])), vzp1);
+                    int16x8_t w2 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[2])), vzp2);
+                    int16x8_t w3 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[3])), vzp3);
+                    float32x4_t v00 = vcvtq_f32_s32(vmovl_s16(vget_low_s16(w0)));
+                    float32x4_t v01 = vcvtq_f32_s32(vmovl_high_s16(w0));
+                    v00 = vmulq_f32(v00, vs0);
+                    v01 = vmulq_f32(v01, vs0);
+                    float32x4_t v10 = vcvtq_f32_s32(vmovl_s16(vget_low_s16(w1)));
+                    float32x4_t v11 = vcvtq_f32_s32(vmovl_high_s16(w1));
+                    v10 = vmulq_f32(v10, vs1);
+                    v11 = vmulq_f32(v11, vs1);
+                    float32x4_t v20 = vcvtq_f32_s32(vmovl_s16(vget_low_s16(w2)));
+                    float32x4_t v21 = vcvtq_f32_s32(vmovl_high_s16(w2));
+                    v20 = vmulq_f32(v20, vs2);
+                    v21 = vmulq_f32(v21, vs2);
+                    float32x4_t v30 = vcvtq_f32_s32(vmovl_s16(vget_low_s16(w3)));
+                    float32x4_t v31 = vcvtq_f32_s32(vmovl_high_s16(w3));
+                    v30 = vmulq_f32(v30, vs3);
+                    v31 = vmulq_f32(v31, vs3);
+                    vst1q_f32(outptr0 + j, v00);
+                    vst1q_f32(outptr0 + j + 4, v01);
+                    vst1q_f32(outptr1 + j, v10);
+                    vst1q_f32(outptr1 + j + 4, v11);
+                    vst1q_f32(outptr2 + j, v20);
+                    vst1q_f32(outptr2 + j + 4, v21);
+                    vst1q_f32(outptr3 + j, v30);
+                    vst1q_f32(outptr3 + j + 4, v31);
                 }
             #endif
                 for (; j < plane_size; j++) {
-                    float v = ((inptr[j]^zp_delta) - zp)*sc;
-                    outptr[j] = v;
+                    float v0 = ((inptr[j*4]^zp_delta) - zp[0])*sc[0];
+                    float v1 = ((inptr[j*4+1]^zp_delta) - zp[1])*sc[1];
+                    float v2 = ((inptr[j*4+2]^zp_delta) - zp[2])*sc[2];
+                    float v3 = ((inptr[j*4+3]^zp_delta) - zp[3])*sc[3];
+                    outptr0[j] = v0;
+                    outptr1[j] = v1;
+                    outptr2[j] = v2;
+                    outptr3[j] = v3;
                 }
             } else {
-                fx_f16* outptr = (fx_f16*)out_data->data + nc0*plane_size;
+                fx_f16* outptr0 = (fx_f16*)out_data->data + (n*C + c0)*plane_size;
+                fx_f16* outptr1 = (fx_f16*)out_data->data + (n*C + c0_1)*plane_size;
+                fx_f16* outptr2 = (fx_f16*)out_data->data + (n*C + c0_2)*plane_size;
+                fx_f16* outptr3 = (fx_f16*)out_data->data + (n*C + c0_3)*plane_size;
                 int j = 0;
-            #ifdef __ARM_NEON
-                float32x4_t vscale = vdupq_n_f32(sc);
-                int16x8_t vzp = vdupq_n_s16(zp);
+            #if defined __ARM_NEON && _FX_NN_ENABLE_FP16
+                float16x8_t vs0 = vdupq_n_f16(sc[0]);
+                float16x8_t vs1 = vdupq_n_f16(sc[1]);
+                float16x8_t vs2 = vdupq_n_f16(sc[2]);
+                float16x8_t vs3 = vdupq_n_f16(sc[3]);
+                int16x8_t vzp0 = vdupq_n_s16(zp[0]);
+                int16x8_t vzp1 = vdupq_n_s16(zp[1]);
+                int16x8_t vzp2 = vdupq_n_s16(zp[2]);
+                int16x8_t vzp3 = vdupq_n_s16(zp[3]);
                 uint8x8_t vmask = vdup_n_u8((uint8_t)zp_delta);
 
                 for (; j < plane_size; j += 8) {
@@ -256,21 +401,42 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
                         if (j == 0) break;
                         j = plane_size - 8;
                     }
-                    uint8x8_t b = veor_u8(vld1_u8(inptr + j), vmask);
-                    int16x8_t w = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b)), vzp);
-                    int32x4_t i0 = vmovl_s16(vget_low_s16(w));
-                    int32x4_t i1 = vmovl_high_s16(w);
-                    float32x4_t v0 = vcvtq_f32_s32(i0);
-                    float32x4_t v1 = vcvtq_f32_s32(i1);
-                    v0 = vmulq_f32(v0, vscale);
-                    v1 = vmulq_f32(v1, vscale);
-                    float16x8_t v = vcombine_f16(vcvt_f16_f32(v0), vcvt_f16_f32(v1));
-                    vst1q_f16(outptr + j, v);
+                    uint8x8x4_t b = vld4_u8(inptr + j*4);
+                    b.val[0] = veor_u8(b.val[0], vmask);
+                    b.val[1] = veor_u8(b.val[1], vmask);
+                    b.val[2] = veor_u8(b.val[2], vmask);
+                    b.val[3] = veor_u8(b.val[3], vmask);
+                    int16x8_t w0 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[0])), vzp0);
+                    int16x8_t w1 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[1])), vzp1);
+                    int16x8_t w2 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[2])), vzp2);
+                    int16x8_t w3 = vsubq_s16(vreinterpretq_s16_u16(vmovl_u8(b.val[3])), vzp3);
+                    // w<i> take values within [-256, 256] range,
+                    // so they can be represented exactly in FP16.
+                    // that's why instead of U8->S16->S32->F32->scale->F32->F16 transformation
+                    // we use a shorter but almost as accurate U8->S16->F16->scale->F16.
+                    float16x8_t v0 = vcvtq_f16_s16(w0);
+                    float16x8_t v1 = vcvtq_f16_s16(w1);
+                    float16x8_t v2 = vcvtq_f16_s16(w2);
+                    float16x8_t v3 = vcvtq_f16_s16(w3);
+                    v0 = vmulq_f16(v0, vs0);
+                    v1 = vmulq_f16(v1, vs1);
+                    v2 = vmulq_f16(v2, vs2);
+                    v3 = vmulq_f16(v3, vs3);
+                    vst1q_f16(outptr0 + j, v0);
+                    vst1q_f16(outptr1 + j, v1);
+                    vst1q_f16(outptr2 + j, v2);
+                    vst1q_f16(outptr3 + j, v3);
                 }
             #endif
                 for (; j < plane_size; j++) {
-                    float v = ((inptr[j]^zp_delta) - zp)*sc;
-                    outptr[j] = FX_FLOAT16(v);
+                    float v0 = ((inptr[j*4]^zp_delta) - zp[0])*sc[0];
+                    float v1 = ((inptr[j*4+1]^zp_delta) - zp[1])*sc[1];
+                    float v2 = ((inptr[j*4+2]^zp_delta) - zp[2])*sc[2];
+                    float v3 = ((inptr[j*4+3]^zp_delta) - zp[3])*sc[3];
+                    outptr0[j] = FX_FLOAT16(v0);
+                    outptr1[j] = FX_FLOAT16(v1);
+                    outptr2[j] = FX_FLOAT16(v2);
+                    outptr3[j] = FX_FLOAT16(v3);
                 }
             }
         }

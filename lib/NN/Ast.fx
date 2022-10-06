@@ -39,7 +39,7 @@ type nnlayout_t =
     | NN_Layout_ND
     | NN_Layout_NCHW
     | NN_Layout_NHWC
-    | NN_Layout_NCHWxc
+    | NN_Layout_NCHWc: (int, int)
 
 type nnpadding_t =
     | NN_Pad_None
@@ -407,7 +407,7 @@ fun string(layout: nnlayout_t)
     | NN_Layout_ND => "ND"
     | NN_Layout_NCHW => "NCHW"
     | NN_Layout_NHWC => "NHWC"
-    | NN_Layout_NCHWxc => "NCHWxc"
+    | NN_Layout_NCHWc(_, c) => f"NC{c}HW{c}"
 }
 
 fun string(p: nnargkind_t) {
@@ -1285,7 +1285,7 @@ fun nnshape_t.get_num_channels()
     | (NN_Layout_ND, _) => self.shape[1]
     | (NN_Layout_NCHW, _) => self.shape[1]
     | (NN_Layout_NHWC, _) => self.shape[ndims-1]
-    | (NN_Layout_NCHWxc, _) => self.shape[1]*self.shape[ndims-1]
+    | (NN_Layout_NCHWc(real_c, _), _) => real_c
     | _ => -1
     }
 }
@@ -1296,7 +1296,7 @@ fun nnshape_t.get_spatial_channel_range()
     match self.layout {
     | NN_Layout_NCHW => (2, ndims)
     | NN_Layout_NHWC => (1, ndims-1)
-    | NN_Layout_NCHWxc => (2, ndims-1)
+    | NN_Layout_NCHWc(_, _) => (2, ndims-1)
     | _ => throw NNError(f"the shape layout {self.layout} is not supported in get_spatial_channel_range()")
     }
 }

@@ -32,8 +32,16 @@ typedef struct _fx_nndata_t {
    } u;
 } _fx_nndata_t;
 
+typedef struct _fx_intpair_t
+{
+    int_ t0, t1;
+} _fx_intpair_t;
+
 typedef struct _fx_nnlayout_t {
     int tag;
+    union {
+        _fx_intpair_t NN_Layout_NCHWc;
+    } u;
 } _fx_nnlayout_t;
 
 typedef struct _fx_nnshape_t {
@@ -51,7 +59,7 @@ enum {
     _FX_NN_Layout_NC,
     _FX_NN_Layout_NCHW,
     _FX_NN_Layout_NHWC,
-    _FX_NN_Layout_NCHWxc
+    _FX_NN_Layout_NCHWc
 };
 
 enum {

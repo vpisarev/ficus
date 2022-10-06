@@ -746,7 +746,7 @@ void _fx_conv_update_block_u8( int np, const void* a_, const void* b_,
     uint32x4_t c30 = vdupq_n_u32(0), c31 = c30, c32 = c30, c33 = c30, c34 = c30, c35 = c30, c36 = c30;
 
     for( int p = 0; p < np; p += FX_QCONV_C,
-                            a += FX_QCONV_MR*FX_QCONV_C,
+                            a += FX_QCONV_C*FX_QCONV_C,
                             b += FX_QCONV_NR*FX_QCONV_C )
     {
         uint8x16_t a0 = vld1q_u8(a), b0, b1, b2;
@@ -788,86 +788,67 @@ void _fx_conv_update_block_u8( int np, const void* a_, const void* b_,
     }
 
     if (!init_c) {
-        c00 = vaddq_u32(c00, vld1q_u32(c));
-        c01 = vaddq_u32(c01, vld1q_u32(c + 4));
-        c02 = vaddq_u32(c02, vld1q_u32(c + 8));
-        c03 = vaddq_u32(c03, vld1q_u32(c + 12));
-        c04 = vaddq_u32(c04, vld1q_u32(c + 16));
-        c05 = vaddq_u32(c05, vld1q_u32(c + 20));
-        c06 = vaddq_u32(c06, vld1q_u32(c + 24));
+    #undef _FX_UPDATE_QCONV_BLOCK
+    #define _FX_UPDATE_QCONV_BLOCK(i) \
+        c##i##0 = vaddq_u32(c##i##0, vld1q_u32(c+i*ldc)); \
+        c##i##1 = vaddq_u32(c##i##1, vld1q_u32(c+i*ldc+4)); \
+        c##i##2 = vaddq_u32(c##i##2, vld1q_u32(c+i*ldc+8)); \
+        c##i##3 = vaddq_u32(c##i##3, vld1q_u32(c+i*ldc+12)); \
+        c##i##4 = vaddq_u32(c##i##4, vld1q_u32(c+i*ldc+16)); \
+        c##i##5 = vaddq_u32(c##i##5, vld1q_u32(c+i*ldc+20)); \
+        c##i##6 = vaddq_u32(c##i##6, vld1q_u32(c+i*ldc+24))
 
-        c10 = vaddq_u32(c10, vld1q_u32(c + ldc));
-        c11 = vaddq_u32(c11, vld1q_u32(c + ldc + 4));
-        c12 = vaddq_u32(c12, vld1q_u32(c + ldc + 8));
-        c13 = vaddq_u32(c13, vld1q_u32(c + ldc + 12));
-        c14 = vaddq_u32(c14, vld1q_u32(c + ldc + 16));
-        c15 = vaddq_u32(c15, vld1q_u32(c + ldc + 20));
-        c16 = vaddq_u32(c16, vld1q_u32(c + ldc + 24));
-
-        c20 = vaddq_u32(c20, vld1q_u32(c + ldc*2));
-        c21 = vaddq_u32(c21, vld1q_u32(c + ldc*2 + 4));
-        c22 = vaddq_u32(c22, vld1q_u32(c + ldc*2 + 8));
-        c23 = vaddq_u32(c23, vld1q_u32(c + ldc*2 + 12));
-        c24 = vaddq_u32(c24, vld1q_u32(c + ldc*2 + 16));
-        c25 = vaddq_u32(c25, vld1q_u32(c + ldc*2 + 20));
-        c26 = vaddq_u32(c26, vld1q_u32(c + ldc*2 + 24));
-
-        c30 = vaddq_u32(c30, vld1q_u32(c + ldc*3));
-        c31 = vaddq_u32(c31, vld1q_u32(c + ldc*3 + 4));
-        c32 = vaddq_u32(c32, vld1q_u32(c + ldc*3 + 8));
-        c33 = vaddq_u32(c33, vld1q_u32(c + ldc*3 + 12));
-        c34 = vaddq_u32(c34, vld1q_u32(c + ldc*3 + 16));
-        c35 = vaddq_u32(c35, vld1q_u32(c + ldc*3 + 20));
-        c36 = vaddq_u32(c36, vld1q_u32(c + ldc*3 + 24));
+        _FX_UPDATE_QCONV_BLOCK(0);
+        _FX_UPDATE_QCONV_BLOCK(1);
+        _FX_UPDATE_QCONV_BLOCK(2);
+        _FX_UPDATE_QCONV_BLOCK(3);
     }
 
-    vst1q_u32(c, c00); vst1q_u32(c+4, c01);
-    vst1q_u32(c+8, c02); vst1q_u32(c+12, c03);
-    vst1q_u32(c+16, c04); vst1q_u32(c+20, c05);
-    vst1q_u32(c+24, c06);
+    #undef _FX_STORE_QCONV_BLOCK
+    #define _FX_STORE_QCONV_BLOCK(i) \
+        vst1q_u32(c+i*ldc, c##i##0); \
+        vst1q_u32(c+i*ldc+4, c##i##1); \
+        vst1q_u32(c+i*ldc+8, c##i##2); \
+        vst1q_u32(c+i*ldc+12, c##i##3); \
+        vst1q_u32(c+i*ldc+16, c##i##4); \
+        vst1q_u32(c+i*ldc+20, c##i##5); \
+        vst1q_u32(c+i*ldc+24, c##i##6)
 
-    vst1q_u32(c+ldc, c10); vst1q_u32(c+ldc+4, c11);
-    vst1q_u32(c+ldc+8, c12); vst1q_u32(c+ldc+12, c13);
-    vst1q_u32(c+ldc+16, c14); vst1q_u32(c+ldc+20, c15);
-    vst1q_u32(c+ldc+24, c16);
 
-    vst1q_u32(c+ldc*2, c20); vst1q_u32(c+ldc*2+4, c21);
-    vst1q_u32(c+ldc*2+8, c22); vst1q_u32(c+ldc*2+12, c23);
-    vst1q_u32(c+ldc*2+16, c24); vst1q_u32(c+ldc*2+20, c25);
-    vst1q_u32(c+ldc*2+24, c26);
-
-    vst1q_u32(c+ldc*3, c30); vst1q_u32(c+ldc*3+4, c31);
-    vst1q_u32(c+ldc*3+8, c32); vst1q_u32(c+ldc*3+12, c33);
-    vst1q_u32(c+ldc*3+16, c34); vst1q_u32(c+ldc*3+20, c35);
-    vst1q_u32(c+ldc*3+24, c36);
+    _FX_STORE_QCONV_BLOCK(0);
+    _FX_STORE_QCONV_BLOCK(1);
+    _FX_STORE_QCONV_BLOCK(2);
+    _FX_STORE_QCONV_BLOCK(3);
 #else
 #error "unsupported FX_QCONV_MR and/or FX_QCONV_NR"
 #endif
 #else
-    uint32_t cbuf[FX_QCONV_MR*FX_QCONV_NR];
+    uint32_t cbuf[FX_QCONV_C*FX_QCONV_NR];
     memset(cbuf, 0, sizeof(cbuf));
-    for( int p = 0; p < np; p += FX_QCONV_C )
+    for( int p = 0; p < np; p += FX_QCONV_C,
+            a += FX_QCONV_C*FX_QCONV_C,
+            b += FX_QCONV_C*FX_QCONV_NR )
     {
-        for( int i = 0; i < FX_QCONV_MR; i++ )
+        for( int i = 0; i < FX_QCONV_C; i++ )
         {
-            uint8_t ai0 = a[FX_QCONV_MR*p + i*FX_QCONV_C];
-            uint8_t ai1 = a[FX_QCONV_MR*p + i*FX_QCONV_C + 1];
-            uint8_t ai2 = a[FX_QCONV_MR*p + i*FX_QCONV_C + 2];
-            uint8_t ai3 = a[FX_QCONV_MR*p + i*FX_QCONV_C + 3];
+            uint8_t ai0 = a[i*FX_QCONV_C];
+            uint8_t ai1 = a[i*FX_QCONV_C + 1];
+            uint8_t ai2 = a[i*FX_QCONV_C + 2];
+            uint8_t ai3 = a[i*FX_QCONV_C + 3];
             for( int j = 0; j < FX_QCONV_NR; j++ )
-                cbuf[i*FX_QCONV_NR+j] += b[FX_QCONV_NR*p + FX_QCONV_C*j]*ai0 +
-                                         b[FX_QCONV_NR*p + FX_QCONV_C*j + 1]*ai1 +
-                                         b[FX_QCONV_NR*p + FX_QCONV_C*j + 2]*ai2 +
-                                         b[FX_QCONV_NR*p + FX_QCONV_C*j + 3]*ai3;
+                cbuf[i*FX_QCONV_NR + j] += b[j*FX_QCONV_C]*ai0 +
+                                           b[j*FX_QCONV_C + 1]*ai1 +
+                                           b[j*FX_QCONV_C + 2]*ai2 +
+                                           b[j*FX_QCONV_C + 3]*ai3;
         }
     }
     if (!init_c) {
-        for(int i = 0; i < FX_QCONV_MR; i++) {
+        for(int i = 0; i < FX_QCONV_C; i++) {
             for(int j = 0; j < FX_QCONV_NR; j++)
                 c[i*ldc + j] += cbuf[i*FX_QCONV_NR + j];
         }
     } else {
-        for(int i = 0; i < FX_QCONV_MR; i++) {
+        for(int i = 0; i < FX_QCONV_C; i++) {
             for(int j = 0; j < FX_QCONV_NR; j++)
                 c[i*ldc + j] = cbuf[i*FX_QCONV_NR + j];
         }
