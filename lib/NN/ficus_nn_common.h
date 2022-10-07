@@ -56,10 +56,10 @@ typedef struct _fx_nntensor_t {
 
 enum {
     _FX_NN_Layout_Unknown=1,
-    _FX_NN_Layout_NC,
+    _FX_NN_Layout_ND,
     _FX_NN_Layout_NCHW,
     _FX_NN_Layout_NHWC,
-    _FX_NN_Layout_NCHWc
+    _FX_NN_Layout_NCXHWX
 };
 
 enum {

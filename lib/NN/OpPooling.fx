@@ -245,6 +245,7 @@ static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
 static void _fx_avgpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                               const _fx_pooling2d_t* pool)
 {
+    const int C1 = FX_QCONV_C;
     const uint8_t* inptr = (const uint8_t*)inptr_;
     uint8_t* outptr = (uint8_t*)outptr_;
     int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
@@ -258,7 +259,8 @@ static void _fx_avgpool_2d_u8(int nc, const char* inptr_, char* outptr_,
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
     const int* yxtab = pool->dw_ctx.yxtab;
-    const int* ofstab = pool->dw_ctx.ofstab;
+    const int* ofstab_ = pool->dw_ctx.ofstab;
+    int* ofstab = (int*)alloca(ksize*sizeof(ofstab[0]));
     float inp_scale = pool->inp_scale;
     float out_scale = pool->out_scale;
     int inp_zp = pool->inp_zp;
@@ -272,103 +274,74 @@ static void _fx_avgpool_2d_u8(int nc, const char* inptr_, char* outptr_,
     bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_x0 < W0;
     bool is3x3 = stride_x == 1 && Hk == 3 && Wk == 3;
 #endif
+    for (int j = 0; j < ksize; j++)
+        ofstab[j] = ofstab_[j]*C1;
 
-    for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
-        for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
+    for (int c = 0; c < nc; c++, inptr += Hi*Wi*C1) {
+        for (int y0 = 0; y0 < H0; y0++, outptr += W0*C1) {
             int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
             int yi_ = y0*stride_y - pad_top;
             for(;;) {
-                int s;
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
                     int count = 0;
-                    s = 0;
+                    int s0 = 0, s1 = 0, s2 = 0, s3 = 0;
                     for (int k = 0; k < ksize; k++) {
                         int yi = yi_ + yxtab[k*2];
                         int xi = xi_ + yxtab[k*2+1];
-                        int v;
+                        int ofs;
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
-                        v = inptr[yi*Wi + xi];
-                        s += v;
+                        ofs = (yi*Wi + xi)*C1;
+                        s0 += inptr[ofs];
+                        s1 += inptr[ofs+1];
+                        s2 += inptr[ofs+2];
+                        s3 += inptr[ofs+3];
                         count++;
                     }
-                    s = count_include_pad ? s*scale + bias : s*scale_/count + bias;
-                    int isum = (int)lrintf(s);
-                    outptr[x0] = FX_SATURATE(isum, 0);
+                    if (count_include_pad) {
+                        s0 = s0*scale + bias;
+                        s1 = s1*scale + bias;
+                        s2 = s2*scale + bias;
+                        s3 = s3*scale + bias;
+                    } else {
+                        float curr_scale = scale_/count;
+                        s0 = s0*curr_scale + bias;
+                        s1 = s1*curr_scale + bias;
+                        s2 = s2*curr_scale + bias;
+                        s3 = s3*curr_scale + bias;
+                    }
+                    int isum0 = (int)lrintf(s0);
+                    int isum1 = (int)lrintf(s1);
+                    int isum2 = (int)lrintf(s2);
+                    int isum3 = (int)lrintf(s3);
+                    outptr[x0*C1] = FX_SATURATE(isum0, 0);
+                    outptr[x0*C1+1] = FX_SATURATE(isum1, 0);
+                    outptr[x0*C1+2] = FX_SATURATE(isum2, 0);
+                    outptr[x0*C1+3] = FX_SATURATE(isum3, 0);
                 }
                 if (x0 == W0)
                     break;
                 x1 = inner_x1;
-            #if 0 //def __ARM_NEON
-                if (useSIMD) {
-                    if (is3x3) {
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_x0)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left;
-                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                            uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
-                            uint8x16_t s1 = vld1q_u8(inptr_xi + ofstab[1]);
-                            uint8x16_t s2 = vld1q_u8(inptr_xi + ofstab[2]);
-
-                            s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[3]));
-                            s1 = vmaxq_u8(s1, vld1q_u8(inptr_xi + ofstab[4]));
-                            s2 = vmaxq_u8(s2, vld1q_u8(inptr_xi + ofstab[5]));
-
-                            s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[6]));
-                            s1 = vmaxq_u8(s1, vld1q_u8(inptr_xi + ofstab[7]));
-                            s2 = vmaxq_u8(s2, vld1q_u8(inptr_xi + ofstab[8]));
-
-                            s0 = vmaxq_u8(vmaxq_u8(s0, s1), s2);
-                            vst1q_u8(outptr + x0, s0);
-                        }
-                    } else if (stride_x == 1) {
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_x0)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                            uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
-                            for (k = 1; k < ksize; k++)
-                                s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[k]));
-                            vst1q_u8(outptr + x0, s0);
-                        }
-                    } else if (yi_ + (pool->Hk-1)*pool->dilation_y < Hi-1) {
-                        assert(stride_x == 2);
-                        for (; x0 < x1; x0 += vec_nlanes) {
-                            if (x0 + vec_nlanes > x1) {
-                                if (x0 <= inner_x0)
-                                    break;
-                                x0 = x1 - vec_nlanes;
-                            }
-                            int xi_ = x0*stride_x - pad_left, k = 0;
-                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                            uint8x16_t s0 = vld2q_u8(inptr_xi + ofstab[0]).val[0];
-                            for (k = 1; k < ksize; k++)
-                                s0 = vmaxq_u8(s0, vld2q_u8(inptr_xi + ofstab[k]).val[0]);
-                            vst1q_u8(outptr + x0, s0);
-                        }
-                    }
-                }
-            #endif
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                    s = inptr_xi[ofstab[0]];
-                    for (int k = 1; k < ksize; k++) {
-                        int v = inptr_xi[ofstab[k]];
-                        s = s >= v ? s : v;
+                    const uint8_t* inptr_xi = inptr + (Wi*yi_ + xi_)*C1;
+                    int s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+                    for (int k = 0; k < ksize; k++) {
+                        int ofs = ofstab[k];
+                        s0 += inptr[ofs];
+                        s1 += inptr[ofs+1];
+                        s2 += inptr[ofs+2];
+                        s3 += inptr[ofs+3];
                     }
-                    s = s*scale + bias;
-                    int isum = (int)lrintf(s);
-                    outptr[x0] = FX_SATURATE(isum, 0);
+                    int isum0 = (int)lrintf(s0*scale + bias);
+                    int isum1 = (int)lrintf(s1*scale + bias);
+                    int isum2 = (int)lrintf(s2*scale + bias);
+                    int isum3 = (int)lrintf(s3*scale + bias);
+                    outptr[x0*C1] = FX_SATURATE(isum0, 0);
+                    outptr[x0*C1+1] = FX_SATURATE(isum1, 0);
+                    outptr[x0*C1+2] = FX_SATURATE(isum2, 0);
+                    outptr[x0*C1+3] = FX_SATURATE(isum3, 0);
                 }
                 x1 = W0;
             }
@@ -403,10 +376,10 @@ static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
             int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
             int yi_ = y0*stride_y - pad_top;
             for(;;) {
-                float s;
+                float s0;
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    s = -FLT_MAX;
+                    s0 = -FLT_MAX;
                     for (int k = 0; k < ksize; k++) {
                         int yi = yi_ + yxtab[k*2];
                         int xi = xi_ + yxtab[k*2+1];
@@ -414,9 +387,9 @@ static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
                         v = inptr[yi*Wi + xi];
-                        s = s >= v ? s : v;
+                        s0 = FX_MAX(s0, v);
                     }
-                    outptr[x0] = s;
+                    outptr[x0] = s0;
                 }
                 if (x0 == W0)
                     break;
@@ -467,12 +440,12 @@ static void _fx_maxpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
                     const float* inptr_xi = inptr + Wi*yi_ + xi_;
-                    s = inptr_xi[ofstab[0]];
+                    s0 = inptr_xi[ofstab[0]];
                     for (int k = 1; k < ksize; k++) {
                         float v = inptr_xi[ofstab[k]];
-                        s = s >= v ? s : v;
+                        s0 = FX_MAX(s0, v);
                     }
-                    outptr[x0] = s;
+                    outptr[x0] = s0;
                 }
                 x1 = W0;
             }
@@ -519,7 +492,7 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
                         v = inptr[yi*Wi + xi];
-                        s0 = s0 >= v ? s0 : v;
+                        s0 = FX_MAX(s0, v);
                     }
                     outptr[x0] = s0;
                 }
@@ -588,7 +561,7 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                     s0 = inptr_xi[ofstab[0]];
                     for (int k = 1; k < ksize; k++) {
                         __fp16 v = inptr_xi[ofstab[k]];
-                        s0 = s0 >= v ? s0 : v;
+                        s0 = FX_MAX(s0, v);
                     }
                     outptr[x0] = s0;
                 }
@@ -602,6 +575,7 @@ static void _fx_maxpool_2d_f16(int nc, const char* inptr_, char* outptr_,
 static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                               const _fx_pooling2d_t* pool)
 {
+    const int C1 = FX_QCONV_C;
     const uint8_t* inptr = (const uint8_t*)inptr_;
     uint8_t* outptr = (uint8_t*)outptr_;
     int Hi = pool->dw_ctx.Hi, Wi = pool->dw_ctx.Wi;
@@ -614,33 +588,44 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
     int ksize = pool->Hk*pool->Wk;
     int pad_top = pool->pad_top, pad_left = pool->pad_left;
     const int* yxtab = pool->dw_ctx.yxtab;
-    const int* ofstab = pool->dw_ctx.ofstab;
-
+    const int* ofstab_ = pool->dw_ctx.ofstab;
+    int* ofstab = (int*)alloca(ksize*sizeof(ofstab[0]));
 #ifdef __ARM_NEON
-    const int vec_nlanes = FX_VEC_NLANES_U8;
+    const int vec_nlanes = FX_VEC_NLANES_U8/8;
     bool useSIMD = (stride_x == 1 || stride_x == 2) && inner_x0 < W0;
     bool is3x3 = stride_x == 1 && pool->Hk == 3 && pool->Wk == 3;
 #endif
+    for (int j = 0; j < ksize; j++)
+        ofstab[j] = ofstab_[j]*C1;
 
-    for (int c = 0; c < nc; c++, inptr += Hi*Wi) {
-        for (int y0 = 0; y0 < H0; y0++, outptr += W0) {
+    for (int c = 0; c < nc; c++, inptr += Hi*Wi*C1) {
+        for (int y0 = 0; y0 < H0; y0++, outptr += W0*C1) {
             int x0 = 0, x1 = y0 >= inner_y0 && y0 < inner_y1 ? inner_x0 : W0;
             int yi_ = y0*stride_y - pad_top;
             for(;;) {
-                int s;
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    s = 0;
+                    int s0 = 0, s1 = 0, s2 = 0, s3 = 0;
                     for (int k = 0; k < ksize; k++) {
                         int yi = yi_ + yxtab[k*2];
                         int xi = xi_ + yxtab[k*2+1];
-                        int v;
+                        int v0, v1, v2, v3, ofs;
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
-                        v = inptr[yi*Wi + xi];
-                        s = s >= v ? s : v;
+                        ofs = (yi*Wi + xi)*C1;
+                        v0 = inptr[ofs];
+                        v1 = inptr[ofs+1];
+                        v2 = inptr[ofs+2];
+                        v3 = inptr[ofs+3];
+                        s0 = FX_MAX(s0, v0);
+                        s1 = FX_MAX(s1, v1);
+                        s2 = FX_MAX(s2, v2);
+                        s3 = FX_MAX(s3, v3);
                     }
-                    outptr[x0] = (uint8_t)s;
+                    outptr[x0*C1] = (uint8_t)s0;
+                    outptr[x0*C1+1] = (uint8_t)s1;
+                    outptr[x0*C1+2] = (uint8_t)s2;
+                    outptr[x0*C1+3] = (uint8_t)s3;
                 }
                 if (x0 == W0)
                     break;
@@ -655,7 +640,7 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                                 x0 = x1 - vec_nlanes;
                             }
                             int xi_ = x0*stride_x - pad_left;
-                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                            const uint8_t* inptr_xi = inptr + (Wi*yi_ + xi_)*C1;
                             uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
                             uint8x16_t s1 = vld1q_u8(inptr_xi + ofstab[1]);
                             uint8x16_t s2 = vld1q_u8(inptr_xi + ofstab[2]);
@@ -669,7 +654,7 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                             s2 = vmaxq_u8(s2, vld1q_u8(inptr_xi + ofstab[8]));
 
                             s0 = vmaxq_u8(vmaxq_u8(s0, s1), s2);
-                            vst1q_u8(outptr + x0, s0);
+                            vst1q_u8(outptr + x0*C1, s0);
                         }
                     } else if (stride_x == 1) {
                         for (; x0 < x1; x0 += vec_nlanes) {
@@ -679,11 +664,11 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                                 x0 = x1 - vec_nlanes;
                             }
                             int xi_ = x0*stride_x - pad_left, k = 0;
-                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
+                            const uint8_t* inptr_xi = inptr + (Wi*yi_ + xi_)*C1;
                             uint8x16_t s0 = vld1q_u8(inptr_xi + ofstab[0]);
                             for (k = 1; k < ksize; k++)
                                 s0 = vmaxq_u8(s0, vld1q_u8(inptr_xi + ofstab[k]));
-                            vst1q_u8(outptr + x0, s0);
+                            vst1q_u8(outptr + x0*C1, s0);
                         }
                     } else if (yi_ + (pool->Hk-1)*pool->dilation_y < Hi-1) {
                         assert(stride_x == 2);
@@ -694,24 +679,38 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                                 x0 = x1 - vec_nlanes;
                             }
                             int xi_ = x0*stride_x - pad_left, k = 0;
-                            const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                            uint8x16_t s0 = vld2q_u8(inptr_xi + ofstab[0]).val[0];
-                            for (k = 1; k < ksize; k++)
-                                s0 = vmaxq_u8(s0, vld2q_u8(inptr_xi + ofstab[k]).val[0]);
-                            vst1q_u8(outptr + x0, s0);
+                            const uint8_t* inptr_xi = inptr + (Wi*yi_ + xi_)*C1;
+                            uint8x16_t s0 = vdupq_n_u8(0);
+                            for (k = 0; k < ksize; k++) {
+                                uint32x4_t v0 = vld2q_u32((uint32_t*)(inptr_xi + ofstab[k])).val[0];
+                                s0 = vmaxq_u8(s0, vreinterpretq_u32_u8(v0));
+                            }
+                            vst1q_u8(outptr + x0*C1, s0);
                         }
                     }
                 }
             #endif
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
-                    const uint8_t* inptr_xi = inptr + Wi*yi_ + xi_;
-                    s = inptr_xi[ofstab[0]];
+                    const uint8_t* inptr_xi = inptr + (Wi*yi_ + xi_)*C1;
+                    int ofs = ofstab[0];
+                    int s0 = inptr_xi[ofs], s1 = inptr_xi[ofs+1];
+                    int s2 = inptr_xi[ofs+2], s3 = inptr_xi[ofs+3];
                     for (int k = 1; k < ksize; k++) {
-                        int v = inptr_xi[ofstab[k]];
-                        s = s >= v ? s : v;
+                        ofs = ofstab[k];
+                        int v0 = inptr_xi[ofs];
+                        int v1 = inptr_xi[ofs+1];
+                        int v2 = inptr_xi[ofs+2];
+                        int v3 = inptr_xi[ofs+3];
+                        s0 = FX_MAX(s0, v0);
+                        s1 = FX_MAX(s1, v1);
+                        s2 = FX_MAX(s2, v2);
+                        s3 = FX_MAX(s3, v3);
                     }
-                    outptr[x0] = (uint8_t)s;
+                    outptr[x0*C1] = (uint8_t)s0;
+                    outptr[x0*C1+1] = (uint8_t)s1;
+                    outptr[x0*C1+2] = (uint8_t)s2;
+                    outptr[x0*C1+3] = (uint8_t)s3;
                 }
                 x1 = W0;
             }
@@ -754,11 +753,27 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
     if (inp_typ != out->data.tag)
         return FX_SET_EXN_FAST(FX_EXN_TypeMismatchError);
 
-    if (inp->shape.layout.tag != _FX_NN_Layout_NCHW || k_ndims != 2)
+    if (k_ndims != 2)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
-    if (ndims != 2 + k_ndims || ndims != out->shape.shape.dim[0].size ||
+
+    if (ndims < 3 || ndims != out->shape.shape.dim[0].size ||
         inp_shape[0] != out_shape[0] || inp_shape[1] != out_shape[1])
         return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+
+    if (inp_typ == FX_F16 || inp_typ == FX_F32) {
+        if (inp->shape.layout.tag != _FX_NN_Layout_NCHW)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+        if (ndims != 2 + k_ndims)
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+    } else if (inp_typ == FX_U8) {
+        if (inp->shape.layout.tag != _FX_NN_Layout_NCXHWX)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+        if (ndims != 3 + k_ndims || inp_shape[ndims-1] != out_shape[ndims-1])
+            return FX_SET_EXN_FAST(FX_EXN_SizeMismatchError);
+        if (inp_shape[ndims-1] != 4)
+            return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
+        esz *= inp_shape[ndims-1];
+    }
 
     memset(&pool, 0, sizeof(pool));
     NC = inp_shape[0]*inp_shape[1];

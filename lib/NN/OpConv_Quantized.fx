@@ -288,7 +288,7 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
     inpbuf_all = new_scratch_buf->data;
 
     // (K x Cg*Hk*Wk) * (Cg*Hk*Wk x H0*W0)
-    //#pragma omp parallel for num_threads(ntasks)
+    #pragma omp parallel for num_threads(ntasks)
     for (int_ task_id = 0; task_id < ntasks; task_id++) {
         int32_t* cbuf_task = (int32_t*)&inpbuf_all[taskbufsize*task_id];
         int32_t* isum_task = cbuf_task + FX_QCONV_NR*MAX_STRIPES*K_BLOCK_SIZE*FX_QCONV_C;
@@ -497,8 +497,8 @@ static int _fx_qconv2d( const _fx_nntensor_t* inp, float inp_scale0, int inp_zp0
                     for (int c0 = 0; c0 < HkWkCg_aligned; c0 += C_BLOCK_SIZE) {
                         int c1 = c0 + C_BLOCK_SIZE < HkWkCg_aligned ? c0 + C_BLOCK_SIZE : HkWkCg_aligned;
                         for (int stripe = 0; stripe < nstripes; stripe++) {
-                            const uint32_t* wptr = (const uint32_t*)weights + k0_block*HkWkCg_aligned + c0*FX_QCONV_C;
-                            const uint32_t* inptr = inpbuf_task + stripe*(stripesize/FX_QCONV_C) + c0*FX_QCONV_NR;
+                            const uint32_t* wptr = (const uint32_t*)weights + k0_block*HkWkCg_aligned + c0;
+                            const uint32_t* inptr = inpbuf_task + stripe*(stripesize/FX_QCONV_C) + (c0/FX_QCONV_C)*FX_QCONV_NR;
                             int32_t* cptr = cbuf_task + stripe*FX_QCONV_NR;
                             for (int k = k0_block; k < k1_block; k++,
                                     wptr += HkWkCg_aligned,

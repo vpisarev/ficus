@@ -5,7 +5,8 @@
 
 // Runs the inference on user-provided data
 import Hashmap, Json, LexerUtils as Lxu, Sys
-import Ast, BufferAllocator, ConstFold, FromOnnx, FuseBasic, InferShapes, RunOp
+import Ast, BufferAllocator, ConstFold, FromOnnx,
+    FuseBasic, InferShapes, RunOp, OpQuantized
 
 type conv_stat_t =
 {
@@ -84,8 +85,12 @@ fun dump_arg(model: Ast.nnmodel_t, prefix: string, idx: int, argidx: int, dumpda
     val name = model.args[argidx].name
     val etyp = t.elemtype()
     val sh = join_embrace("{", "}", ",", [for sz <- t.shape.shape {string(sz)}])
-    println(f"{prefix} {idx} Name: {name}\n Buf: {model.bufidxs[argidx]}\n Type: {etyp}\n Shape: {sh}")
+    println(f"{prefix} {idx} Name: {name}\n Buf: {model.bufidxs[argidx]}\n Type: {etyp}\n Shape: {sh}\n Layout: {t.shape.layout}")
     if dumpdata {
+        val t = match t.shape.layout {
+        | Ast.NN_Layout_NCXHWX _ => OpQuantized.NCXHWCtoNCHW(t)
+        | _ => t
+        }
         println(string(t))
     }
 }

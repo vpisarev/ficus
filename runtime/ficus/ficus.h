@@ -114,6 +114,8 @@ int fx_get_max_threads(void);
 
 #define FX_CONCAT(a, b) a ## b
 
+#define FX_MAX(a, b) ((a) > (b) ? (a) : (b))
+#define FX_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define FX_SWAP(a, b, t) {(t)=(a); (a)=(b); (b)=(t);}
 
 //////////////////////// Error Codes //////////////////////

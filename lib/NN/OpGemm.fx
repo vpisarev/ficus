@@ -275,6 +275,7 @@ match op {
     val out_scale = model.get_tensor(t_out_scale)
     val out_zp = model.get_tensor(t_out_zp)
     val out = model.get_tensor(t_out)
+    //println(f"qmatmul: A_shape={A.shape.shape}, B_shape={B.shape.shape}, out_shape={out.shape.shape}")
     run_qmatmul(A, B, A_scale, A_zp, B_scale, B_zp,
                 out_scale, out_zp, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
