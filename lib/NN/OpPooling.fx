@@ -683,7 +683,7 @@ static void _fx_maxpool_2d_u8(int nc, const char* inptr_, char* outptr_,
                             uint8x16_t s0 = vdupq_n_u8(0);
                             for (k = 0; k < ksize; k++) {
                                 uint32x4_t v0 = vld2q_u32((uint32_t*)(inptr_xi + ofstab[k])).val[0];
-                                s0 = vmaxq_u8(s0, vreinterpretq_u32_u8(v0));
+                                s0 = vmaxq_u8(s0, vreinterpretq_u8_u32(v0));
                             }
                             vst1q_u8(outptr + x0*C1, s0);
                         }

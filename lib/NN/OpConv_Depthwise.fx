@@ -1214,7 +1214,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                     }
                                     int xi_ = x0*stride_x - pad_left;
                                     const uint8_t* inptr_xi = inptr + (Wi*yi_ + xi_)*C1;
-                                    uint8x16_t u0, u1, u2;
+                                    uint16x8_t u0, u1, u2;
                                     int32x4_t s00 = vdupq_n_s32(0), s01 = s00,
                                               s10 = s00, s11 = s00, s20 = s00, s21 = s00;
 
@@ -1395,7 +1395,7 @@ int _fx_depthwise_qconv2d_u8(const _fx_depthwise2d_t* dw_ctx,
                                         mask = vcltq_u16(mask, v_Wi); \
                                         mask = vandq_u16(mask, u##i); \
                                         mask = veorq_u16(mask, vinp_mask); \
-                                        int16x8_t v##i = vreinterpretq_f16_u16(mask)
+                                        int16x8_t v##i = vreinterpretq_s16_u16(mask)
 
                                         _FX_APPLY_MASK_U16(0);
                                         _FX_APPLY_MASK_U16(1);
