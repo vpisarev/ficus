@@ -149,6 +149,7 @@ for imgname@i <- images {
     var best_profile = model.perf_profile_time.copy()
     val (gmean, mintime) = Sys.timeit(
         fun () {
+            if detailed_profile || trace {println("----------------------------")}
             outputs =
             try NN.Inference.run(model, [("", inp)], outputs=[]) catch {
             | NN.Ast.NNError msg => println(f"exception NNError('{msg}') occured"); []
