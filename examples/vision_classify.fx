@@ -16,6 +16,7 @@ var ntasks = 4
 var use_fp16 = false
 var trace = false
 var profile = false
+var detailed_profile = false
 var dump = false
 var classifier_kind = ClassifierAuto
 
@@ -67,6 +68,8 @@ fun parse_args(args: string list)
         mname = mname_; parse_args(rest)
     | "-profile" :: rest =>
         profile = true; parse_args(rest)
+    | "-detailed-profile" :: rest =>
+        detailed_profile = true; parse_args(rest)
     | "-niter" :: niter_ :: rest =>
         niter = match niter_.to_int() {
             | Some(n) => n
@@ -128,7 +131,7 @@ if ntasks > 0 {
 
 *model.profile = profile
 *model.trace = trace
-if trace {
+if trace || detailed_profile {
     *model.detailed_profile = true
 }
 *model.use_fp16 = use_fp16
