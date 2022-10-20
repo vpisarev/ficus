@@ -12,6 +12,11 @@ file(GLOB runtime_impl ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/ficus/impl/*.h)
 file(GLOB runtime_impl_c ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/ficus/impl/*.c)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../runtime)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../lib/Protobuf)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../lib/Onnx)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../lib/NN)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../lib/Image)
+
 if(APPLE)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/lib/macos_x64)
 endif()
