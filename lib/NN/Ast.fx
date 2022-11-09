@@ -360,6 +360,7 @@ class nnmodel_t
     trace: bool ref
     profile: bool ref
     detailed_profile: bool ref
+    use_jit: bool ref
     scratch_buf: nnbuf_t ref
     perf_profile_time: int64 []
     perf_profile_count: int []
@@ -383,6 +384,7 @@ fun empty_net() = nnmodel_t {
     trace = ref false,
     profile = ref false,
     detailed_profile = ref false,
+    use_jit = ref false,
     scratch_buf = ref ([] : nnbuf_t),
     perf_profile_time = array(nn_total_operations, 0L),
     perf_profile_count = array(nn_total_operations, 0)

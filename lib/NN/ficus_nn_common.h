@@ -396,6 +396,8 @@ typedef struct _fx_conv2d_t
     int nactiv_params;
     float* activ_params;
     float minval, maxval, alpha;
+    void* jit_func_f32;
+    void* jit_func_f16;
 } _fx_conv2d_t;
 
 typedef struct _fx_qconv2d_t
