@@ -1,5 +1,5 @@
 @ifdef HAVE_JIT
-pragma "clib:loops", "clib:loopslayers", "clib:stdc++"
+pragma "clib:loopslayers", "clib:loops", "clib:stdc++"
 @ccode
 {
 #include "loopslayers/loopslayers.h"
@@ -107,10 +107,10 @@ void generate_dwc_jits(_fx_conv2d_t* conv)
                           conv->activ == _FX_ACTIV_RELU ? ACT_LRELU : not_an_act;
     if(stride_x != 1 || stride_y != 1 || dilation_x != 1 || dilation_y != 1 || activation_type == not_an_act)
         return;
-    conv->jit_func_f32 = generate_dwc_f32(kh, kw, padding_top, padding_left, padding_bottom, padding_right, stride_x, stride_y, dilation_x, dilation_y, activation_type, alpha);
+    conv->jit_func_f32 = (void*)generate_dwc_f32(kh, kw, padding_top, padding_left, padding_bottom, padding_right, stride_x, stride_y, dilation_x, dilation_y, activation_type, alpha);
 
 #if _FX_NN_ENABLE_FP16
-    conv->jit_func_f16 = generate_dwc_f16(kh, kw, padding_top, padding_left, padding_bottom, padding_right, stride_x, stride_y, dilation_x, dilation_y, activation_type, alpha);
+    conv->jit_func_f16 = (void*)generate_dwc_f16(kh, kw, padding_top, padding_left, padding_bottom, padding_right, stride_x, stride_y, dilation_x, dilation_y, activation_type, alpha);
 #endif //_FX_NN_ENABLE_FP16
 #endif
 }
