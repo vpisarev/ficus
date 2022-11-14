@@ -74,8 +74,10 @@ fun parse_args(args: string list)
         profile = true; parse_args(rest)
     | "-detailed-profile" :: rest =>
         detailed_profile = true; parse_args(rest)
+@ifdef HAVE_JIT
     | "-use_jit" :: rest =>
         use_jit = true; jit_ctx = ref NN.Jit.create_context(); parse_args(rest)
+@endif
     | "-niter" :: niter_ :: rest =>
         niter = match niter_.to_int() {
             | Some(n) => n

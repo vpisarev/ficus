@@ -43,7 +43,7 @@ int _fx_depthwise_conv2d_f16_jit(void* ctx, const _fx_depthwise2d_t* dw_ctx,
                              const _fx_conv2d_t* conv,
                              const char* inptr0, char* outptr0,
                              int ntasks);
-void generate_dwc_jits(void* ctx, _fx_conv2d_t* conv);                        
+void generate_dwc_jits(void* ctx, _fx_conv2d_t* conv);
 #endif
 
 static void _fx_free_conv2d(void* conv_ptr)
@@ -1031,7 +1031,6 @@ fun init_conv(kernel_shape: int [], strides: int [],
             bn_data_[i] = (const float*)bn_data_i->data;
         }
     }
-
     return _fx_init_conv2d(_FX_NN_Layout_NCHW, _FX_NN_Layout_NCHW, (int)group,
         (int)w_shape_[0], (int)w_shape_[1]*group, (int)w_shape_[2], (int)w_shape_[3],
         (int)strides_[0], (int)strides_[1], (int)dilations_[0], (int)dilations_[1],
@@ -1039,7 +1038,7 @@ fun init_conv(kernel_shape: int [], strides: int [],
         (const float*)w_data->data, bias_data ? (const float*)bias_data->data : 0,
         bn_data_[0], bn_data_[1], bn_data_[2], bn_data_[3], bn_eps,
         (int)activ_func->tag, (const float*)activ_params->data,
-        (int)n_activ_params, (int)ntasks, use_jit, jit_ctx->ptr, fx_result);
+        (int)n_activ_params, (int)ntasks, use_jit, (jit_ctx == NULL ? NULL : jit_ctx->ptr), fx_result);
 }
 
 fun run_conv(inp: Ast.nntensor_t, out: Ast.nntensor_t, bypass: Ast.nntensor_t,
@@ -1049,7 +1048,7 @@ fun run_conv(inp: Ast.nntensor_t, out: Ast.nntensor_t, bypass: Ast.nntensor_t,
     if (!conv)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
     return _fx_conv2d((const _fx_nntensor_t*)inp, (_fx_nntensor_t*)out,
-                      (const _fx_nntensor_t*)bypass, conv, ntasks, use_jit, jit_ctx->ptr, scratch_buf, fx_result);
+                      (const _fx_nntensor_t*)bypass, conv, ntasks, use_jit, (jit_ctx == NULL ? NULL : jit_ctx->ptr), scratch_buf, fx_result);
 }
 
 fun run_conv(model: Ast.nnmodel_t, op: Ast.nnop_t) =
