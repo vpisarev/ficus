@@ -1,6 +1,6 @@
 import Filename, Json, Sys, LexerUtils as Lxu
 import Image.Decoder
-import NN.Ast, NN.Inference, NN.Labels, NN.Preprocess
+import NN.Ast, NN.Inference, NN.Labels, NN.Preprocess, NN.Jit
 //To build with jit, use next line:
 //bin/ficus -rebuild examples/vision_classify.fx -verbose -D HAVE_JIT -cflags "-I $HOME/work/loops/include/" -clibs "-L $HOME/work/build/loops"
 type classifier_kind =
@@ -18,6 +18,8 @@ var use_fp16 = false
 var trace = false
 var profile = false
 var detailed_profile = false
+var use_jit = false
+var jit_ctx = ref null
 var use_jit = false
 var dump = false
 var classifier_kind = ClassifierAuto
@@ -73,7 +75,7 @@ fun parse_args(args: string list)
     | "-detailed-profile" :: rest =>
         detailed_profile = true; parse_args(rest)
     | "-use_jit" :: rest =>
-        use_jit = true; parse_args(rest)
+        use_jit = true; jit_ctx = ref NN.Jit.create_context(); parse_args(rest)
     | "-niter" :: niter_ :: rest =>
         niter = match niter_.to_int() {
             | Some(n) => n
@@ -140,6 +142,7 @@ if trace || detailed_profile {
 }
 *model.use_fp16 = use_fp16
 *model.use_jit = use_jit
+*model.jit_ctx = *jit_ctx
 
 val preprocess_params =
     if use_fp16 {preprocess_params.{elemtype=Type_F16}}
