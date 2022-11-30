@@ -104,7 +104,7 @@ void generate_dwc_jits(loops_context ctx, _fx_conv2d_t* conv)
                           conv->activ == _FX_ACTIV_RELU ? ACT_RELU :
                           (conv->activ == _FX_ACTIV_CLIP && conv->minval == 0.f && conv->maxval == 6.f) ? ACT_RELU6 :
                           conv->activ == _FX_ACTIV_RELU ? ACT_LRELU : not_an_act;
-    if(stride_x != 1 || stride_y != 1 || dilation_x != 1 || dilation_y != 1 || activation_type == not_an_act)
+    if(activation_type == not_an_act)
         return;
     conv->jit_func_f32 = (void*)generate_dwc_f32(ctx, kh, kw, padding_top, padding_left, padding_bottom, padding_right, stride_x, stride_y, dilation_x, dilation_y, activation_type, alpha);
 
