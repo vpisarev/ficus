@@ -418,6 +418,28 @@ typedef struct _fx_qconv2d_t
     int32_t* bias;
 } _fx_qconv2d_t;
 
+typedef struct _fx_depthwise2d_t
+{
+    int N, Hi, Wi, H0, W0;
+    int inner_ytop, inner_xleft, inner_ybottom, inner_xright;
+    const int* ofstab;
+    const int* yxtab;
+} _fx_depthwise2d_t;
+
+typedef struct _fx_pooling2d_t
+{
+    _fx_depthwise2d_t dw_ctx;
+    int Hk, Wk;
+    int stride_y, stride_x;
+    int dilation_y, dilation_x;
+    int pad_top, pad_bottom, pad_left, pad_right;
+    bool count_include_pad;
+    float inp_scale, out_scale;
+    int inp_zp, out_zp;
+    void* jit_func_f32;
+    void* jit_func_f16;
+} _fx_pooling2d_t;
+
 /*
     Prepare the strides for the efficient BROADCAST_MAX_DIMS-dimensional operation.
     The algorithm includes the following steps:
@@ -518,14 +540,6 @@ static bool _fx_prepare_for_broadcast_op(
     }
     return true;
 }
-
-typedef struct _fx_depthwise2d_t
-{
-    int N, Hi, Wi, H0, W0;
-    int inner_ytop, inner_xleft, inner_ybottom, inner_xright;
-    const int* ofstab;
-    const int* yxtab;
-} _fx_depthwise2d_t;
 
 static void _fx_calc_ofstab2d(int Wi, int Hk, int Wk, int dilation_y,
                               int dilation_x, int* yxtab, int* ofstab)

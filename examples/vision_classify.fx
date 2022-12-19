@@ -20,7 +20,6 @@ var profile = false
 var detailed_profile = false
 var use_jit = false
 var jit_ctx = ref null
-var use_jit = false
 var dump = false
 var classifier_kind = ClassifierAuto
 

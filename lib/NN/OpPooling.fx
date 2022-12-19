@@ -3,24 +3,24 @@
     See ficus/LICENSE for the licensing terms
 */
 
-import Ast
+import Ast, Jit
+
+@ifdef HAVE_JIT
+@ccode
+{
+#define HAVE_JIT
+}
+@endif
 
 @ccode {
 #include <alloca.h>
 #include <float.h>
 #include "ficus_nn_common.h"
-
-typedef struct _fx_pooling2d_t
-{
-    _fx_depthwise2d_t dw_ctx;
-    int Hk, Wk;
-    int stride_y, stride_x;
-    int dilation_y, dilation_x;
-    int pad_top, pad_bottom, pad_left, pad_right;
-    bool count_include_pad;
-    float inp_scale, out_scale;
-    int inp_zp, out_zp;
-} _fx_pooling2d_t;
+#ifdef HAVE_JIT
+int _fx_maxpool_2d_f32_jit(void* ctx, int NC, const char* inptr_, char* outptr_, int ntasks, const _fx_pooling2d_t* pool);
+int _fx_maxpool_2d_f16_jit(void* ctx, int NC, const char* inptr_, char* outptr_, int ntasks, const _fx_pooling2d_t* pool);
+void generate_mp_jits(void* ctx, _fx_pooling2d_t* pool);
+#endif
 
 static void _fx_avgpool_2d_f32(int nc, const char* inptr_, char* outptr_,
                                const _fx_pooling2d_t* pool)
@@ -726,7 +726,7 @@ typedef void (*_fx_pool_func_t)(int nc, const char* inptr_, char* outptr_,
 fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
                 kernel_shape_: int [], stride_: int [], dilation_: int [],
                 padding_: int [], count_include_pad: bool,
-                inp_out_scale_zp: (float, int, float, int)?, ntasks: int): void
+                inp_out_scale_zp: (float, int, float, int)?, ntasks: int, use_jit: bool, jit_ctx: cptr): void
 @ccode {
     const fx_arr_t* inp_data = &inp->data.u.NN_Data_I8;
     fx_arr_t* out_data = &out->data.u.NN_Data_I8;
@@ -803,6 +803,13 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
                          pool.pad_top, pool.pad_left,
                          pool.pad_bottom, pool.pad_right,
                          yxtab, ofstab, &pool.dw_ctx);
+    #ifdef HAVE_JIT
+    void* jctx = (jit_ctx == NULL ? NULL : jit_ctx->ptr);
+    if (use_jit)
+    {
+        generate_mp_jits(jctx, &pool);
+    }
+    #endif
 
     inp_planesize = (size_t)pool.dw_ctx.Hi*pool.dw_ctx.Wi;
     out_planesize = (size_t)pool.dw_ctx.H0*pool.dw_ctx.W0;
@@ -842,14 +849,31 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
 
     if ((size_t)NC*out_planesize*pool.Hk*pool.Wk < 100000)
         ntasks = 1;
-
-    #pragma omp parallel for num_threads(ntasks)
-    for (int_ task_id = 0; task_id < ntasks; task_id++) {
-        int_ nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
-        func((int)(nc1 - nc0),
-            inp_data->data + inp_planesize*nc0*esz,
-            out_data->data + out_planesize*nc0*esz,
-            &pool);
+#ifdef HAVE_JIT    
+    if(pool_typ == 'M' && use_jit && (
+        (inp_typ == FX_F32 && pool.jit_func_f32 != NULL)
+    #if _FX_NN_ENABLE_FP16
+      ||(inp_typ == FX_F16 && pool.jit_func_f16 != NULL)
+    #endif
+        ))
+    {
+        if(inp_typ == FX_F32)
+            return _fx_maxpool_2d_f32_jit(jctx, NC, inp_data->data, out_data->data, ntasks, &pool);
+        else
+            return _fx_maxpool_2d_f16_jit(jctx, NC, inp_data->data, out_data->data, ntasks, &pool);
+// (use_jit && pool->jit_func_f16 != NULL) ? _fx_maxpool_2d_f16_jit : 
+    }
+    else 
+#endif
+    {    
+        #pragma omp parallel for num_threads(ntasks)
+        for (int_ task_id = 0; task_id < ntasks; task_id++) {
+            int_ nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
+            func((int)(nc1 - nc0),
+                inp_data->data + inp_planesize*nc0*esz,
+                out_data->data + out_planesize*nc0*esz,
+                &pool);
+        }
     }
 
     return FX_OK;
@@ -860,7 +884,7 @@ match op {
 | Ast.NN_MaxPool {ceil_mode, attr, storage_order, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_pooling('M', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads, true, None, *model.ntasks)
+    run_pooling('M', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads, true, None, *model.ntasks, *model.use_jit, *model.jit_ctx)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -870,7 +894,7 @@ match op {
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
     run_pooling('A', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads,
-                count_include_pad, None, *model.ntasks)
+                count_include_pad, None, *model.ntasks, *model.use_jit, *model.jit_ctx)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
@@ -885,7 +909,7 @@ match op {
     val out_zp = model.get_tensor(t_out_zp).data.int_scalar_or(0)
     val out = model.get_tensor(t_out)
     run_pooling('A', inp, out, attr.kernel_shape, attr.strides, attr.dilations, attr.pads,
-                count_include_pad, Some((inp_scale, inp_zp, out_scale, out_zp)), *model.ntasks)
+                count_include_pad, Some((inp_scale, inp_zp, out_scale, out_zp)), *model.ntasks, *model.use_jit, *model.jit_ctx)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }
 
