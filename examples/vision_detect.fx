@@ -5,7 +5,7 @@
 
 import Filename, Json, Sys, LexerUtils as Lxu
 import Color, Drawing.Shapes as draw, Image.Decoder, Image.Encoder
-import NN.Ast as Ast, NN.Inference, NN.Labels, NN.OpDetect, NN.Preprocess as Preprocess
+import NN.Ast as Ast, NN.Inference, NN.Labels, NN.OpDetect, NN.Jit, NN.Preprocess as Preprocess
 
 type detector_kind_t = DetectorSSD | DetectorYolo | DetectorTinyYolo | DetectorAuto
 
@@ -38,6 +38,8 @@ var detector_kind = DetectorAuto
 var show_boxes = true
 var dump = false
 var profile = false
+var use_jit = false
+var jit_ctx = ref null
 var niter = 15
 var input_width = 0
 var input_height = 0
@@ -53,6 +55,10 @@ fun parse_args(args: string list)
         trace = true; parse_args(rest)
     | "-profile" :: rest =>
         profile = true; parse_args(rest)
+@ifdef HAVE_JIT
+    | "-use_jit" :: rest =>
+        use_jit = true; jit_ctx = ref NN.Jit.create_context(); parse_args(rest)
+@endif
     | "-niter" :: niter_ :: rest =>
         niter = match niter_.to_int() {
             | Some(n) => n
@@ -147,6 +153,8 @@ if trace {
 if use_fp16 && input_typ == Type_F32 {
     input_typ = Type_F16
 }
+*model.use_jit = use_jit
+*model.jit_ctx = *jit_ctx
 
 val preprocess_params = Preprocess.image_preprocess_params_t
 {

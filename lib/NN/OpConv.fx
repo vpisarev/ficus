@@ -2,7 +2,14 @@
     This file is a part of ficus language project.
     See ficus/LICENSE for the licensing terms
 */
-import Ast, OpConv_Block, OpConv_Depthwise, OpConv_Winograd
+import Ast, OpConv_Block, OpConv_Depthwise, OpConv_Winograd, Jit
+
+@ifdef HAVE_JIT
+@ccode
+{
+#define HAVE_JIT
+}
+@endif
 
 @ccode {
 #include <assert.h>
@@ -26,6 +33,18 @@ int _fx_winograd_conv2d(int typ, int ndims, const int_* inpshape, const char* in
                         const char* bypass, const int_* outshape, char* out,
                         const struct _fx_conv2d_t* conv, int ntasks,
                         fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf);
+
+#ifdef HAVE_JIT
+int _fx_depthwise_conv2d_f32_jit(void* ctx, const _fx_depthwise2d_t* dw_ctx,
+                             const _fx_conv2d_t* conv,
+                             const char* inptr0, char* outptr0,
+                             int ntasks);
+int _fx_depthwise_conv2d_f16_jit(void* ctx, const _fx_depthwise2d_t* dw_ctx,
+                             const _fx_conv2d_t* conv,
+                             const char* inptr0, char* outptr0,
+                             int ntasks);
+void generate_dwc_jits(void* ctx, _fx_conv2d_t* conv);
+#endif
 
 static void _fx_free_conv2d(void* conv_ptr)
 {
@@ -57,6 +76,8 @@ static int _fx_init_conv2d(
     const float* activ_params,
     int nactiv_params,
     int ntasks,
+    bool use_jit,
+    void* jit_ctx,
     fx_cptr_t* fx_result)
 {
     _fx_conv2d_t* conv = (_fx_conv2d_t*)fx_malloc(sizeof(*conv));
@@ -181,6 +202,12 @@ static int _fx_init_conv2d(
                 for (int k = 0; k < ksize; k++)
                     conv->wf16[c*padded_ksize + k] = FX_FLOAT16(weights[c*ksize + k]*scale);
             }
+        }
+    #endif
+    #ifdef HAVE_JIT
+        if (use_jit)
+        {
+            generate_dwc_jits(jit_ctx, conv);
         }
     #endif
     } else if (conv->conv_type == _FX_CONV_TYPE_WINOGRAD3X3) {
@@ -322,8 +349,8 @@ static int _fx_init_conv2d(
 }
 
 int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
-               const _fx_nntensor_t* bypass, _fx_conv2d_t* conv, int_ ntasks,
-               fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf)
+               const _fx_nntensor_t* bypass, _fx_conv2d_t* conv, int_ ntasks, bool use_jit,
+               void* jit_ctx, fx_arr_t* curr_scratch_buf, fx_arr_t* new_scratch_buf)
 {
     int inp_typ = inp->data.tag;
     int out_typ = out->data.tag;
@@ -429,10 +456,20 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
         int status =
+        #ifdef HAVE_JIT
+            (use_jit && inp_typ == FX_F32 && conv->jit_func_f32 != NULL) ?
+                _fx_depthwise_conv2d_f32_jit(jit_ctx, &dw_ctx, conv, inp_data->data,
+                                         out_data->data, (int)ntasks) :
+        #endif
             inp_typ == FX_F32 ?
                 _fx_depthwise_conv2d_f32(&dw_ctx, conv, inp_data->data,
                                          out_data->data, (int)ntasks) :
         #if _FX_NN_ENABLE_FP16
+        #ifdef HAVE_JIT
+            (use_jit && inp_typ == FX_F16 && conv->jit_func_f16 != NULL) ?
+                _fx_depthwise_conv2d_f16_jit(jit_ctx, &dw_ctx, conv, inp_data->data,
+                                         out_data->data, (int)ntasks) :
+        #endif
             inp_typ == FX_F16 ?
                 _fx_depthwise_conv2d_f16(&dw_ctx, conv, inp_data->data,
                                          out_data->data, (int)ntasks) :
@@ -951,7 +988,7 @@ fun init_conv(kernel_shape: int [], strides: int [],
               bias: Ast.nntensor_t,
               bn_data: Ast.nntensor_t [], bn_eps: float,
               activ_func: Ast.nnactiv_t, activ_params: float [],
-              ntasks: int): cptr
+              ntasks: int, use_jit: bool, jit_ctx: cptr): cptr
 @ccode
 {
     int w_typ = weights->data.tag, b_typ = bias->data.tag;
@@ -994,7 +1031,6 @@ fun init_conv(kernel_shape: int [], strides: int [],
             bn_data_[i] = (const float*)bn_data_i->data;
         }
     }
-
     return _fx_init_conv2d(_FX_NN_Layout_NCHW, _FX_NN_Layout_NCHW, (int)group,
         (int)w_shape_[0], (int)w_shape_[1]*group, (int)w_shape_[2], (int)w_shape_[3],
         (int)strides_[0], (int)strides_[1], (int)dilations_[0], (int)dilations_[1],
@@ -1002,17 +1038,17 @@ fun init_conv(kernel_shape: int [], strides: int [],
         (const float*)w_data->data, bias_data ? (const float*)bias_data->data : 0,
         bn_data_[0], bn_data_[1], bn_data_[2], bn_data_[3], bn_eps,
         (int)activ_func->tag, (const float*)activ_params->data,
-        (int)n_activ_params, (int)ntasks, fx_result);
+        (int)n_activ_params, (int)ntasks, use_jit, (jit_ctx == NULL ? NULL : jit_ctx->ptr), fx_result);
 }
 
 fun run_conv(inp: Ast.nntensor_t, out: Ast.nntensor_t, bypass: Ast.nntensor_t,
-             conv_data: cptr, ntasks: int, scratch_buf: Ast.nnbuf_t): Ast.nnbuf_t
+             conv_data: cptr, ntasks: int, use_jit: bool, jit_ctx: cptr, scratch_buf: Ast.nnbuf_t): Ast.nnbuf_t
 @ccode {
     _fx_conv2d_t* conv = conv_data && conv_data->ptr ? (_fx_conv2d_t*)conv_data->ptr : 0;
     if (!conv)
         return FX_SET_EXN_FAST(FX_EXN_NullPtrError);
     return _fx_conv2d((const _fx_nntensor_t*)inp, (_fx_nntensor_t*)out,
-                      (const _fx_nntensor_t*)bypass, conv, ntasks, scratch_buf, fx_result);
+                      (const _fx_nntensor_t*)bypass, conv, ntasks, use_jit, (jit_ctx == NULL ? NULL : jit_ctx->ptr), scratch_buf, fx_result);
 }
 
 fun run_conv(model: Ast.nnmodel_t, op: Ast.nnop_t) =
@@ -1060,8 +1096,8 @@ match op {
                           // for the updated convolution structure
         *conv_data = init_conv(kernel_shape, strides, dilations, pads, group,
                                 weights, bias, bn_data, bn_eps,
-                                activ_id, activ_params, *model.ntasks)
+                                activ_id, activ_params, *model.ntasks, *model.use_jit, *model.jit_ctx)
     }
-    *model.scratch_buf = run_conv(inp, out, pb, *conv_data, *model.ntasks, *model.scratch_buf)
+    *model.scratch_buf = run_conv(inp, out, pb, *conv_data, *model.ntasks, *model.use_jit, *model.jit_ctx, *model.scratch_buf)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
