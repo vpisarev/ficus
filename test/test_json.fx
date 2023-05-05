@@ -30,7 +30,7 @@ TEST("json.parse", fun() {
         match m.assoc_opt("address") {
         | Some(Json.Map(m)) =>
             EXPECT_EQ(m.assoc("city"), Json.Str("Ленинград"))
-            EXPECT_EQ(m.assoc("postalCode"), Json.Int(101101L))
+            EXPECT_EQ(m.assoc("postalCode"), Json.Int(101101i64))
         | _ => throw TestFailure("'address' is not found or is not a map")
         }
         match m.assoc_opt("phoneNumbers") {

@@ -97,7 +97,7 @@ TEST("matrix.mul_big", fun() {
 
 TEST("matrix.mul_ranges", fun() {
     val (h,w) = (10, 10)
-    val rng = RNG(0xffffffffUL)
+    val rng = RNG(0xffffffffu64)
     val mothermat = random(rng, (h,w), -2., 2.)
     for y1 <- 1:h {
         for x1 <- 1:w {
@@ -117,7 +117,7 @@ TEST("matrix.mul_ranges", fun() {
 
 TEST("matrix.mul_sparsed_ranges", fun() {
     val (h,w) = (10, 10)
-    val rng = RNG(0xffffffffUL)
+    val rng = RNG(0xffffffffu64)
     val mothermat = random(rng, (h,w), -2., 2.)
 
     val A = mothermat[1:8:2,2:5]

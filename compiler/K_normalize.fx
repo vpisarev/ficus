@@ -27,6 +27,7 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
         | TypVar _ => throw compile_err(loc,
             "undefined type; use explicit type annotation")
         | TypInt => KTypInt
+        | TypLong => KTypLong
         | TypSInt(b) => KTypSInt(b)
         | TypUInt(b) => KTypUInt(b)
         | TypFloat(b) => KTypFloat(b)
@@ -218,7 +219,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             }
         val (a1, code) = process_rpart(e1_opt, code, _ALitVoid)
         val (a2, code) = process_rpart(e2_opt, code, _ALitVoid)
-        val (a3, code) = process_rpart(e3_opt, code, AtomLit(KLitInt(1L)))
+        val (a3, code) = process_rpart(e3_opt, code, AtomLit(KLitInt(1i64)))
         (KExpMkTuple([:: a1, a2, a3], kctx), code)
     | ExpLit(LitEmpty, _) =>
         val z = gen_idk(km_idx, "z")
@@ -1072,13 +1073,13 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
     fun get_extract_tag_exp(a: atom_t, atyp: ktyp_t, loc: loc_t) =
         match deref_ktyp(atyp, loc) {
         | KTypExn => KExpIntrin(IntrinVariantTag, [:: a], (KTypCInt, loc))
-        | KTypRecord(_, _) => KExpAtom(AtomLit(KLitInt(0L)), (KTypCInt, loc))
+        | KTypRecord(_, _) => KExpAtom(AtomLit(KLitInt(0i64)), (KTypCInt, loc))
         | KTypName(tn) =>
             match kinfo_(tn, loc) {
             | KVariant (ref {kvar_cases}) =>
                 match kvar_cases {
                 | [:: (n, _)] =>
-                    KExpAtom(AtomLit(KLitInt(1L)), (KTypCInt, loc))
+                    KExpAtom(AtomLit(KLitInt(1i64)), (KTypCInt, loc))
                     //KExpIntrin(IntrinVariantTag, [:: a], (KTypCInt, loc))
                 | _ => KExpIntrin(IntrinVariantTag, [:: a], (KTypCInt, loc))
                 }
@@ -1130,7 +1131,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
                 val ctor = kf_flags.fun_flag_ctor
                 val vn_val = match ctor {
                              | CtorVariant(tv) => AtomLit(KLitInt(int64(tv)))
-                             | _ => AtomLit(KLitInt(1L))
+                             | _ => AtomLit(KLitInt(1i64))
                              }
                 (c_args, vn_val, vn_val)
             | KExn (ref {ke_typ, ke_tag}) =>
@@ -1587,7 +1588,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             val tag_sc = get_module_scope(sc)
             val tag_flags = default_val_flags().{val_flag_global=tag_sc, val_flag_mutable=true}
             val decl_tag = create_kdefval(tagname, KTypCInt, tag_flags,
-                Some(KExpAtom(AtomLit(KLitInt(0L)), (KTypInt, dexn_loc))), [], dexn_loc)
+                Some(KExpAtom(AtomLit(KLitInt(0i64)), (KTypInt, dexn_loc))), [], dexn_loc)
             val code = if is_std { code } else { decl_tag + code }
             val dexn_typ =
                 match deref_typ(dexn_typ) {
@@ -1632,7 +1633,7 @@ fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t l
             val ki_id = gen_idk(km_idx, pp(di_name) + "_id")
             val code = create_kdefval(ki_id, KTypCInt,
                 default_var_flags().{val_flag_global=di_scope},
-                Some(KExpAtom(AtomLit(KLitInt(-1L)), (KTypCInt, di_loc))), code, di_loc)
+                Some(KExpAtom(AtomLit(KLitInt(-1i64)), (KTypCInt, di_loc))), code, di_loc)
             val ki = ref (kdefinterface_t {
                 ki_name = di_name,
                 ki_base = di_base,

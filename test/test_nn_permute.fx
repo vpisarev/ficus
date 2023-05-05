@@ -34,7 +34,7 @@ TEST("NN.Gather.basic", fun()
         1.0, 1.2, 1.9;
         2.3, 3.4, 3.9;
         4.5, 5.7, 5.9])
-    val ind = [0L, 2L]
+    val ind = int64([0, 2])
     val out1 = array(6, 0.f).reshape(3, 1, 2)
     OpPermute.run_gather(axis, Ast.mktensor(data),
                Ast.mktensor(ind.reshape(1, 2)),

@@ -388,7 +388,7 @@ fun empty_net() = nnmodel_t {
     use_jit = ref false,
     jit_ctx = ref null,
     scratch_buf = ref ([] : nnbuf_t),
-    perf_profile_time = array(nn_total_operations, 0L),
+    perf_profile_time = array(nn_total_operations, 0i64),
     perf_profile_count = array(nn_total_operations, 0)
 }
 

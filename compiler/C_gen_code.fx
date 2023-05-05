@@ -930,14 +930,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             | _ => true
                             }
                         | DomainElem(AtomLit(KLitNil _)) => false
-                        | DomainRange (_, _, AtomLit(KLitInt 1L)) => false
+                        | DomainRange (_, _, AtomLit(KLitInt 1i64)) => false
                         | DomainRange (_, AtomLit(KLitNil _), _) => false
                         | _ => true
                         }})
                 match (have_good_idx, at_ids) {
                 | (true, _) => (idoml, at_ids)
                 | (false, [:: i]) =>
-                    val i_iter = (i, DomainRange(AtomLit(KLitInt(0L)), _ALitVoid, AtomLit(KLitInt(1L))))
+                    val i_iter = (i, DomainRange(AtomLit(KLitInt(0i64)), _ALitVoid, AtomLit(KLitInt(1i64))))
                     (i_iter :: idoml, [])
                 | _ => throw compile_err(loc, for_err_msg(for_idx, nfors, 0, "here @ clause should contain just one scalar index"))
                 }
@@ -967,7 +967,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             | DomainRange (a, b, delta) =>
                 val (aug_add_delta, add_delta, d_exp, init_ccode) =
                     match delta {
-                    | AtomLit(KLitInt 0L) =>
+                    | AtomLit(KLitInt 0i64) =>
                         throw compile_err(for_loc, for_err_msg(for_idx, nfors, k, "the iteration step is zero"))
                     | AtomLit(KLitInt i) =>
                         (COpAugAdd, COpAdd, make_int__exp(i, for_loc), init_ccode)
@@ -1001,7 +1001,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val (a_exp, init_ccode) = atom2cexp_(a, true, init_ccode, for_loc)
                     val (b_exp, init_ccode) = atom2cexp_(b, true, init_ccode, for_loc)
                     val is_canonical_for = match (a, delta) {
-                                           | (AtomLit(KLitInt 0L), AtomLit(KLitInt 1L)) => true
+                                           | (AtomLit(KLitInt 0i64), AtomLit(KLitInt 1i64)) => true
                                            | _ => false
                                            }
                     val calc_n_exp = if is_canonical_for { b_exp }
@@ -1013,7 +1013,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         | _ =>
                             val (add_pair, i_id) =
                             match (a, delta) {
-                            | (AtomLit(KLitInt 0L), AtomLit(KLitInt(1L))) => (false, iter_val_i)
+                            | (AtomLit(KLitInt 0i64), AtomLit(KLitInt(1i64))) => (false, iter_val_i)
                             | _ => (true, get_iter_id(0, at_ids, pp(iter_val_i)))
                             }
                             val i_id = if i_id != noid { i_id }
@@ -1594,7 +1594,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             else if ncases <= 2 && is_recursive {
                                 CExpBinary(COpAdd,
                                     CExpBinary(COpCmp(CmpNE), cv, make_nullptr(kloc), (CTypCInt, kloc)),
-                                    CExpLit(KLitInt(1L), (CTypCInt, kloc)),
+                                    CExpLit(KLitInt(1i64), (CTypCInt, kloc)),
                                     (CTypCInt, kloc))
                             } else {
                                 throw compile_err(kloc, f"cgen: variant '{pp(tn)}' with no tag has {ncases} cases, is_recursive={is_recursive}")
@@ -1763,10 +1763,10 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (arr_exp, ccode) = atom2cexp(arr_or_str, ccode, kloc)
                 val c_e =
                     match (get_atom_ktyp(arr_or_str, kloc), i) {
-                    | (KTypString, 0L) => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
-                    | (KTypVector _, 0L) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | (KTypString, 0i64) => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
+                    | (KTypVector _, 0i64) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | (KTypArray (ndims, _), i) =>
-                        if !(0L <= i && i < int64(ndims)) {
+                        if !(0i64 <= i && i < int64(ndims)) {
                             throw compile_err(kloc, f"array dimension index {i}i is beyond dimensionality {ndims}")
                         }
                         make_call(get_id("FX_ARR_SIZE"), [:: arr_exp, make_int__exp(i, kloc) ], CTypInt, kloc)
@@ -2343,8 +2343,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         | _ => (mask, atom2cexp(b, ccode, kloc))
                         }
                     val delta = match delta {
-                    | AtomLit(KLitNil _) | AtomLit(KLitInt 1L) => 1
-                    | AtomLit(KLitInt(-1L)) => -1
+                    | AtomLit(KLitNil _) | AtomLit(KLitInt 1i64) => 1
+                    | AtomLit(KLitInt(-1i64)) => -1
                     | _ =>
                         throw compile_err(kloc, "cgen: vector slicing only supports stride == ±1")
                     }
@@ -2361,7 +2361,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val need_flatten = need_subarr &&
                     (match idxs {
                     | [:: DomainRange(AtomLit(KLitNil _), AtomLit(KLitNil _), AtomLit(KLitNil _))]
-                    | [:: DomainRange(AtomLit(KLitNil _), AtomLit(KLitNil _), AtomLit(KLitInt 1L))] => true
+                    | [:: DomainRange(AtomLit(KLitNil _), AtomLit(KLitNil _), AtomLit(KLitInt 1i64))] => true
                     | _ => false
                     })
                 if need_flatten {

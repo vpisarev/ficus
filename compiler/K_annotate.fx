@@ -25,7 +25,7 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
 {
     fun get_ktyp_deps_(t: ktyp_t, deps: idset_t) =
         match t {
-        | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+        | KTypInt | KTypLong | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
         | KTypVoid | KTypBool | KTypChar | KTypString
         | KTypCPointer | KTypExn | KTypErr | KTypModule => deps
         | KTypRawPointer(et) => get_ktyp_deps_(et, deps)
@@ -127,6 +127,10 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
         | KTypVoid | KTypBool | KTypChar | KTypErr  =>
             ktprops_t { ktp_complex=false, ktp_scalar=true, ktp_ptr=false,
                         ktp_pass_by_ref=false, ktp_custom_free=false,
+                        ktp_custom_copy=false }
+        | KTypLong =>
+            ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=false,
+                        ktp_pass_by_ref=true, ktp_custom_free=false,
                         ktp_custom_copy=false }
         | KTypString | KTypArray _ | KTypExn | KTypFun _ | KTypModule  =>
             ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=false,

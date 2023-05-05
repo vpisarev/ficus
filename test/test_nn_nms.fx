@@ -26,7 +26,7 @@ TEST("NN.NonMaxSuppression.center_point", fun()
     val boxes = Ast.mktensor(boxes.reshape(1, 6, 4))
     val scores = Ast.mktensor(scores.reshape(1, 1, 6))
 
-    val selected_ref = [0L, 0L, 3L; 0L, 0L, 0L; 0L, 0L, 5L]
+    val selected_ref = int64([0, 0, 3; 0, 0, 0; 0, 0, 5])
     val (n, selected, buf) =
         OpNMS.run_nms(boxes, scores, max_output_boxes_per_class,
                       center_point_box, iou_threshold, score_threshold, [], 4)
@@ -49,7 +49,7 @@ TEST("NN.NonMaxSuppression.suppress_by_IOU_and_scores", fun()
     val max_output_boxes_per_class = 3
     val iou_threshold = 0.5f
     val score_threshold = 0.4f
-    val selected_ref = [0L, 0L, 3L; 0L, 0L, 0L]
+    val selected_ref = int64([0, 0, 3; 0, 0, 0])
     val boxes = Ast.mktensor(boxes.reshape(1, 6, 4))
     val scores = Ast.mktensor(scores.reshape(1, 1, 6))
     val (n, selected, buf) =

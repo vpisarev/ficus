@@ -201,6 +201,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
     fun mangle_ktyp_(t: ktyp_t, result: string list): string list =
         match t {
         | KTypInt  => "i" :: result
+        | KTypLong  => "g" :: result
         | KTypSInt 8 => "c" :: result
         | KTypSInt 16 => "s" :: result
         | KTypSInt 32 => "n" :: result
@@ -285,7 +286,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
     {
         val t = walk_ktyp(t, loc, callb)
         match t {
-        | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
+        | KTypInt | KTypLong | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _
         | KTypVoid | KTypBool | KTypChar | KTypString | KTypCPointer
         | KTypRawPointer _ => t
         | KTypExn | KTypErr | KTypModule => t

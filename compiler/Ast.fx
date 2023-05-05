@@ -124,6 +124,7 @@ type typ_t =
     | TypInt
     | TypSInt: int
     | TypUInt: int
+    | TypLong
     | TypFloat: int
     | TypString
     | TypChar
@@ -892,6 +893,7 @@ fun is_typ_scalar(t: typ_t): bool {
 fun get_numeric_typ_size(t: typ_t, allow_tuples: bool): int =
     match deref_typ(t) {
     | TypInt => 8 // assume 64 bits for simplicity
+    | TypLong => -1
     | TypSInt b => b/8
     | TypUInt b => b/8
     | TypFloat b => b/8
@@ -1068,6 +1070,7 @@ fun fname_op_aug_dot_mod() = get_id("__aug_dot_mod__")
 fun fname_op_aug_shl() = get_id("__aug_shl__")
 fun fname_op_aug_shr() = get_id("__aug_shr__")
 fun fname_to_int() = get_id("int")
+fun fname_to_long() = get_id("long")
 fun fname_to_uint8() = get_id("uint8")
 fun fname_to_int8() = get_id("int8")
 fun fname_to_uint16() = get_id("uint16")
@@ -1177,7 +1180,7 @@ fun fname_always_import(): id_t list = [::
     fname_op_aug_shl(), fname_op_aug_shr(),
 
     fname_op_apos(),
-    fname_to_int(), fname_to_uint8(), fname_to_int8(), fname_to_uint16(),
+    fname_to_int(), fname_to_long(), fname_to_uint8(), fname_to_int8(), fname_to_uint16(),
     fname_to_int16(), fname_to_uint32(), fname_to_int32(), fname_to_uint64(),
     fname_to_int64(), fname_to_float(), fname_to_double(), fname_to_bool(),
     fname_string(), fname_print(), fname_repr(), fname_hash()
@@ -1263,6 +1266,7 @@ fun typ2str(t: typ_t): string {
     | TypApp([], i) => id2str_m(i)
     | TypApp(tl, i) => f"{tl2str(tl)} {id2str_m(i)}"
     | TypInt => "int"
+    | TypLong => "long"
     | TypSInt(n) => f"int{n}"
     | TypUInt(n) => f"uint{n}"
     | TypFloat(n) =>
@@ -1364,6 +1368,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypInt => t
     | TypSInt _ => t
     | TypUInt _ => t
+    | TypLong => t
     | TypFloat _ => t
     | TypString => t
     | TypChar => t

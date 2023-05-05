@@ -274,9 +274,9 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             | Some(LoopOverRange (a, b, delta)) => (a, b, delta, pre_for_code)
             | Some(LoopOverArr (arr, j)) =>
                 val (arrsz, pre_for_code) = get_arrsz(arr, j, pre_for_code)
-                val a = AtomLit(KLitInt(0L))
+                val a = AtomLit(KLitInt(0i64))
                 val b = AtomId(arrsz)
-                val delta = AtomLit(KLitInt(1L))
+                val delta = AtomLit(KLitInt(1i64))
                 (a, b, delta, pre_for_code)
             | _ => throw compile_err(loc, f"fast_idx: index '{idk2str(i, loc)}' \
                         is not found in the loop_idx map, but it should be there")
@@ -288,8 +288,8 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             match (a, b) {
             | (AtomLit(KLitInt ia), AtomLit(KLitInt ib)) =>
                 KExpAtom(AtomLit(KLitInt(ia + ib)), ctx)
-            | (AtomLit(KLitInt 0L), b) => KExpAtom(b, ctx)
-            | (a, AtomLit(KLitInt 0L)) => KExpAtom(a, ctx)
+            | (AtomLit(KLitInt 0i64), b) => KExpAtom(b, ctx)
+            | (a, AtomLit(KLitInt 0i64)) => KExpAtom(a, ctx)
             | _ => KExpBinary(OpAdd, a, b, ctx)
             }
         }
@@ -300,8 +300,8 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             match (a, b) {
             | (AtomLit(KLitInt ia), AtomLit(KLitInt ib)) =>
                 KExpAtom(AtomLit(KLitInt(ia - ib)), ctx)
-            | (AtomLit(KLitInt(0L)), b) => KExpUnary(OpNegate, b, ctx)
-            | (a, AtomLit(KLitInt(0L))) => KExpAtom(a, ctx)
+            | (AtomLit(KLitInt(0i64)), b) => KExpUnary(OpNegate, b, ctx)
+            | (a, AtomLit(KLitInt(0i64))) => KExpAtom(a, ctx)
             | _ => KExpBinary(OpSub, a, b, ctx)
             }
         }
@@ -312,8 +312,8 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             match (a, b) {
             | (AtomLit(KLitInt ia), AtomLit(KLitInt ib)) =>
                 KExpAtom(AtomLit(KLitInt(ia * ib)), ctx)
-            | (AtomLit(KLitInt(1L)), b) => KExpAtom(b, ctx)
-            | (a, AtomLit(KLitInt(1L))) => KExpAtom(a, ctx)
+            | (AtomLit(KLitInt(1i64)), b) => KExpAtom(b, ctx)
+            | (a, AtomLit(KLitInt(1i64))) => KExpAtom(a, ctx)
             | _ => KExpBinary(OpMul, a, b, ctx)
             }
         }
@@ -322,9 +322,9 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             match a {
             | AtomId i =>
                 if loop_idx.mem(i) {
-                    IdxSimple(i, AtomLit(KLitInt(1L)), AtomLit(KLitInt(0L)))
+                    IdxSimple(i, AtomLit(KLitInt(1i64)), AtomLit(KLitInt(0i64)))
                 } else if is_loop_invariant(a, inloop_vals, loc) {
-                    IdxSimple(noid, AtomLit(KLitInt(0L)), a)
+                    IdxSimple(noid, AtomLit(KLitInt(0i64)), a)
                 } else {
                     /*
                        We analyze array index expression (including nested sub-expressions) and
@@ -371,7 +371,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                             } else {
                                 val idx_scaled_exp = optimized_mul(AtomId(c_idx), c_scale, loc)
                                 match c_shift {
-                                | AtomLit(KLitInt 0L) => (idx_scaled_exp, [])
+                                | AtomLit(KLitInt 0i64) => (idx_scaled_exp, [])
                                 | _ =>
                                     val (idx_scaled, idx_code) = kexp2atom(km_idx, "t",
                                                                     idx_scaled_exp, false, [])
@@ -398,7 +398,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                     | _ => IdxComplex
                     }
                 }
-            | _ => IdxSimple(noid, AtomLit(KLitInt(0L)), a)
+            | _ => IdxSimple(noid, AtomLit(KLitInt(0i64)), a)
             }
 
         fun optimize_idx_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
@@ -466,7 +466,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                 check_idx_range(N, A0*C0+A1, B0*C1 + (B1-B0), D0, D1)
             */
             | KExpIntrin(IntrinCheckIdxRange,
-                [:: AtomId(arrsz), a, b, AtomLit(KLitInt 1L), scale, shift],
+                [:: AtomId(arrsz), a, b, AtomLit(KLitInt 1i64), scale, shift],
                 (_, loc) )
                 when (is_loop_invariant(scale, inloop_vals, loc) &&
                      is_loop_invariant(shift, inloop_vals, loc) &&
@@ -478,11 +478,11 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                 match (a_class, b_class) {
                 | (IdxSimple(a_i, AtomLit(KLitInt(a_scale)) as a_scale_atom, a_shift),
                    IdxSimple(b_i, AtomLit(KLitInt(b_scale)) as b_scale_atom, b_shift))
-                   when a_scale >= 0L && b_scale >= 0L &&
-                    (a_i == b_i || a_scale == 0L || b_scale == 0L) =>
+                   when a_scale >= 0i64 && b_scale >= 0i64 &&
+                    (a_i == b_i || a_scale == 0i64 || b_scale == 0i64) =>
                     val idx =
-                        if a_scale != 0L {a_i}
-                        else if b_scale != 0L {b_i}
+                        if a_scale != 0i64 {a_i}
+                        else if b_scale != 0i64 {b_i}
                         else {noid};
                     val (new_e, new_pre_for_code) = if idx == noid {
                         // if j does not depend on the loop var,
@@ -492,7 +492,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                         val (c0, c1, delta, pre_for_code) =
                             get_loop_idx_range(idx, pre_for_code, loc)
                         match delta {
-                        | AtomLit(KLitInt 1L) =>
+                        | AtomLit(KLitInt 1i64) =>
                             val int_ctx = (KTypInt, loc)
                             // c0*a_scale + a_shift
                             val (t, pre_for_code) = kexp2atom(km_idx, "t",
@@ -509,7 +509,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                             // we don't care if those expressions include some sub-constant expressions -
                             // const folding stage will take care of that
                             val new_check = KExpIntrin(IntrinCheckIdxRange,
-                                [:: AtomId(arrsz), new_a, new_b, AtomLit(KLitInt(1L)), scale, shift],
+                                [:: AtomId(arrsz), new_a, new_b, AtomLit(KLitInt(1i64)), scale, shift],
                                 (KTypVoid, loc) )
                             (KExpNop(loc), new_check :: pre_for_code)
                         | _ => (e, pre_for_code)

@@ -15,7 +15,7 @@ TEST("NN.TopK", fun()
     val k = 3
     val inp = Ast.mktensor(float([0, 1, 2, 3; 4, 5, 6, 7; 11, 10, 9, 8]))
     val out = Ast.mktensor(array((3, k), 0.f))
-    val out_ind = Ast.mktensor(array((3, k), 0L))
+    val out_ind = Ast.mktensor(array((3, k), 0i64))
 
     val largest = true
     OpReduce.run_top_k(inp, out, out_ind, axis, largest, true, k, 4)
@@ -36,7 +36,7 @@ TEST("NN.NonZero", fun()
     val inp = Ast.mktensor([1.f, 0.f; 1.f, 1.f])
     val (nz, coords, buf) = OpReduce.run_nonzero(inp, [], 4)
     EXPECT_EQ(nz, 3)
-    EXPECT_EQ(`coords.reshape(2, 3)`, [0L, 1L, 1L; 0L, 0L, 1L])
+    EXPECT_EQ(`coords.reshape(2, 3)`, int64([0, 1, 1; 0, 0, 1]))
     EXPECT_EQ(buf.size(), 48)
 })
 

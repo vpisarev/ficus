@@ -34,10 +34,10 @@ TEST("basic.limits", fun()
     EXPECT_EQ(__max__(0i32), 2147483647i32)
     EXPECT_EQ(__min__(0u32), 0u32)
     EXPECT_EQ(__max__(0u32), 4294967295u32)
-    EXPECT_EQ(__min__(0i64), -9223372036854775807L)
-    EXPECT_EQ(__max__(0i64), 9223372036854775807L)
+    EXPECT_EQ(__min__(0i64), -9223372036854775807i64)
+    EXPECT_EQ(__max__(0i64), 9223372036854775807i64)
     EXPECT_EQ(__min__(0u64), 0u64)
-    EXPECT_EQ(__max__(0u64), 18446744073709551615UL)
+    EXPECT_EQ(__max__(0u64), 18446744073709551615u64)
     EXPECT_EQ(__min__(0.f), -FLT_MAX)
     EXPECT_LT(__min__(0.f), -3.4e38f)
     EXPECT_EQ(__max__(0.f), FLT_MAX)
@@ -746,7 +746,7 @@ TEST("basic.assert", fun()
 
 /*TEST("basic.stack_overflow", fun()
 {
-    val rng = RNG(0xffffffffUL)
+    val rng = RNG(0xffffffffu64)
     fun foo(n:int) { if rng.uniform(0, 10) > 100 {n} else {2*foo(n-1)} }
     EXPECT_THROWS(fun () {ignore(foo(1000))}, StackOverflowError)
 })*/

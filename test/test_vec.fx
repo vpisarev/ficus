@@ -42,7 +42,7 @@ TEST("vector.comprehensions", fun()
 
 TEST("vector.concat_slice", fun()
 {
-    val rng = RNG(0xffffffffUL)
+    val rng = RNG(0xffffffffu64)
     val N = 1000003
     var i = 0
     var vec: float vector = []
@@ -78,7 +78,7 @@ TEST("vector.concat_slice", fun()
 
 TEST("vector.find", fun()
 {
-    val rng = RNG(0xffffffffUL)
+    val rng = RNG(0xffffffffu64)
     val N = 1000003
     val (simple_vec, complex_vec) = vector(@unzip for i <- 0:N {(i, vector([i]))})
 

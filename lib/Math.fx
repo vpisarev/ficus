@@ -216,7 +216,7 @@ fun RNG(seed: int) = RNG(seed :> uint64)
 
 fun double(rng: RNG) = next(rng)*5.42101086242752217003726400434970855712890625e-20
 fun float(rng: RNG) = float(next(rng)*5.42101086242752217003726400434970855712890625e-20)
-fun bool(rng: RNG) = int64(next(rng)) < 0L
+fun bool(rng: RNG) = int64(next(rng)) < 0i64
 
 fun uniform(rng: RNG, a: uint8, b: uint8) =
     uint8((next(rng) % (b - a + 1 :> uint64) :> int) + a)
@@ -259,7 +259,7 @@ fun uniform(rng: RNG, (sz0, sz1, sz2, sz3): (int*4), a: 't, b: 't) =
 
 fun jump(rng: RNG): RNG
 {
-    val result = RNG {state=(0UL,0UL,0UL,0UL)}
+    val result = RNG {state=(0u64,0u64,0u64,0u64)}
     @nothrow fun jump_(rng: RNG, result: RNG): void
     @ccode {
         const uint64_t jump[] = {

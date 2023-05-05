@@ -37,7 +37,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
     assert(`ninputs == model.graph.inpargs.size()`)
     if *model.profile {
         for i <- 0:Ast.nn_total_operations {
-            model.perf_profile_time[i] = 0L
+            model.perf_profile_time[i] = 0i64
             model.perf_profile_count[i] = 0
         }
     }
@@ -99,7 +99,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
 {
     val nops = graph.prog.size()
     val any_profile = *model.profile || *model.detailed_profile
-    var t = 0L
+    var t = 0i64
     for op@opidx <- graph.prog {
         if any_profile {
             t = Sys.tick_count()
@@ -181,9 +181,9 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             }
 
             var iter = 0
-            while loop_condition && trip_count.value_or(1L) > 0L {
+            while loop_condition && trip_count.value_or(1i64) > 0i64 {
                 if *model.trace {
-                    println(f"================ LOOP ITERATION #{iter}/{trip_count0.value_or(-1L)} ================")
+                    println(f"================ LOOP ITERATION #{iter}/{trip_count0.value_or(-1i64)} ================")
                 }
                 run_graph(model, body, outputs)
                 val outarg_0 = outargs[0]

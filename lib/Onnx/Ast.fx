@@ -243,4 +243,4 @@ fun print(model: model_t)
     println("// end of model")
 }
 
-always_use([::AttrInt(5L), AttrString("abc")])
+always_use([::AttrInt(5i64), AttrString("abc")])

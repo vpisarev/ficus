@@ -31,7 +31,7 @@ TEST("array.solve", fun() {
 
 TEST("array.tuple_index", fun() {
     val (h,w,d) = (10, 10, 10)
-    val rng = RNG(0xffffffffUL)
+    val rng = RNG(0xffffffffu64)
     var A1 = random(rng, (h), -2., 2.)
     val B1 = random(rng, (h), -2., 2.)
     var A2 = random(rng, (h,w), -2., 2.)

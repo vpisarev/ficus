@@ -169,8 +169,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
         if (get_suffix) {
             uint64_t maxval = (uint64_t)1 << (sizeof(size_t)*8-1);
             if( c == 'L' ) {
-                bits = 64;
-                maxval = 0x8000000000000000ULL;
+                bits = 128;
                 i++;
             } else if( c == 'i' || c == 'I' || c == 'u' || c == 'U' ) {
                 unsigned_ = c == 'u' || c == 'U';
@@ -181,10 +180,6 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
                 if(c1 == '8' && (c2 < '0' || '9' < c2)) {
                     bits = 8;
                     maxval = unsigned_ ? 255 : 128;
-                    i += 2;
-                } else if(c == 'U' && c1 == 'L') {
-                    bits = 64;
-                    maxval = 0xFFFFFFFFFFFFFFFFULL;
                     i += 2;
                 } else if(c1 == '1' && c2 == '6' && (c3 < '0' || '9' < c3)) {
                     bits = 16;
@@ -201,7 +196,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
                 } else
                     return FX_SET_EXN_FAST(FX_EXN_BadArgError);
             }
-            if(!ok || r > maxval)
+            if(bits <= 64 && (!ok || r > maxval))
                 return FX_SET_EXN_FAST(FX_EXN_OutOfRangeError);
         }
         fx_result->t0 = (ptr - s->data) + i;

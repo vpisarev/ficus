@@ -134,7 +134,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                 }
             }
         | TypApp(tl2, _) => occurs(r1, tl2)
-        | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypString
+        | TypInt | TypLong | TypSInt _ | TypUInt _ | TypFloat _ | TypString
         | TypChar | TypBool | TypVoid | TypExn | TypErr
         | TypCPointer | TypDecl | TypModule | TypVarRecord =>
             false
@@ -150,7 +150,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
 
     fun maybe_unify_(t1: typ_t, t2: typ_t, loc: loc_t): bool =
         match (t1, t2) {
-        | (TypInt, TypInt) | (TypString, TypString) | (TypChar, TypChar)
+        | (TypInt, TypInt) | (TypLong, TypLong) | (TypString, TypString) | (TypChar, TypChar)
         | (TypBool, TypBool) | (TypVoid, TypVoid) | (TypExn, TypExn)
         | (TypCPointer, TypCPointer) | (TypDecl, TypDecl) | (TypModule, TypModule) => true
         | (TypSInt(bits1), TypSInt(bits2)) => bits1 == bits2
@@ -372,6 +372,14 @@ fun coerce_types(t1: typ_t, t2: typ_t, allow_tuples: bool,
                 throw compile_err(loc, "implicit type coercion for this (unsigned, signed) \
                                   pair of integer is not allowed; use explicit type cast")
             }
+        /*| (TypLong, TypInt) => TypLong
+        | (TypInt, TypLong) => TypLong
+        | (TypLong, TypSInt _) => TypLong
+        | (TypSInt _, TypLong) => TypLong
+        | (TypLong, TypUInt _) => TypLong
+        | (TypUInt _, TypLong) => TypLong
+        | (TypLong, TypFloat(b)) => TypFloat(max(b, 64))
+        | (TypFloat(b), TypLong) => TypFloat(max(b, 64))*/
         | (TypFloat(b1), TypFloat(b2)) when allow_fp => val max_b = max(max(b1, b2), 32); TypFloat(max_b)
         | (TypFloat(b), TypInt) when allow_fp => TypFloat(max(b, 32))
         | (TypFloat(b), TypSInt _) when allow_fp => TypFloat(max(b, 32))
@@ -490,18 +498,19 @@ fun check_for_rec_field_duplicates(rfnames: id_t list, loc: loc_t): void =
 
 fun typ_bounds_int(t: typ_t): (int64, int64)
 {
-    | TypSInt(8) => (-128L, 127L)
-    | TypSInt(16) => (-32768L, 32767L)
-    | TypSInt(32) => (-2147483648L, 2147483647L)
-    | TypSInt(64) => (-9223372036854775807L, 9223372036854775807L)
-    | TypUInt(8) => (0L, 255L)
-    | TypUInt(16) => (0L, 65535L)
-    | TypUInt(32) => (0L, 4294967295L)
-    | TypUInt(64) => (0L, 9223372036854775807L)
-    | TypFloat(16) => (-4096L, 4096L)
-    | TypFloat(32) => (-16777216L, 16777216L)
-    | TypFloat(64) => (-9007199254740992L, 9007199254740992L)
-    | _ => (0L, -1L)
+    | TypSInt(8) => (-128i64, 127i64)
+    | TypSInt(16) => (-32768i64, 32767i64)
+    | TypSInt(32) => (-2147483648i64, 2147483647i64)
+    | TypSInt(64) => (-9223372036854775807i64, 9223372036854775807i64)
+    | TypUInt(8) => (0i64, 255i64)
+    | TypUInt(16) => (0i64, 65535i64)
+    | TypUInt(32) => (0i64, 4294967295i64)
+    | TypUInt(64) => (0i64, 9223372036854775807i64)
+    | TypLong => (-9223372036854775807i64, 9223372036854775807i64)
+    | TypFloat(16) => (-4096i64, 4096i64)
+    | TypFloat(32) => (-16777216i64, 16777216i64)
+    | TypFloat(64) => (-9007199254740992i64, 9007199254740992i64)
+    | _ => (0i64, -1i64)
 }
 
 fun typ_bounds_flt(t: typ_t): double
@@ -1258,7 +1267,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val new_e2_opt = check_range_e(e2_opt)
         val new_e3_opt = match e3_opt {
                          | Some _ => check_range_e(e3_opt)
-                         | _ => Some(ExpLit(LitInt(1L), (TypInt, eloc)))
+                         | _ => Some(ExpLit(LitInt(1i64), (TypInt, eloc)))
                          }
         unify(etyp, TypTuple([::TypInt, TypInt, TypInt]), eloc,
             "the range type should have (int, int, int) type")
@@ -1407,10 +1416,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     match (new_e1, new_e2) {
                     | (_, ExpLit(LitString "", _)) =>
                         val e1_size = ExpIntrin(IntrinGetSize, [:: new_e1], (TypInt, eloc1))
-                        Some(ExpBinary(bop, e1_size, ExpLit(LitInt(0L), (TypInt, eloc2)), ctx))
+                        Some(ExpBinary(bop, e1_size, ExpLit(LitInt(0i64), (TypInt, eloc2)), ctx))
                     | (ExpLit (LitString "", _), _) =>
                         val e2_size = ExpIntrin(IntrinGetSize, [:: new_e2], (TypInt, eloc2))
-                        Some(ExpBinary(bop, e2_size, ExpLit(LitInt(0L), (TypInt, eloc1)), ctx))
+                        Some(ExpBinary(bop, e2_size, ExpLit(LitInt(0i64), (TypInt, eloc1)), ctx))
                     | _ => None
                     }
                 | TypApp(_, _) =>
@@ -2431,8 +2440,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             fun make_cast(e1: exp_t, t1: typ_t, t2: typ_t): exp_t =
                 match (is_typ_scalar(t1) && is_typ_scalar(t2), e1, deref_typ(t1), deref_typ(t2)) {
                 | (true, _, _, _) => ExpCast(e1, t2, (t2, eloc))
-                | (_, ExpLit(LitInt(0L), _), _, TypList _) => ExpLit(LitEmpty, (t2, eloc))
-                | (_, ExpLit(LitInt(0L), _), _, TypString) => ExpLit(LitString(""), (t2, eloc))
+                | (_, ExpLit(LitInt(0i64), _), _, TypList _) => ExpLit(LitEmpty, (t2, eloc))
+                | (_, ExpLit(LitInt(0i64), _), _, TypString) => ExpLit(LitString(""), (t2, eloc))
                 | (_, _, TypTuple(tl1), TypTuple(tl2)) =>
                     val n1 = tl1.length()
                     val n2 = tl2.length()

@@ -45,7 +45,7 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
         | _ =>
             val res_n = dup_idk(km_idx, std__result__)
             val a0 = match is_ktyp_scalar(rt) {
-                     | true => AtomLit(KLitInt(0L))
+                     | true => AtomLit(KLitInt(0i64))
                      | _ => AtomLit(KLitNil(rt))
                      }
             val res_val0 = KExpAtom(a0, (rt, kf_loc))

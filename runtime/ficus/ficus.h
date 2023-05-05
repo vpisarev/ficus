@@ -426,7 +426,7 @@ void fx_copy_str(const fx_str_t* src, fx_str_t* dst);
 int fx_make_str(const char_* strdata, int_ length, fx_str_t* str);
 int fx_make_cstr(const char* strdata, int_ length, fx_cstr_t* str);
 
-#define FX_COPY_STR(src, dst) if((src)->rc) { FX_INCREF(*(src)->rc); *(dst) = *(src); } else *(dst) = *(src);
+#define FX_COPY_STR(src, dst) if((src)->rc) { FX_INCREF(*(src)->rc); *(dst) = *(src); } else *(dst) = *(src)
 #define FX_FREE_STR(str) if(!(str)->rc) ; else fx_free_str(str)
 #define FX_FREE_CSTR(cstr) if(!(cstr)->rc) ; else fx_free_cstr(cstr)
 #define FX_MAKE_STR(strlit) { 0, (char_*)FX_CONCAT(U, strlit), (int_)(sizeof(FX_CONCAT(U, strlit))/sizeof(char_)-1) }
@@ -502,7 +502,54 @@ int fx_format_int(int64_t x, bool u, const fx_format_t* fmt, fx_str_t* result);
 int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_str_t* result);
 int fx_format_str(const fx_str_t* x, const fx_format_t* fmt, fx_str_t* result);
 
-////////////////////////// Exceptions //////////////////////
+////////////////////////// Long (a.k.a. BigInt) /////////////////////////
+
+typedef uint64_t fx_digit_t;
+
+#define FX_LONG_LDIGITS 2
+
+typedef struct fx_long_t
+{
+    int_ len;
+    fx_digit_t ldigits[FX_LONG_LDIGITS];
+    fx_digit_t* hdigits;
+} fx_long_t;
+
+void fx_free_long(fx_long_t* num);
+void fx_copy_long(const fx_long_t* src, fx_long_t* dst);
+int fx_atol(const fx_str_t* str, fx_long_t* num);
+int fx_atol_ascii(const fx_cstr_t* str, fx_long_t* num);
+int fx_ltoa(const fx_long_t* num, fx_str_t* str);
+int fx_ltoa_ascii(const fx_long_t* num, fx_cstr_t* str);
+int fx_format_long(const fx_long_t* x, const fx_format_t* fmt, fx_str_t* result);
+int fx_ltoi(const fx_long_t* a, int_* res);
+int fx_long_abs(const fx_long_t* a, fx_long_t* res);
+int fx_long_neg(const fx_long_t* a, fx_long_t* res);
+int fx_long_add(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_sub(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_mul(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_div(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_mod(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_and(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_or(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_xor(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_cmp(const fx_long_t* a, const fx_long_t* b);
+int fx_long_sign(const fx_long_t* a);
+
+#define FX_COPY_LONG(src, dst) \
+    if((src)->hdigits) \
+    { \
+        FX_INCREF(((int_*)((src)->hdigits))[-1]); \
+        *(dst) = *(src); \
+    } else *(dst) = *(src)
+#define FX_FREE_LONG(num) if(!(num)->hdigits) ; else fx_free_long(num)
+#define FX_MAKE_LONG(v, num) \
+    ((num)->ldigits[0]=(fx_digit_t)(v), (num)->hdigits=0, (num)->len=1)
+#define FX_MAKE_ULONG(v, num) \
+    ((num)->ldigits[0] = (fx_digit_t)(v), (num)->ldigits[1] = 0, \
+    (num)->hdigits=0, (num)->len = 1 + ((num)->ldigits[0] > 0x7FFFFFFFFFFFFFFFULL))
+
+////////////////////////// Exceptions ///////////////////////////////////
 
 typedef int (*fx_to_string_t)(void*, fx_str_t*, void*);
 typedef int (*fx_print_t)(void*, void*);

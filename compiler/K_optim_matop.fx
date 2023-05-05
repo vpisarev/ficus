@@ -89,7 +89,7 @@ fun optimize_gemm(kmods: kmodule_t list)
 
         fun juxtapose_idx(base_range: (atom_t, atom_t, atom_t), constriction: atom_t, is_end: bool,
                                                                      code: kcode_t): (atom_t, kcode_t){
-            static_check(CmpLE, AtomLit(KLitInt(0L)), constriction, ctx)
+            static_check(CmpLE, AtomLit(KLitInt(0i64)), constriction, ctx)
             val (base, end, delta) = base_range
             match (constriction, base, delta) {
             | (AtomLit(KLitNil _), _, _) => (if is_end {end} else {base}, code)
@@ -107,7 +107,7 @@ fun optimize_gemm(kmods: kmodule_t list)
         }
 
         fun juxtapose_delta(base_range: (atom_t, atom_t, atom_t), ndelt: atom_t, code: kcode_t): (atom_t, kcode_t){
-            static_check(CmpLE, AtomLit(KLitInt(0L)), ndelt, ctx)
+            static_check(CmpLE, AtomLit(KLitInt(0i64)), ndelt, ctx)
             val (_, _, delta) = base_range
             match (ndelt, delta) {
             | (AtomLit(KLitNil _), _) => (delta, code)

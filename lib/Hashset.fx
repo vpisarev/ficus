@@ -12,7 +12,7 @@
 val HASH_EMPTY = 0
 val HASH_DELETED = 1
 val HASH_ALIVE = 2
-val HASH_SIGN_MASK: hash_t = 9223372036854775808UL
+val HASH_SIGN_MASK: hash_t = 9223372036854775808u64
 val PERTURB_SHIFT = 5
 
 type 'k hashset_entry_t = {hv: hash_t; key: 'k}

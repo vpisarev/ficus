@@ -59,6 +59,7 @@ fun ktyp2ctyp(t: ktyp_t, loc: loc_t) {
     fun ktyp2ctyp_(t: ktyp_t) =
         match t {
         | KTypInt => CTypInt
+        | KTypLong => CTypLong
         | KTypCInt => CTypCInt
         | KTypSInt n => CTypSInt(n)
         | KTypUInt n => CTypUInt(n)
@@ -99,6 +100,11 @@ fun get_ctprops(ctyp: ctyp_t, loc: loc_t): ctprops_t
         ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
             ctp_free=(noid, std_fx_free_cptr), ctp_copy=(noid, std_fx_copy_cptr),
             ctp_pass_by_ref=false, ctp_ptr=true }
+    | CTypLong =>
+        ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
+            ctp_free=(std_FX_FREE_LONG, std_fx_free_long),
+            ctp_copy=(noid, std_fx_copy_long),
+            ctp_pass_by_ref=true, ctp_ptr=false }
     | CTypString =>
         ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
             ctp_free=(std_FX_FREE_STR, std_fx_free_str),

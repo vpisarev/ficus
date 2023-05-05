@@ -33,10 +33,10 @@ fun encrypt_char(c: char) = lut[int(c)]
 fun decrypt_key(n: int64, len: int)
 {
     val chars = [for i <- 0:len {
-        match (n >> (len-i-1)*2) & 3L {
-            | 0L => 'A'
-            | 1L => 'C'
-            | 2L => 'G'
+        match (n >> (len-i-1)*2) & 3i64 {
+            | 0i64 => 'A'
+            | 1i64 => 'C'
+            | 2i64 => 'G'
             | _ => 'T'
         } }]
     string(chars)
@@ -45,9 +45,9 @@ fun decrypt_key(n: int64, len: int)
 fun frequency(seq: uint8 [], len: int)
 {
     val n = size(seq)
-    val freq = Hashmap.empty(32, 0L, 0)
-    var key = 0L
-    val mask = (1L << len*2) - 1
+    val freq = Hashmap.empty(32, 0i64, 0)
+    var key = 0i64
+    val mask = (1i64 << len*2) - 1
     for i <- 0:min(len-1, n) {
         key = (key*4 + seq[i]) & mask
     }
@@ -71,7 +71,7 @@ fun find_seq(seq: uint8 [], substr: string)
 {
     val length = substr.length()
     val (_, freq) = frequency(seq, length)
-    val fold key = 0L for c <- substr {key*4 + encrypt_char(c)}
+    val fold key = 0i64 for c <- substr {key*4 + encrypt_char(c)}
     val idx = freq.find_idx(key)
     val freq = if idx >= 0 {freq.table[idx].data} else {0}
     f"{freq}\t{substr.toupper()}"

@@ -1706,6 +1706,7 @@ fun parse_atomic_typ_(ts: tklist_t): (tklist_t, typ_t)
         val (ts, i) = parse_dot_ident(ts, false, "")
         val t = match i {
             | "int" => TypInt
+            | "long" => TypLong
             | "float" => TypFloat(32)
             | "double" => TypFloat(64)
             | "string" => TypString
@@ -1788,7 +1789,7 @@ fun parse_typtuple_(ts: tklist_t, expect_comma: bool,
         else { throw parse_err(ts, "extra ','?") }
     | (LITERAL(LitInt(n)), _) :: (STAR _, _) :: rest =>
         if expect_comma { throw parse_err(ts, "',' is expected") }
-        if n <= 0L { throw parse_err(ts, "tuple multiplicator should be positive") }
+        if n <= 0i64 { throw parse_err(ts, "tuple multiplicator should be positive") }
         val (ts, t) = parse_typespec_nf(rest)
         val tt = [:: for i <- 0:(n :> int) {t} ]
         parse_typtuple_(ts, true, tt + result, loc)
@@ -2059,7 +2060,7 @@ type ppenv_t = (string, ppval_t) Hashmap.t
 
 fun preprocess(ts: tklist_t): tklist_t
 {
-    var env = Hashmap.empty(256, "", PP_INT(0L))
+    var env = Hashmap.empty(256, "", PP_INT(0i64))
 
     fun pp_err(ts: tklist_t, msg: string) = parse_err(ts, msg)
 
@@ -2083,8 +2084,8 @@ fun preprocess(ts: tklist_t): tklist_t
             val (ts, x) = pp_match_paren(pp_exp(rest, calc), RPAREN, l1)
             val x = if calc {
                 match (fname, x) {
-                | ("int", PP_BOOL(b)) => PP_INT(if b {1L} else {0L})
-                | ("abs", PP_INT(i)) => PP_INT(if i >= 0L {i} else {-i})
+                | ("int", PP_BOOL(b)) => PP_INT(if b {1i64} else {0i64})
+                | ("abs", PP_INT(i)) => PP_INT(if i >= 0i64 {i} else {-i})
                 | ("string", PP_BOOL(b)) => PP_STRING(string(b))
                 | ("string", PP_INT(i)) => PP_STRING(string(i))
                 | _ => throw pp_err(ts, f"unknown/unsupported function {fname}")
@@ -2200,13 +2201,13 @@ fun preprocess(ts: tklist_t): tklist_t
                     | (OpSub, PP_INT(a), PP_INT(b)) => PP_INT(a - b)
                     | (OpMul, PP_INT(a), PP_INT(b)) => PP_INT(a * b)
                     | (OpDiv, PP_INT(a), PP_INT(b)) =>
-                        if b == 0L {throw pp_err(ts, f"division by zero")}
+                        if b == 0i64 {throw pp_err(ts, f"division by zero")}
                         PP_INT(a / b)
                     | (OpMod, PP_INT(a), PP_INT(b)) =>
-                        if b == 0L {throw pp_err(ts, f"division by zero")}
+                        if b == 0i64 {throw pp_err(ts, f"division by zero")}
                         PP_INT(a % b)
                     | (OpPow, PP_INT(a), PP_INT(b)) =>
-                        if b < 0L {throw pp_err(ts, f"negative power")}
+                        if b < 0i64 {throw pp_err(ts, f"negative power")}
                         PP_INT(a ** b)
                     | (OpShiftLeft, PP_INT(a), PP_INT(b)) =>
                         PP_INT(a << b)

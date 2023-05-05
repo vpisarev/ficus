@@ -58,6 +58,7 @@ type ktyp_t =
     | KTypSInt: int
     | KTypUInt: int
     | KTypFloat: int
+    | KTypLong
     | KTypVoid
     | KTypBool
     | KTypChar
@@ -598,7 +599,7 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
     fun walk_id_(n: id_t) = check_n_walk_id(n, loc, callb)
 
     match t {
-    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _
+    | KTypInt | KTypLong | KTypCInt | KTypSInt _ | KTypUInt _
     | KTypFloat _ | KTypVoid | KTypBool | KTypChar
     | KTypString | KTypCPointer | KTypExn | KTypErr | KTypModule =>
         t
@@ -917,7 +918,7 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
     fun fold_ktl_(tl: ktyp_t list) = tl.app(fold_ktyp_)
     fun fold_id_(n: id_t) = check_n_fold_id(n, loc, callb)
     match t {
-    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypFloat _ | KTypVoid
+    | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypLong | KTypFloat _ | KTypVoid
     | KTypBool | KTypChar | KTypString | KTypCPointer | KTypExn | KTypErr | KTypModule =>
         {}
     | KTypRawPointer(t) => fold_ktyp_(t)
@@ -1367,6 +1368,7 @@ fun string(t: ktyp_t): string
         | KTypCInt => "int32_t"
         | KTypSInt(n) => f"int{n}_t"
         | KTypUInt(n) => f"uint{n}_t"
+        | KTypLong => "long"
         | KTypFloat(16) => "half"
         | KTypFloat(32) => "float"
         | KTypFloat(64) => "double"

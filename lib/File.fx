@@ -208,9 +208,9 @@ fun readln(f: File.t): string
 fun read_binary_u8(fname: string): uint8 []
 {
     val f = open(fname, "rb")
-    f.seek(0L, SEEK_END)
+    f.seek(0i64, SEEK_END)
     val sz = f.tell()
-    f.seek(0L, SEEK_SET)
+    f.seek(0i64, SEEK_SET)
     val arr = array(int(sz), 0u8)
     assert(f.read(arr) == int(sz))
     f.close()

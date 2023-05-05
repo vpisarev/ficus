@@ -114,7 +114,7 @@ type assoc_t = AssocLeft | AssocRight
 
     pp.begin()
     match t {
-    | CTypInt | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _ | CTypFloat _
+    | CTypInt | CTypLong | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypString | CTypUniChar | CTypBool | CTypExn | CTypCSmartPtr
     | CTypArray _ | CTypVector _ =>
         pp.str(ctyp2str_(t, loc))

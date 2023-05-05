@@ -50,9 +50,9 @@ fun classify_atom(a: atom_t, z: bool): aclass_t =
     match a {
     | AtomLit la =>
         match la {
-        | KLitInt x => if z && x == 0L { ConstZero } else { ConstInt(x) }
-        | KLitSInt(_, x) => if z && x == 0L { ConstZero } else { ConstInt(x) }
-        | KLitUInt(_, x) => if z && x == 0UL { ConstZero } else { ConstInt(int64(x)) }
+        | KLitInt x => if z && x == 0i64 { ConstZero } else { ConstInt(x) }
+        | KLitSInt(_, x) => if z && x == 0i64 { ConstZero } else { ConstInt(x) }
+        | KLitUInt(_, x) => if z && x == 0u64 { ConstZero } else { ConstInt(int64(x)) }
         | KLitFloat(_, x) => if z && x == 0. { ConstZero } else { ConstFloat(x) }
         | KLitBool x => if z && x == false { ConstZero } else { ConstBool(x) }
         | KLitChar x => ConstString(string(x))
@@ -88,10 +88,10 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
         match c {
         | ConstZero =>
             match res_t {
-            | KTypInt => mk_some_lit_atom(KLitInt(0L))
-            | KTypCInt => mk_some_lit_atom(KLitSInt(32, 0L))
-            | KTypSInt b => mk_some_lit_atom(KLitSInt(b, 0L))
-            | KTypUInt b => mk_some_lit_atom(KLitUInt(b, 0UL))
+            | KTypInt => mk_some_lit_atom(KLitInt(0i64))
+            | KTypCInt => mk_some_lit_atom(KLitSInt(32, 0i64))
+            | KTypSInt b => mk_some_lit_atom(KLitSInt(b, 0i64))
+            | KTypUInt b => mk_some_lit_atom(KLitUInt(b, 0u64))
             | KTypFloat b => mk_some_lit_atom(KLitFloat(b, 0.))
             | KTypBool => mk_some_lit_atom(KLitBool(false))
             | KTypString => mk_some_lit_atom(KLitString(""))
@@ -104,7 +104,7 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
             | KTypSInt b => mk_some_lit_atom(KLitSInt(b, (x << (64-b)) >> (64-b)))
             | KTypUInt b => mk_some_lit_atom(KLitUInt(b, (uint64(x) << (64-b)) >> (64-b)))
             | KTypFloat b => mk_some_lit_atom(KLitFloat(b, double(x)))
-            | KTypBool => mk_some_lit_atom(KLitBool(x != 0L))
+            | KTypBool => mk_some_lit_atom(KLitBool(x != 0i64))
             | KTypString => mk_some_lit_atom(KLitString(string(x)))
             | _ => None
             }
@@ -188,9 +188,9 @@ fun cfold_bop(bop: binary_t, a: atom_t, b: atom_t, res_t: ktyp_t, loc: loc_t)
     | (OpSub, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(fa - fb)), None)
     | (OpMul, ConstZero, _) => (Some(ConstZero), None)
     | (OpMul, _, ConstZero) => (Some(ConstZero), None)
-    | (OpMul, ConstInt (1L), _) => retain_b()
+    | (OpMul, ConstInt (1i64), _) => retain_b()
     | (OpMul, ConstFloat (1.), _) => retain_b()
-    | (OpMul, _, ConstInt (1L)) => retain_a()
+    | (OpMul, _, ConstInt (1i64)) => retain_a()
     | (OpMul, _, ConstFloat (1.)) => retain_a()
     | (OpMul, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia * ib)), None)
     | (OpMul, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(ia * fb)), None)
@@ -199,7 +199,7 @@ fun cfold_bop(bop: binary_t, a: atom_t, b: atom_t, res_t: ktyp_t, loc: loc_t)
     | (OpDiv, _, ConstZero) | (OpMod, _, ConstZero) =>
         if !is_ktyp_integer(at, true) { (None, None) }
         else { throw compile_err(loc, "division by constant 0") }
-    | (OpDiv, _, ConstInt (1L)) => retain_a()
+    | (OpDiv, _, ConstInt (1i64)) => retain_a()
     | (OpDiv, _, ConstFloat (1.)) => retain_a()
     | (OpDiv, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia / ib)), None)
     | (OpDiv, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(ia / fb)), None)
@@ -222,7 +222,7 @@ fun cfold_bop(bop: binary_t, a: atom_t, b: atom_t, res_t: ktyp_t, loc: loc_t)
     | (OpBitwiseXor, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia ^ ib)), None)
     | (OpBitwiseXor, ConstBool ba, ConstBool bb) => (Some(ConstBool(ba ^ bb)), None)
     | (OpPow, ConstInt ia, ConstInt ib) =>
-        if ib >= 0L {
+        if ib >= 0i64 {
             (Some(ConstInt(int64(round(Math.pow(double(ia), double(ib)))))), None)
         } else {
             throw compile_err(loc, "integer is raised to negative power; just use literal '0' instead")

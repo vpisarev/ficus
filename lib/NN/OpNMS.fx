@@ -269,7 +269,7 @@ match op {
     val iou_threshold = model.get_tensor(t_iou_threshold).data.float_scalar_or(0.f)
     val score_threshold = model.get_tensor(t_score_threshold).data.float_scalar_or(0.f)
     val max_boxes = match max_boxes.data {
-        | Ast.NN_Data_Empty => 0L
+        | Ast.NN_Data_Empty => 0i64
         | Ast.NN_Data_I64 max_boxes_data => max_boxes_data[0]
         | _ => throw Ast.NNError(f"NonMaxSuppression: 'max_output_boxes_per_class' parameter, if any, must have I64 type")
     }

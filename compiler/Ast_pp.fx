@@ -61,7 +61,7 @@ fun get_typ_pr(t: typ_t): typ_pr_t
 {
     | TypVar (ref None) => TypPrBase
     | TypVar (ref Some(t1)) => get_typ_pr(t1)
-    | TypInt | TypSInt _ | TypUInt _ | TypFloat _ | TypString | TypChar
+    | TypInt | TypLong | TypSInt _ | TypUInt _ | TypFloat _ | TypString | TypChar
     | TypBool | TypVoid | TypExn | TypErr | TypCPointer | TypDecl | TypModule =>
         TypPrBase
     | TypApp([], _) => TypPrBase
@@ -90,6 +90,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
         | TypVar ((ref None) as r) => pp.str("<auto>")
         | TypVar (ref Some(t1)) => pptype_(t1, p1)
         | TypInt => pp.str("int")
+        | TypLong => pp.str("long")
         | TypSInt(b) => pp.str(f"int{b}")
         | TypUInt(b) => pp.str(f"uint{b}")
         | TypFloat(16) => pp.str("half")
