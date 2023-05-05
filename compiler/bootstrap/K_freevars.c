@@ -2067,21 +2067,21 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
       switch ((*dst)->tag) {
-      case 11:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 12:
-         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 13:
-         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
       case 14:
+         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+      case 15:
          _fx_free_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t(&(*dst)->u.KTypRecord); break;
-      case 16:
-         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 17:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
       case 19:
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+      case 20:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRef); break;
       default:
          ;
@@ -3475,7 +3475,7 @@ _fx_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t _fx_g1
 _fx_Nt6option1R9Ast__id_t _fx_g18K_freevars__None2_ = { 1 };
 _fx_N12Ast__unary_t _fx_g19K_freevars__OpMkRef = { 6 };
 _fx_N12Ast__unary_t _fx_g19K_freevars__OpDeref = { 7 };
-static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_6 = { 1, 6 };
+static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_6 = { 1, 7 };
 _fx_N14K_form__ktyp_t _fx_g20K_freevars__KTypVoid = &KTypVoid_data_6;
 static int _fx_M10K_freevarsFM6qsort_v5iiA1T2SR9Ast__id_tFPB2T2SR9Ast__id_tT2SR9Ast__id_ti(
    int_ lo_0,

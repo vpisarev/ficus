@@ -1785,21 +1785,21 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
       switch ((*dst)->tag) {
-      case 11:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 12:
-         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 13:
-         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
       case 14:
+         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+      case 15:
          _fx_free_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t(&(*dst)->u.KTypRecord); break;
-      case 16:
-         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 17:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
       case 19:
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+      case 20:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRef); break;
       default:
          ;
@@ -2995,9 +2995,9 @@ static void _fx_make_T2N14K_form__kexp_tLN14K_form__kexp_t(
 }
 
 _fx_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t _fx_g15K_tailrec__None = 0;
-static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_3 = { 1, 6 };
+static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_3 = { 1, 7 };
 _fx_N14K_form__ktyp_t _fx_g19K_tailrec__KTypVoid = &KTypVoid_data_3;
-static _fx_N14K_form__ktyp_t_data_t KTypBool_data_2 = { 1, 7 };
+static _fx_N14K_form__ktyp_t_data_t KTypBool_data_2 = { 1, 8 };
 _fx_N14K_form__ktyp_t _fx_g19K_tailrec__KTypBool = &KTypBool_data_2;
 static int _fx_M9K_tailrecFM19have_tailrec_calls_B2N14K_form__kexp_tR9Ast__id_t(
    struct _fx_N14K_form__kexp_t_data_t* e_0,
@@ -3350,7 +3350,7 @@ FX_EXTERN_C int _fx_M9K_tailrecFM12tailrec2loopv2irR17K_form__kdeffun_t(
    bool v_13;
    FX_CALL(_fx_M9K_tailrecFM19have_tailrec_calls_B2N14K_form__kexp_tR9Ast__id_t(kf_body_0, &kf_name_0, &v_13, 0), _fx_cleanup);
    if (v_13) {
-      if (FX_REC_VARIANT_TAG(rt_0) == 6) {
+      if (FX_REC_VARIANT_TAG(rt_0) == 7) {
          _fx_make_T2R9Ast__id_tLN14K_form__kexp_t(&_fx_g9Ast__noid, 0, &v_0);
       }
       else {

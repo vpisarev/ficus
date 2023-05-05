@@ -1964,21 +1964,21 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
       switch ((*dst)->tag) {
-      case 11:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 12:
-         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 13:
-         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
       case 14:
+         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+      case 15:
          _fx_free_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t(&(*dst)->u.KTypRecord); break;
-      case 16:
-         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 17:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
       case 19:
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+      case 20:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRef); break;
       default:
          ;
@@ -3405,9 +3405,9 @@ _fx_N13Ast__binary_t _fx_g20K_optim_matop__OpAdd = &OpAdd_data_4;
 static _fx_N13Ast__binary_t_data_t OpMul_data_4 = { 1, 3 };
 _fx_N13Ast__binary_t _fx_g20K_optim_matop__OpMul = &OpMul_data_4;
 _fx_N13Ast__intrin_t _fx_g25K_optim_matop__IntrinGEMM = { 13 };
-static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_5 = { 1, 6 };
+static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_5 = { 1, 7 };
 _fx_N14K_form__ktyp_t _fx_g23K_optim_matop__KTypVoid = &KTypVoid_data_5;
-static _fx_N14K_form__ktyp_t_data_t KTypBool_data_3 = { 1, 7 };
+static _fx_N14K_form__ktyp_t_data_t KTypBool_data_3 = { 1, 8 };
 _fx_N14K_form__ktyp_t _fx_g23K_optim_matop__KTypBool = &KTypBool_data_3;
 FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
 
@@ -6063,7 +6063,7 @@ static int _fx_M13K_optim_matopFM18fold_matrdep_kexp_v2N14K_form__kexp_tR22K_for
                               0), _fx_catch_3);
                         FX_CALL(_fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(matr_0, &v_12, &v_11, 0),
                            _fx_catch_3);
-                        if (FX_REC_VARIANT_TAG(v_11) == 16) {
+                        if (FX_REC_VARIANT_TAG(v_11) == 17) {
                            _fx_T2iN14K_form__ktyp_t* vcase_2 = &v_11->u.KTypArray;
                            if (vcase_2->t0 == 2) {
                               _fx_N14K_form__ktyp_t v_13 = vcase_2->t1;
@@ -6137,7 +6137,7 @@ static int _fx_M13K_optim_matopFM18fold_matrdep_kexp_v2N14K_form__kexp_tR22K_for
                                  FX_CALL(
                                     _fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(matr_1, &v_20, &v_19,
                                        0), _fx_catch_6);
-                                 if (FX_REC_VARIANT_TAG(v_19) == 16) {
+                                 if (FX_REC_VARIANT_TAG(v_19) == 17) {
                                     _fx_T2iN14K_form__ktyp_t* vcase_4 = &v_19->u.KTypArray;
                                     if (vcase_4->t0 == 2) {
                                        _fx_N14K_form__ktyp_t v_21 = vcase_4->t1;
@@ -6274,12 +6274,12 @@ static int _fx_M13K_optim_matopFM18fold_matrdep_kexp_v2N14K_form__kexp_tR22K_for
                         FX_CALL(
                            _fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(matr2_0, &v_33, &v_31, 0),
                            _fx_catch_12);
-                        if (FX_REC_VARIANT_TAG(v_31) == 16) {
+                        if (FX_REC_VARIANT_TAG(v_31) == 17) {
                            _fx_T2iN14K_form__ktyp_t* vcase_7 = &v_31->u.KTypArray;
                            if (vcase_7->t0 == 2) {
                               _fx_N14K_form__ktyp_t v_34 = vcase_7->t1;
                               if (FX_REC_VARIANT_TAG(v_34) == 5) {
-                                 if (FX_REC_VARIANT_TAG(v_30) == 16) {
+                                 if (FX_REC_VARIANT_TAG(v_30) == 17) {
                                     _fx_T2iN14K_form__ktyp_t* vcase_8 = &v_30->u.KTypArray;
                                     if (vcase_8->t0 == 2) {
                                        _fx_N14K_form__ktyp_t v_35 = vcase_8->t1;

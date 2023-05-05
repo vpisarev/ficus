@@ -505,11 +505,13 @@ int fx_format_str(const fx_str_t* x, const fx_format_t* fmt, fx_str_t* result);
 ////////////////////////// Long (a.k.a. BigInt) /////////////////////////
 
 typedef uint64_t fx_digit_t;
+typedef int64_t fx_sdigit_t;
 
-#define FX_LONG_LDIGITS 2
+#define FX_LONG_LDIGITS 3
 
 typedef struct fx_long_t
 {
+    int_* rc;
     int_ len;
     fx_digit_t ldigits[FX_LONG_LDIGITS];
     fx_digit_t* hdigits;
@@ -537,17 +539,17 @@ int fx_long_cmp(const fx_long_t* a, const fx_long_t* b);
 int fx_long_sign(const fx_long_t* a);
 
 #define FX_COPY_LONG(src, dst) \
-    if((src)->hdigits) \
+    if((src)->rc) \
     { \
-        FX_INCREF(((int_*)((src)->hdigits))[-1]); \
+        FX_INCREF(*(src)->rc); \
         *(dst) = *(src); \
     } else *(dst) = *(src)
-#define FX_FREE_LONG(num) if(!(num)->hdigits) ; else fx_free_long(num)
+#define FX_FREE_LONG(num) if(!(num)->rc) ; else fx_free_long(num)
 #define FX_MAKE_LONG(v, num) \
-    ((num)->ldigits[0]=(fx_digit_t)(v), (num)->hdigits=0, (num)->len=1)
+    ((num)->rc = 0, (num)->ldigits[0]=(fx_digit_t)(v), (num)->hdigits=0, (num)->length=1)
 #define FX_MAKE_ULONG(v, num) \
-    ((num)->ldigits[0] = (fx_digit_t)(v), (num)->ldigits[1] = 0, \
-    (num)->hdigits=0, (num)->len = 1 + ((num)->ldigits[0] > 0x7FFFFFFFFFFFFFFFULL))
+    ((num)->rc = 0, (num)->ldigits[0] = (fx_digit_t)(v), (num)->ldigits[1] = 0, \
+    (num)->hdigits=0, (num)->length = 1 + ((num)->ldigits[0] > 0x7FFFFFFFFFFFFFFFULL))
 
 ////////////////////////// Exceptions ///////////////////////////////////
 

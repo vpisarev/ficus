@@ -2042,21 +2042,21 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
 {
    if (*dst && FX_DECREF((*dst)->rc) == 1) {
       switch ((*dst)->tag) {
-      case 11:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 12:
-         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRawPointer); break;
       case 13:
-         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+         _fx_free_T2LN14K_form__ktyp_tN14K_form__ktyp_t(&(*dst)->u.KTypFun); break;
       case 14:
+         _fx_free_LN14K_form__ktyp_t(&(*dst)->u.KTypTuple); break;
+      case 15:
          _fx_free_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t(&(*dst)->u.KTypRecord); break;
-      case 16:
-         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 17:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
       case 19:
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+      case 20:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRef); break;
       default:
          ;
@@ -4221,6 +4221,9 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
       if (tag_0 == 1) {
          res_0 = true;
       }
+      else if (tag_0 == 6) {
+         res_0 = true;
+      }
       else if (tag_0 == 2) {
          res_0 = true;
       }
@@ -4231,9 +4234,6 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          res_0 = true;
       }
       else if (tag_0 == 5) {
-         res_0 = true;
-      }
-      else if (tag_0 == 6) {
          res_0 = true;
       }
       else if (tag_0 == 7) {
@@ -4248,13 +4248,16 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
       else if (tag_0 == 10) {
          res_0 = true;
       }
-      else if (tag_0 == 20) {
+      else if (tag_0 == 11) {
          res_0 = true;
       }
       else if (tag_0 == 21) {
          res_0 = true;
       }
       else if (tag_0 == 22) {
+         res_0 = true;
+      }
+      else if (tag_0 == 23) {
          res_0 = true;
       }
       else {
@@ -4269,7 +4272,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
       _fx_catch_0: ;
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 11) {
+      if (tag_0 == 12) {
          _fx_N14K_form__ktyp_t* et_0 = &t_2->u.KTypRawPointer;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*et_0, &t_1);
@@ -4277,7 +4280,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_2, &deps_1);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 12) {
+      if (tag_0 == 13) {
          _fx_Rt6Set__t1R9Ast__id_t __fold_result___0 = {0};
          _fx_LN14K_form__ktyp_t v_0 = 0;
          _fx_T2LN14K_form__ktyp_tN14K_form__ktyp_t* vcase_0 = &t_2->u.KTypFun;
@@ -4311,7 +4314,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_free_Rt6Set__t1R9Ast__id_t(&__fold_result___0);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 13) {
+      if (tag_0 == 14) {
          _fx_Rt6Set__t1R9Ast__id_t __fold_result___1 = {0};
          _fx_LN14K_form__ktyp_t tl_0 = 0;
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_2, &__fold_result___1);
@@ -4344,7 +4347,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_free_Rt6Set__t1R9Ast__id_t(&__fold_result___1);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 14) {
+      if (tag_0 == 15) {
          _fx_Rt6Set__t1R9Ast__id_t __fold_result___2 = {0};
          _fx_LT2R9Ast__id_tN14K_form__ktyp_t relems_0 = 0;
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_2, &__fold_result___2);
@@ -4382,7 +4385,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_free_Rt6Set__t1R9Ast__id_t(&__fold_result___2);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 15) {
+      if (tag_0 == 16) {
          _fx_Nt11Set__tree_t1R9Ast__id_t v_4 = 0;
          _fx_FPi2R9Ast__id_tR9Ast__id_t v_5 = {0};
          _fx_T2Nt11Set__tree_t1R9Ast__id_ti v_6 = {0};
@@ -4442,7 +4445,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          }
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 16) {
+      if (tag_0 == 17) {
          _fx_N14K_form__ktyp_t* et_1 = &t_2->u.KTypArray.t1;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*et_1, &t_1);
@@ -4450,7 +4453,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_2, &deps_1);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 18) {
+      if (tag_0 == 19) {
          _fx_N14K_form__ktyp_t* et_2 = &t_2->u.KTypList;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*et_2, &t_1);
@@ -4458,7 +4461,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_2, &deps_1);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 17) {
+      if (tag_0 == 18) {
          _fx_N14K_form__ktyp_t* et_3 = &t_2->u.KTypVector;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*et_3, &t_1);
@@ -4466,7 +4469,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          _fx_copy_Rt6Set__t1R9Ast__id_t(&deps_2, &deps_1);
          goto _fx_endmatch_1;
       }
-      if (tag_0 == 19) {
+      if (tag_0 == 20) {
          _fx_N14K_form__ktyp_t* et_4 = &t_2->u.KTypRef;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*et_4, &t_1);
@@ -5126,16 +5129,16 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
    else if (tag_0 == 5) {
       res_0 = true;
    }
-   else if (tag_0 == 6) {
-      res_0 = true;
-   }
    else if (tag_0 == 7) {
       res_0 = true;
    }
    else if (tag_0 == 8) {
       res_0 = true;
    }
-   else if (tag_0 == 21) {
+   else if (tag_0 == 9) {
+      res_0 = true;
+   }
+   else if (tag_0 == 22) {
       res_0 = true;
    }
    else {
@@ -5145,20 +5148,23 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
    if (res_0) {
       _fx_R17K_form__ktprops_t rec_0 = { false, true, false, false, false, false }; *fx_result = rec_0; goto _fx_endmatch_2;
    }
+   if (tag_0 == 6) {
+      _fx_R17K_form__ktprops_t rec_1 = { true, false, false, true, false, false }; *fx_result = rec_1; goto _fx_endmatch_2;
+   }
    bool res_1;
-   if (tag_0 == 9) {
+   if (tag_0 == 10) {
       res_1 = true;
    }
-   else if (tag_0 == 16) {
+   else if (tag_0 == 17) {
       res_1 = true;
    }
-   else if (tag_0 == 20) {
+   else if (tag_0 == 21) {
       res_1 = true;
    }
-   else if (tag_0 == 12) {
+   else if (tag_0 == 13) {
       res_1 = true;
    }
-   else if (tag_0 == 22) {
+   else if (tag_0 == 23) {
       res_1 = true;
    }
    else {
@@ -5166,15 +5172,15 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
    }
    FX_CHECK_EXN(_fx_cleanup);
    if (res_1) {
-      _fx_R17K_form__ktprops_t rec_1 = { true, false, false, true, false, false }; *fx_result = rec_1; goto _fx_endmatch_2;
-   }
-   if (tag_0 == 10) {
-      _fx_R17K_form__ktprops_t rec_2 = { true, false, true, false, false, false }; *fx_result = rec_2; goto _fx_endmatch_2;
+      _fx_R17K_form__ktprops_t rec_2 = { true, false, false, true, false, false }; *fx_result = rec_2; goto _fx_endmatch_2;
    }
    if (tag_0 == 11) {
-      _fx_R17K_form__ktprops_t rec_3 = { false, true, false, false, false, false }; *fx_result = rec_3; goto _fx_endmatch_2;
+      _fx_R17K_form__ktprops_t rec_3 = { true, false, true, false, false, false }; *fx_result = rec_3; goto _fx_endmatch_2;
    }
-   if (tag_0 == 13) {
+   if (tag_0 == 12) {
+      _fx_R17K_form__ktprops_t rec_4 = { false, true, false, false, false, false }; *fx_result = rec_4; goto _fx_endmatch_2;
+   }
+   if (tag_0 == 14) {
       _fx_LN14K_form__ktyp_t elems_0 = 0;
       bool __fold_result___0 = false;
       FX_COPY_PTR(t_0->u.KTypTuple, &elems_0);
@@ -5194,8 +5200,8 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
          FX_CHECK_EXN(_fx_catch_1);
       }
       bool have_complex_0 = __fold_result___0;
-      _fx_R17K_form__ktprops_t rec_4 = { have_complex_0, false, false, true, have_complex_0, have_complex_0 };
-      *fx_result = rec_4;
+      _fx_R17K_form__ktprops_t rec_5 = { have_complex_0, false, false, true, have_complex_0, have_complex_0 };
+      *fx_result = rec_5;
 
    _fx_catch_1: ;
       if (elems_0) {
@@ -5203,7 +5209,7 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
       }
       goto _fx_endmatch_2;
    }
-   if (tag_0 == 14) {
+   if (tag_0 == 15) {
       _fx_LT2R9Ast__id_tN14K_form__ktyp_t relems_0 = 0;
       bool __fold_result___1 = false;
       FX_COPY_PTR(t_0->u.KTypRecord.t1, &relems_0);
@@ -5228,8 +5234,8 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
          FX_CHECK_EXN(_fx_catch_3);
       }
       bool have_complex_1 = __fold_result___1;
-      _fx_R17K_form__ktprops_t rec_5 = { have_complex_1, false, false, true, have_complex_1, have_complex_1 };
-      *fx_result = rec_5;
+      _fx_R17K_form__ktprops_t rec_6 = { have_complex_1, false, false, true, have_complex_1, have_complex_1 };
+      *fx_result = rec_6;
 
    _fx_catch_3: ;
       if (relems_0) {
@@ -5237,43 +5243,43 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
       }
       goto _fx_endmatch_2;
    }
-   if (tag_0 == 18) {
+   if (tag_0 == 19) {
       _fx_R17K_form__ktprops_t v_2;
       FX_CALL(
          _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp_tR10Ast__loc_trRt6Set__t1R9Ast__id_t(
             t_0->u.KTypList, loc_0, visited_ref_0, &v_2, 0), _fx_catch_4);
       bool have_complex_2 = v_2.ktp_complex;
-      _fx_R17K_form__ktprops_t rec_6 = { true, false, true, false, have_complex_2, false };
-      *fx_result = rec_6;
+      _fx_R17K_form__ktprops_t rec_7 = { true, false, true, false, have_complex_2, false };
+      *fx_result = rec_7;
 
    _fx_catch_4: ;
       goto _fx_endmatch_2;
    }
-   if (tag_0 == 17) {
+   if (tag_0 == 18) {
       _fx_R17K_form__ktprops_t v_3;
       FX_CALL(
          _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp_tR10Ast__loc_trRt6Set__t1R9Ast__id_t(
             t_0->u.KTypVector, loc_0, visited_ref_0, &v_3, 0), _fx_catch_5);
       bool have_complex_3 = v_3.ktp_complex;
-      _fx_R17K_form__ktprops_t rec_7 = { true, false, false, true, have_complex_3, false };
-      *fx_result = rec_7;
+      _fx_R17K_form__ktprops_t rec_8 = { true, false, false, true, have_complex_3, false };
+      *fx_result = rec_8;
 
    _fx_catch_5: ;
       goto _fx_endmatch_2;
    }
-   if (tag_0 == 19) {
+   if (tag_0 == 20) {
       _fx_R17K_form__ktprops_t v_4;
       FX_CALL(
          _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp_tR10Ast__loc_trRt6Set__t1R9Ast__id_t(
             t_0->u.KTypRef, loc_0, visited_ref_0, &v_4, 0), _fx_catch_6);
       bool have_complex_4 = v_4.ktp_complex;
-      _fx_R17K_form__ktprops_t rec_8 = { true, false, true, false, have_complex_4, false };
-      *fx_result = rec_8;
+      _fx_R17K_form__ktprops_t rec_9 = { true, false, true, false, have_complex_4, false };
+      *fx_result = rec_9;
 
    _fx_catch_6: ;
       goto _fx_endmatch_2;
    }
-   if (tag_0 == 15) {
+   if (tag_0 == 16) {
       _fx_N15K_form__kinfo_t v_5 = {0};
       _fx_R9Ast__id_t* n_0 = &t_0->u.KTypName;
       FX_CALL(_fx_M6K_formFM6kinfo_N15K_form__kinfo_t2R9Ast__id_tR10Ast__loc_t(n_0, loc_0, &v_5, 0), _fx_catch_21);
@@ -5309,7 +5315,7 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
             _fx_R21K_form__kdefvariant_t v_18 = {0};
             _fx_R17K_form__ktprops_t kvp_0;
             if (kvar_flags_0.var_flag_recursive) {
-               _fx_R17K_form__ktprops_t rec_9 = { true, false, true, false, true, false }; kvp_0 = rec_9;
+               _fx_R17K_form__ktprops_t rec_10 = { true, false, true, false, true, false }; kvp_0 = rec_10;
             }
             else {
                FX_COPY_PTR(visited_0->root, &v_7);
@@ -5429,8 +5435,8 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
                   FX_CHECK_EXN(_fx_catch_12);
                }
                bool have_complex_5 = __fold_result___2;
-               _fx_R17K_form__ktprops_t rec_10 = { have_complex_5, false, false, true, have_complex_5, have_complex_5 };
-               kvp_0 = rec_10;
+               _fx_R17K_form__ktprops_t rec_11 = { have_complex_5, false, false, true, have_complex_5, have_complex_5 };
+               kvp_0 = rec_11;
             }
             _fx_R21K_form__kdefvariant_t* v_21 = &kvar_0->data;
             _fx_Nt6option1R17K_form__ktprops_t v_22;
@@ -5650,7 +5656,7 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
          }
       }
       else if (tag_1 == 7) {
-         _fx_R17K_form__ktprops_t rec_11 = { true, false, false, true, false, false }; *fx_result = rec_11;
+         _fx_R17K_form__ktprops_t rec_12 = { true, false, false, true, false, false }; *fx_result = rec_12;
       }
       else {
          fx_str_t v_41 = {0};
@@ -5799,7 +5805,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14annotate_typesLR17K_form__kmodule_t1LR17K_f
             _fx_LT2R9Ast__id_tN14K_form__ktyp_t v_8 = kvar_cases_0->tl;
             if (v_8 != 0) {
                if (v_8->tl == 0) {
-                  if (FX_REC_VARIANT_TAG(kvar_cases_0->hd.t1) == 6) {
+                  if (FX_REC_VARIANT_TAG(kvar_cases_0->hd.t1) == 7) {
                      option_like_0 = true; goto _fx_endmatch_0;
                   }
                }
