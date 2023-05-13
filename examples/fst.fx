@@ -4,10 +4,13 @@
 */
 
 // the first test script
-import testmod
+import testmod, Date
+
+val currdate = Date.today()
 
 val str = f"
 привет! 你好吗?
+Today is {currdate}, {currdate.weekday_name()}.
 BTW,
     2*2 = {2*2},
     π (the area of circle with radius 1) ~ {M_PI:.5f},

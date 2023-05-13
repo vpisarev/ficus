@@ -11,6 +11,7 @@ import File, Filename
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
+    #include <time.h>
 #if !defined WIN32 && !defined _WIN32
     #include <unistd.h>
 #endif
@@ -85,6 +86,12 @@ fun arguments() = argv.tl()
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
 
 @pure @nothrow fun get_max_threads(): int = @ccode { return fx_get_max_threads() }
+
+@pure @nothrow fun time(): int
+@ccode
+{
+    return time(0);
+}
 
 fun timeit(f: void -> void, ~updated_min: (void->void)?,
            ~iterations: int=1, ~batch: int=1, ): (double, double)

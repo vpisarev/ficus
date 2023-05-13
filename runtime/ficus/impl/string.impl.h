@@ -669,7 +669,7 @@ int fx_format_int(int64_t x, bool u, const fx_format_t* fmt, fx_str_t* fx_result
         sprintf(buf, fmtstr, (unsigned long long)x);
     else
         sprintf(buf, fmtstr, (long long)(x >= 0 ? x : -x));
-    n = strlen(buf);
+    n = (int)strlen(buf);
     ptr0 = buf;
     if (*ptr0 == '-') {
         // handle +/-(1 << 63)
@@ -692,11 +692,11 @@ int fx_format_int(int64_t x, bool u, const fx_format_t* fmt, fx_str_t* fx_result
     for (i = 0; i < width; i++)
         data[i] = fill;
 
-    offset = align == '<' ? 0 : align == '^' ? (width - min_width)/2 : fill == '0' ? 0 : width - min_width;
+    offset = align == '<' ? 0 : align == '^' ? (width - min_width)/2 : width - min_width;
     data += offset;
     if (prefix_sign_len > 0) {
         char s = x < 0 ? '-' : (char)sign;
-        if (align == '=') {
+        if (align == '=' || fill == '0') {
             fx_result->data[0] = s;
             data++;
         }

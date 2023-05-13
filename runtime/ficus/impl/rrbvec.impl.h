@@ -349,7 +349,7 @@ int fx_rrb_write(fx_rrbiter_t* iter, void* pptr, const char* elems, int_ nelems)
                     if (node->nelems < FX_RRB_RADIX) {
                         node->child[node->nelems++] = child;
                         int_ child_total = FX_RRB_TOTAL(child);
-                        for(int j = i; j >= 0; j--) {
+                        for(int_ j = i; j >= 0; j--) {
                             iter->nstack[j]->total += child_total;
                         }
                         break;

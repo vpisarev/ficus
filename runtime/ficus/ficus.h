@@ -507,20 +507,26 @@ int fx_format_str(const fx_str_t* x, const fx_format_t* fmt, fx_str_t* result);
 typedef uint64_t fx_digit_t;
 typedef int64_t fx_sdigit_t;
 
-#define FX_LONG_LDIGITS 3
+#define FX_LONG_LDIGITS 2
+
+typedef struct fx_verylong_t
+{
+    int_* rc;
+    fx_digit_t* digits;
+} fx_verylong_t;
 
 typedef struct fx_long_t
 {
-    int_* rc;
-    int_ len;
-    fx_digit_t ldigits[FX_LONG_LDIGITS];
-    fx_digit_t* hdigits;
+    int_ length;
+    union {
+        fx_digit_t digits[FX_LONG_LDIGITS];
+        fx_verylong_t vl;
+    } u;
 } fx_long_t;
 
 void fx_free_long(fx_long_t* num);
 void fx_copy_long(const fx_long_t* src, fx_long_t* dst);
-int fx_atol(const fx_str_t* str, fx_long_t* num);
-int fx_atol_ascii(const fx_cstr_t* str, fx_long_t* num);
+int fx_atol(const fx_str_t* str, int base, fx_long_t* num);
 int fx_ltoa(const fx_long_t* num, fx_str_t* str);
 int fx_ltoa_ascii(const fx_long_t* num, fx_cstr_t* str);
 int fx_format_long(const fx_long_t* x, const fx_format_t* fmt, fx_str_t* result);
@@ -535,21 +541,26 @@ int fx_long_mod(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 int fx_long_and(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 int fx_long_or(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 int fx_long_xor(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
+int fx_long_shl(const fx_long_t* a, int_ shift, fx_long_t* res);
 int fx_long_cmp(const fx_long_t* a, const fx_long_t* b);
 int fx_long_sign(const fx_long_t* a);
 
 #define FX_COPY_LONG(src, dst) \
-    if((src)->rc) \
+    if((((src)->length > FX_LONG_LDIGITS) & ((src)->u.vl.rc != 0)) != 0) \
     { \
-        FX_INCREF(*(src)->rc); \
+        FX_INCREF(*(src)->u.vl.rc); \
         *(dst) = *(src); \
     } else *(dst) = *(src)
-#define FX_FREE_LONG(num) if(!(num)->rc) ; else fx_free_long(num)
+#define FX_FREE_LONG(num) \
+    if((((num)->length <= FX_LONG_LDIGITS) | ((num)->u.vl.rc == 0)) != 0) ; \
+    else fx_free_long(num)
 #define FX_MAKE_LONG(v, num) \
-    ((num)->rc = 0, (num)->ldigits[0]=(fx_digit_t)(v), (num)->hdigits=0, (num)->length=1)
+    ((num)->u.digits[0]=(fx_digit_t)(v), (num)->length=1)
 #define FX_MAKE_ULONG(v, num) \
-    ((num)->rc = 0, (num)->ldigits[0] = (fx_digit_t)(v), (num)->ldigits[1] = 0, \
-    (num)->hdigits=0, (num)->length = 1 + ((num)->ldigits[0] > 0x7FFFFFFFFFFFFFFFULL))
+    ((num)->u.digits[0] = (fx_digit_t)(v), (num)->u.digits[1] = 0, \
+    (num)->length = 1 + ((num)->u.digits[0] > 0x7FFFFFFFFFFFFFFFULL))
+#define FX_LONG_DIGITS(num) \
+    ((num)->length <= FX_LONG_LDIGITS ? (num)->u.digits : (num)->u.vl.digits)
 
 ////////////////////////// Exceptions ///////////////////////////////////
 

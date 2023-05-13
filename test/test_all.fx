@@ -7,6 +7,7 @@ import Sys
 import UTest
 import test_basic
 import test_array
+import test_date
 import test_nbody
 import test_btree
 import test_ycomb

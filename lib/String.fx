@@ -278,25 +278,32 @@ fun split(s: string, c: char, ~allow_empty:bool)
     (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
-@nothrow fun to_int(a: string): int?
+@pure @nothrow fun to_int_(a: string, base: int): int?
 @ccode {
-    bool ok = fx_atoi(a, &fx_result->u.Some, 0);
+    bool ok = fx_atoi(a, &fx_result->u.Some, (int)base);
     fx_result->tag = (int)(ok+1)
 }
-@nothrow fun to_double(a: string): double?
+
+@inline fun to_int(a: string, ~base: int=0): int? =
+    to_int_(a, base)
+
+@pure @nothrow fun to_double(a: string): double?
 @ccode {
     bool ok = fx_atof(a, &fx_result->u.Some);
     fx_result->tag = (int)(ok+1)
 }
 
-@nothrow fun to_int_or(a: string, defval: int): int
+@pure @nothrow fun to_int_or_(a: string, defval: int, base: int): int
 @ccode {
     int_ result;
-    bool ok = fx_atoi(a, &result, 0);
+    bool ok = fx_atoi(a, &result, (int)base);
     return ok ? result : defval;
 }
 
-@nothrow fun to_double_or(a: string, defval: double): int
+@inline fun to_int_or(a: string, defval: int, ~base: int=0) =
+    to_int_or_(a, defval, base)
+
+@pure @nothrow fun to_double_or(a: string, defval: double): int
 @ccode {
     double result;
     bool ok = fx_atof(a, &result);

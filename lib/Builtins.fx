@@ -799,7 +799,7 @@ fun long(x: int32) = long(x :> int64)
 fun long(x: uint32) = long(x :> int64)
 fun long(x: bool) = long(x :> int64)
 fun long(x: string): long
-@ccode { return fx_atol(x, fx_result) }
+@ccode { return fx_atol(x, 0, fx_result) }
 
 fun int(x: ('t...)) = (for xj <- x {int(xj)})
 fun uint8(x: ('t...)) = (for xj <- x {uint8(xj)})
