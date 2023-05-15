@@ -426,19 +426,19 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C void _fx_M6StringFM6to_intNt6option1i1S(fx_str_t* a, struct _fx_Nt6option1i* fx_result, void* fx_fv)
+FX_EXTERN_C void _fx_M6StringFM7to_int_Nt6option1i2Si(fx_str_t* a, int_ base, struct _fx_Nt6option1i* fx_result, void* fx_fv)
 {
    
-bool ok = fx_atoi(a, &fx_result->u.Some, 0);
+bool ok = fx_atoi(a, &fx_result->u.Some, (int)base);
     fx_result->tag = (int)(ok+1);
 
 }
 
-FX_EXTERN_C int_ _fx_M6StringFM9to_int_ori2Si(fx_str_t* a, int_ defval, void* fx_fv)
+FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t* a, int_ defval, int_ base, void* fx_fv)
 {
    
 int_ result;
-    bool ok = fx_atoi(a, &result, 0);
+    bool ok = fx_atoi(a, &result, (int)base);
     return ok ? result : defval;
 
 }

@@ -304,14 +304,16 @@ FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
 
 FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
 
+FX_EXTERN_C void _fx_M6StringFM7to_int_Nt6option1i2Si(fx_str_t* a, int_ base, struct _fx_Nt6option1i* fx_result, void* fx_fv);
+
+FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t* a, int_ defval, int_ base, void* fx_fv);
+
 FX_EXTERN_C_VAL(struct _fx_LS_data_t* _fx_g9Sys__argv)
 FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
 
 FX_EXTERN_C_VAL(fx_str_t _fx_g21__ficus_version_str__)
 FX_EXTERN_C_VAL(fx_str_t _fx_g20__ficus_git_commit__)
 FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
-
-FX_EXTERN_C int_ _fx_M6StringFM9to_int_ori2Si(fx_str_t* a, int_ defval, void* fx_fv);
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi2SC(fx_str_t* s, char_ c, void* fx_fv);
 
@@ -320,8 +322,6 @@ FX_EXTERN_C bool _fx_M4CharFM7isalphaB1C(char_ c, void* fx_fv);
 FX_EXTERN_C bool _fx_M4CharFM7isalnumB1C(char_ c, void* fx_fv);
 
 FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_ c, void* fx_fv);
-
-FX_EXTERN_C void _fx_M6StringFM6to_intNt6option1i1S(fx_str_t* a, struct _fx_Nt6option1i* fx_result, void* fx_fv);
 
 FX_EXTERN_C bool _fx_M6StringFM10startswithB2SC(fx_str_t* s, char_ prefix, void* fx_fv);
 
@@ -471,6 +471,20 @@ FX_EXTERN_C int _fx_M7OptionsFM3memB2LSS(struct _fx_LS_data_t* l_0, fx_str_t* a_
    *fx_result = __fold_result___0;
 
 _fx_cleanup: ;
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M7OptionsFM6to_intNt6option1i2Si(fx_str_t* a_0, int_ base_0, struct _fx_Nt6option1i* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   _fx_M6StringFM7to_int_Nt6option1i2Si(a_0, base_0, fx_result, 0);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M7OptionsFM9to_int_ori3Sii(fx_str_t* a_0, int_ defval_0, int_ base_0, int_* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   *fx_result = _fx_M6StringFM10to_int_or_i3Sii(a_0, defval_0, base_0, 0);
    return fx_status;
 }
 
@@ -792,7 +806,8 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
             if (v_32 != 0) {
                fx_str_t v_33 = {0};
                fx_str_t v_34 = {0};
-               int_ i_0 = _fx_M6StringFM9to_int_ori2Si(&v_32->hd, -1, 0);
+               int_ i_0;
+               FX_CALL(_fx_M7OptionsFM9to_int_ori3Sii(&v_32->hd, -1, 0, &i_0, 0), _fx_catch_0);
                if (i_0 >= 0) {
                   _fx_g12Options__opt.optim_iters = i_0; FX_COPY_PTR(v_32->tl, &v_31);
                }
@@ -822,7 +837,8 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
             if (v_35 != 0) {
                fx_str_t v_36 = {0};
                fx_str_t v_37 = {0};
-               int_ i_1 = _fx_M6StringFM9to_int_ori2Si(&v_35->hd, -1, 0);
+               int_ i_1;
+               FX_CALL(_fx_M7OptionsFM9to_int_ori3Sii(&v_35->hd, -1, 0, &i_1, 0), _fx_catch_1);
                if (i_1 >= 0) {
                   _fx_g12Options__opt.optim_iters = i_1; FX_COPY_PTR(v_35->tl, &v_31);
                }
@@ -1032,7 +1048,7 @@ FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv)
                         }
                         if (v_57) {
                            _fx_Nt6option1i v_58;
-                           _fx_M6StringFM6to_intNt6option1i1S(&value_0, &v_58, 0);
+                           FX_CALL(_fx_M7OptionsFM6to_intNt6option1i2Si(&value_0, 0, &v_58, 0), _fx_catch_4);
                            if (v_58.tag == 2) {
                               _fx_M7OptionsFM6OptIntN17Options__optval_t1i(v_58.u.Some, &value_1);
                            }

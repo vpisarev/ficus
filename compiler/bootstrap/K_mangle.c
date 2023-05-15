@@ -3373,7 +3373,7 @@ FX_EXTERN_C int _fx_M6K_formFM10get_kscopeLN12Ast__scope_t1N15K_form__kinfo_t(
 
 FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_ c, void* fx_fv);
 
-FX_EXTERN_C int_ _fx_M6StringFM9to_int_ori2Si(fx_str_t* a, int_ defval, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t* a, int_ defval, int_ base, void* fx_fv);
 
 FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
 
@@ -5157,7 +5157,7 @@ FX_EXTERN_C int _fx_M8K_mangleFM13compress_nameS3SLN12Ast__scope_tR10Ast__loc_t(
                }
                if (v_12) {
                   FX_CALL(fx_substr(nstr_0, j_0, i_0, 1, 0, &v_4), _fx_catch_1);
-                  int_ idlen0_0 = _fx_M6StringFM9to_int_ori2Si(&v_4, 0, 0);
+                  int_ idlen0_0 = _fx_M6StringFM10to_int_or_i3Sii(&v_4, 0, 0, 0);
                   int_ idlen1_0 = idlen0_0 - prefix_len_0;
                   FX_CALL(fx_substr(nstr_0, start_0, j_0, 1, 0, &v_5), _fx_catch_1);
                   FX_CALL(_fx_F6stringS1i(idlen1_0, &v_6, 0), _fx_catch_1);

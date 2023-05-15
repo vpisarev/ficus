@@ -7,6 +7,7 @@
     #include <stdlib.h>
     #include <stdio.h>
     #include <sys/stat.h>
+    #include <time.h>
 #if !defined WIN32 && !defined _WIN32
     #include <unistd.h>
 #endif
