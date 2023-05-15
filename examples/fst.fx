@@ -20,7 +20,7 @@ BTW,
 val c = '😄'
 println(str + c)
 
-println(f"\nfactorial(20)={testmod.fact(20)}\n")
+println(f"\nfactorial(100)={testmod.fact(100L)}\n")
 
 fun fib(n: int) = if n <= 2 {1} else {fib(n-1) + fib(n-2)}
 fun fib2(n: int) {

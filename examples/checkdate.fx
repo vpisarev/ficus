@@ -36,11 +36,6 @@ fun parse(idx: int, date0: string) {
     | Some(date) =>
         println(f"Input #{idx}: '{date0}'")
         println(f"   Parsed date: {date}, {date.weekday_name()}, week {date.weeknumber():02d}")
-        /*val gdate_str = try {
-            string()
-        } catch {
-        | Date.DateError _ => "out of range"
-        }*/
         println(f"   Gregorian: {date.rebase(Date.Calendar_Gregorian)}")
         println(f"   Julian: {date.rebase(Date.Calendar_Julian)}")
         println(f"   JDN: {date.jdn}")

@@ -204,8 +204,8 @@ _FX_GEMM_IMPLEMENT_PACK(8, _f32f64, float, double)
 typedef void (*_fx_gemm_packer_t)(int_ m, int_ k, const void* A_,
                                   int_ lda0, int_ lda1, void* packA_);
 
-static void fx_gemm8x12_f32(int k, const char *a_, const char *b_,
-                            char *c_, int ldc, const void* palpha)
+static void fx_gemm8x12_f32(int_ k, const char *a_, const char *b_,
+                            char *c_, int_ ldc, const void* palpha)
 {
     const float* a = (const float*)a_;
     const float* b = (const float*)b_;
@@ -222,7 +222,7 @@ static void fx_gemm8x12_f32(int k, const char *a_, const char *b_,
     float32x4_t s60 = s00, s61 = s00, s62 = s00;
     float32x4_t s70 = s00, s71 = s00, s72 = s00;
 
-    for( int p = 0; p < k; p++, a += _FX_SGEMM_MR, b += _FX_SGEMM_NR )
+    for( int_ p = 0; p < k; p++, a += _FX_SGEMM_MR, b += _FX_SGEMM_NR )
     {
         float32x4_t a0 = vld1q_f32(a);
         float32x4_t b0 = vld1q_f32(b), b1 = vld1q_f32(b + 4), b2 = vld1q_f32(b + 8);
@@ -288,7 +288,7 @@ static void fx_gemm8x12_f32(int k, const char *a_, const char *b_,
     // intermediate sums in local buffer with compile-time-constant size.
     float sbuf[_FX_SGEMM_MR*_FX_SGEMM_NR];
     memset(sbuf, 0, sizeof(sbuf));
-    for( int p = 0; p < k; p++ ) {
+    for( int_ p = 0; p < k; p++ ) {
         for( int i = 0; i < _FX_SGEMM_MR; i++ ) {
             float ai = a[_FX_SGEMM_MR*p + i];
             for( int j = 0; j < _FX_SGEMM_NR; j++ )
@@ -802,7 +802,7 @@ int fx_gemm(fx_arr_t* m1, bool t1, int_ rs1, int_ re1, int_ rd1, int_ cs1, int_ 
     size_t m2_esz = m2->dim[1].step;
     int m1_typ = m1_esz == 2 ? FX_F16 : m1_esz == 4 ? FX_F32 : m1_esz == 8 ? FX_F64 : 0;
     int m2_typ = m2_esz == 2 ? FX_F16 : m2_esz == 4 ? FX_F32 : m2_esz == 8 ? FX_F64 : 0;
-    int r_esz = m1_esz >= m2_esz ? m1_esz : m2_esz;
+    size_t r_esz = m1_esz >= m2_esz ? m1_esz : m2_esz;
     int r_typ = r_esz == 2 ? FX_F16 : r_esz == 4 ? FX_F32 : r_esz == 8 ? FX_F64 : 0;
     if (m1_typ == 0 || m2_typ == 0)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);

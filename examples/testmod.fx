@@ -3,10 +3,10 @@
     See ficus/LICENSE for the licensing terms
 */
 
-fun fact(n: int)
+fun fact(n: long)
 {
-    fun fact_(n: int, p: int) = if n<=1 {p} else {fact_(n-1, p*n)}
-    fact_(n, 1)
+    fun fact_(n: long, p: long) = if n<=1L {p} else {fact_(n-1L, p*n)}
+    fact_(n, 1L)
 }
 
 fun rgb2gray(rgbimg: (uint8, uint8, uint8) [,]) =

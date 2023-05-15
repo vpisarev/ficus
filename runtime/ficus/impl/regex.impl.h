@@ -294,8 +294,8 @@ static int fx_re_init_matcher(fx_re_matcher_t* matcher, const fx_str_t* input, c
         return FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
     matcher->subbuf = bufptr;
     bufptr += subbuf_capacity;
-    matcher->subsize = subsize;
-    matcher->subbuf_capacity = subbuf_capacity;
+    matcher->subsize = (int)subsize;
+    matcher->subbuf_capacity = (int)subbuf_capacity;
     matcher->pool = (fx_re_thread_t*)bufptr;
     bufptr += threadbuf_size;
     matcher->pcgen = (int*)bufptr;
@@ -831,7 +831,7 @@ static int fx_re_parse_special_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast
     ++*pos;
     if(c_special == FX_RE_CLASS_LIT) {
         int code = 0;
-        int i, ndigits = str->length - *pos;
+        int_ i, ndigits = str->length - *pos;
         if(c == '0') {
             ndigits = ndigits < 3 ? ndigits : 3;
             for(i = 0; i < ndigits; i++) {
@@ -841,7 +841,7 @@ static int fx_re_parse_special_(const fx_str_t* str, int_* pos, fx_re_ast_t* ast
             }
             *pos += i;
         } else {
-            int max_ndigits = c == 'x' ? 2 : c == 'u' ? 4 : 8;
+            int_ max_ndigits = c == 'x' ? 2 : c == 'u' ? 4 : 8;
             ndigits = ndigits < max_ndigits ? ndigits : max_ndigits;
             for(i = 0; i < ndigits; i++) {
                 int d = str->data[*pos + i];

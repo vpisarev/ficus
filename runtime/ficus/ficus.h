@@ -527,10 +527,10 @@ typedef struct fx_long_t
 void fx_free_long(fx_long_t* num);
 void fx_copy_long(const fx_long_t* src, fx_long_t* dst);
 int fx_atol(const fx_str_t* str, int base, fx_long_t* num);
-int fx_ltoa(const fx_long_t* num, fx_str_t* str);
-int fx_ltoa_ascii(const fx_long_t* num, fx_cstr_t* str);
+int fx_ltoa(const fx_long_t* a, char basec, bool put_prefix, fx_str_t* str);
+int fx_ltoa_ascii(const fx_long_t* a, char basec, bool put_prefix, fx_cstr_t* str);
 int fx_format_long(const fx_long_t* x, const fx_format_t* fmt, fx_str_t* result);
-int fx_ltoi(const fx_long_t* a, int_* res);
+int_ fx_ltoi(const fx_long_t* a);
 int fx_long_abs(const fx_long_t* a, fx_long_t* res);
 int fx_long_neg(const fx_long_t* a, fx_long_t* res);
 int fx_long_add(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
@@ -542,6 +542,7 @@ int fx_long_and(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 int fx_long_or(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 int fx_long_xor(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 int fx_long_shl(const fx_long_t* a, int_ shift, fx_long_t* res);
+bool fx_long_eq(const fx_long_t* a, const fx_long_t* b);
 int fx_long_cmp(const fx_long_t* a, const fx_long_t* b);
 int fx_long_sign(const fx_long_t* a);
 
@@ -760,11 +761,11 @@ void fx_arr_nextiter(fx_arriter_t* it);
 FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ scale, int_ shift)
 {
     if (delta == 0) FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
-    int n = FX_LOOP_COUNT(a, b, delta);
+    int_ n = FX_LOOP_COUNT(a, b, delta);
     if (n > 0) {
         int_ b_ = a + (n - 1)*delta;
-        if((uintptr_t)(a*scale + shift) >= (uintptr_t)arrsz ||
-           (uintptr_t)(b_*scale + shift) >= (uintptr_t)arrsz)
+        if((size_t)(a*scale + shift) >= (size_t)arrsz ||
+           (size_t)(b_*scale + shift) >= (size_t)arrsz)
            FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
     }
     return FX_OK;

@@ -200,7 +200,7 @@ operator + (l1: 't list, l2: 't list)
 }
 fun string(a: bool) = if a {"true"} else {"false"}
 @pure fun string(a: int): string = @ccode  { return fx_itoa(a, false, fx_result) }
-@pure fun string(a: long): string = @ccode  { return fx_ltoa(a, fx_result) }
+@pure fun string(a: long): string = @ccode  { return fx_ltoa(a, 'd', false, fx_result) }
 @pure fun string(a: uint8): string = @ccode { return fx_itoa(a, true, fx_result) }
 @pure fun string(a: int8): string = @ccode { return fx_itoa(a, false, fx_result) }
 @pure fun string(a: uint16): string = @ccode { return fx_itoa(a, true, fx_result) }
@@ -993,7 +993,7 @@ fun print(a: 't) = print_string(string(a))
 @nothrow fun print(a: int64): void = @ccode { printf("%lld", a) }
 fun print(a: long): void = @ccode {
     fx_cstr_t str;
-    int fx_status = fx_ltoa_ascii(a, &str);
+    int fx_status = fx_ltoa_ascii(a, 'd', false, &str);
     if (fx_status >= 0) {
         printf("%s", str.data);
         fx_free_cstr(&str);

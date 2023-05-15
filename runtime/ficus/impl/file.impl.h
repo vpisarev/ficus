@@ -40,16 +40,16 @@ int fx_fgets(FILE* f, fx_str_t* str)
 
     // read the whole line; (re)allocate buffer if necessary
     for(;;) {
-        int count = bufsz - bufofs;
+        int_ count = bufsz - bufofs;
         if(count > INT_MAX) count = INT_MAX;
-        char* ptr = fgets(buf + bufofs, count, f);
+        char* ptr = fgets(buf + bufofs, (int)count, f);
         if(!ptr)
         {
             if(!feof(f))
                 fx_status = FX_SET_EXN_FAST(FX_EXN_IOError);
             break;
         }
-        int blocksz = (int)strlen(ptr);
+        int_ blocksz = (int_)strlen(ptr);
         bufofs += blocksz;
         if(blocksz < count-1)
             break;

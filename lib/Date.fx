@@ -245,14 +245,6 @@ fun rebase(date: t, calendar: calendar_t): t
     } else {
         // [TODO] maybe need to shift JDN between if it's between 5 and 15 Oct 1582
         val jdn = date.jdn
-        /*val jdn = if date.calendar == Calendar_Gregorian &&
-                     calendar == Calendar_Julian &&
-                     2299151 <= jdn < 2299161 { jdn - 10 }
-                else if date.calendar == Calendar_Julian &&
-                    calendar == Calendar_Gregorian &&
-                    2299151 <= jdn < 2299161 { jdn + 10 }
-                else {jdn}
-        }*/
         t {jdn = jdn, calendar = calendar}
     }
 }

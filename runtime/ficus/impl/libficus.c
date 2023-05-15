@@ -769,7 +769,7 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/array.impl.h"
 #include "ficus/impl/file.impl.h"
 #include "ficus/impl/string.impl.h"
-//#include "ficus/impl/long.impl.h"
+#include "ficus/impl/long.impl.h"
 #include "ficus/impl/regex.impl.h"
 #include "ficus/impl/system.impl.h"
 #include "ficus/impl/gemm.impl.h"

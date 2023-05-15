@@ -389,15 +389,13 @@ bool fx_atoi(const fx_str_t* str, int_* result, int base)
     else {
         for( i = 0; i < len; i++ ) {
             char_ c = ptr[i];
-            int digit = 0;
+            int digit = base;
             if('0' <= c && c <= '9')
                 digit = (int)(c - '0');
-            else if('a' <= c && c <= 'z')
+            else if(c >= 'a')
                 digit = (int)(c - 'a' + 10);
-            else if('A' <= c && c <= 'Z')
+            else if(c >= 'A')
                 digit = (int)(c - 'A' + 10);
-            else
-                break;
             if(digit >= base)
                 break;
             r = r*base + digit;
@@ -747,12 +745,12 @@ int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_s
                     fmt->typ == 'g' || fmt->typ == 'G' ? (char)fmt->typ : 'g';
     bool num_alt = fmt->num_alt && typespec != 'd';
     char_ fill = fmt->fill, align = fmt->align, sign = fmt->sign, grouping = fmt->grouping;
-    int_ i, j, k, min_width, width = fmt->width, offset;
+    int_ i, j, k, min_width, width = fmt->width, offset, n = 0;
     int prefix_sign_len = x < 0 || sign == '+' || sign == ' ';
     int prefix_len = prefix_sign_len;
-    int precision = fmt->precision >= 0 ? fmt->precision :
-                    default_precision >= 0 ? default_precision : 8;
-    int n = 0, status;
+    int precision = (int)(fmt->precision >= 0 ? fmt->precision :
+                    default_precision >= 0 ? default_precision : 8);
+    int status;
     char_* data;
     *ptr++ = '%';
     if (precision >= 0) {
@@ -760,9 +758,9 @@ int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_s
             return FX_SET_EXN_FAST(FX_EXN_SizeError);
         }
         *ptr++ = '.';
-        sprintf(ptr, "%d%n", precision, &n);
-        ptr += n;
-        n = 0;
+        int preclen = 0;
+        sprintf(ptr, "%d%n", precision, &preclen);
+        ptr += preclen;
     }
     *ptr++ = (char)typespec;
     *ptr = '\0';
@@ -774,11 +772,11 @@ int fx_format_flt(double x, int_ default_precision, const fx_format_t* fmt, fx_s
     else
         strcpy(buf, (u.i & 0xfffffffffffffLL) != 0 ? "nan" : "inf");
     }
-    n = strlen(buf);
+    n = (int_)strlen(buf);
     ptr = buf;
     min_width = n + prefix_len;
     if (grouping != ' ') {
-        int ngroups = (n - 1)/3;
+        int_ ngroups = (n - 1)/3;
         min_width += ngroups;
         //printf("ngroups=%d\n", ngroups);
     }

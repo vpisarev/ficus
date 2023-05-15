@@ -668,7 +668,7 @@ int fx_compose_arr( int ndims, size_t elemsize, fx_free_t free_elem, fx_copy_t c
             break;
         case 1: case 2: {
             const fx_arr_t* arr_k = (const fx_arr_t*)*dataptr++;
-            int ncols_k;
+            int_ ncols_k;
             size_t srcstep = arr_k->dim[0].step;
             if (tag == 1)
                 ncols_k = arr_k->dim[0].size;
