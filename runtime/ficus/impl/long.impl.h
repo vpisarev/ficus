@@ -291,6 +291,7 @@ static int _fx_ltoa(const fx_long_t* a, char basec, bool add_prefix, bool ascii,
                 str_ascii[strlen++] = '-';
             else
                 str_ascii[strlen++] = '-';
+            prefixlen++;
         }
         while (a_len > 0) {
             fx_digit_t group = 0;
@@ -307,7 +308,6 @@ static int _fx_ltoa(const fx_long_t* a, char basec, bool add_prefix, bool ascii,
                 group = q;
             }
         }
-        prefixlen += a_sign < 0;
         int_ ndigits = strlen - prefixlen;
         if (ascii) {
             char* str_digits = str_ascii + prefixlen;
@@ -513,8 +513,8 @@ int fx_long_sub(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
     int_ i, a_len, b_len, len;
     const fx_digit_t* a_digits;
     const fx_digit_t* b_digits;
-    fx_digit_t carry = 0;
-    fx_digit_t a_sbits, b_sbits;
+    fx_sdigit_t carry = 0;
+    fx_sdigit_t a_sbits, b_sbits;
 
     a_len = a->length;
     b_len = b->length;
@@ -526,7 +526,7 @@ int fx_long_sub(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
         return fx_long_neg(b, res);
     }
 
-    len = FX_MAX(a_len, b_len) + 1;
+    len = FX_MAX(a_len, b_len);
 
     if (len + 1 > FX_LONG_BUFSIZE) {
         digits = (fx_digit_t*)fx_malloc((len + 1)*sizeof(digits[0]));
@@ -536,36 +536,36 @@ int fx_long_sub(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
 
     a_digits = FX_LONG_DIGITS(a);
     b_digits = FX_LONG_DIGITS(b);
-    a_sbits = FX_LONG_SIGNBITS(a_digits, a_len);
-    b_sbits = FX_LONG_SIGNBITS(b_digits, b_len);
+    a_sbits = (fx_sdigit_t)FX_LONG_SIGNBITS(a_digits, a_len);
+    b_sbits = (fx_sdigit_t)FX_LONG_SIGNBITS(b_digits, b_len);
 
     if (a_len >= b_len) {
         for (i = 0; i < b_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)a_digits[i] - b_digits[i] + carry;
+            fx_wdigit_t temp = a_digits[i] - (fx_wdigit_t)b_digits[i] + carry;
             digits[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            carry = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
 
         for (; i < a_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)a_digits[i] - b_sbits + carry;
+            fx_wdigit_t temp = a_digits[i] - (fx_wdigit_t)b_sbits + carry;
             digits[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            carry = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
     } else {
         for (i = 0; i < a_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)a_digits[i] - b_digits[i] + carry;
+            fx_wdigit_t temp = a_digits[i] - (fx_wdigit_t)b_digits[i] + carry;
             digits[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            carry = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
 
         for (; i < b_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)a_sbits - b_digits[i] + carry;
+            fx_wdigit_t temp = a_sbits - (fx_wdigit_t)b_digits[i] + carry;
             digits[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            carry = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
     }
 
-    digits[len] = a_sbits - b_sbits + carry;
+    digits[len] = a_sbits - (fx_wdigit_t)b_sbits + carry;
     int status = _fx_make_long(digits, len+1, res);
     if (digits != buf)
         fx_free(digits);
@@ -610,7 +610,7 @@ static int _fx_long_karatsuba(const fx_digit_t* a_digits, int_ a_len,
         } else {
             memset(digits, 0, len*sizeof(digits[0]));
             for (i = 0; i < b_len; i++) {
-                fx_digit_t bi = b_digits[i], carry = digits[i];
+                fx_digit_t bi = b_digits[i], carry = 0;
                 for (j = 0; j < a_len; j++) {
                     fx_wdigit_t temp = (fx_wdigit_t)a_digits[j]*bi + digits[i+j] + carry;
                     digits[i+j] = (fx_digit_t)temp;
@@ -681,21 +681,21 @@ static int _fx_long_karatsuba(const fx_digit_t* a_digits, int_ a_len,
         if (status < 0)
             return status;
         // z1 -= z0 + z2 == a0*b1 + a1*b0
-        carry = 0;
+        fx_sdigit_t bc = 0;
         for (i = 0; i < z2_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)z1[i] - z0[i] - z2[i] + carry;
+            fx_wdigit_t temp = (fx_wdigit_t)z1[i] - z0[i] - z2[i] + (fx_wdigit_t)bc;
             z1[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            bc = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
         for (; i < z0_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)z1[i] - z0[i] + carry;
+            fx_wdigit_t temp = (fx_wdigit_t)z1[i] - z0[i] + (fx_wdigit_t)bc;
             z1[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            bc = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
         for (; i < z1_len; i++) {
-            fx_wdigit_t temp = (fx_wdigit_t)z1[i] + carry;
+            fx_wdigit_t temp = (fx_wdigit_t)z1[i] + (fx_wdigit_t)bc;
             z1[i] = (fx_digit_t)temp;
-            carry = (fx_digit_t)(temp >> FX_LONG_DSHIFT);
+            bc = (fx_sdigit_t)(temp >> FX_LONG_DSHIFT);
         }
         // z0 + z1*(base**a_len0) + z2*(base**(a_len0*2))
         memcpy(digits, z0, a_len0*sizeof(digits[0]));
