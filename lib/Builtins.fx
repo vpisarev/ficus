@@ -797,6 +797,7 @@ fun long(x: int16) = long(x :> int64)
 fun long(x: uint16) = long(x :> int64)
 fun long(x: int32) = long(x :> int64)
 fun long(x: uint32) = long(x :> int64)
+fun long(x: int) = long(x :> int64)
 fun long(x: bool) = long(x :> int64)
 fun long(x: string): long
 @ccode { return fx_atol(x, 0, fx_result) }

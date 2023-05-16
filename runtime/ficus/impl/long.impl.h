@@ -166,7 +166,7 @@ static int _fx_long2temp_abs(const fx_long_t* a, bool always_copy, fx_digit_t* b
 int fx_atol(const fx_str_t* str, int base, fx_long_t* num)
 {
     const int_ group_bits = (int_)(sizeof(fx_digit_t)*8);
-    fx_digit_t buf[FX_LONG_BUFSIZE];
+    fx_digit_t buf[FX_LONG_BUFSIZE+16];
     fx_digit_t group=0, *digits = buf;
     int_ i = 0, strlen = str->length, maxlen, len = 0;
     int_ groupsize = 0, maxgroupsize;
@@ -266,7 +266,7 @@ int fx_atol(const fx_str_t* str, int base, fx_long_t* num)
 
 static int _fx_ltoa(const fx_long_t* a, char basec, bool add_prefix, bool ascii, void* str_, int_* strlen_)
 {
-    fx_digit_t buf[FX_LONG_BUFSIZE];
+    fx_digit_t buf[FX_LONG_BUFSIZE+16];
     fx_digit_t* a_digits = 0;
     char* str_ascii = (char*)str_;
     char_* str_uni = (char_*)str_;
@@ -420,7 +420,7 @@ int fx_long_abs(const fx_long_t* a, fx_long_t* res)
 
 int fx_long_neg(const fx_long_t* a, fx_long_t* res)
 {
-    fx_digit_t buf[FX_LONG_BUFSIZE];
+    fx_digit_t buf[FX_LONG_BUFSIZE+16];
     fx_digit_t* digits = buf;
     int_ i, a_len = a->length;
     fx_digit_t carry = 1, a_sbits;
@@ -455,7 +455,7 @@ int fx_long_neg(const fx_long_t* a, fx_long_t* res)
 
 int fx_long_add(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
 {
-    fx_digit_t buf[FX_LONG_BUFSIZE];
+    fx_digit_t buf[FX_LONG_BUFSIZE+16];
     fx_digit_t* digits = buf;
     int_ i, a_len, b_len;
     const fx_digit_t* a_digits;
@@ -508,7 +508,7 @@ int fx_long_add(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
 
 int fx_long_sub(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
 {
-    fx_digit_t buf[FX_LONG_BUFSIZE];
+    fx_digit_t buf[FX_LONG_BUFSIZE+16];
     fx_digit_t* digits = buf;
     int_ i, a_len, b_len, len;
     const fx_digit_t* a_digits;
@@ -724,7 +724,7 @@ static int _fx_long_karatsuba(const fx_digit_t* a_digits, int_ a_len,
 
 int fx_long_mul(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
 {
-    fx_digit_t localbuf[FX_LONG_BUFSIZE];
+    fx_digit_t localbuf[FX_LONG_BUFSIZE+16];
     fx_digit_t* buf = localbuf;
     int_ i, a_len, b_len, len, res_offset0 = 0, bufsize = 0;
     fx_digit_t* a_digits;
@@ -761,13 +761,12 @@ int fx_long_mul(const fx_long_t* a, const fx_long_t* b, fx_long_t* res)
 
     len = a_len + b_len;
     bufsize += len;
-    if (a_len >= 3) {
+    if (b_len >= 3)
         bufsize += _fx_long_karatsuba_bufsize(a_len, b_len);
-        if (bufsize > FX_LONG_BUFSIZE) {
-            buf = (fx_digit_t*)fx_malloc(bufsize*sizeof(buf[0]));
-            if (!buf)
-                FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
-        }
+    if (bufsize > FX_LONG_BUFSIZE) {
+        buf = (fx_digit_t*)fx_malloc(bufsize*sizeof(buf[0]));
+        if (!buf)
+            FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
     }
     if (a_sign < 0)
         _fx_long2temp_abs(a, false, buf, a_len, &a_digits, &a_len, &a_sign);
@@ -792,7 +791,7 @@ int fx_long_mod(const fx_long_t* a, const fx_long_t* b, fx_long_t* res);
 static int _fx_long_bitwise(const fx_long_t* a, const fx_long_t* b,
                             char op, fx_long_t* res)
 {
-    fx_digit_t buf[FX_LONG_BUFSIZE];
+    fx_digit_t buf[FX_LONG_BUFSIZE+16];
     fx_digit_t* digits = buf;
     int_ i, a_len, b_len;
     const fx_digit_t* a_digits;
