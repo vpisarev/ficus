@@ -72,3 +72,29 @@ TEST("array.tuple_index", fun() {
     add3(A3ref, B3)
     EXPECT_EQ(`A3`, `A3ref`)
 })
+
+TEST("array.bounding_box", fun() {
+    fun bounding_box(image: uint8 [,])
+    {
+        val fold minx = 1000000, maxx = -1, miny = 1000000, maxy = -1
+            for pix@(y, x) <- image {
+                if pix != 0 {
+                    (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
+                } else {
+                    (minx, maxx, miny, maxy)
+                }
+            }
+        if maxx >= 0 { (minx, miny, maxx-minx+1, maxy-miny+1) }
+        else { (0,0,0,0) }
+    }
+
+    val img = uint8([
+        0, 0, 0, 0, 0, 0, 0, 0;
+        0, 0, 0, 1, 1, 1, 0, 0;
+        0, 0, 1, 0, 0, 0, 1, 0;
+        0, 0, 0, 0, 0, 0, 0, 0;
+        0, 0, 0, 1, 0, 0, 0, 0
+        ])
+    
+    EXPECT_EQ(bounding_box(img), (2, 1, 5, 4))
+})

@@ -95,15 +95,15 @@ OK, let's now learn how to program in Ficus.
 
 Ficus program consists of one or more source files that all have `.fx` extension. Those files are called modules. Modules may import other modules and/or be imported by some other modules. See the section [Modules](#modules) for details. Each Ficus module is utf8-encoded text file that contains a sequence of (possibly recursively nested) declarations, directives and expressions. Where it does not create a confusion, let's call them all expressions for the sake of brivity. The subsequent expressions are separated by `;` or by a newline (LF/CR/CRLF). Some expressions can span over multiple lines. In most cases Ficus can automatically separate one expression from another, but in some cases explicit `;` or parentheses `()` may be needed.
 
-At the lower level each expression is a sequence of tokens. Tokens include operators, identifiers, keywords, literals etc. Indentation and extra spaces mostly do not matter to the compiler, use the spaces at your taste. For example, here is the example of possibly poorly formatted but still valid code:
+At the lower level each expression is a sequence of tokens. Tokens include operators, identifiers, keywords, literals etc. Indentation and extra spaces mostly do not matter to the compiler; use the spaces at your taste. For example, here is the example of possibly poorly formatted but still valid code:
 
   ```
   if a>b {
      a
-  } else {println("b is the winner"); b}
+  }else {println("b is the winner"); b}
   ```
 
-here, no space is needed between `a` and `>`, `>` and `b`, even though you can put some. But a space (or a few) is needed to separate `if` from `a`. Also, `;` is needed to separate `println(...)` from `b`, since they are two subsequent expressions in the same code block on the same line.
+here, no space is needed between `a` and `>`, `>` and `b`, `}` and `else`, even though you can put some. But a space (or a few) is needed to separate `a` from `if`. Also, `;` is needed to separate `println(...)` from `b`, since they are two subsequent expressions in the same code block on the same line.
 
 A *space* in Ficus is the space symbol itself (`' '`, ASCII `0x20`), tabulation (ASCII `0x9`), a newline (LF/CR/CRLF), a comment, or an arbitrary combination of them.
 
@@ -138,28 +138,28 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
 1. breaking the line before a binary operator that can also be treated as an unary operator, i.e. `+`, `-` or `*`:
 
-    ```
-    val diff = a
-           - b
-    ```
+   ```
+   val diff =  a
+             - b
+   ```
 
    this is interpreted as `val diff = a; -b`, which is probably not what you want. In most cases such a mistake will produce a compile error message about non-void expressions in the middle of code blocks. The correct way of breaking such expressions into multiple lines is:
 
-    ```
-    val diff = a -
+   ```
+   val diff = a -
               b
-    ```
+   ```
 
    or
 
-    ```
-    val diff = (a   // indicate that we have a single expression by enclosing it into parentheses
+   ```
+   val diff = (a   // indicate that we have a single expression by enclosing it into parentheses
                -b)
-    ```
+   ```
 
    You can also grep your source code with `^\s+[+-*]` regexp to check all the suspicious places.
 
-2. breaking the line before the opening curly paren `(` when calling a function:
+2. breaking the line before the opening round paren `(` when calling a function:
 
     ```
     foo
@@ -222,10 +222,8 @@ There are the following types of tokens in Ficus:
     42 // decimal integer
     0xffu8 // 8-bit unsigned integer in hexadecimal notation
     12345678987654321i64 // 64-bit integer,
-                         // suffix i<n> denotes n-bit signed integer literals
-                         // suffix u<n> denotes n-bit unsigned integer literals
-                         // 64-bit integers can also use 'L' and 'UL' suffixes
-                         // instead of 'i64' and 'u64', respectively.
+                         // suffix i... denotes n-bit signed integer literals
+                         // suffix u... denotes n-bit unsigned integer literals
     0777 // octadecimal integer
     0b11110000 // integer in binary notation
     3.14 // double-precision floating-point number
@@ -557,55 +555,72 @@ note that this `if` expression is not a ternary operation like in C/C++, it's a 
 
 Operators form the foundation of expressions. The table below describes Ficus operations, ordered by priority (from the lowest to the highest):
 
-| operation                    |  priority  | associativity  |  result type |  description             |
-|------------------------------|------------|----------------|--------------|--------------------------|
-| *exp1* = *exp2*               |     1      |      left      |  void | assign a new value. Note that assignments cannot be chained in Ficus |
-| *exp1* *op*= *exp2*           |     1      |      left      |  void | Augmenting assignment operations. Equivalent to *exp1* = *exp1* *op* *exp2* |
-| *exp1* : *typespec*         |     2      |      N/A       |  *typespec* | explicitly specifies type of the expression to assist the type checker. Because of very low priority this operator is typically enclosed into parentheses |
-| *exp1* :> *typespec*        |     2      |      left      |  *typespec* | casts expression to the specified type. Also enclosed into parentheses most of the time |
-| *exp1* : *exp2* or *exp1* : *exp2* : *exp3*    |     2      |     left       |  a range     | specifies a range when a part of array is accessed or inside for-loop. The optional *exp3* specifies the increment, otherwise it's 1.
-| *exp1*  &#124;&#124;  *exp2*  |     3      |     left       |  bool        | logical or. *exp2* is computed only when *exp1* is false |
-| *exp2*  &&  *exp2*            |     4      |     left       |  bool        | logical and. *exp2* is computed only when *exp1* is true |
-| *exp1* *cmpop* *exp2* [*cmpop *exp3* ...]         |    5      |      left      |  bool       | *cmoop* denotes various comparison operations: `==`, `!=`, `>`, `<`, `>=`, `<=`. The comparison operations may be chained (e.g. `-1<=x<=1`) |
-| *elem*  :: *list*             |     6      |     right      |  same as *list*      |  construct a list from an element and the  specified tail |
-| *exp1*  &#124; *exp2*         |     7      |      left      |  same as *exp1* and *exp2* | bitwise or. Because &#124; is also used in pattern matching, sometimes (rarely) you will need to enclose this in parentheses to distinguish between the two use cases |
-| *exp1* ^ *exp2*               |     8      |      left      |  same as *exp1* and *exp2* | bitwise "exclusive or" |
-| *exp1* & *exp2*               |     9      |      left      |  same as *exp1* and *exp2* | bitwise and |
-| *exp1* <=> *exp2*               |     10      |      left      |  int | so-called *spaceship* operator that returns -1, 0 or 1 if *exp1* < *exp2*, *exp1* == *exp2* or *exp1* > *exp2*, respectively |
-| *exp1* .*cmpop* *exp2*               |     11      |      left      |  bool *collection* | element-wise comparison operation |
-| *exp1* .<=> *exp2*               |     12      |      left      |  int *collection* | element-wise spaceship operator |
-| *exp1* === *exp2*               |     12      |      left      |  bool | equivalence operator, checks if two arrays, lists, references, strings etc. are not just equal, but they point to the same object. For scalar stack-allocated values it's equivalent to `==` operator |
-| *exp1* << *exp2*, *exp1* >> *exp2* |  13   |  left  |  same as *exp1* and *exp2* | shift operations on integers |
-| *exp1* + *exp2*, *exp1* − *exp2* |  14   |  left  |  coerce(*exp1* type, *exp2* type) | arithmetic operators. For lists, strings and vectors `+` works as a concatenation operator. For arrays it works as `.+` |
-| *exp1* .+ *exp2*, *exp1* .— *exp2* |  14   |  left  |  coerce(*exp1* type, *exp2* type) | defined for the arrays; equivalent to the above |
-| *exp1* &#42; *exp2*, *exp1* / *exp2*, *exp1* % *exp2* |  15   |  left  |  coerce(*exp1* type, *exp2* type) | more arithmetic operators. For arrays &#42; does the matrix multiplication; `%` computes a signed reminder, as defined in C/C++ standards. |
-| *exp1* &#92; *exp2* | 15 | left | usually the same as *exp1* type | The inverse division operator; used to solve linear systems `A\b` and invert matrices `A\1` |
-| *seq* &#42; *n*, *n* &#42; *seq* |  15   |  left  |  the same as *seq* | another role of &#42; operator — replicate a string or a list *n* times. Replicating something 0 times yields an empty string/list |
-| *exp1* .&#42; *exp2*, *exp1* ./ *exp2* |  15   |  left  |  coerce(*exp1* type, *exp2* type) | defined for the arrays; element-wise multiplication and division |
-| *exp1* &#42;&#42; *exp2*, *exp1* .&#42;&#42; *exp2*, | 16 | right | coerce(*exp1* type, *exp2* type) | "raise-to-power" and element-wise "raise-to-power" operation |
-| +*exp*, —*exp* | 17 | right | coerce(*exp* type, *exp* type) | unary plus and minus operations |
-| .—*exp* | 17 | right | coerce(*exp* type, *exp* type) | unary dot-minus operation. It's currently used to access the last, pre-last etc. elements of collections, e.g. `str[.-1]` is the last element of string |
-| !*exp*    | 17 | right | bool  | logical inversion |
-| ~*exp*    | 17 | right | same as *exp* | bitwise inversion |
-| &#92;*exp*  | 17 | right | N/A | *expand* operator. It's used in the array composition operators. `[\A, \B]` concatenates columns of the two 2D arrays (which must have the same number of rows), whereas `[A, B]` is 2-element array of arrays. |
-| ref *exp*    | 17 | right | *T ref*, if *exp* has type *T* | creates a new reference with initial value *exp* |
-| *exp*'  | 18 | left | usually same as *exp* | *apostrophe* operator. For matrices it denotes transposition; for other types it can be redefined, e.g. it may denote a function derivative. |
-| &#42;*exp*  | 19 | right | when *exp* has *T ref* type, the result will have *T* type | dereference a reference |
-| *exp1*.*name*  | 20 | left | type of the accessed member |access record |
-| *exp1*->*name*  | 20 | left | type of the accessed member | deference and access the record, equivalent to `(*exp1).name` |
-| *exp1*.*number* | 20 | left  | type of the accessed member |access tuple |
-| *exp1*->*number* | 20 | left  | type of the accessed member |dereference and access tuple |
-| *exp1*->*number* | 20 | left  | type of the accessed member |dereference and access tuple |
-| *exp1*.{*name2*=*exp2*, *name3*=exp3", ...} | 20 | left | the record type | create a copy of record *exp2*, where *name2* gets the new value *exp2*, *name3* gets the value *exp3* etc. Unmentioned record fields remain unchanged. |
-| *exp1*->{*name2*=*exp2*, *name3*=exp3", ...} | 20 | left | the record type | the version of the above operator that dereferences *exp1* first. |
-| *exp1*[*exp2*,*exp3*,...] | 20 | left | the element type if all indices are scalar; *exp1* type if all indices are ranges |accesses array, string or vector. Each of the *exp2*, *exp3* etc. is can be a scalar index or a range expression (*a* : *b* [: *optional_step*]) |
-| *exp1*(*exp2*,*exp3*,...) | 20 | left | the function result type | call the function with certain arguments |
-| (*exp1*) | ∞ | N/A | same as *exp1* | enclose arbitrarily complex expression into parentheses to control the order of calculations |
-| ({*code_block ...*}) | ∞ | N/A | same as the last expression of *code_block* | inside parentheses it's possible to put curly braces and inside them put arbitrary sequence of declarations and expressions. The value of the last expression in the code block is the value of whole code block.|
-| (*exp1*, *exp2*, ...) | ∞ | N/A | the tuple type | form a tuple of values. They may have different types. |
-| [*exp1*, *exp2*, ...], [&lt; *exp1*, *exp2*, ... &gt;], [&#124; *exp1*, *exp2*, ... &#124;] | ∞ | N/A | the type of constructed collection | form a list, a vector or an array of values, respectively. All the values must have the same type. In  the case of arrays it's also possible to use expand operator `\`  and put `;` to separate one row from another (to form a 2D array instead of 1D) |
-| [for ...], [&lt; for ... &gt;], [&#124; for ... &#124;] | ∞ | N/A | the type of constructed collection | form a list, a vector or an array using comprehension. See the [Arrays](#arrays) and [Comprehensions](#comprehensions) sections for details |
-| *name1* {*name2*=*exp2*, *name3*=*exp3*, ...} | ∞ | N/A | the record type | form a fresh record of type *name1* by specifying its members' values |
+  operation                     priority  associativity    result type           description           
+-----------------------------  ---------- --------------- ---------------------  ------------------------
+ *exp1* = *exp2*                   1          left            void               assign a new value
+ *exp1* *op*= *exp2*               1          left            void               augmenting assignment op
+ *exp1* : *typespec*               2          N/A           *typespec*           type annotation
+ *exp1* :> *typespec*              2          left          *typespec*           type cast
+ *exp1* : *exp2* : *exp3*          2          left          a range              construct a range
+ *exp1* : *exp2*                   2          left          a range              equivalent to exp1:exp2:1
+ *exp1* &#124;&#124; *exp2*        3          left             bool              logical or
+ *exp2* && *exp2*                  4          left             bool              logical and
+ *exp1* == *exp2*                  5          left             bool              equality
+ *exp1* != *exp2*                  5          left             bool              non-equality
+ *exp1* < *exp2*                   5          left             bool              'less than'
+ *exp1* <= *exp2*                  5          left             bool              'less or equal'
+ *exp1* >= *exp2*                  5          left             bool              'greater or equal'
+ *exp1* > *exp2*                   5          left             bool              'greater than'
+ *elem* :: *list*                  6          right        same as *list*        construct a list
+ *exp1* &#124; *exp2*              7          left         same as args          bitwise or
+ *exp1* ^ *exp2*                   8          left         same as args          bitwise "exclusive or"
+ *exp1* & *exp2*                   9          left         same as args          bitwise and
+ *exp1* <=> *exp2*                 10         left             int               "spaceship" operator
+ *exp1* .*cmpop* *exp2*            11         left         bool *collection*     element-wise comparison
+ *exp1* .<=> *exp2*                12         left         int *collection*      element-wise spaceship 
+ *exp1* === *exp2*                 12         left             bool              equivalence operator
+ *exp1* << *exp2*                  13         left          same as *exp1*       shift left
+ *exp1* >> *exp2*                  13         left          same as *exp1*       shift right
+ *exp1* + *exp2*                   14         left          coerced type         addition
+ *exp1* - *exp2*                   14         left          coerced type         subtraction
+ *exp1* .+ *exp2*                  14         left          coerced collection   element-wise addition
+ *exp1* .- *exp2*                  14         left          coerced collection   element-wise subtraction
+ *exp1* &#42; *exp2*               15         left          coerced type         multiplication
+ *exp1* / *exp2*                   15         left          coerced type         division
+ *exp1* % *exp2*                   15         left          coerced type         signed remainder
+ *exp1* &#92; *exp2*               15         left          same as *exp1*       inverse division
+ *seq* &#42; *n*                   15         left          same as *seq*        replicate *seq* *n* times
+ *n* &#42; *seq*                   15         left          same as *seq*        replicate *seq* *n* times
+ *exp1* .&#42; *exp2*              15         left          coerced collection   element-wise multiplication
+ *exp1* ./ *exp2*                  15         left          coerced collection   element-wise division
+ *exp1* &#42;&#42; *exp2*          16         right         coerced type         power operation
+ *exp1* .&#42;&#42; *exp2*         16         right         coerced collection   element-wise power
+ +*exp*, —*exp*                    17         right         coerced type         unary plus and minus
+ .—*exp*                           17         right         coerced type         unary dot-minus.
+ !*exp*                            17         right         bool                 logical inversion
+ ~*exp*                            17         right         same as *exp*        bitwise inversion
+ &#92;*exp*                        17         right         N/A                  *expand* operator
+ ref *exp*                         17         right         *T ref*              creates a new reference with initial value *exp*
+ *exp*'                            18         left          same as *exp*        transpose array
+ &#42;*exp*                        19         right         deref type           dereference a reference
+ *exp1*.*name*                     20         left          member type          access record member
+ *exp1*->*name*                    20         left          member type          dereference and access
+ *exp1*.*number*                   20         left          member type          access tuple
+ *exp1*->*number*                  20         left          member type          dereference and access
+ *exp1*.{*name2*=*exp2*,...}       20         left          record type          altered copy of record
+ *exp1*->{*name2*=*exp2*,...}      20         left          record type          same as above with deref
+ *exp1*[*exp2*,*exp3*,...]         20         left          element type         access element or sub-array
+ *exp1*(*exp2*,*exp3*,...)         20         left          return type          call function
+ (*exp1*)                          ∞          N/A           same as *exp1*       control order or evaluation
+ ({*code_block ...*})              ∞          N/A           last exp type        same as above
+ (*exp1*, *exp2*, ...)             ∞          N/A           tuple type           form a tuple of values
+ [*exp1*, *exp2*, ...]             ∞          N/A           array type           form an array of values
+ [:: *exp1*, *exp2*, ...]          ∞          N/A           list type            form an list of values
+ [for ...]                         ∞          N/A           array type           array comprehension
+ [:: for ...]                      ∞          N/A           list type            list comprehension
+ (:: for ...)                      ∞          N/A           tuple type           tuple comprehension
+ *name1* {*name2*=*exp2*,...}      ∞          N/A           record type          make record
+
 
 As in the case of other languages, the precedence and associativity rules minimise the use of `(` `)` in many cases, but you can explicitly enclose some sub-expressions into parentheses to change the evaluation order.
 
@@ -613,7 +628,7 @@ What is `coerce(T1, T2)` in the table? This is the type computed out of `T1` and
 
 Besides the basic operations shown in the table above, there are many other expressions, described in the respective sections (even though some of them have been mentioned briefly in the table):
 
-* Flow control expressions — described in [Code Blocks and Flow Control Operations](#code-blocks-and-flow-control-operations) section
+* Control flow expressions — described in [Code Blocks and Control Flow Operations](#code-blocks-and-flow-control-operations) section
 * Array construction and access operations, array comprehensions — covered in the [Arrays](#arrays) section
 * Constructing tuples and records, accessing them — see [Tuples and Records](#tuples-and-records)
 * Pattern matching expressions — see [Pattern Matching](#patterns)
@@ -715,8 +730,8 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     * `int16` — signed 16-bit integers within -32768..32767 range. The literals have `i16` suffix.
     * `uint32` — unsigned 32-bit integers within 0..2^32-1 range. The literals have `u32` suffix.
     * `int32` — signed 32-bit integers within -2^31 .. 2^31-1 range. The literals have `i32` suffix. Note that int32 and int are not converted one to another implicitly.
-    * `uint64` — unsigned 64-bit integers within 0..2^64-1 range. The literals have `u64` or `UL` suffix.
-    * `int64` — signed 64-bit integers within -2^63 .. 2^63-1 range. The literals have `i64` or `L` suffix.
+    * `uint64` — unsigned 64-bit integers within 0..2^64-1 range. The literals have `u64` suffix.
+    * `int64` — signed 64-bit integers within -2^63 .. 2^63-1 range. The literals have `i64` suffix.
     * `half` — 16-bit floating-point numbers. Currently, Ficus has no real support for such type, it's reserved for the future. The literals have `h` suffix.
     * `float` — single-precision (32-bit) floating-point numbers, as defined by IEEE754 standard. The literals have `f` suffix.
     * `double` — double-precision (64-bit) floating-point numbers, as defined by IEEE754 standard.
@@ -728,8 +743,9 @@ Ficus includes the following built-in, automatically defined and user-defined ty
   ```
   val nz_x = x != 0
   val x = if nz_x {1} else {0}
-  val y = int(nz_x) // get the same result as above
-  val x = (nz_x :> int) // explicit type cast notation
+  val y = int(nz_x) // equivalent to the above if-expression.
+  val x = (nz_x :> int) // explicit type cast notation,
+                        // equivalent to the above
   ```
 
 * type `void`. It's not a first-class type, as in some other functional languages. It can only be used to specify a function return type or specify that the function does not take any parameters.
@@ -943,8 +959,8 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     type cell_matrix = int ref [,]
 
     // a graph, represented as a list of pairs
-    // (vertex, <list of connected vertices together
-    //            with the edge weights>)
+    // (vertex, list of connected vertices
+    //            with the respective edge weights)
     type graph_t = (int, (int, double) list) list
 
     import Map
@@ -956,37 +972,39 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * **class** and **interface**. These two are used to represent classes and abstract interfaces, respectively. See [Object-Oriented Programming](#oop) section for details.
 
-* **exception**. `exn`. Exceptions is a classical error processing mechanism that is often preferable to the manual function return value inspection. Similarly to some other functional languages, such as OCaml or F#, and unlike some traditional languages, such as C++ or Python, exceptions in Ficus are not instances of classes, possibly derived from a certain base class. Instead, they are instances of the special type `exn`. New exceptions are introduced using `exception` keyword where at minimum the name of the new exception is specified and at maximum some extra attributes are added to the exception (i.e. the information that you want to pass when the exception is thrown). See the section [Exceptions](#exceptions) for details.
+* **exception**. `exn` type. Exceptions is a classical error processing mechanism that is often preferable to the manual function return value inspection. Similarly to some other functional languages, such as OCaml or F#, and unlike some traditional languages, such as C++ or Python, exceptions in Ficus are not instances of classes, possibly derived from a certain base class. Instead, they are instances of the special type `exn`. New exceptions are introduced using `exception` keyword where at minimum the name of the new exception is specified and at maximum some extra attributes are added to the exception (i.e. the information that you want to pass when the exception is thrown). See the section [Exceptions](#exceptions) for details.
 
-# Code Blocks and Flow Control Operations
+# Code Blocks and Control Flow Operations
 
 ## Code Blocks
 
 *Code block* is simply a sequence of expressions enclosed in curly braces and separated by `;` or a newline. That is, it looks like:
 
-    ```
-    {
-        expr1
-        expr2; expr3
-        ...
-        expr_n
-    }
-    ```
+```
+{
+    expr1
+    expr2; expr3
+    ...
+    expr_n
+}
+```
 
 The formatting is almost arbitrary:
 
 a)
-    ```
-    { expr1; expr2; ... ; expr_n }
-    ```
+
+```
+{ expr1; expr2; ... ; expr_n }
+```
 
 b)
-    ```
-    { expr1
-    expr2
-    ...
-    expr_n }
-    ```
+
+```
+{ expr1
+expr2
+...
+expr_n }
+```
 
 etc.
 
@@ -996,68 +1014,68 @@ Code block is also an expression, its type and its value matches the type and th
 
 You can put a code block anywhere where a single expression is expected, in which case you need to enclose this sequence into parentheses and curly braces `({ ... })`. Many expressions in Ficus, like conditional expressions, loops, pattern matching, try-catch etc. expect code blocks as their parts, and then only `{ ... }` should be used without `( ... )`:
 
-    ```
-    // Parentheses and curly braces are necessary here,
-    // because the compiler expects a single expression after "if".
-    // Such coding style is difficult to recommend, though
-    if ({ val diff=x - y;
-        -10 <= diff && diff < 20 }) {
-        // then- and else- branches are expected
-        // to be code blocks, so the curly braces are necessary
-        print("condition is true"); foo()
-    }
-    else
-    {   // here curly braces can be put immediately after 'else'
-        // or on a separate line
-        bar()
-    }
+```
+// Parentheses and curly braces are necessary here,
+// because the compiler expects a single expression after "if".
+// Such coding style is difficult to recommend, though
+if ({ val diff=x - y;
+    -10 <= diff && diff < 20 }) {
+    // then- and else- branches are expected
+    // to be code blocks, so the curly braces are necessary
+    print("condition is true"); foo()
+}
+else
+{   // here curly braces can be put immediately after 'else'
+    // or on a separate line
+    bar()
+}
 
-    // the function body can be a single expression, following =,
-    // or a code block, in which case '=' should be omitted
-    fun sort3(a: int, b: int, c: int): (int, int, int)
-    {
-        val (a, b) = (min(a, b), max(a, b))
-        val (b, c) = (min(b, c), max(b, c))
-        val (a, b) = (min(a, b), max(a, b))
-        (a, b, c)
-    }
-    ```
+// the function body can be a single expression, following =,
+// or a code block, in which case '=' should be omitted
+fun sort3(a: int, b: int, c: int): (int, int, int)
+{
+    val (a, b) = (min(a, b), max(a, b))
+    val (b, c) = (min(b, c), max(b, c))
+    val (a, b) = (min(a, b), max(a, b))
+    (a, b, c)
+}
+```
 
 As mentioned earlier, the type of code block is defined by the type of last expression. It can be `void`, e.g.
 
-    ```
-    fun print_in_red(msg: string) {
-        print("\33[31;1m")
-        print(msg)
-        print("\33[0m")
-    }
-    ```
+```
+fun print_in_red(msg: string) {
+    print("\33[31;1m")
+    print(msg)
+    print("\33[0m")
+}
+```
 
 or non-void. But, in order to give some protection from occasional programming errors, Ficus compiler reports an error when there is a non-void expression in the middle of code block.
 
-    ```
-    fun dotprod((x1, y1, z1, w1): (float*4),
-                (x2, y2, z2, w2): (float*4)) =
-        x1*x2 // error: non-void expression x1*x2
-    + y1*y2 // error: non-void expression + y1*y2
-    + z1*z2 // error: non-void expression + z1*z2
-    + w1*w2 // no error, it's the last expression in the block
-    ```
+```
+fun dotprod((x1, y1, z1, w1): (float*4),
+            (x2, y2, z2, w2): (float*4)) =
+    x1*x2 // error: non-void expression x1*x2
++ y1*y2 // error: non-void expression + y1*y2
++ z1*z2 // error: non-void expression + z1*z2
++ w1*w2 // no error, it's the last expression in the block
+```
 
 If you want to insert a non-void expression (e.g. call a function, where you are interested in side effects, not the result), you can use the 2 almost equivalent solutions:
 
-    ```
-    show_image("result", my_result)
+```
+show_image("result", my_result)
 
-    val _ = waitkey() // Not interested in the key code,
-                    // just wait for user to press any key.
-                    // Since it's value declaration,
-                    // it cannot be a last expression
-                    // in the code block
-    ignore(waitkey())  // Same effect; ignore the return value
-                    // It can be used as the last expression
-                    // in a code block
-    ```
+val _ = waitkey() // Not interested in the key code,
+                // just wait for user to press any key.
+                // Since it's value declaration,
+                // it cannot be a last expression
+                // in the code block
+ignore(waitkey())  // Same effect; ignore the return value
+                // It can be used as the last expression
+                // in a code block
+```
 
 Where `ignore()` is a trivial standard function, defined in `Builtins`:
 
@@ -1108,7 +1126,7 @@ else if expr2 {
 }
 ```
 
-In other words, there is obligatory `then`-clause (with `exprs1`), there is optional `else`-clause and optional `else if`-clauses. All the branches must have the same type, `void`, as in classical imperative languages, or non-void. The missing `else` branch is a shortcut for `else {}`. In this case all other branches must have `void` type. Here are some examples:
+In other words, there is obligatory `then`-clause (with `exprs1`), there is optional `else`-clause and zero or more `else if`-clauses after `then` and before `else`. All the branches must have the same type, `void`, as in classical imperative languages, or non-void. The missing `else` branch is a shortcut for `else {}`. In this case all other branches must have `void` type. Here are some examples:
 
 ```
 // error: if-branch has type 'double', else-branch has type 'void'
@@ -1118,7 +1136,7 @@ val y = if x >= 0. {sqrt(x)}
         }
 val y = if x >= 0. {sqrt(x)}
         else {
-           // fine, because 'throw' result is
+           // fine, because 'throw' is
            // compatible with any type
            throw Fail(f"x={x} is negative")
         }
@@ -1135,7 +1153,7 @@ fun month_days(m: int, year: int) =
    if m < 1 || m > 12 { throw OutOfRangeError }
    else if m == 1 || m == 3 || m == 5 || m == 7 ||
            m == 8 || m == 10 || m == 12 {31}
-   else if m == 4 || m == 6 || m == 9 || m == 1 {30}
+   else if m == 4 || m == 6 || m == 9 || m == 11 {30}
    else if year % 4 != 0 ||
         (year % 100 == 0 && year % 400 != 0) {28}
    else {29}
@@ -1306,11 +1324,10 @@ The index is available even for multi-dimensional arrays:
 // all non-zero values
 fun bounding_box(image: uint8 [,])
 {
-    var (h, w) = size(image)
     var minx = 1000000, maxx = -1
     var miny = 1000000, maxy = -1
     for pix@(y, x) <- image {
-        if pix != 0u8 {
+        if pix != 0 {
             minx = min(minx, x); maxx = max(maxx, x)
             miny = min(miny, y); maxy = max(maxy, y)
         }
@@ -1358,11 +1375,10 @@ fun hamming_dist(a: uint8 [], b: uint8 []) =
 // fold-based version of bounding_box function:
 fun bounding_box(image: uint8 [,])
 {
-    var (h, w) = size(image)
     val (minx, maxx, miny, maxy) =
-        fold minx = 1000000, maxx = -1, miny = 1000000, -1
+        fold minx = 1000000, maxx = -1, miny = 1000000, maxy = -1
         for pix@(y, x) <- image {
-          if pix != 0u8 {
+            if pix != 0 {
                 (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
             } else {
                 (minx, maxx, miny, maxy)
@@ -1377,9 +1393,9 @@ You may have noticed that in the last example `minx, maxx, miny, maxy` had to be
 
 ```
 ...
-val fold minx = 1000000, maxx = -1, miny = 1000000, -1
+val fold minx = 1000000, maxx = -1, miny = 1000000, maxy = -1
     for pix@(y, x) <- image {
-      if pix != 0u8 {
+        if pix != 0 {
             (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
         } else {
             (minx, maxx, miny, maxy)
@@ -1499,14 +1515,14 @@ As you can see, the concept is quite powerful, and you can actually implement qu
 
 ```
 // compute 'integral' for 1D input array:
-// S_i = sum_{j<i} (A[j]):
+// S_i = sum_{j < i} (A[j]):
 // S = [0, A[0], A[0]+A[1], A[0]+A[1]+A[2], ...]
 val A = [1, 2, 3, 4, 5]
 var acc = 0
 val n = size(A)
 val S = [for i<-0:n+1 {
     val prev_acc = acc
-    acc = if i<n {acc + A[i]} else {0}
+    acc = if i < n {acc + A[i]} else {0}
     prev_acc
 }]
 ```
@@ -1562,6 +1578,7 @@ val ab_vector = vector(for a <- a_list, b <- b_list {(a, b)})
 Unzip operation requires some extra syntax:
 
 ```
+...
 val (a_array, b_array) =
     [@unzip for (a, b) <- ab_vector {(a*10, b.toupper())}]
 // will produce [10, 20, 30, 40, 50] and
@@ -1572,7 +1589,7 @@ val (a_array, b_array) =
 
 # Functions
 
-Functions is one of the key ingredients of Ficus, as well as of any functional programming language (as implied by the name). In literature they often say that functions are "first-class citizens" in the functional programming languages. It means the following:
+Functions is one of the key ingredients of Ficus, as well as of any functional programming language (as implied by the name). In literature they often say that functions are "first-class citizens" in functional programming languages. It means the following:
 
 * Recursive functions are often used instead of loops, they are quite efficient and the compiler makes sure that so-called "tail-recursive" functions are translated into loops.
 * Functions can be defined inside other functions and they can access local variables from the outer scopes.
@@ -1629,9 +1646,9 @@ fun triangle_area((x0, y0, z0): (float*3),
 {
     val u = (x1, y1, z1) - (x0, y0, z0)
     val v = (x2, y2, z2) - (x0, y0, z0)
-    0.5f*sqrt((u.1*v2 - u.2*v.1)**2.f +
-              (u.0*v2 - u.2*v.0)**2.f +
-              (u.0*v1 - u.1*v.0)**2.f)
+    0.5f*sqrt((u.1*v.2 - u.2*v.1)**2 +
+              (u.0*v.2 - u.2*v.0)**2 +
+              (u.0*v.1 - u.1*v.0)**2)
 }
 ```
 
@@ -1648,7 +1665,7 @@ Ficus compiler uses one and only one method to pass parameter of each certain ty
 
 In short, if a parameter is a scalar value or is already a pointer (`cptr`, `'t list` and recursive variants are pointers), it's passed by value, otherwise it's passed by a pointer. This approach is easy to memorise, and it is quite efficient too, as Ficus never uses any complex copy operation to pass a parameter.
 
-There is just at most one output value, which is a function return value. If multiple values need to be returned by a function, use tuple. At the C code level (see [Interoperability with C](#interoperability-with-c)) all results are returned via pointer, even scalar values, unless the function is implemented in C/C++ and is declared as `@nothrow`, because the return code of the generated C function is used for exception handling (see [Exceptions](#exceptions)).
+There is at most one output value, which is a function return value. If multiple values need to be returned by a function, use tuple. At the C code level (see [Interoperability with C](#interoperability-with-c)) all results are returned via pointer, even scalar values, unless the function is implemented in C/C++ and is declared as `@nothrow`, because the return code of the generated C function is used for exception handling (see [Exceptions](#exceptions)).
 
 All the function parameters are immutable values, but there is important clarification:
 
@@ -1667,19 +1684,19 @@ fun threshold(img: uint8 [,], t: int) {
 
 ## Lambda functions
 
-Some higher-order algorithms take user-specified functions as parameters (referred to as "callbacks" in C/C++ terms). And it's often convenient to construct such callbacks on-fly:
+Some higher-order algorithms take user-specified functions as parameters (that roughly correspond to  "callbacks" in C/C++ terms). And it's often convenient to construct such "callbacks" on-fly:
 
 ```
 fun integrate(a: double, b: double, n: int, f: double->double)
 {
-    val h = (a - b)/n
-       (fold sum = 0., left = f(a) for i <- 0:n {
-           val right = f(a + (i+1)*h)
-           (sum + (left + right)*h*0.5, right)
-        }).0
+    val h = (b - a)/n
+    (fold sum = 0., left = f(a) for i <- 0:n {
+        val right = f(a + (i+1)*h)
+        (sum + (left + right)*h*0.5, right)
+    }).0
 }
 
-print(integrate(0., 2*M_PI, 100, fun (x) {sin(x)**2}) //prints 3.1415...
+println(integrate(0., 2*M_PI, 100, fun (x) {sin(x)**2})) //prints 3.1415...
 
 val arr = [1, 100, 10, 30, 15]
 val sorted_idx = [for i<-0:size(arr) {i}]
@@ -1717,7 +1734,7 @@ fun make_coin()
 {
     val rng = RNG(uint64(Sys.tick_count()))
     // 'warm up' rng a bit
-    val _ = fold s = 0UL for i <- 0:10 {s ^ rng.next()}
+    val _ = fold s = 0u64 for i <- 0:10 {s ^ rng.next()}
     fun () { if bool(rng) {"heads"} else {"tails"} }
 }
 val coin1 = make_coin()
@@ -1807,11 +1824,10 @@ Named parameters add zero overhead compared to the positional parameters, so the
 
 ## Using return for earlier exit
 
-Ficus includes imperative-style and yet sometimes very useful `return` operator with optional return value to exit from the function earlier. Just like any control flow operator in Ficus, `return` is also an expression. It has `void` type, regardless of the function type.
+Ficus includes imperative-style and yet sometimes very useful `return` operator with optional return value to exit from the function earlier. Just like any control flow operator in Ficus, `return` is also an expression. The whole return expression has `void` type, no matter if it returns some value or not.
 
 ```
 fun foo(arg1: t1, ..., argn: tn) {
-
     ...
     if some_expr { return some_value }
     ...
@@ -1830,7 +1846,7 @@ In this example, `some_value`, `another_value` and `final_ret_value` should all 
 
 The set of numeric types and operations on them in Ficus is similar to those in C/C++ and most other languages.
 
-One very important difference from C/C++ and Python is the default `int` type. In C/C++ on modern machines `int` is 32-bit integer, even on 64-bit machines. In Python 3.x `int` is an integer with arbitrary precision. In Ficus `int` is 32-bit on 32-bit machines, 64-bit on 64-bit machines. Note that there is no `uint`/`unsigned` type.
+One very important difference from C/C++ and Python is the default `int` type. In C/C++ `int` is almost always 32-bit integer, even on 64-bit machines. In Python 3.x `int` is an integer with arbitrary precision. In Ficus `int` is 32-bit on 32-bit machines and is 64-bit on 64-bit machines. Note that there is no `uint`/`unsigned` type.
 
 Different numeric types are not converted one to another implicitly, e.g. if a function takes `int` and you have `uint8`, you need to explicitly cast it to `int`. There are several ways to cast a number from one type to another:
 
@@ -2415,22 +2431,23 @@ Of course, if a heap-allocated data structure is a container for other heap-allo
 
 Here is a table that summarises behaviour of a program for various data types:
 
-|  data type | mutable | stack/heap-allocated? | copying method |
-|------------|---------|----------------------|--------------|
-|  number/bool/char | no | stack | complete copy |
-|   tuple  | no | stack | complete copy |
-|   record w/o mutable members | no | stack | complete copy |
-|   record with mutable members | yes (partly) | heap | reference counter is incremented |
-|   string | no | heap  | assignment or substring extractor create a new header and increment reference counter |
-|   list | no | heap | assignment operator increments the reference counter of the list's 'head' cell |
-|   vector | no | heap | assignment operator or vector slice operation create a new header and increment the reference counter |
-| reference | yes | heap | reference counter is incremented |
-| array | yes | heap | assignment or subarray extraction create a new header and increment the reference counter. In some cases subarray extraction requires data copy |
-| non-recursive variant | no | stack | complete copy |
-| recursive variant | no | heap | reference counter of the referenced "node" is incremented |
-| class w/o interfaces | ? | ? | it depends on what's the basic structure for the class: record with or without mutable members, recursive or non-recursive variant |
-| class with interfaces | ? | heap | reference counter is incremented |
-| interface | no | stack | see [Interfaces](#interfaces) |
+         data type                   mutable      allocated in            copying method
+ -------------------------------- ------------- -----------------   -----------------------------
+      number, bool, char               no           stack             do complete copy
+           tuple                       no           stack             do complete copy
+  record without mutable members       no           stack             do complete copy
+  record with mutable members          yes          heap              increment refcount
+          string                       no           heap              copy header, inc. refcount
+           list                        no           heap              inc. head cell's refcount
+          vector                       no           heap              copy header, inc. refcount
+         reference                     yes          heap              increment refcount
+          array                        yes          heap              copy header, inc. refcount
+    non-recursive variant              no           stack             do complete copy
+      recursive variant                no           heap             increment refcount of the 'root'
+    class w/o interfaces               ?            ?                    same as records
+    class with interfaces              ?            heap               increment refcount
+         interface                     no           stack                see 'Interfaces'
+
 
 In short, Ficus handles all the memory automatically, and most of the time you do not need to care about it. Assignment operator behaviour is completely determined by the data type of values it's applied to. It cannot be overridden. The reference counter increments/decrements are done using atomic operations, so they are thread-safe. Also, Ficus uses very efficient parallel memory allocator that is specially tuned to allocate small blocks efficiently and to behave well in multi-threaded programs.
 
@@ -2457,7 +2474,7 @@ New strings can created in one of the following ways:
 * as results of certain operations that produce strings
 * (the partial but important case of the previous item) as result of `string()` or `repr()` call. For most of the Ficus types, except for variants, there is automatically generated `string()` function that you can override and that represents some ficus value in a textual form. The difference between `string()` and `repr()` is that `string()` produces the output with the emphasis on readability, whereas `repr()` produces the string that is rather close representation of the object in Ficus source code (as if it was specified as literal).
 
-A string stores its length, which is retrieved with `length(str)`. A string is not necessarily 0-terminated. You can access individual characters of a string using `str[i]` operator, or extract a part of string using the syntax `str[optional_start_index:optional_end_index:optional_stride]`, where the negative stride means the output substring will be reversed. If the stride is missing or `1`, the extracted substring is not copied, it references a part of the parent string (and that's why a string is not necessarily 0-terminated).
+A string stores its length, which is retrieved with `length(str)`. A string is not necessarily null-terminated. You can access individual characters of a string using `str[i]` operator, or extract a part of string using the syntax `str[optional_start_index:optional_end_index:optional_stride]`, where the negative stride means the output substring will be reversed. If the stride is missing or `1`, the extracted substring is not copied, it references a part of the parent string (and that's why a string is not necessarily null-terminated).
 
 The special syntax, which we met with in [Arrays](#arrays) section is supported for string as well:
 
@@ -2614,7 +2631,7 @@ fun dilate3x3(img: 'pix [,]): 'pix [,]
     }]
 }
 
-// multiply matrix A by transposed B and add the result to C
+// multiply matrix A by transposed B and add C to the result
 fun gemm_A_Bt_plusC(A: 't [,], B: 't [,], C: 't [,])
 {
     val (ma, na) = size(A)
@@ -2660,7 +2677,7 @@ Ficus standard library also provides a comprehensive set of operations on tuples
 operator .> (a: (...), b: (...)) = (for x <- a, y <- b {x > y})
 ```
 
-`(...)` is meta-type that denotes a tuple with any number of elements of any type. `for` inside `()` means tuple comprehension, and it generates tuple which elements are produced by the comprehension loop body. Tuples may have different type, and so the code inside for loop may vary from iteration from iteration. To make it work, the compiler does not produce a real loop. Instead, the loop is completely unrolled and each iteration is compiled separately, then the final tuple is constructed out of the results.
+`(...)` is meta-type that denotes a tuple with any number of elements of any type. `for` inside `()` means tuple comprehension, and it generates tuple which elements are produced by the comprehension loop body. Tuple elements may have different type, and so the code inside for loop may vary from iteration from iteration. To make it work, the compiler does not produce a real loop. Instead, the loop is completely unrolled and each iteration is compiled separately, then the final tuple is constructed out of the results.
 
 If you want to limit tuples to uniform ones, which elements all have the same type, the notation `(T...)` can be used, where `T` can be a type variable (`'elemtype` or something like that) or concrete type, e.g. `float` (that is, `(float ...)` will denote a tuple that consists of float's):
 
@@ -2685,7 +2702,7 @@ fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr
 
 # Lists
 
-An immutable single-connected list is important data structure in many functional languages, starting from Lisp. Lists consist of so-called *CONS* cells, each of those is a pair `(hd, tl)`, where `hd` is some list element and `tl` is *pointer* to the rest of the list or `[]`. In Ficus all the list elements have the same type. The list containing numbers 1, 2 and 3 looks like:
+An immutable single-connected list is important data structure in many functional languages, starting from Lisp. Lists consist of so-called *CONS* cells, each of those is a pair `(hd, tl)`, where `hd` is some list element and `tl` is *pointer* to the rest of the list or `[]` (null pointer). In Ficus all the list elements have the same type (unlike in Lisp and some other dynamically typed languages). The list containing numbers 1, 2 and 3 looks like:
 ```
 +-----+   +-----+   +-----+
 |  1  +-->|  2  +-->|  3  |---+
@@ -2695,7 +2712,7 @@ An immutable single-connected list is important data structure in many functiona
 
 That is, we have links only in one direction, from the head to the tail, and the last element has 'null' pointer to the tail.
 
-Such lists are surprisingly powerful. In fact, that was the only data type available in the original Lisp, and it was used to represent anything, from hierarchical data structures to arbitrary complex Lisp programs.
+Such lists are surprisingly powerful. In fact, that was the only data structure available in the original Lisp, and it was used to represent anything, from hierarchical data structures to arbitrarily complex Lisp programs.
 
 List can be expressed in Ficus in two ways:
 
@@ -2718,7 +2735,7 @@ val c = "c" :: b
 println(b) // will print '["b", "a"]'
 ```
 
-The property is useful for code analysis, debugging and is very safe, because all operations on lists do not have side effects *(unless some of list elements are mutable objects, like arrays or references)*. This is, the list a functional data structure. Another good example of immutable data structure is the red-black search tree, which we will cover in [Sum Types or Variants](#variants).
+The property is useful for code analysis, debugging and is very safe, because all operations on lists do not have side effects *(unless some of list elements are mutable objects, like arrays or references)*. This is, list is a functional data structure. Another good example of immutable data structure is the red-black search tree, which we will cover in [Sum Types or Variants](#variants).
 
 The other big advantage of such lists is that virtually *all* possible operations on lists can be implemented using 4 basic operations (you may write `List.foo(l[, args])` instead of `l.foo([args])`):
 
@@ -2749,9 +2766,8 @@ fun list_nth(l: 't list, n: int): 't =
         list_nth(l.tl(), n-1)
     }
 
-print(list_nth(l, 5)) // 2
-// will throw OutOfRangeError
-print(list_nth(l, 100))
+print(list_nth(l, 5)) // prints 2
+print(list_nth(l, 100)) // throws OutOfRangeError
 ```
 
 Now, we will show how to implement some useful list processing functions using the 4 basic operations. All those functions share some common properties:
@@ -2908,7 +2924,7 @@ Even though many of the list processing operations can be easily implemented, as
 val a = [:: ("a", 5), ("c", 0), ("A", 1)]
 // sorts the list of pairs by the first element;
 // returns [:: ("A", 1), ("a", 5), ("c", 0)]
-val b = List.sort(a, fun ((s1, n1): (string, int),
+val b = a.sort(fun ((s1, n1): (string, int),
                 (s2, n2): (string, int)) => s1 < s2)
 ```
 
@@ -2916,16 +2932,16 @@ Now we will see how the same basic operations on lists, as well as some other al
 
 ## Choosting between list, vector and array
 
-**TBD**
+*(TBD more elaborate discussion)*
 
 * For multi-dimensional dense data (2D, 3D, ...) use arrays.
 * `vector` is the preferable immutable collection unless pattern matching is needed, in which case use `list`.
 * Even though `vector` has O(1) complexity for most of operations, the random access is still significantly slower than with arrays. But the sequential access is almost as fast.
-* The space overhead, as long as the collection contains at least a few dozens of elements, is minimal for array (~0%) and vector (a few percents), and noticeable for list.
+* The space overhead, as long as the collection contains at least a few dozens of elements, is minimal for array (~0%) and vector (a few percents), and noticeable for list. So for huge arrays of data prefer using array or vector over list that will consume significantly more memory and create a high pressure to memory allocator.
 
 # Pattern Matching
 
-Pattern are used extensively in Ficus; and we actually used them quite a bit already in the previous sections without noticing it. Those were restricted forms of pattern matching though. The most general form of pattern matching is done using `match` operator, which can be treated as a greatly extended variant of `switch` operator found in C/C++, Java and other classical languages. The syntax is the following:
+Patterns are used extensively in Ficus; and we actually used them quite a bit already in the previous sections without noticing it. Those were restricted forms of pattern matching though. The most general form of pattern matching is done using `match` operator, which can be treated as a greatly extended variant of `switch` operator found in C/C++, Java and other classical languages. The syntax is the following:
 
 ```
 match expr {
@@ -2998,7 +3014,7 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
 You already have some impression of what `match` is capable of. It can do everything that `switch` operator in C could, and it can do much more. Let's give a few examples on how the list processing functions can be simplified using this operator:
 
 ```
-fun list_rev_case(l: 't list): 't list
+fun list_rev_pm(l: 't list): 't list
 {
     fun rev_(l_in: 't list, l_out: 't list): 't list =
         match l_in {
@@ -3012,7 +3028,7 @@ fun list_rev_case(l: 't list): 't list
 fun list_foldl(f: ('t, 'res)->'res, res0: 'res, l: 't list): 'res =
     if l.empty() {res0} else {list_foldl(f, f(l.hd(), res0), l.tl())}
 */
-fun list_foldl_case(f: ('t, 'res)->'res, res0: 'res, l: 't list): 'res =
+fun list_foldl_pm(f: ('t, 'res)->'res, res0: 'res, l: 't list): 'res =
     match l {
     | x :: rest => list_foldl_case(f, f(x, res0), rest)
     | _ => res0
@@ -3340,7 +3356,7 @@ val t3 = RBNode("b", Black, RBNode("a", Red, Empty, Empty),
                 RBNode("c", Red, Empty, Empty))
 ```
 
-We do not even need to "instantiate" the tree explicitly; in the case of a generic variant type the variant constructors become generic functions and they give you an instance of the proper type. The tricky part is handling `Empty` - what type is it supposed to return? `int rbtree`? `string rbtree`? or maybe `object_t rbtree`? Often compiler figures this out automatically, from the context, but sometimes you'd need to put it explicitly, e.g.:
+We do not even need to "instantiate" the rbtree structure for text strings explicitly; in the case of a generic variant type the variant constructors become generic functions and they give you an instance of the proper type. The tricky part is handling `Empty` - what type is it supposed to return? `int rbtree`? `string rbtree`? or maybe some `object_t rbtree`? Often compiler figures this out automatically, from the context, but sometimes you'd need to put it explicitly, e.g.:
 
 ```
 val empty_int_rtbtree = (Empty : int rbtree)
@@ -3375,7 +3391,7 @@ fun depth(t: 't rbtree)
     | Empty => 0
     // tag name here is required,
     // unlike with independently defined records
-    | RBNode {left, right} => 1+max(depth(left), depth(right))
+    | RBNode {left=l, right=r} => 1+max(depth(l), depth(r))
 }
 ```
 
@@ -3390,7 +3406,7 @@ type ratio_t = (int, int)
 operator + ((n1, d1): ratio_t, (n2, d2): ratio_t) = ...
 ```
 
-but it would conflict with generic definition of `+` operator for 2-element tuples in `Builtins`. It can be solved by changing the definition to:
+but it would conflict with generic definition of `+` operator for 2-element tuples in `Builtins`, because in this case ratio_t is not a real new type, it's an alias for 2-element tuple of integers. The problem can be solved by changing the definition to a record or to a single-case variant:
 
 ```
 type ratio_t = Ratio: (int, int)
@@ -3430,10 +3446,22 @@ Also, Ficus compiler recognizes a shorter notation `'t?` in addition to the trad
 fun find_opt(t: ('key, 'data) rbtree, k0: 'key): 'data? =
 match t {
 | Empty => None
-| RBTree((k, data), _, left, right) =>
+| RBNode((k, data), _, left, right) =>
     if k0 == k {Some(data)}
     else if k0 < k {find(left, k0)}
     else {find(right, k0)}
+}
+```
+
+By using this option type as find_opt return value, we eliminate the need to use some *magic* value or a separate *flag* to indicate that the specified key is not found:
+
+```
+val names = [:: "Bob", "Alice", "Sam"]
+for name <- names {
+    match find_opt(phone_book, name) {
+    | Some(number) => println(f"{name}'s phone: {number}")
+    | _ => println(f"{name} is not found in the phonebook")
+    }
 }
 ```
 
@@ -3495,7 +3523,7 @@ import File
 val file_size =
     try {
         val f = File.open("log.txt", "rt")
-        var fsz = -1L
+        var fsz = -1i64
         try {
            f.seek(0, File.SEEK_END)
            fsz = f.tell()
@@ -3507,7 +3535,7 @@ val file_size =
     catch {
     | FileOpenError =>
         println("error: the log file cannot be opened")
-        -1L
+        -1i64
     }
 ```
 

@@ -567,8 +567,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     val (p, s, dl, inline_exp) = Lxu.getstring(buf, pos, getloc(pos), chr(34), false, true)
                     strm.lineno += dl
                     pos = p
+                    val fmt_curr = fmt
+                    fmt = None
 
-                    fmt2tokens(fmt, loc) +
+                    fmt2tokens(fmt_curr, loc) +
                     (if s == "" {[:: (RPAREN, loc)]}
                     else {[:: (RPAREN, loc), (PLUS(false), loc), (LITERAL(Ast.LitString(s)), loc)]}) +
                     (if inline_exp {

@@ -157,7 +157,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         | PatTyped(p, TypTuple(tl), _) =>
             val p = pat_skip_typed(p)
             match p {
-            | PatTuple(pl, _) =>
+            | PatAs(PatTuple(pl, _), idx, _) =>
                 if pl.length() != tl.length() {
                     throw compile_err(loc, "the '@' tuple pattern and its type do not match")
                 }
