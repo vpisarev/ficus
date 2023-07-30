@@ -442,7 +442,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
                 }
 
             val incdirs = " ".join([::for d <- Ast.all_c_inc_dirs.list() {"-I"+d}])
-            val cflags = f"-O{opt_level_str}{ggdb_opt} {cflags} {common_cflags} {incdirs} -I{runtime_include_path}"
+            val cflags = f"-O{opt_level_str}{ggdb_opt} -ffast-math {cflags} {common_cflags} {incdirs} -I{runtime_include_path}"
             val clibs = (if libpath!="" {f"-L{runtime_lib_path}/{libpath} "} else {""}) + f"-lm {clibs}"
             (os, c_comp, cpp_comp, ".o", "-c -o ", "-o ", "-l", cflags, clibs)
         }

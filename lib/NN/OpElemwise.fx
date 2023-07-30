@@ -681,13 +681,13 @@ match op {
     val out = model.get_tensor(t_out)
     match (value.data, out.data) {
     | (Ast.NN_Data_U8 v_data, Ast.NN_Data_U8 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
+        run_constantOfShape(v_data[0], out_data)
     | (Ast.NN_Data_I8 v_data, Ast.NN_Data_I8 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
+        run_constantOfShape(v_data[0], out_data)
     | (Ast.NN_Data_I32 v_data, Ast.NN_Data_I32 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
+        run_constantOfShape(v_data[0], out_data)
     | (Ast.NN_Data_FP32 v_data, Ast.NN_Data_FP32 out_data) =>
-        OpElemwise.run_constantOfShape(v_data[0], out_data)
+        run_constantOfShape(v_data[0], out_data)
     | _ => throw NotImplementedError
     }
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
@@ -905,7 +905,7 @@ match op
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-fun run_expand(inp: Ast.nntensor_t, out: Ast.nntensor_t): void
+fun run_expand(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
 @ccode
 {
     enum {_FX_EXPAND_MAX_DIMS = 5};
@@ -949,16 +949,25 @@ fun run_expand(inp: Ast.nntensor_t, out: Ast.nntensor_t): void
     size_t esz = out_data->dim[0].step;
     int_ nrows = shape[_FX_EXPAND_MAX_DIMS-2];
     int_ ncols = shape[_FX_EXPAND_MAX_DIMS-1];
-    size_t plane_idx, nplanes = 1;
+    int_ nplanes = 1;
+    int_ nouter_tasks = ntasks, ninner_tasks;
 
     if (esz != 1 && esz != 2 && esz != 4 && esz != 8)
         return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
 
     for (int k = 0; k < _FX_EXPAND_MAX_DIMS-2; k++) nplanes *= shape[k];
+    nouter_tasks = FX_MIN(nouter_tasks, nplanes);
+    nouter_tasks = FX_MAX(nouter_tasks, 1);
+    ninner_tasks = ntasks/nouter_tasks;
+    ninner_tasks = FX_MIN(ninner_tasks, nrows);
+    ninner_tasks = FX_MAX(ninner_tasks, 1);
 
-    for (plane_idx = 0; plane_idx < nplanes; plane_idx++) {
+    //printf("outer: %d, inner: %d\n", (int)nouter_tasks, (int)ninner_tasks);
+
+    #pragma omp parallel for num_threads(nouter_tasks)
+    for (int_ plane_idx = 0; plane_idx < nplanes; plane_idx++) {
         size_t inp_ofs = 0, out_ofs = 0;
-        size_t idx = plane_idx;
+        size_t idx = (size_t)plane_idx;
         for (int k = _FX_EXPAND_MAX_DIMS-3; k >= 0; k--) {
             size_t prev_idx = idx/shape[k];
             size_t i_k = idx - prev_idx*shape[k];
@@ -969,29 +978,39 @@ fun run_expand(inp: Ast.nntensor_t, out: Ast.nntensor_t): void
 
         #undef _FX_IMPLEMENT_EXPAND
         #define _FX_IMPLEMENT_EXPAND(_Tp) \
-            for (int_ i = 0; i < nrows; i++) { \
-                const _Tp* inptr = (const _Tp*)inptr0 + inp_ofs + inp_rowstep*i; \
-                _Tp* outptr = (_Tp*)outptr0 + out_ofs + out_rowstep*i; \
-                if (inp_dp == 1) { \
-                    for(int_ j = 0; j < ncols; j++) { \
-                        outptr[j] = inptr[j]; \
-                    } \
-                } else { \
-                    _Tp x = *inptr; \
-                    for(int_ j = 0; j < ncols; j++) { \
-                        outptr[j] = x; \
-                    } \
+            const _Tp* inptr = (const _Tp*)inptr0 + inp_ofs + inp_rowstep*i; \
+            _Tp* outptr = (_Tp*)outptr0 + out_ofs + out_rowstep*i; \
+            if (inp_dp == 1) { \
+                for(int_ j = 0; j < ncols; j++) { \
+                    outptr[j] = inptr[j]; \
+                } \
+            } else { \
+                _Tp x = *inptr; \
+                for(int_ j = 0; j < ncols; j++) { \
+                    outptr[j] = x; \
                 } \
             }
 
         if (esz == 1) {
-            _FX_IMPLEMENT_EXPAND(int8_t)
+            #pragma omp parallel for num_threads(ninner_tasks)
+            for (int_ i = 0; i < nrows; i++) {
+                _FX_IMPLEMENT_EXPAND(int8_t)
+            }
         } else if (esz == 2) {
-            _FX_IMPLEMENT_EXPAND(int16_t)
+            #pragma omp parallel for num_threads(ninner_tasks)
+            for (int_ i = 0; i < nrows; i++) {
+                _FX_IMPLEMENT_EXPAND(int16_t)
+            }
         } else if (esz == 4) {
-            _FX_IMPLEMENT_EXPAND(int32_t)
+            #pragma omp parallel for num_threads(ninner_tasks)
+            for (int_ i = 0; i < nrows; i++) {
+                _FX_IMPLEMENT_EXPAND(int32_t)
+            }
         } else {
-            _FX_IMPLEMENT_EXPAND(int64_t)
+            #pragma omp parallel for num_threads(ninner_tasks)
+            for (int_ i = 0; i < nrows; i++) {
+                _FX_IMPLEMENT_EXPAND(int64_t)
+            }
         }
     }
     }
@@ -1005,6 +1024,6 @@ match op
 | Ast.NN_Expand {t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    run_expand(inp, out)
+    run_expand(inp, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }

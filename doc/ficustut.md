@@ -473,7 +473,7 @@ C/C++ users may think of a value as of a `const` variable, and, indeed, the conc
 ```
 val m3x3 = array((3, 3), 1.f) // make 3x3 floating-point matrix,
                               // filled with 1's.
-m3x3[0, 0] = 0.f // change the top-level element to zero.
+m3x3[0, 0] = 0.f // change the top-left element to zero.
 m3x3[:,:] = m3x3 * m3x3 // replace the whole matrix
                         // with its square
 m3x3 = m3x3 * m3x3 // error: you cannot reassign the value
