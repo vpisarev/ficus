@@ -735,6 +735,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     * `half` — 16-bit floating-point numbers. Currently, Ficus has no real support for such type, it's reserved for the future. The literals have `h` suffix.
     * `float` — single-precision (32-bit) floating-point numbers, as defined by IEEE754 standard. The literals have `f` suffix.
     * `double` — double-precision (64-bit) floating-point numbers, as defined by IEEE754 standard.
+    * `long` - signed integer of unlimited (memory-limited) precision.
 
   The numbers are further covered in the [Numbers](#numbers) section.
 
