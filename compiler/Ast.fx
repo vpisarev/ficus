@@ -733,7 +733,7 @@ fun new_arr_map_scope(m_idx: int) = ScArrMap(new_block_idx(m_idx))
 fun new_fold_scope(m_idx: int) = ScFold(new_block_idx(m_idx))
 fun new_try_scope(m_idx: int) = ScTry(new_block_idx(m_idx))
 
-fun scope2str(sc: scope_t list) {
+fun scope2str(sc: scope_t list): string {
     | scj :: rest =>
         val prefix = match scj {
             | ScBlock(b) => f"block({b})"

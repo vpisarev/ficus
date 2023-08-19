@@ -1325,7 +1325,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (em_label_used_i, epilogue) =
                     if new_have_default { (false, epilogue) }
                     else { (true, CStmtGoto(endmatch, ai_end_loc) :: epilogue) }
-                val ai_ccode = epilogue + (ai_ccode + prologue)
+                val ai_ccode: cstmt_t list = ai_ccode + prologue
+                val ai_ccode = epilogue + ai_ccode
                 (ai_ccode, em_label_used_i, true)
             }
             val complex_branch_i =
@@ -2846,7 +2847,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                 f"cgen: internal error when compiling parallel for: incorrect number of iteration indices (={n_i_exps})."+
                                 f"There should be as many as the output array dimensionality (={ndims})")
                         }
-                        val fold dst_data = [], decl_dstptr_ccode_all = [] for (coll_ctyp, elemtyp, dst_exp, dst_ptr, iter) <- dst_data {
+                        val fold dst_data = [], decl_dstptr_ccode_all = ([] : cstmt_t list) for (coll_ctyp, elemtyp, dst_exp, dst_ptr, iter) <- dst_data {
                             val elemtyp_ptr = make_ptr(elemtyp)
                             val dst_idxs = if ndims == 1 { i_exps }
                                            else { (make_int_exp(0, body_loc) :: i_exps.rev().tl()).rev() }

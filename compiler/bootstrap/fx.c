@@ -365,6 +365,8 @@ FX_EXTERN_C int fx_init_Builtins();
 FX_EXTERN_C void fx_deinit_Builtins();
 FX_EXTERN_C int fx_init_Math();
 FX_EXTERN_C void fx_deinit_Math();
+FX_EXTERN_C int fx_init_Complex();
+FX_EXTERN_C void fx_deinit_Complex();
 FX_EXTERN_C int fx_init_Array();
 FX_EXTERN_C void fx_deinit_Array();
 FX_EXTERN_C int fx_init_List();
@@ -472,6 +474,7 @@ int main(int argc, char** argv)
    int fx_status = FX_OK;
   if (fx_status >= 0) fx_status = fx_init_Builtins();
   if (fx_status >= 0) fx_status = fx_init_Math();
+  if (fx_status >= 0) fx_status = fx_init_Complex();
   if (fx_status >= 0) fx_status = fx_init_Array();
   if (fx_status >= 0) fx_status = fx_init_List();
   if (fx_status >= 0) fx_status = fx_init_Vector();
@@ -575,6 +578,7 @@ int main(int argc, char** argv)
   fx_deinit_Vector();
   fx_deinit_List();
   fx_deinit_Array();
+  fx_deinit_Complex();
   fx_deinit_Math();
   fx_deinit_Builtins();
   return fx_deinit(fx_status);

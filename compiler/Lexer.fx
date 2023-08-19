@@ -146,15 +146,19 @@ fun tok2str(t: token_t)
     | PP_WARNING => ("PP_WARNING", "@WARNING")
 }
 
-fun getnumber(s: string, pos: int, loc: lloc_t, just_int: bool): (int, (token_t, char)) =
+fun getnumber(s: string, pos: int, loc: lloc_t,
+              just_int: bool, allow_complex: bool): (int, (token_t, char)) =
     try {
-        val (pos1, i, f, bits, c) = Lxu.getnumber(s, pos, just_int, true)
+        val (pos1, i, f, bits, c) = Lxu.getnumber(s, pos,
+            just_int=just_int, get_suffix=true,
+            allow_complex=allow_complex)
         (pos1, match (c, bits) {
         | ('i', 128) => (LITERAL(Ast.LitString(s[pos:pos1-1])), 'l')
         | ('i', 0) => (LITERAL(Ast.LitInt(i)), 'i')
         | ('i', _) => (LITERAL(Ast.LitSInt(bits, i)), 's')
         | ('u', _) => (LITERAL(Ast.LitUInt(bits, uint64(i))), 'u')
         | ('f', _) => (LITERAL(Ast.LitFloat(bits, f)), 'f')
+        | ('c', _) => (LITERAL(Ast.LitFloat(bits, f)), 'c')
         | (c, _) => throw Lxu.LexerError(loc, f"unknown type '{c}' of numeric literal")
         })
     } catch {
@@ -370,12 +374,15 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
         val loc = getloc(pos)
 
         if '0' <= c <= '9' {
-            val (p, (t, c)) = getnumber(buf, pos, loc, prev_dot)
+            val (p, (t, c)) = getnumber(buf, pos, loc, prev_dot, !prev_dot)
             new_exp = false
             prev_dot = false
             pos = p
             if c == 'l' {
                 [:: (IDENT(true, "long"), loc), (LPAREN(false), loc), (t, loc), (RPAREN, loc)]
+            } else if c == 'c' {
+                [:: (IDENT(true, "complex"), loc), (LPAREN(false), loc),
+                    (LITERAL(Ast.LitInt(0i64)), loc), (COMMA, loc), (t, loc), (RPAREN, loc)]
             } else {
                 [:: (t, loc)]
             }

@@ -994,7 +994,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     //println(f"\n------------------------\nchecking expression at {eloc}: "); Ast_pp.pprint_exp_x(e); println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
 
     fun check_for_clause(p: pat_t, e: exp_t, env: env_t, idset: idset_t,
-                         flags: for_flags_t, sc: scope_t list)
+                         flags: for_flags_t, sc: scope_t list):
+        (int, (pat_t, exp_t), exp_t list, int, env_t, idset_t)
     {
         val e = check_exp(e, env, sc)
         val is_range = match e { | ExpRange(_, _, _, _) => true | _ => false }
@@ -1058,7 +1059,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                           env: env_t, idset: idset_t, flags: for_flags_t,
                           for_sc: scope_t list)
     {
-        val fold (trsz, for_clauses, code, dims, env, idset) = (0, [], [], 0, env, idset)
+        val fold (trsz, for_clauses, code, dims, env, idset) = (0, [], ([]: exp_t list), 0, env, idset)
             for (pi, ei)@idx <- for_clauses {
             val (trszj, (pi, ei), code_i, dims_i, env, idset) =
                 check_for_clause(pi, ei, env, idset, flags, for_sc)
@@ -2096,7 +2097,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                       else { new_arr_map_scope(curr_m_idx) }) :: sc
         val (trsz, pre_code, map_clauses, total_dims, env, _) =
             fold (trsz, pre_code, map_clauses, total_dims, env, idset) =
-            (0, [], [], 0, env, empty_idset) for (for_clauses, idx_pat) <- map_clauses {
+            (0, ([]: exp_t list), [], 0, env, empty_idset) for (for_clauses, idx_pat) <- map_clauses {
             val (trsz_k, pre_code_k, for_clauses, idx_pat, dims, env, idset) =
                 check_for_clauses(for_clauses, idx_pat, env, idset, flags, for_sc)
             (trsz + trsz_k, pre_code_k + pre_code,

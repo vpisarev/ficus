@@ -46,8 +46,9 @@ fun get_preamble(mfname: string): Lexer.token_t list {
     val preamble =
     if Options.opt.use_preamble {
         val bare_name = Filename.remove_extension(Filename.basename(mfname))
-        val (preamble, _) = fold (preamble, found) = ([], false)
+        val (preamble, _) = fold (preamble, found) = (([] : Lexer.token_t list), false)
             for (mname, from_import) <- [:: ("Builtins", true), ("Math", true),
+                                            ("Complex", true),
                                             ("Array", true), ("List", false),
                                             ("Vector", false), ("Char", false),
                                             ("String", false),
@@ -521,7 +522,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         (is_cpp, recompiled, clibs, ok_j, obj_filename)
     }]
 
-    val fold (any_cpp, any_recompiled, all_clibs, ok, objs) = (false, false, [], ok, [])
+    val fold (any_cpp, any_recompiled, all_clibs, ok, objs) = (false, false, ([] : string list), ok, [])
         for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
             (any_cpp | is_cpp, any_recompiled | is_recompiled, clibs_j + all_clibs, ok & ok_j, obj :: objs)
         }

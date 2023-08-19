@@ -341,11 +341,12 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M10LexerUtilsFM9getnumberT5ildiC4SiBB(
+FX_EXTERN_C int _fx_M10LexerUtilsFM10getnumber_T5ildiC5SiBBB(
    fx_str_t* s,
    int_ pos,
    bool just_int,
    bool get_suffix,
+   bool allow_complex,
    struct _fx_T5ildiC* fx_result,
    void* fx_fv)
 {
@@ -397,7 +398,8 @@ const int MAX_ATOF = 128;
                     return FX_SET_EXN_FAST(FX_EXN_OverflowError);
                 r = r1;
             }
-            if( !just_int && (c == '.' || c == 'e' || c == 'E') )
+            if( !just_int && (c == '.' || c == 'e' || c == 'E' ||
+                (c == 'i' && (i+1 == len || !('0' <= ptr[i+1] && ptr[i+1] <= '9')))) )
                 flt = true;
         } else {
             for( i = 0; i < len; i++ ) {
@@ -491,6 +493,7 @@ const int MAX_ATOF = 128;
     }
 
     if (ok) {
+        char numtype = 'f';
         int bits = 64;
         char* endptr = 0;
         buf[i] = '\0';
@@ -498,18 +501,42 @@ const int MAX_ATOF = 128;
         ok = endptr == buf + i;
         if (c == 'f' || c == 'F') {
             bits = 32;
+            ++i;
             endptr++;
         } else if (c == 'h' || c == 'H') {
             bits = 16;
+            ++i;
             endptr++;
         }
+        if (allow_complex && i < len && ptr[i] == 'i') {
+            endptr++;
+            numtype = 'c';
+        }
+
         fx_result->t0 = (ptr - s->data) + (endptr - buf);
         fx_result->t1 = 0;
         fx_result->t3 = bits;
-        fx_result->t4 = 'f';
+        fx_result->t4 = numtype;
     }
     return ok ? FX_OK : FX_SET_EXN_FAST(FX_EXN_OverflowError);
 
+}
+
+FX_EXTERN_C int _fx_M10LexerUtilsFM9getnumberT5ildiC5SiBBB(
+   fx_str_t* s_0,
+   int_ pos_0,
+   bool just_int_0,
+   bool get_suffix_0,
+   bool allow_complex_0,
+   struct _fx_T5ildiC* fx_result,
+   void* fx_fv)
+{
+   int fx_status = 0;
+   FX_CALL(_fx_M10LexerUtilsFM10getnumber_T5ildiC5SiBBB(s_0, pos_0, just_int_0, get_suffix_0, allow_complex_0, fx_result, 0),
+      _fx_cleanup);
+
+_fx_cleanup: ;
+   return fx_status;
 }
 
 FX_EXTERN_C int _fx_M10LexerUtilsFM10getstring_T4iSiB5SiCBB(

@@ -44,7 +44,7 @@ fun parse_string(fname: string, s: string): t
                             else {Lxu.skip_spaces(strm, pos+1, false).1}
                     (sign, pos)
                 } else {(1, pos)}
-            val (pos, i, f, _, kind) = Lxu.getnumber(s, pos, false, false)
+            val (pos, i, f, _, kind) = Lxu.getnumber(s, pos, just_int=false, get_suffix=false)
             (pos, if kind == 'f' {Real(sign*f)} else {Int(sign*i)})
         } else if c == '[' {
             parse_seq(strm, pos+1)
