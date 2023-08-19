@@ -50,7 +50,7 @@ fun exp(a: 't complex) {
 // log(a: 't complex) has multiple values:
 //    log(abs(a)) + i*phase(a) + i*2*M_PI*k, where k is arbitrary integer
 fun log(a: 't complex) = complex(log(abs(a)), phase(a))
-fun cos(a: 't complex) = complex(cos(a.re)*cosh(a.im), −sin(a.re)*sinh(a.im))
+fun cos(a: 't complex) = complex(cos(a.re)*cosh(a.im), -sin(a.re)*sinh(a.im))
 fun sin(a: 't complex) = complex(sin(a.re)*cosh(a.im), cos(a.re)*sinh(a.im))
 fun cosh(a: 't complex) = complex(cosh(a.re)*cos(a.im), sinh(a.re)*sin(a.im))
 fun sinh(a: 't complex) = complex(sinh(a.re)*cos(a.im), cosh(a.re)*sin(a.im))
