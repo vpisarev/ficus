@@ -89,7 +89,7 @@ final_note: | $(FICUS)
 doc: ficustut_a4.pdf
 
 ficustut_a4.pdf: doc/ficustut.md doc/fxtemplate.latex Makefile
-	pandoc -f markdown --pdf-engine=xelatex --resource-path=doc:. -V geometry:margin=1in -V mainfont='Source Serif Pro' -V fontsize=11pt -V monofont='IBM Plex Mono' -V documentclass=article -V papersize=A4 -V urlcolor=red -V title="Ficus programming language" -V author="Vadim Pisarevsky" --listings --template doc/fxtemplate.latex -o doc/ficustut_a4.pdf doc/ficustut.md
+	pandoc -f markdown --pdf-engine=xelatex --resource-path=doc:. -V geometry:margin=1in -V mainfont='Source Serif 4' -V fontsize=11pt -V monofont='IBM Plex Mono' -V documentclass=article -V papersize=A4 -V urlcolor=red -V title="Ficus programming language" -V author="Vadim Pisarevsky" --listings --template doc/fxtemplate.latex -o doc/ficustut_a4.pdf --toc doc/ficustut.md
 
 clean:
 	@$(RM) $(BOOTSTRAP_BUILD_DIR)
