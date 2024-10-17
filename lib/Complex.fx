@@ -6,12 +6,13 @@ class 't complex = {re: 't; im: 't}
 type fcomplex = float complex
 type dcomplex = double complex
 
-fun complex(r: 't, i: 't2) = complex {re=i-i+r, im=r-r+i}
+fun complex(r: float, i: float) = complex {re=r, im=i}
+fun complex(r: double, i: double) = complex {re=r, im=i}
 fun conj(a: 't complex) = complex {re=a.re, im=-a.im}
 fun abs(a: 't complex) = sqrt(a.re*a.re + a.im*a.im)
 fun phase(a: 't complex) = atan2(a.im, a.re)
 
-operator + (a: int, b: 't complex): 't complex = complex(a + b.re, b.im)
+/*operator + (a: int, b: 't complex): 't complex = complex(a + b.re, b.im)
 operator + (a: 't complex, b: int): 't complex = complex(a.re + b, a.im)
 operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
 operator + (a: 't complex, b: 't): 't complex = complex(a.re + b, a.im)
@@ -40,7 +41,7 @@ operator / (a: 't complex, b: 't): 't complex = complex(a.re/b, a.im/b)
 operator / (a: 't complex, b: 't2 complex) {
     val denom = b.re*b.re + b.im*b.im
     complex((a.re*b.re + a.im*b.im)/denom, (a.im*b.re - a.re*b.im)/denom)
-}
+}*/
 
 fun exp(a: 't complex) {
     val er = exp(a.re)

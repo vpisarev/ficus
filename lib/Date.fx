@@ -41,13 +41,13 @@
         (https://en.wikipedia.org/wiki/Julian_calendar),
         that was widespread in Europe till 14 Oct 1582 inclusive
         and was gradually replaced by Gregorian calendar.
-    * Calendar_Auto - it's a concrete calandar.
+    * Calendar_Auto - it's not a concrete calandar.
         the conversion function will choose Gregorian or Julian,
         depending on the date:
         1) Gregorian for dates after 14 Oct 1582 (JDN >= 2299161)
         2) and Julian before that.
         Note that Calendar_Auto is not stored in the date,
-        instead Gregorian or Julian will be stored.
+        instead, explicit Gregorian or Julian will be stored.
 
     Support for other calendars is to be added later.
 */

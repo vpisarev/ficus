@@ -20,7 +20,7 @@ BTW,
 val c = '😄'
 println(str + c)
 
-println(f"\nfactorial(100)={testmod.fact(100L)}\n")
+println(f"\n100! = {testmod.fact(100L)}\n")
 
 fun fib(n: int) = if n <= 2 {1} else {fib(n-1) + fib(n-2)}
 fun fib2(n: int) {
@@ -122,9 +122,9 @@ fun find_idx(a: 't [], f: 't -> bool): int
 val i4 = find_idx(a, fun (i) {i < 0})
 println(f"excepion-based search: negative number in {a}: {gen_msg(i4, a)}")
 
-val c = ref (complex {re=1.f, im=1.f})
-val d = *c * 2
-println(f"abs((1+1i)*2)={abs(d)}")
+/*val c = ref (1+1.fi)
+*c *= 2
+println(f"abs((1+1i)*2)={abs(*c)}")*/
 
 val fixed_choice = "five"
 
@@ -176,10 +176,9 @@ fun is_prime(n: int)
 
 println(f"primes <100: {vector(for i <- 0:100 when is_prime(i) {i})}")
 
-val sorted = [:: 10, 355, 113, -1, 2, 26, 1, 1949, 0,
-              299792458, -460, 451, -11034, 8848].sort((<))
-print("sorted: ")
-println(sorted)
+val a = ['🥚', '🐔']
+a.sort((<))
+println(f"the eternal question (🥚<=>🐔?) answer is: {a[0]} preceeds {a[1]}")
 
 fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     val step = (b - a)/w

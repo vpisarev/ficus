@@ -289,3 +289,23 @@ fun image_to_tensor(image: uint8x3 [,], params: image_preprocess_params_t, ntask
     }
     Ast.nntensor_t {data=data, shape=Ast.nnshape_t {shape=shape, layout=params.layout}}
 }
+
+fun normalize_image(image: uint8x3 [,], params: image_preprocess_params_t): Ast.nntensor_t
+{
+    val mean = params.mean, scale = params.scale
+    val (rows, cols) = image.size()
+    val planesize = rows*cols
+    val data = array(planesize*3, 0.f)
+    @parallel for y <- 0:rows
+        for x <- 0:cols {
+            val ofs = y*cols + x
+            val (r, g, b) = image[y, x]
+            data[ofs] = (r - mean.0)*scale.0
+            data[ofs+planesize] = (g - mean.1)*scale.1
+            data[ofs+planesize*2] = (b - mean.2)*scale.2
+        }
+       
+    Ast.nntensor_t {data=Ast.NN_Data_FP32(data),
+        shape=Ast.nnshape_t {shape=[1,3,rows,cols],
+        layout=Ast.NN_Layout_NCHW}}
+}

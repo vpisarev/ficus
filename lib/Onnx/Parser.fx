@@ -221,10 +221,18 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
             return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
         }
         size_t elemsize = tag == 1 || tag == 4 ? sizeof(float) : tag == 2 || tag == 3 || tag == 6 ? 1 : 8;
+        /*printf("elemsize=%zu, tensor->data_type=%d, total=%d, n_int32=%d, data=%p\n",
+            elemsize, (int)tensor->data_type, (int)total, (int)tensor->n_int32_data, tensor->int32_data);*/
         fx_status = fx_make_arr(1, &total, elemsize, 0, 0, 0, &result->data.arr);
         if (fx_status >= 0) {
             result->data.tag = tag;
-            if (elemsize == 1 && tensor->raw_data.len == total) {
+            if (tensor->data_location == FICUS_ONNX__TENSOR_PROTO__DATA_LOCATION__EXTERNAL) {
+                printf("external tensor: '%s'\n", tensor->name ? tensor->name : "");
+                for (size_t i = 0; i < tensor->n_external_data; i++) {
+                    printf("\t'%s': '%s'\n", tensor->external_data[i]->key, tensor->external_data[i]->value);
+                }
+                memset(result->data.arr.data, 0, total*elemsize);
+            } else if (elemsize == 1 && tensor->raw_data.len == total) {
                 memcpy(result->data.arr.data, tensor->raw_data.data, total*elemsize);
             } else if (elemsize == 1 && tensor->n_int32_data == total) {
                 for(int j = 0; j < total; j++)
@@ -238,6 +246,14 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
                 for(int_ j = 0; j < total; j++) {
                     fx_bits16_t u;
                     u.u = (uint16_t)(tensor->int32_data[j]);
+                    dst[j] = FX_FLOAT(u.f);
+                }
+            }  else if (elemsize == 4 && tensor->raw_data.len == total*2) {
+                float* dst = (float*)result->data.arr.data;
+                for(int_ j = 0; j < total; j++) {
+                    uint8_t* p = tensor->raw_data.data + j*2;
+                    fx_bits16_t u;
+                    u.u = (uint16_t)(p[0] | (p[1] << 8));
                     dst[j] = FX_FLOAT(u.f);
                 }
             } else if (elemsize == 4 && tensor->raw_data.len == total*4) {

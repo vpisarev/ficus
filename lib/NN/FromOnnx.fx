@@ -337,7 +337,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }}]
             val ninputs = size(inputs), noutputs = size(outputs)
 
-            val rev_more_ops = match node.op {
+            val rev_more_ops : Ast.nnop_t list = match node.op {
             | "Add" | "And" | "Div" | "Equal" | "Greater" | "GreaterOrEqual"
             | "Less" | "LessOrEqual" | "Mod" | "Mul" | "Or" | "Pow" | "Sub" | "Xor" =>
                 assert(`ninputs == 2`)
