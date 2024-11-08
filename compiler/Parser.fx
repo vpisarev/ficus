@@ -135,6 +135,7 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
     val body_end_loc = get_end_loc(body_loc)
     val void_ctx = (TypVoid, body_loc)
     val bool_ctx = (TypBool, body_loc)
+    val int_ctx = (TypInt, body_loc)
 
     val (fr_decl, new_body, fr_exp, global_flags) =
     match special {
@@ -153,6 +154,13 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         val predicate_exp = if !is_all { fold_body }
                             else { ExpUnary(OpLogicNot, fold_body, bool_ctx) }
         val new_body = ExpIf(predicate_exp, break_exp, ExpNop(body_loc), void_ctx)
+        (fr_decl, new_body, fr_exp, global_flags)
+    | "count" =>
+        val fr_decl = DefVal(PatIdent(fr_id, acc_loc), ExpLit(LitInt(0i64), int_ctx),
+                            default_var_flags(), acc_loc)
+        val update_exp = ExpBinary(OpAugBinary(OpAdd), ExpIdent(fr_id, int_ctx),
+                                ExpLit(LitInt(1i64), int_ctx), void_ctx)
+        val new_body = ExpIf(fold_body, update_exp, ExpNop(body_loc), void_ctx)
         (fr_decl, new_body, fr_exp, global_flags)
     | "find" | "find_opt" =>
         val none = get_id("None")
