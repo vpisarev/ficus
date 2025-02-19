@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hrc PUBLIC "-//Cail Lomecb//DTD Colorer HRC take5//EN"
+  "http://colorer.sf.net/2003/hrc.dtd">
+<hrc version="take5" xmlns="http://colorer.sf.net/2003/hrc"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://colorer.sf.net/2003/hrc http://colorer.sf.net/2003/hrc.xsd">
+   <type name="ficus">
+      <annotation>
+         <documentation><![CDATA[
+           Ficus syntax http://www.ficus-lang.org
+           <filename>/\.(fx)$/i</filename>
+           Depends on Standard ML and C schemes
+         ]]></documentation>
+         <contributors>
+	   Dmitry Solomennikov https://github.com/dmitrys99
+         </contributors>
+      </annotation>
+
+      <region name="String" parent="def:String"/>
+      <region name="Comment" parent="def:Comment"/>
+      <region name="Directive" parent="def:Directive"/>
+      <region name="Symbol" parent="def:Symbol"/>
+      <region name="SymbolStrong" parent="def:SymbolStrong"/>
+      <region name="Keyword" parent="def:Keyword"/>
+      <region name="TypeKeyword" parent="def:TypeKeyword"/>
+      <region name="Number" parent="def:Number"/>
+      <region name="PairStart" parent="def:PairStart"/>
+      <region name="PairEnd" parent="def:PairEnd"/>
+      <region name="StringEscape" parent="c:StringEscape"/>
+      <region name="CCode" parent="def:Directive"/>
+      <region name="KeywordConstant" parent="def:Constant"/>
+      <region name="Var" parent="def:VarStrong"/>
+      <region name="Directive" parent="def:Directive"/>
+      <region name="Exceptions" parent="def:KeywordStrong"/>
+
+      <scheme name="NestedComment">
+        <inherit scheme="def:Comment"/>
+        <block scheme="NestedComment" region="Comment">
+          <start region="PairStart">/\/\*/</start>
+          <end region="PairEnd">/\*\//</end>
+        </block>
+      </scheme>
+
+
+      <scheme name="StringContent">
+       <regexp match="/\\\\$/" region="def:Error"/>
+       <regexp match="/\\[^xX\d]/" region="StringEscape"/>
+       <regexp match="/\\$/" region="StringEscape"/>
+       <regexp match="/\\x[\da-fA-F]{1,8}/i" region="StringEscape"/>
+       <regexp match="/\\[0-9]{1,3}/" region="StringEscape"/>
+       <regexp match="/\%[\-\+\#0]*?[\d\*]*(\.[\d\*]+)?[Ll]?[SsCcsuidopxXnEefgG]/" region="StringEscape"/>
+       <regexp match="/[^\\\&#34;]$/" region="def:Error"/>
+      </scheme>
+      <scheme name="String">
+       <block start="/&#34;/" end="/&#34;/" scheme="StringContent" region="String"/>
+      </scheme>
+
+      <scheme name="ficus">
+         <inherit scheme="String"/>
+<!-- Comments -->
+         <block start="/\/\*/" end="/\*\//" scheme="NestedComment" region="Comment" region00="PairStart" region10="PairEnd"/>
+         <regexp match="/\/\/.*$/" region0="Comment"/>
+<!-- paired -->
+         <block start="/(\()/" end="/(\))/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
+         <block start="/(\[)/" end="/(\])/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
+         <block start="/(\{)/" end="/(\})/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
+
+         <!--block start="/\b(while|for)\b/" end="/\b(done)\b/" scheme="ficus"
+           region01="Keyword" region00="PairStart"
+           region10="Keyword" region11="PairEnd"/>
+         <block start="/\b(try)\b/" end="/\b(with)\b/" scheme="ficus"
+           region01="Keyword" region00="PairStart"
+           region10="Keyword" region11="PairEnd"/>
+         <block start="/\b(declare|sig|object|struct|begin)\b/" end="/\b(end)\b/" scheme="ficus"
+           region01="Keyword" region00="PairStart"
+           region10="Keyword" region11="PairEnd"/-->
+
+<!-- Top level let-bindings are listed as functions -->
+         <regexp match="/^\M (let) (\s+rec)? \s+ (?{def:Function}[_\w]+)/ix"/>
+<!-- Directive -->
+         <regexp match='/^#[ ]*[0-9]+ [ ]*".*"[\s]*$/' region="Directive"/>
+         <regexp match="/^#[ ]*[0-9]+$/" region="Directive"/>
+<!-- Character constants  -->
+         <regexp match="/'((\\.)|[^\\']){0,8}'/" region0="String"/>
+<!-- Integer literals   -->
+         <!--regexp match="/\b[\-]?(\d+ | 0x[\da-f_]+| 0o[0-7_]+ | 0b[01_]+)\b/ix" region0="Number"/>
+
+         <regexp match="/\d{1,3}(\%)/" region="def:Number" region1="def:NumberSuffix"/-->
+
+         <regexp match="/\b[\-]?(\d+)((i|u)(8|16|32|64|128))\b/" region="def:Number" region2="def:NumberSuffix"/>
+
+         <regexp match="/&#39;[a-z][a-z0-9]+/" region="def:ParameterStrong"/>
+
+
+<!-- Floating-point literals [-]{0...9}+[.{0...9}][(e|E)[+|-] {0...9}+] -->
+         <regexp match="/\b([0-9_.]+(E|e[\-+]?\d+)?)\b/" region0="Number"/>
+<!-- Symbols -->
+         <keywords region="Symbol">
+           <symb name="!"/>
+           <symb name="%"/>
+           <symb name="&amp;&amp;"/>
+           <symb name="*"/>
+           <symb name="+"/>
+           <symb name="-"/>
+           <symb name="/"/>
+           <symb name="&lt;"/>
+           <symb name="="/>
+           <symb name="&gt;"/>
+           <symb name="||"/>
+
+
+           <symb name="+"/>
+           <symb name="−"/>
+           <symb name="*"/>
+           <symb name="/"/>
+           <symb name="**"/>
+           <symb name="=="/>
+           <symb name="!=="/>
+           <symb name="&lt;="/>
+           <symb name="&gt;="/>
+           <symb name="&lt;=&gt;"/>
+           <symb name="==="/>
+         </keywords>
+
+         <keywords region="SymbolStrong">
+           <symb name="|"/>
+           <symb name=".+"/>
+           <symb name=".-"/>
+           <symb name=".*"/>
+           <symb name="./"/>
+           <symb name=".**"/>
+
+           <symb name=".=="/>
+           <symb name=".!="/>
+           <symb name=".&gt;"/>
+           <symb name=".&lt;"/>
+           <symb name=".&lt;="/>
+           <symb name=".&gt;="/>
+           <symb name=".&lt;=&gt;"/>
+           <symb name="=&gt;"/>
+           <symb name="&lt;-"/>
+           <symb name="::"/>
+         </keywords>
+
+         <keywords region="KeywordConstant">
+           <word name="false"/>
+           <word name="null"/>
+           <word name="true"/>
+         </keywords>
+
+         <keywords region="Exceptions">
+           <word name="DateError"/>
+           <word name="RBSetError"/>
+           <word name="NullQueueError"/>
+           <word name="RBMapError"/>
+           <word name="PPStackOverflow"/>
+           <word name="PPEmptyStack"/>
+           <word name="PPQueueOverflow"/>
+           <word name="ASCIIError"/>
+           <word name="AssertError"/>
+           <word name="BadArgError"/>
+           <word name="Break"/>
+           <word name="DimError"/>
+           <word name="DivByZeroError"/>
+           <word name="Exit"/>
+           <word name="Fail"/>
+           <word name="FileOpenError"/>
+           <word name="IOError"/>
+           <word name="NoMatchError"/>
+           <word name="NotFoundError"/>
+           <word name="NotImplementedError"/>
+           <word name="NullFileError"/>
+           <word name="NullListError"/>
+           <word name="NullPtrError"/>
+           <word name="OptionError"/>
+           <word name="OutOfMemError"/>
+           <word name="OutOfRangeError"/>
+           <word name="OverflowError"/>
+           <word name="ParallelForError"/>
+           <word name="RangeError"/>
+           <word name="SizeError"/>
+           <word name="SizeMismatchError"/>
+           <word name="StackOverflowError"/>
+           <word name="TypeMismatchError"/>
+           <word name="ZeroStepError"/>
+           <word name="OnnxConvertError"/>
+           <word name="OpenCVError"/>
+           <word name="LexerError"/>
+           <word name="EmptyDynVector"/>
+           <word name="NNError"/>
+           <word name="BadRegexp"/>
+           <word name="TestAssertError"/>
+           <word name="TestFailure"/>
+           <word name="false"/>
+           <word name="null"/>
+           <word name="true"/>
+         </keywords>
+
+<!-- reserved words -->
+         <keywords region="Directive">
+            <word name="@ccode"/>
+            <word name="@data"/>
+            <word name="@inline"/>
+            <word name="@nothrow"/>
+            <word name="@pragma"/>
+            <word name="@parallel"/>
+            <word name="@private"/>
+            <word name="@pure"/>
+            <word name="@sync"/>
+            <word name="@text"/>
+            <word name="@unzip"/>
+         </keywords>
+
+         <keywords region="Keyword">
+<!-- reserved words -->
+           <word name="as"/>
+           <word name="break"/>
+           <word name="catch"/>
+           <word name="class"/>
+           <word name="continue"/>
+           <word name="do"/>
+           <word name="else"/>
+           <word name="exception"/>
+           <word name="finally"/>
+           <word name="fold"/>
+           <word name="for"/>
+           <word name="from"/>
+           <word name="fun"/>
+           <word name="if"/>
+           <word name="import"/>
+           <word name="inf"/>
+           <word name="inff"/>
+           <word name="interface"/>
+           <word name="match"/>
+           <word name="nan"/>
+           <word name="nanf"/>
+
+           <word name="operator"/>
+           <word name="ref"/>
+           <word name="return"/>
+           <word name="throw"/>
+
+           <word name="try"/>
+           <word name="type"/>
+           <word name="val"/>
+           <word name="when"/>
+           <word name="while"/>
+         </keywords>
+
+         <keywords region="Var">
+           <word name="var"/>
+         </keywords>
+
+<!-- Built-in types -->
+         <keywords region="TypeKeyword">
+           <word name="int8"/>
+           <word name="uint8"/>
+           <word name="int16"/>
+           <word name="uint16"/>
+           <word name="int32"/>
+           <word name="uint32"/>
+           <word name="int"/>
+           <word name="uint64"/>
+           <word name="int64"/>
+           <word name="half"/>
+           <word name="float"/>
+           <word name="double"/>
+           <word name="bool"/>
+           <word name="string"/>
+           <word name="char"/>
+           <word name="list"/>
+           <word name="vector"/>
+           <word name="cptr"/>
+           <word name="exn"/>
+         </keywords>
+      </scheme>
+   </type>
+</hrc>
+<!-- ***** BEGIN LICENSE BLOCK *****
+   - Copyright (C) 1999-2009 Cail Lomecb <irusskih at gmail dot com>.
+   - This program is free software; you can redistribute it and/or
+   - modify it under the terms of the GNU General Public License
+   - as published by the Free Software Foundation; either version 2
+   - of the License, or (at your option) any later version.
+   - This program is distributed in the hope that it will be useful,
+   - but WITHOUT ANY WARRANTY; without even the implied warranty of
+   - MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   - GNU General Public License for more details.
+   - You should have received a copy of the GNU General Public License
+   - along with this program; If not, see <http://www.gnu.org/licenses/>.
+   - ***** END LICENSE BLOCK ***** -->
