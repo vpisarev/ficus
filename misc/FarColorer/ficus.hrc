@@ -24,14 +24,17 @@
       <region name="Keyword" parent="def:Keyword"/>
       <region name="TypeKeyword" parent="def:TypeKeyword"/>
       <region name="Number" parent="def:Number"/>
+      <region name="NumberSuffix" parent="def:NumberSuffix"/>
+      <region name="NumberFloat" parent="def:NumberFloat"/>
       <region name="PairStart" parent="def:PairStart"/>
       <region name="PairEnd" parent="def:PairEnd"/>
       <region name="StringEscape" parent="c:StringEscape"/>
-      <region name="CCode" parent="def:Directive"/>
       <region name="KeywordConstant" parent="def:Constant"/>
       <region name="Var" parent="def:VarStrong"/>
       <region name="Directive" parent="def:Directive"/>
       <region name="Exceptions" parent="def:KeywordStrong"/>
+      <region name="TODO" parent="def:TODO"/>
+
 
       <scheme name="NestedComment">
         <inherit scheme="def:Comment"/>
@@ -41,14 +44,19 @@
         </block>
       </scheme>
 
+      <scheme name="CCode">
+        <regexp match="/\/\/.*$/" region0="Comment"/>
+         <block start="/\/\*/" end="/\*\//" scheme="def:Comment" region="Comment"
+                region00="def:PairStart" region10="def:PairEnd"/>
+        <inherit scheme="c:c"/>
+      </scheme>
 
       <scheme name="StringContent">
        <regexp match="/\\\\$/" region="def:Error"/>
-       <regexp match="/\\[^xX\d]/" region="StringEscape"/>
-       <regexp match="/\\$/" region="StringEscape"/>
-       <regexp match="/\\x[\da-fA-F]{1,8}/i" region="StringEscape"/>
-       <regexp match="/\\[0-9]{1,3}/" region="StringEscape"/>
-       <regexp match="/\%[\-\+\#0]*?[\d\*]*(\.[\d\*]+)?[Ll]?[SsCcsuidopxXnEefgG]/" region="StringEscape"/>
+       <regexp match="/\\x[\da-fA-F]{2}/" region="StringEscape"/>
+       <regexp match="/\\u[\da-fA-F]{4}/" region="StringEscape"/>
+       <regexp match="/\\U[\da-fA-F]{8}/" region="StringEscape"/>
+       <regexp match="/\\[0-7]{1,3}/" region="StringEscape"/>
        <regexp match="/[^\\\&#34;]$/" region="def:Error"/>
       </scheme>
       <scheme name="String">
@@ -59,11 +67,16 @@
          <inherit scheme="String"/>
 <!-- Comments -->
          <block start="/\/\*/" end="/\*\//" scheme="NestedComment" region="Comment" region00="PairStart" region10="PairEnd"/>
+         <regexp match="/(\/\/)(\s+)(\[TODO\]|TODO|ЗАДАЧА)(.*)$/" region="Comment" region3="TODO"/>
          <regexp match="/\/\/.*$/" region0="Comment"/>
 <!-- paired -->
          <block start="/(\()/" end="/(\))/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
          <block start="/(\[)/" end="/(\])/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
          <block start="/(\{)/" end="/(\})/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
+
+         <block start="/(\@ccode)\s*?(\{)/x" end="/(\})/" scheme="CCode"
+          region01="Directive" region02="StructureSymbol" region10="StructureSymbol" region00="def:PairStart" region11="def:PairEnd"/>
+
 
          <!--block start="/\b(while|for)\b/" end="/\b(done)\b/" scheme="ficus"
            region01="Keyword" region00="PairStart"
@@ -75,25 +88,18 @@
            region01="Keyword" region00="PairStart"
            region10="Keyword" region11="PairEnd"/-->
 
-<!-- Top level let-bindings are listed as functions -->
-         <regexp match="/^\M (let) (\s+rec)? \s+ (?{def:Function}[_\w]+)/ix"/>
-<!-- Directive -->
-         <regexp match='/^#[ ]*[0-9]+ [ ]*".*"[\s]*$/' region="Directive"/>
-         <regexp match="/^#[ ]*[0-9]+$/" region="Directive"/>
-<!-- Character constants  -->
-         <regexp match="/'((\\.)|[^\\']){0,8}'/" region0="String"/>
 <!-- Integer literals   -->
          <!--regexp match="/\b[\-]?(\d+ | 0x[\da-f_]+| 0o[0-7_]+ | 0b[01_]+)\b/ix" region0="Number"/>
 
          <regexp match="/\d{1,3}(\%)/" region="def:Number" region1="def:NumberSuffix"/-->
 
-         <regexp match="/\b[\-]?(\d+)((i|u)(8|16|32|64|128))\b/" region="def:Number" region2="def:NumberSuffix"/>
+         <regexp match="/\b[\-]?(\d+)((i|u)(8|16|32|64|128))\b/" region="Number" region2="NumberSuffix"/>
 
-         <regexp match="/&#39;[a-z][a-z0-9]+/" region="def:ParameterStrong"/>
+         <regexp match="/(')([a-z][a-zA-Z\d]*)/" region="NumberSuffix"/>
 
 
 <!-- Floating-point literals [-]{0...9}+[.{0...9}][(e|E)[+|-] {0...9}+] -->
-         <regexp match="/\b([0-9_.]+(E|e[\-+]?\d+)?)\b/" region0="Number"/>
+         <regexp match="/\b[\-]?(\d+\.\d*)([eE][\-+]?\d+)?([fh])?\b/x" region0="NumberFloat" region3="NumberSuffix"/>
 <!-- Symbols -->
          <keywords region="Symbol">
            <symb name="!"/>
@@ -120,6 +126,7 @@
            <symb name="&gt;="/>
            <symb name="&lt;=&gt;"/>
            <symb name="==="/>
+           <symb name=":"/>
          </keywords>
 
          <keywords region="SymbolStrong">
@@ -138,8 +145,10 @@
            <symb name=".&gt;="/>
            <symb name=".&lt;=&gt;"/>
            <symb name="=&gt;"/>
+           <symb name=":&gt;"/>
            <symb name="&lt;-"/>
            <symb name="::"/>
+           <symb name="..."/>
          </keywords>
 
          <keywords region="KeywordConstant">
@@ -191,14 +200,11 @@
            <word name="BadRegexp"/>
            <word name="TestAssertError"/>
            <word name="TestFailure"/>
-           <word name="false"/>
-           <word name="null"/>
-           <word name="true"/>
          </keywords>
 
 <!-- reserved words -->
          <keywords region="Directive">
-            <word name="@ccode"/>
+            <!--word name="@ccode"/-->
             <word name="@data"/>
             <word name="@inline"/>
             <word name="@nothrow"/>
@@ -273,6 +279,96 @@
            <word name="cptr"/>
            <word name="exn"/>
          </keywords>
+         <keywords region="def:Identifier">
+<!-- Builtins -->
+           <word name="assert"/>
+           <word name="ignore"/>
+           <word name="always_use"/>
+           <word name="value_or"/>
+           <word name="value"/>
+           <word name="isnone"/>
+           <word name="issome"/>
+           <word name="__is_scalar__"/>
+           <word name="scalar_type"/>
+           <word name="elemsize"/>
+           <word name="__min__"/>
+           <word name="__max__"/>
+           <word name="length"/>
+           <word name="join"/>
+           <word name="join_embrace"/>
+           <word name="link2"/>
+           <word name="ord"/>
+           <word name="chr"/>
+           <word name="odd"/>
+           <word name="even"/>
+           <word name="repr"/>
+           <word name="parse_format"/>
+           <word name="format_"/>
+           <word name="size"/>
+           <word name="dot"/>
+           <word name="cross"/>
+           <word name="normInf"/>
+           <word name="normL1"/>
+           <word name="normL2sqr"/>
+           <word name="normL2"/>
+           <word name="normInf"/>
+           <word name="norm"/>
+           <word name="all"/>
+           <word name="exists"/>
+           <word name="__eq_variants__"/>
+           <word name="__fun_string__"/>
+           <word name="sat_uint8"/>
+           <word name="sat_int8"/>
+           <word name="sat_uint16"/>
+           <word name="sat_int16"/>
+           <word name="round"/>
+           <word name="min"/>
+           <word name="max"/>
+           <word name="abs"/>
+           <word name="sign"/>
+           <word name="clip"/>
+           <word name="print_string"/>
+           <word name="print"/>
+           <word name="print_repr"/>
+           <word name="println"/>
+           <word name="array"/>
+           <word name="reinterpret"/>
+           <word name="size"/>
+           <word name="hash"/>
+           <word name="_swap_"/>
+<!-- List -->
+           <word name="length"/>
+           <word name="hd"/>
+           <word name="tl"/>
+           <word name="empty"/>
+           <word name="last"/>
+           <word name="nth"/>
+           <word name="skip"/>
+           <word name="skip_nothrow"/>
+           <word name="rev"/>
+           <word name="foldl"/>
+           <word name="assoc"/>
+           <word name="assoc_opt"/>
+           <word name="app"/>
+           <word name="map"/>
+           <word name="all2"/>
+           <word name="mem"/>
+           <word name="find"/>
+           <word name="find_opt"/>
+           <word name="concat"/>
+           <word name="filter"/>
+           <word name="zip"/>
+           <word name="unzip"/>
+           <word name="sort"/>
+<!-- Char -->
+           <word name="isalpha"/>
+           <word name="isdigit"/>
+           <word name="tolower"/>
+           <word name="toupper"/>
+           <word name="isdecimal"/>
+           <word name="isspace"/>
+           <word name="isalnum"/>
+        </keywords>
       </scheme>
    </type>
 </hrc>
