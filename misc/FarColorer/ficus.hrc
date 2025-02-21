@@ -21,6 +21,7 @@
       <region name="Directive" parent="def:Directive"/>
       <region name="Symbol" parent="def:Symbol"/>
       <region name="SymbolStrong" parent="def:SymbolStrong"/>
+      <region name="StringEdge" parent="def:StringEdge"/>
       <region name="Keyword" parent="def:Keyword"/>
       <region name="TypeKeyword" parent="def:TypeKeyword"/>
       <region name="Number" parent="def:Number"/>
@@ -44,32 +45,92 @@
         </block>
       </scheme>
 
+      <!-- @ccode {} highlight (inner block highlighted as plain C) -->
       <scheme name="CCode">
         <regexp match="/\/\/.*$/" region0="Comment"/>
          <block start="/\/\*/" end="/\*\//" scheme="def:Comment" region="Comment"
                 region00="def:PairStart" region10="def:PairEnd"/>
+
+      <!-- TODO may be replaced by C++ -->
         <inherit scheme="c:c"/>
       </scheme>
 
-      <scheme name="StringContent">
-       <regexp match="/\\\\$/" region="def:Error"/>
-       <regexp match="/\\x[\da-fA-F]{2}/" region="StringEscape"/>
-       <regexp match="/\\u[\da-fA-F]{4}/" region="StringEscape"/>
-       <regexp match="/\\U[\da-fA-F]{8}/" region="StringEscape"/>
-       <regexp match="/\\[0-7]{1,3}/" region="StringEscape"/>
-       <regexp match="/[^\\\&#34;]$/" region="def:Error"/>
-      </scheme>
-      <scheme name="String">
-       <block start="/&#34;/" end="/&#34;/" scheme="StringContent" region="String"/>
-      </scheme>
+      <!-- Strings (borrowed from Python) -->
+  <scheme name="RawStringContent">
+    <regexp match="/\\\\/" />
+    <regexp match="/\\[&apos;&quot;]/" />
+    <block start="/\\$/" end="/^/" scheme="def:empty" region="StringEscape" />
+  </scheme>
+
+  <scheme name="ContentCommon">
+    <regexp match="/\\[\n\\&apos;&quot;abfnrtv]/" region="StringEscape" />
+    <regexp match="/\\[0-7]{1,3}/" region="StringEscape" />
+    <regexp match="/\\x[0-9a-fA-F]{2}/" region="StringEscape" />
+    <regexp match="/\\x[0-9a-fA-F]{0,2}/" region="def:Error" />
+  </scheme>
+
+  <scheme name="StringContent">
+    <regexp match="/\\u[0-9a-fA-F]{4}/" region="StringEscape" />
+    <regexp match="/\\u[0-9a-fA-F]{0,4}/" region="def:Error" />
+    <regexp match="/\\U[0-9a-fA-F]{8}/" region="StringEscape" />
+    <regexp match="/\\U[0-9a-fA-F]{0,8}/" region="def:Error" />
+    <inherit scheme="ContentCommon" />
+    <inherit scheme="RawStringContent" />
+    <regexp match="/\\/" region="def:ErrorText" />
+  </scheme>
+
+  <scheme name="FormatSpec">
+    <regexp match="/[^\{\}]/" region="String" />
+    <inherit scheme="ReplacementField" />
+  </scheme>
+  <scheme name="FExpression">
+    <regexp match="/(!)([sra])?([^:\}]+)?/" priority="low"
+       region1="StringEdge" region2="String" region3="def:Error" />
+    <block start="/:/" end="/($|\}?=)/" scheme="FormatSpec" region00="StringEdge" />
+    <regexp match="/(=)\s*([^!:\}]+)?/" priority="low" region1="Symbol" region2="def:Error" />
+    <inherit scheme="ficus" />
+  </scheme>
+  <scheme name="ReplacementField">
+    <block start="/(\{)/" end="/($|\})/"
+       scheme="FExpression" region="def:Insertion"
+       region00="def:PairStart" region10="def:PairEnd" 
+       region01="StringEdge" region11="StringEdge" />
+  </scheme>
+  <scheme name="FStringCommon">
+    <regexp match="/\{{2}|\}{2}/" region="StringEscape" />
+    <inherit scheme="ReplacementField" />
+  </scheme>
+  <scheme name="FStringContent">
+    <inherit scheme="FStringCommon" />
+    <inherit scheme="StringContent" />
+  </scheme>
+  <scheme name="RawFStringContent">
+    <inherit scheme="FStringCommon" />
+    <inherit scheme="RawStringContent" />
+  </scheme>
+ 
+    <scheme name="StringAndLiterals">
+    <block start="/(u?(?{Delim}&quot;))/i" end="/($|\y{Delim})/"
+       scheme="StringContent" region="String" inner-region="yes"
+       region00="def:PairStart" region10="def:PairEnd" region01="StringEdge" region11="StringEdge" />
+    <block start="/(r(?{Delim}&quot;))/i" end="/($|\y{Delim})/"
+       scheme="RawStringContent" region="String" inner-region="yes"
+       region00="def:PairStart" region10="def:PairEnd" region01="StringEdge" region11="StringEdge" />
+    <block start="/(f(?{Delim}&quot;))/i" end="/($|\y{Delim})/"
+       scheme="FStringContent" region="String" inner-region="yes"
+       region00="def:PairStart" region10="def:PairEnd" region01="StringEdge" region11="StringEdge" />
+    <block start="/((?:fr|rf)(?{Delim}&quot;))/i" end="/($|\y{Delim})/"
+       scheme="RawFStringContent" region="String" inner-region="yes"
+       region00="def:PairStart" region10="def:PairEnd" region01="StringEdge" region11="StringEdge" />
+    </scheme>
 
       <scheme name="ficus">
-         <inherit scheme="String"/>
+         <inherit scheme="StringAndLiterals"/>
 <!-- Comments -->
          <block start="/\/\*/" end="/\*\//" scheme="NestedComment" region="Comment" region00="PairStart" region10="PairEnd"/>
          <regexp match="/(\/\/)(\s+)(\[TODO\]|TODO|ЗАДАЧА)(.*)$/" region="Comment" region3="TODO"/>
          <regexp match="/\/\/.*$/" region0="Comment"/>
-<!-- paired -->
+<!-- Paired -->
          <block start="/(\()/" end="/(\))/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
          <block start="/(\[)/" end="/(\])/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
          <block start="/(\{)/" end="/(\})/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
@@ -77,8 +138,7 @@
          <block start="/(\@ccode)\s*?(\{)/x" end="/(\})/" scheme="CCode"
           region01="Directive" region02="StructureSymbol" region10="StructureSymbol" region00="def:PairStart" region11="def:PairEnd"/>
 
-
-         <!--block start="/\b(while|for)\b/" end="/\b(done)\b/" scheme="ficus"
+          <!--block start="/\b(while|for)\b/" end="/\b(done)\b/" scheme="ficus"
            region01="Keyword" region00="PairStart"
            region10="Keyword" region11="PairEnd"/>
          <block start="/\b(try)\b/" end="/\b(with)\b/" scheme="ficus"
@@ -89,14 +149,10 @@
            region10="Keyword" region11="PairEnd"/-->
 
 <!-- Integer literals   -->
-         <!--regexp match="/\b[\-]?(\d+ | 0x[\da-f_]+| 0o[0-7_]+ | 0b[01_]+)\b/ix" region0="Number"/>
-
-         <regexp match="/\d{1,3}(\%)/" region="def:Number" region1="def:NumberSuffix"/-->
-
          <regexp match="/\b[\-]?(\d+)((i|u)(8|16|32|64|128))\b/" region="Number" region2="NumberSuffix"/>
 
+<!-- Type parameter literals   -->
          <regexp match="/(')([a-z][a-zA-Z\d]*)/" region="NumberSuffix"/>
-
 
 <!-- Floating-point literals [-]{0...9}+[.{0...9}][(e|E)[+|-] {0...9}+] -->
          <regexp match="/\b[\-]?(\d+\.\d*)([eE][\-+]?\d+)?([fh])?\b/x" region0="NumberFloat" region3="NumberSuffix"/>
@@ -113,8 +169,6 @@
            <symb name="="/>
            <symb name="&gt;"/>
            <symb name="||"/>
-
-
            <symb name="+"/>
            <symb name="−"/>
            <symb name="*"/>
@@ -129,6 +183,7 @@
            <symb name=":"/>
          </keywords>
 
+<!-- Special symbols -->
          <keywords region="SymbolStrong">
            <symb name="|"/>
            <symb name=".+"/>
@@ -136,7 +191,6 @@
            <symb name=".*"/>
            <symb name="./"/>
            <symb name=".**"/>
-
            <symb name=".=="/>
            <symb name=".!="/>
            <symb name=".&gt;"/>
@@ -151,12 +205,14 @@
            <symb name="..."/>
          </keywords>
 
+<!-- Special constants -->
          <keywords region="KeywordConstant">
            <word name="false"/>
            <word name="null"/>
            <word name="true"/>
          </keywords>
 
+<!-- Exceptions -->
          <keywords region="Exceptions">
            <word name="DateError"/>
            <word name="RBSetError"/>
@@ -202,9 +258,10 @@
            <word name="TestFailure"/>
          </keywords>
 
-<!-- reserved words -->
+<!-- Directives -->
          <keywords region="Directive">
-            <!--word name="@ccode"/-->
+            <!-- CCode processed separately
+            word name="@ccode"/-->
             <word name="@data"/>
             <word name="@inline"/>
             <word name="@nothrow"/>
@@ -240,12 +297,10 @@
            <word name="match"/>
            <word name="nan"/>
            <word name="nanf"/>
-
            <word name="operator"/>
            <word name="ref"/>
            <word name="return"/>
            <word name="throw"/>
-
            <word name="try"/>
            <word name="type"/>
            <word name="val"/>
@@ -253,6 +308,7 @@
            <word name="while"/>
          </keywords>
 
+<!-- Built-in types -->
          <keywords region="Var">
            <word name="var"/>
          </keywords>
