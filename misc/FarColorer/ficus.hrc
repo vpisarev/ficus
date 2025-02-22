@@ -115,6 +115,7 @@
       <block start="/(\()/" end="/(\))/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
       <block start="/(\[)/" end="/(\])/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
       <block start="/(\{)/" end="/(\})/" scheme="ficus" region00="Symbol" region01="PairStart" region10="Symbol" region11="PairEnd"/>
+      <!-- TODO newline after @ccode breaks C highlight -->
       <block start="/(\@ccode)\s*?(\{)/x" end="/(\})/" scheme="CCode" region01="Directive" region02="StructureSymbol" region10="StructureSymbol" region00="def:PairStart" region11="def:PairEnd"/>
 
       <!-- Integer literals   -->
