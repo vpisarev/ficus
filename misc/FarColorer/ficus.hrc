@@ -10,7 +10,7 @@
          ]]></documentation>
       <contributors>
 	   Dmitry Solomennikov https://github.com/dmitrys99
-         </contributors>
+      </contributors>
     </annotation>
 
     <region name="String" parent="def:String"/>
