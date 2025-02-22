@@ -118,7 +118,7 @@
       <block start="/(\@ccode)\s*?(\{)/x" end="/(\})/" scheme="CCode" region01="Directive" region02="StructureSymbol" region10="StructureSymbol" region00="def:PairStart" region11="def:PairEnd"/>
 
       <!-- Integer literals   -->
-      <regexp match="/\b[\-]?(\d+)((i|u)(8|16|32|64|128))\b/" region="Number" region2="NumberSuffix"/>
+      <regexp match="/\b[\-]?(\d+)((i|u)(8|16|32|64|128))?\b/" region="Number" region2="NumberSuffix"/>
 
       <!-- Type parameter literals   -->
       <regexp match="/(')([a-z][a-zA-Z\d]*)/" region="NumberSuffix"/>
