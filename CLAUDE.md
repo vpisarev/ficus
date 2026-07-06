@@ -1,0 +1,100 @@
+# Working in the Ficus repo
+
+Ficus is a self-hosted functional language (arrays first-class; also imperative
+& OOP) that compiles to portable C/C++. The compiler is written in Ficus and
+bootstraps itself.
+
+## Build & run
+
+```sh
+make -j8                                  # builds bin/ficus (ficus0 from
+                                          # pre-gen C, then ficus from sources)
+bin/ficus -run file.fx -- arg1 arg2       # compile + run
+bin/ficus -run -O0 -no-openmp -B DIR f.fx # opt level, no OpenMP, build root
+bin/ficus -no-c file.fx                   # parse + typecheck only (fast)
+```
+
+- `bin/ficus` finds the stdlib on its own (no `FICUS_PATH` needed in-repo).
+- **`-B <dir>` must already exist** — `mkdir -p` it first, or you get the
+  misleading `error: failed to write some k-forms`.
+- Compiler **diagnostics go to stdout** (not stderr), exit code 1.
+- IR dumps: `-pr-ast` (typechecked AST), `-pr-k0` (K-form), `-pr-k` (optimized,
+  use with `-O3`). All work with `-no-c`. The dump contains **every** imported
+  module; the file-under-test is the **last** section. Gensyms look like
+  `name@1234`.
+- ficus compiles the generated C/C++ with `$CC` / `$CXX` (default `cc`) — set
+  these to pick gcc vs clang. macOS OpenMP is bundled at
+  `runtime/lib/macos_arm64/libomp.a` (no install needed).
+
+## Testing — the fxtest ladder (see tools/fxtest/README.md)
+
+```sh
+python3 tools/fxtest/fxtest.py all        # unit + negative + ir + corpus(O0/O3)
+bin/ficus -run test/test_all.fx           # the UTest suite directly
+```
+
+Layers: **T2** corpus differential (every runnable `.fx` at `-O0` vs `-O3`),
+**T3** golden diagnostics (`test/negative/`), **T4** IR snapshots (`test/ir/`),
+**T5** randomized suites (`test/rand/`, wired into `test_all.fx`). Harness is
+Python 3 stdlib-only (must not depend on the compiler it tests). Discovered
+compiler bugs are recorded and fenced (not fixed) in `docs/found_bugs.md`.
+
+## Writing Ficus (.fx) — hard-won gotchas
+
+Ficus is underrepresented in training data; **do not improvise from OCaml/Rust
+intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
+`test/test_array.fx`, `lib/UTest.fx`) for the constructs you need. Verified traps:
+
+- **Reserved words can't be identifiers**: `ref`, `nan`, `nanf`, `null` (plus
+  the obvious `fun`/`val`/`var`/`type`/`match`/...). Naming a variable `ref` or
+  `nan` gives a confusing "pattern is expected" / "not an l-value" error.
+- **Casts must be parenthesized *with* the operand**: write `(x :> uint8)`, not
+  `(x) :> uint8`. Even a bare `x :> T` in some positions (e.g. a `match` arm
+  body) fails — wrap it: `(x :> T)`. Chained: `((x :> uint32) :> int32)`.
+- **`println` takes ONE argument.** For several values use an f-string or a
+  tuple: `println(f"{a} {b}")` / `println((a, b))`.
+- **f-string `{}` interpolation can't contain a quoted string literal** —
+  `f"{find(\"x\")}"` fails to parse. Hoist to a `val` first.
+- **Record *type* fields are separated by `;`** (`{x: int; y: int}`), but record
+  *construction* uses `,` (`pt_t {x=1, y=2}`).
+- **Small unsigned types promote to `int` for arithmetic** — `200u8 + 100u8`
+  is `300`, not `44`. To wrap, cast explicitly: `((a + b) :> uint8)`. `uint64`
+  is full-width and wraps natively.
+- Integer `/` truncates toward zero; `%` takes the **sign of the dividend**
+  (`-17 % 5 == -2`). `int(x)` truncates toward zero; `floor`/`ceil` return the
+  **float/double** type, not int (use `int(floor(x))`).
+- **Border access is `arr.MODE[i]`** (mode before the bracket): `a.clip[i]`,
+  `a.wrap[i]`, `a.zero[i]`. Works on `Vector` and strings; **broken on plain
+  `'t []` arrays** (FB-003).
+- Comprehensions: 1D `[for i <- 0:n {..}]`; **2D is nested** `[for i <- 0:m for
+  j <- 0:n {..}]`; **zip is comma** `for x <- a, y <- b {..}`; index binding
+  `for x@i <- a` (1D) / `for x@(i,j) <- m` (2D); fold `fold acc=init for x <- a
+  {..}`. Lists: `[:: 1, 2, 3]`, cons `::`, list-comp `[:: for x <- l {..}]`.
+- **Strings are UTF-32** (char sequences): `s.length()` counts characters,
+  `s[i]` is a `char`, `s[i:j]` a substring; build from chars via
+  `string([for c <- cs {c}])`. `split(s, sep, ~allow_empty=true)` returns a
+  `string list`.
+- `array(n, init)` / `array((m, n), init)` allocate mutable arrays. Ranges
+  `a:b`, `a:b:step`; slices `a[i:j]`, `a[i:j:step]`, `a[:]`, `a[::-1]`.
+- `Sys.getenv(name, defval)`; `s.to_int(): int?`; `s.to_int_or(defval)`.
+
+**Iterate tiny**: write 10-20 lines → `bin/ficus -run f.fx` → fix → extend.
+The compiler's error messages are ground truth. If it rejects something the
+tutorial says is legal, it may be a bug — minimal repro into `docs/found_bugs.md`
+and route around it (don't fix `compiler/` unless asked).
+
+### Test-file naming caveat
+
+A test `.fx` filename must not collide **case-insensitively** with a stdlib
+module name (`Char`, `List`, `String`, `Array`, `Math`, `Map`, ...): the input
+file's directory is searched first for the auto-imported preamble, so
+`char.fx` shadows the real `Char`. Numeric prefixes (`001_name.fx`) are safe.
+Subdir modules import as `Dir.Module` (`import NN.Ast as Ast`); siblings in the
+same dir import by bare name. Don't reuse one `-B` build dir across `-no-openmp`
+and OpenMP builds — stale `.o` files cause `omp_outlined` link errors; use
+isolated build dirs.
+
+## Environment notes (this machine)
+
+- Local Python is **3.9** (no `tomllib` — the harness ships a fallback parser).
+- macOS `sed` is BSD (no `\b`); use `perl -pe` for word-boundary edits.
