@@ -1,0 +1,3 @@
+201_if_branches_differ.fx:2:27: error: if() expression should have the same type as its branches
+
+1 errors occured during type checking.

@@ -1,0 +1,3 @@
+407_string_literal_pat_on_int.fx:2:21: error: the literal of unexpected type
+
+1 errors occured during type checking.

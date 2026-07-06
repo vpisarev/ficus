@@ -1,0 +1,3 @@
+304_duplicate_record_field.fx:2:6: error: duplicate record field 'a'
+
+1 errors occured during type checking.

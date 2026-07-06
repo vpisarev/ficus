@@ -1,0 +1,2 @@
+// expect: capital
+exception myError

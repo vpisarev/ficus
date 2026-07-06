@@ -427,12 +427,12 @@ def cmd_unit(args):
 
 def cmd_negative(args):
     from negative import run_negative  # noqa
-    return run_negative(REPO, FICUS, update=args.update_golden)
+    return run_negative(REPO, FICUS, update=args.update_golden, jobs=args.jobs)
 
 
 def cmd_ir(args):
     from ir_snapshot import run_ir  # noqa
-    return run_ir(REPO, FICUS, update=args.update_golden)
+    return run_ir(REPO, FICUS, update=args.update_golden, jobs=args.jobs)
 
 
 def _try(fn, args):

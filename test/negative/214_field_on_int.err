@@ -1,0 +1,3 @@
+214_field_on_int.fx:2:10: error: attempt to treat non-record and non-variant as a record
+
+1 errors occured during type checking.

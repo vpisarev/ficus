@@ -1,0 +1,3 @@
+206_logical_nonbool.fx:2:9: error: arguments of logical operation must be boolean
+
+1 errors occured during type checking.

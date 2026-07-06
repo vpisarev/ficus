@@ -102,4 +102,41 @@ Bugs discovered by the harness are recorded in `docs/found_bugs.md` and fenced
 (quarantine / xfail) rather than fixed — see that file. Example: **FB-001**
 (interface C++ codegen) is fenced via `cpp_xfail` on the `test_all` entry.
 
-<!-- T3 (negative), T4 (ir) and T5 (rand) sections added in later phases. -->
+## T3 — negative (golden diagnostics)
+
+Tiny intentionally-broken programs pin down the compiler's *error* behavior.
+Each case is `test/negative/NNN_short_name.fx` (self-contained, < ~20 lines, one
+intended error) plus a golden `NNN_short_name.err`. The runner invokes
+`bin/ficus -no-c <file>` (parse + typecheck only), expects a nonzero exit, and
+compares normalized stdout+stderr to the golden.
+
+Every case's **first line** is a machine-checked intent marker:
+
+```
+// expect: <substring the diagnostic must contain>
+val y = x + 1          // triggers "the appropriate match for 'x' ... is not found"
+```
+
+The runner fails a case that (a) compiles cleanly, (b) does not contain its
+`expect:` substring (triggered the *wrong* error), or (c) differs from the
+golden. Normalization: absolute paths → basename, ANSI stripped, repeated
+whitespace collapsed; the **test file's own `line:col` is kept** (it's the
+contract) but positions inside *other* files (stdlib candidate dumps) collapse
+to `:L:C` so unrelated stdlib edits don't break these goldens.
+
+### Adding / updating negative cases
+
+```sh
+# 1. write test/negative/NNN_name.fx with a `// expect:` first line
+# 2. generate its golden:
+python3 tools/fxtest/fxtest.py negative --update-golden
+# 3. eyeball the new .err, then commit both files
+python3 tools/fxtest/fxtest.py negative           # must be green
+```
+
+`--update-golden` warns if a case compiles cleanly or misses its `expect:`
+substring. Cases under `test/negative/crashes/` document compiler bugs (see
+`docs/found_bugs.md`): they are fenced — a golden match is `XFAIL`, any change is
+`XPASS` (investigate).
+
+<!-- T4 (ir) and T5 (rand) sections added in later phases. -->
