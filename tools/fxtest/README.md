@@ -96,11 +96,30 @@ get `quarantine = "reason"` and stay *listed* so coverage is auditable. If the
 reason looks like an unintended compiler bug, also add it to
 `docs/found_bugs.md`.
 
+## CI
+
+`.github/workflows/ci.yml` runs the ladder on a matrix of
+ubuntu-latest/gcc, ubuntu-latest/clang and macos-latest/clang (arm64). The
+matrix `CC`/`CXX` env is what ficus uses to compile the generated C/C++
+(`Sys.getenv("CC","cc")`), so each leg genuinely exercises that toolchain.
+
+- **push / PR:** `make` then `fxtest.py all` (unit + negative + ir +
+  corpus O0/O3) — the fast, deterministic core.
+- **nightly (cron):** additionally `corpus --opt O0,O1,O3 --cpp-smoke
+  --openmp-smoke` — the heavier axes kept out of the PR budget.
+
+macOS OpenMP is the bundled `runtime/lib/macos_arm64/libomp.a` (no install);
+Linux installs `libomp-dev` for clang's `-fopenmp`. The build compiler and
+`bin/ficus` are cached, keyed on the compiler/stdlib/runtime source hash. On
+failure the generated C under `build/fxtest/` is uploaded as an artifact.
+
 ## Found bugs
 
 Bugs discovered by the harness are recorded in `docs/found_bugs.md` and fenced
-(quarantine / xfail) rather than fixed — see that file. Example: **FB-001**
-(interface C++ codegen) is fenced via `cpp_xfail` on the `test_all` entry.
+(quarantine / xfail / routed-around-in-suite) rather than fixed — see that file.
+Examples: **FB-001** (interface C++ codegen) is fenced via `cpp_xfail`;
+**FB-002..FB-005** (found while writing T5) are routed around in the suite code.
+Each is invisible to some layers and caught by another — the point of the ladder.
 
 ## T3 — negative (golden diagnostics)
 

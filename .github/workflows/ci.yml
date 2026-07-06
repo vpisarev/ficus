@@ -1,0 +1,97 @@
+name: fxtest CI
+
+# Layered test ladder (tools/fxtest): unit + negative + ir + corpus(O0,O3) on
+# every push/PR; the heavier axes (extra opt levels, -c++ / OpenMP smoke) run
+# nightly to stay within the per-leg time budget.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    - cron: "0 5 * * *"   # nightly, 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      nightly:
+        description: "run the full nightly axes"
+        type: boolean
+        default: false
+
+jobs:
+  fxtest:
+    name: ${{ matrix.os }} / ${{ matrix.cc }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, cc: gcc,   cxx: g++ }
+          - { os: ubuntu-latest, cc: clang, cxx: clang++ }
+          - { os: macos-latest,  cc: clang, cxx: clang++ }   # arm64
+    env:
+      # ficus reads $CC/$CXX to compile the generated C/C++ (Compiler.fx).
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # so `git describe` in the Makefile works
+
+      - name: Install deps
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            # gcc ships libgomp; clang's -fopenmp needs libomp-dev (nightly smoke).
+            sudo apt-get update -qq
+            sudo apt-get install -y libomp-dev
+          fi
+          # macOS: OpenMP (libomp.a) is bundled in runtime/lib/macos_arm64 -- no install.
+
+      - name: Show toolchain
+        run: |
+          "${CC}" --version | head -1
+          python3 --version
+
+      # Cache the bootstrap objects + built compiler; invalidated when the
+      # compiler/runtime/stdlib sources or the toolchain change.
+      - name: Cache ficus build
+        uses: actions/cache@v4
+        with:
+          path: |
+            __fxbuild__/bootstrap
+            bin/ficus
+          key: ficus-${{ matrix.os }}-${{ matrix.cc }}-${{ hashFiles('compiler/**', 'lib/**', 'runtime/**', 'compiler/bootstrap/**') }}
+
+      - name: Build ficus
+        run: make -j"$(getconf _NPROCESSORS_ONLN)"
+
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.nightly }}" = "true" ]; then
+            echo "nightly=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "nightly=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # PR-level: unit + negative + ir + corpus(O0,O3)
+      - name: fxtest all
+        run: python3 tools/fxtest/fxtest.py all --jobs "$(getconf _NPROCESSORS_ONLN)"
+
+      # Nightly-only heavier axes: extra opt level + -c++ / OpenMP smoke.
+      - name: fxtest nightly axes
+        if: steps.mode.outputs.nightly == 'true'
+        run: |
+          python3 tools/fxtest/fxtest.py corpus --opt O0,O1,O3 \
+            --cpp-smoke --openmp-smoke --jobs "$(getconf _NPROCESSORS_ONLN)"
+
+      # On failure, keep the generated C and build dirs for post-mortem.
+      - name: Upload build artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fxtest-build-${{ matrix.os }}-${{ matrix.cc }}
+          path: |
+            build/fxtest
+          if-no-files-found: ignore
+          retention-days: 7
