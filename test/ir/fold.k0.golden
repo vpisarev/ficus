@@ -1,0 +1,7 @@
+var __fold_result__@g0: int = 0
+@temp val v@g1: int [] = [ 1, 2, 3, 4, 5 ]
+for x@g2 <- v@g1 {
+   @temp val acc@g3: int = __fold_result__@g0; @temp val v@g4: int = acc@g3 + x@g2; __fold_result__@g0 = v@g4
+}
+@global val fold.s@g5: int = __fold_result__@g0
+println@g6(fold.s@g5)

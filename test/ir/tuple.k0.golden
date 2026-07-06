@@ -1,0 +1,8 @@
+@global val tuple.t@g0: (int, string, double) = (1, "two", 3.0)
+@temp @global val tuple.v@g1: (int, string, double) = tuple.t@g0
+@global val tuple.a@g2: int = tuple.v@g1.0
+@global val tuple.b@g3: string = tuple.v@g1.1
+@global val tuple.c@g4: double = tuple.v@g1.2
+println@g5(tuple.a@g2)
+println@g6(tuple.b@g3)
+println@g7(tuple.c@g4)

@@ -1,0 +1,11 @@
+type record.pt_t@g0 = record.pt_t@g0 {x: int, y: int}
+
+@global val record.p@g1: record.pt_t@g0 =
+   __record__ record.pt_t@g0 {
+      x = 3,
+      y = 4
+   }
+@temp val v@g2: int = record.p@g1.x
+@temp val v@g3: int = record.p@g1.y
+@temp val v@g4: int = v@g2 + v@g3
+println@g5(v@g4)

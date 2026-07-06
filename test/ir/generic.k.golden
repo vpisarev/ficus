@@ -1,0 +1,4 @@
+_fx_F5printv1i(42)
+_fx_F12print_stringv1S("\n")
+_fx_F12print_stringv1S("hello")
+_fx_F12print_stringv1S("\n")

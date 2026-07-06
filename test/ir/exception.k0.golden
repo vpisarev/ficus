@@ -1,0 +1,24 @@
+@global var exception.MyErr_tag@g0: int32 = 0
+exception exception.MyErr@g1: int
+fun exception.make_MyErr@g2(arg0@g3: int): exn = Constructor(exn(MyErr@g1))
+
+fun exception.safe@g4(x@g5: int): int
+{
+    try {
+       @temp val v@g6: bool = x@g5 < 0
+       if v@g6 { @temp val v@g7: exn = exception.MyErr@g1(x@g5); throw v@g7 } else { x@g5 }
+    } catch {
+       val exn@g8: exn = __intrin_pop_exn__()
+       @temp val tag@g9: int32 = __intrin_variant_tag__(exn@g8)
+       if tag@g9 == exception.MyErr_tag@g0 {
+          @temp val e@g10: int = __intrin_variant_case__(exn@g8, exception.MyErr@g1); -e@g10
+       }
+       else {
+          rethrow exn@g8
+       }
+
+    }
+}
+
+@temp val v@g11: int = exception.safe@g4(-7)
+println@g12(v@g11)

@@ -1,0 +1,12 @@
+@@simple type _fx_R12record__pt_t = _fx_R12record__pt_t {x: int, y: int}
+
+@global val _fx_g9record__p: _fx_R12record__pt_t =
+   __record__ _fx_R12record__pt_t {
+      x = 3,
+      y = 4
+   }
+@temp val v@g0: int = _fx_g9record__p.0
+@temp val v@g1: int = _fx_g9record__p.1
+@temp val v@g2: int = v@g0 + v@g1
+_fx_F5printv1i(v@g2)
+_fx_F12print_stringv1S("\n")

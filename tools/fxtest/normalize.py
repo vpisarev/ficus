@@ -107,6 +107,67 @@ def _isclose(x: float, y: float, rtol: float, atol: float) -> bool:
     return abs(x - y) <= atol + rtol * abs(y)
 
 
+# --- IR snapshot normalization (T4) ------------------------------------------
+
+_IR_GENSYM_RE = re.compile(r"@(\d+)")
+
+
+def ir_extract_module(text: str, stem: str):
+    """Return only the dump section for module `stem` (the file under test).
+
+    The compiler dumps every (auto-imported) module; we keep only the last
+    section belonging to our test file so unrelated stdlib output is excluded.
+    Handles both the -pr-ast header (`.../<stem>.fx: <deps>` + `---` rule) and
+    the -pr-k0/-pr-k marker (`///////// module <stem>: N expressions /////////`).
+    """
+    lines = text.replace("\r\n", "\n").split("\n")
+
+    marker = f"///////// module {stem}:"
+    idxs = [i for i, l in enumerate(lines) if l.startswith(marker)]
+    if idxs:
+        start = idxs[-1] + 1
+        end = len(lines)
+        for j in range(start, len(lines)):
+            if lines[j].startswith("///////// module "):
+                end = j
+                break
+        return "\n".join(lines[start:end]).strip("\n")
+
+    # -pr-ast: the module-under-test is the LAST `<path>/<stem>.fx: <deps>`
+    # header; its body runs to EOF (a `---` rule line follows the header).
+    hdr_re = re.compile(r"(^|/)" + re.escape(stem) + r"\.fx: ")
+    hdrs = [i for i, l in enumerate(lines) if hdr_re.search(l)]
+    if hdrs:
+        start = hdrs[-1] + 1
+        if start < len(lines) and set(lines[start].strip()) == {"-"}:
+            start += 1
+        return "\n".join(lines[start:]).strip("\n")
+
+    return text.strip("\n")
+
+
+def normalize_ir(text: str, stem: str) -> str:
+    """Extract the module-under-test and canonicalize gensym counters.
+
+    Generated ids `name@1234` embed a global counter that shifts with ANY
+    unrelated change.  We renumber the numeric parts in order of first
+    appearance (`@g0, @g1, ...`) so a snapshot depends only on the *structure*
+    of the program under test, not on absolute counter values.
+    """
+    body = ir_extract_module(text, stem)
+    body = strip_ansi(body)
+    mapping = {}
+
+    def repl(m):
+        n = m.group(1)
+        if n not in mapping:
+            mapping[n] = f"g{len(mapping)}"
+        return "@" + mapping[n]
+
+    body = _IR_GENSYM_RE.sub(repl, body)
+    return "\n".join(ln.rstrip() for ln in body.split("\n")).strip("\n")
+
+
 def float_compare(a: str, b: str, rtol: float, atol: float):
     """Compare two normalized outputs numerically.
 

@@ -1,0 +1,26 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+/*match_variant.shape_t@g0*/type
+   match_variant.shape_t@g0 =
+   | match_variant.Circle@g1:  double
+   | match_variant.Square@g2:  double
+
+
+fun match_variant.area@g3(match_variant.s@g4: match_variant.shape_t@g0): (match_variant.shape_t@g0 -> double) =
+{
+   match <match_variant.shape_t@g0>match_variant.s@g4 {
+       | match_variant.Circle@g1(match_variant.r@g5) =>
+         ((3.14159 * <double>match_variant.r@g5) * <double>match_variant.r@g5)
+         | match_variant.Square@g2(match_variant.a@g6) => (<double>match_variant.a@g6 * <double>match_variant.a@g6)}
+}
+
+<(double ->
+    void)>Builtins.println@g7(<(match_variant.shape_t@g0 ->
+                                   double)>match_variant.area@g3(<(double ->
+                                                                     match_variant.shape_t@g0)>match_variant.Circle@g1(2.0)))

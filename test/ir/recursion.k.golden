@@ -1,0 +1,17 @@
+@recursive fun _fx_M9recursionFM3fibi1i(n@g0: int): int
+{
+    @temp val v@g1: bool = n@g0 < 2
+    if v@g1 {
+       n@g0
+    } else {
+       @temp val v@g2: int = n@g0 - 1
+       @temp val v@g3: int = _fx_M9recursionFM3fibi1i(v@g2)
+       @temp val v@g4: int = n@g0 - 2
+       @temp val v@g5: int = _fx_M9recursionFM3fibi1i(v@g4)
+       v@g3 + v@g5
+    }
+}
+
+@temp val v@g6: int = _fx_M9recursionFM3fibi1i(10)
+_fx_F5printv1i(v@g6)
+_fx_F12print_stringv1S("\n")

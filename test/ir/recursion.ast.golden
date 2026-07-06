@@ -1,0 +1,18 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+fun recursion.fib@g0(recursion.n@g1: int): (int -> int) =
+{
+   if (<int>recursion.n@g1 < 2) { <int>recursion.n@g1 } else
+      {
+         (<(int -> int)>recursion.fib@g0((<int>recursion.n@g1 - 1)) +
+            <(int -> int)>recursion.fib@g0((<int>recursion.n@g1 - 2)))
+      }
+}
+
+<(int -> void)>Builtins.println@g2(<(int -> int)>recursion.fib@g0(10))

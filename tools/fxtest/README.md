@@ -139,4 +139,49 @@ substring. Cases under `test/negative/crashes/` document compiler bugs (see
 `docs/found_bugs.md`): they are fenced — a golden match is `XFAIL`, any change is
 `XPASS` (investigate).
 
-<!-- T4 (ir) and T5 (rand) sections added in later phases. -->
+## T4 — IR snapshots
+
+Small focused programs in `test/ir/` (one language feature each) are dumped at
+three compiler stages and compared to goldens:
+
+| stage | invocation | golden |
+|-------|------------|--------|
+| typechecked AST | `-no-c -pr-ast` | `<name>.ast.golden` |
+| initial K-form  | `-no-c -pr-k0`  | `<name>.k0.golden` |
+| optimized K-form| `-no-c -O3 -pr-k` | `<name>.k.golden` |
+
+(`-pr-k` works with `-no-c` — the optimizer runs before C generation; verified
+empirically.) These are the proof, during a later syntax reform, that a
+pure-syntax change is semantics-preserving.
+
+**Normalization is the crux.** The compiler dumps *every* auto-imported module;
+only the section for the file-under-test (always last) is kept. Generated ids
+`name@1234` embed a global counter that shifts on any unrelated edit, so the
+numeric parts are renumbered by first appearance (`@g0, @g1, ...`) in
+`normalize.ir_extract_module` / `normalize_ir`. The optimized `-pr-k` mangled
+names (`_fx_F12print_stringv1S`) are length-prefixed, not counter-based, so they
+are already stable.
+
+**Validated:** appending unused functions to an unrelated module (`lib/Math.fx`)
+leaves all 57 snapshots byte-identical — the renumbering makes snapshots depend
+only on the structure of the program under test. Re-run this check after
+changing the normalizer:
+
+```sh
+# append a dummy fn to lib/Math.fx, then:
+python3 tools/fxtest/fxtest.py ir --update-golden   # (to a scratch copy) must not diff
+```
+
+Keep the suite small (15–25 programs) — IR snapshots are high-maintenance and
+earn their keep only for core constructs.
+
+### Adding / updating IR snapshots
+
+```sh
+# 1. write a small test/ir/<feature>.fx (10-30 lines, one construct)
+python3 tools/fxtest/fxtest.py ir --update-golden    # writes .ast/.k0/.k goldens
+# 2. eyeball the goldens, then commit the .fx + its 3 .golden files
+python3 tools/fxtest/fxtest.py ir                     # must be green
+```
+
+<!-- T5 (rand) section added in P4. -->

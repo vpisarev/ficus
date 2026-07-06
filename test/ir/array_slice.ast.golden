@@ -1,0 +1,11 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+val array_slice.a@g0: int [] = [1, 2, 3, 4, 5, 6]
+val array_slice.b@g1: int [] = <int []>array_slice.a@g0[(1:5:1)]
+<(int [] -> void)>Builtins.println@g2(<int []>array_slice.b@g1)

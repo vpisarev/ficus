@@ -1,0 +1,24 @@
+type match_variant.shape_t@g0 = | match_variant.Circle@g1: double | match_variant.Square@g2: double
+
+fun match_variant.Circle@g3(arg0@g4: double): match_variant.shape_t@g0 = Constructor(variant(1))
+
+fun match_variant.Square@g5(arg0@g6: double): match_variant.shape_t@g0 = Constructor(variant(2))
+
+fun match_variant.area@g7(s@g8: match_variant.shape_t@g0): double
+{
+    @temp val tag@g9: int32 = __intrin_variant_tag__(s@g8)
+    if tag@g9 == 1 {
+       @temp val r@g10: double = __intrin_variant_case__(s@g8, 1); @temp val v@g11: double = 3.14159 * r@g10; v@g11 * r@g10
+    }
+    else if tag@g9 == 2 {
+       @temp val a@g12: double = __intrin_variant_case__(s@g8, 2); a@g12 * a@g12
+    }
+    else {
+       throw NoMatchError@g13
+    }
+
+}
+
+@temp val v@g14: match_variant.shape_t@g0 = match_variant.Circle@g3(2.0)
+@temp val v@g15: double = match_variant.area@g7(v@g14)
+println@g16(v@g15)

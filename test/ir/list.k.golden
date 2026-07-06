@@ -1,0 +1,23 @@
+@@complex type _fx_Li = int list
+
+@recursive fun _fx_M4listFM3sumi1Li(l@g0: _fx_Li): int
+{
+    if l@g0 != null {
+       @tempref val rest@g1: _fx_Li = __intrin_tl__(l@g0)
+       @temp val a@g2: int = __intrin_hd__(l@g0)
+       @temp val v@g3: int = _fx_M4listFM3sumi1Li(rest@g1)
+       a@g2 + v@g3
+    }
+    else {
+       0
+    }
+
+}
+
+@temp val v@g4: _fx_Li = 4 :: null
+@temp val v@g5: _fx_Li = 3 :: v@g4
+@temp val v@g6: _fx_Li = 2 :: v@g5
+@temp val v@g7: _fx_Li = 1 :: v@g6
+@temp val v@g8: int = _fx_M4listFM3sumi1Li(v@g7)
+_fx_F5printv1i(v@g8)
+_fx_F12print_stringv1S("\n")

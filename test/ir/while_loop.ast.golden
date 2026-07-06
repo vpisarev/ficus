@@ -1,0 +1,16 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+var while_loop.i@g0: int = 0
+var while_loop.s@g1: int = 0
+while (<int>while_loop.i@g0 < 5)
+   {
+      <int>while_loop.s@g1 = (<int>while_loop.s@g1 + <int>while_loop.i@g0)
+      <int>while_loop.i@g0 = (<int>while_loop.i@g0 + 1)
+   }
+<(int -> void)>Builtins.println@g2(<int>while_loop.s@g1)

@@ -1,0 +1,12 @@
+@@complex type _fx_ri = int ref
+
+@global val _fx_g10ref_mut__r: _fx_ri = ref 0
+@tempref var v@g0: int = *_fx_g10ref_mut__r
+v@g0 = 5
+@temp val v@g1: int = *_fx_g10ref_mut__r
+@temp val v@g2: int = v@g1 + 3
+@tempref var v@g3: int = *_fx_g10ref_mut__r
+v@g3 = v@g2
+@temp val v@g4: int = *_fx_g10ref_mut__r
+_fx_F5printv1i(v@g4)
+_fx_F12print_stringv1S("\n")

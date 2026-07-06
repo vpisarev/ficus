@@ -1,0 +1,8 @@
+@global val _fx_g14array_slice__a: int [] = [ 1, 2, 3, 4, 5, 6 ]
+@global val _fx_g14array_slice__b: int [] = _fx_g14array_slice__a[1:5]
+_fx_F12print_stringv1S("[")
+for x@g0@i@g1 <- _fx_g14array_slice__b {
+   @temp val v@g2: bool = i@g1 > 0; if v@g2 { _fx_F12print_stringv1S(", ") }; _fx_F5printv1i(x@g0)
+}
+_fx_F12print_stringv1S("]")
+_fx_F12print_stringv1S("\n")

@@ -1,0 +1,12 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+val interp.n@g0: int = 42
+<(string ->
+    void)>Builtins.println@g1(((("n=" + <(int -> string)>Builtins.string@g2(<int>interp.n@g0)) + ", square=") +
+                                  <(int -> string)>Builtins.string@g2((<int>interp.n@g0 * <int>interp.n@g0))))

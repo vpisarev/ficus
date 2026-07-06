@@ -1,0 +1,5 @@
+@temp val v@g0: string = _fx_F6stringS1i(42)
+@temp val v@g1: string = _fx_F6stringS1i(1764)
+@temp val v@g2: string = __intrin_str_concat__("n=", v@g0, ", square=", v@g1)
+_fx_F12print_stringv1S(v@g2)
+_fx_F12print_stringv1S("\n")

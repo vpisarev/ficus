@@ -1,0 +1,10 @@
+@global var _fx_g13while_loop__i: int = 0
+@global var _fx_g13while_loop__s: int = 0
+while _fx_g13while_loop__i < 5 {
+   @temp val v@g0: int = _fx_g13while_loop__s + _fx_g13while_loop__i
+   _fx_g13while_loop__s = v@g0
+   @temp val v@g1: int = _fx_g13while_loop__i + 1
+   _fx_g13while_loop__i = v@g1
+}
+_fx_F5printv1i(_fx_g13while_loop__s)
+_fx_F12print_stringv1S("\n")

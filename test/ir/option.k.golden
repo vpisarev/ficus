@@ -1,0 +1,11 @@
+@@simple @@option_like @@instance type _fx_Nt6option1i = | None@g0 | Some@g1: int
+
+@nothrow @instance fun _fx_M6optionFM4SomeNt6option1i1i(arg0@g2: int): _fx_Nt6option1i = Constructor(variant(2))
+
+@temp val v@g3: _fx_Nt6option1i = _fx_M6optionFM4SomeNt6option1i1i(5)
+@temp val tag@g4: int32 = __intrin_variant_tag__(v@g3)
+@temp val v@g5: int = if tag@g4 == 2 { __intrin_variant_case__(v@g3, 2) } else { 0 }
+_fx_F5printv1i(v@g5)
+_fx_F12print_stringv1S("\n")
+_fx_F5printv1i(0)
+_fx_F12print_stringv1S("\n")

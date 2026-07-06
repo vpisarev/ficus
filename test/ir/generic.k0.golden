@@ -1,0 +1,8 @@
+@instance fun generic.ident@g0(x@g1: string): string { x@g1 }
+
+@instance fun generic.ident@g2(x@g3: int): int { x@g3 }
+
+@temp val v@g4: int = generic.ident@g2(42)
+println@g5(v@g4)
+@temp val v@g6: string = generic.ident@g0("hello")
+println@g7(v@g6)

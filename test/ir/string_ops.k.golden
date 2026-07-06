@@ -1,0 +1,5 @@
+@temp val v@g0: int = __intrin_size__("hello")
+_fx_F5printv1i(v@g0)
+_fx_F12print_stringv1S("\n")
+_fx_F12print_stringv1S("hello world")
+_fx_F12print_stringv1S("\n")

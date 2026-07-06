@@ -1,0 +1,12 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+/*record.pt_t@g0*/@record type record.pt_t@g0 = | record.pt_t@g1:  { x: int; y: int }
+
+val record.p@g2: record.pt_t@g0 = <({...} -> record.pt_t@g0)>record.pt_t@g1 {x=3, y=4}
+<(int -> void)>Builtins.println@g3((<record.pt_t@g0>record.p@g2.x + <record.pt_t@g0>record.p@g2.y))

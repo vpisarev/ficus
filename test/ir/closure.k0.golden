@@ -1,0 +1,10 @@
+fun closure.make_adder@g0(n@g1: int): (int -> int)
+{
+    @private fun closure.add@g2(x@g3: int): int { x@g3 + n@g1 }
+
+    closure.add@g2
+}
+
+@global val closure.add10@g4: (int -> int) = closure.make_adder@g0(10)
+@temp val v@g5: int = closure.add10@g4(5)
+println@g6(v@g5)

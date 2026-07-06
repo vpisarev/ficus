@@ -1,0 +1,7 @@
+@global val _fx_g16comprehension__a: int [] = [ for i@g0 <- 0:5 { i@g0 * i@g0 }]
+_fx_F12print_stringv1S("[")
+for x@g1@i@g2 <- _fx_g16comprehension__a {
+   @temp val v@g3: bool = i@g2 > 0; if v@g3 { _fx_F12print_stringv1S(", ") }; _fx_F5printv1i(x@g1)
+}
+_fx_F12print_stringv1S("]")
+_fx_F12print_stringv1S("\n")
