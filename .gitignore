@@ -29,6 +29,10 @@ _build/
 # ficus build directory
 __fxbuild__/
 
+# fxtest harness build/run directory
+build/
+result.pgm
+
 # vscode config files etc.
 .vscode/
 
