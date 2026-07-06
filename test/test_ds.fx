@@ -177,3 +177,47 @@ TEST("ds.hashmap", fun() {
     EXPECT_EQ(`wcounter.find_opt("doves").value_or(-1)`, 11)
     EXPECT_EQ(`wcounter.find_opt("silver").value_or(-1)`, -1)
 })
+
+// Regression test for hashing of variable tuples '(...)' and records '{...}'
+// (Builtins.hash(x: (...)) / hash(x: {...})): equal keys must hash equally, and
+// tuple/record keys must work end-to-end as hashset/hashmap keys.
+TEST("ds.tuple_hash", fun()
+{
+    type point_t = {x: int; y: int}
+
+    // hashing is deterministic: equal keys (built differently) hash equally
+    EXPECT_EQ(`hash((3, 4))`, `hash((1+2, 2*2))`)
+    EXPECT_EQ(`hash((1, "ab", 2.5))`, `hash((1, "a"+"b", 2.5))`)
+    EXPECT_EQ(`hash(((1, 2), 3))`, `hash(((1, 2), 3))`)
+    EXPECT_EQ(`hash(point_t {x=1, y=2})`, `hash(point_t {x=1, y=2})`)
+
+    // tuples as hashset keys
+    val s = Hashset.empty(16, (0, 0))
+    for i <- 0:64 {s.add((i, i*i))}
+    EXPECT_EQ(`s.size()`, 64)
+    EXPECT_EQ(`s.mem((10, 100)) && s.mem((0, 0)) && s.mem((63, 63*63))`, true)
+    EXPECT_EQ(`s.mem((10, 99)) || s.mem((64, 64*64))`, false)
+
+    // tuples as hashmap keys: every key round-trips, absent lookups miss
+    val m = Hashmap.empty(16, (0, 0), -1)
+    for i <- 0:200 {m.add((i, i+1), i*1000)}
+    val nbad = fold nbad = 0 for i <- 0:200 {
+        nbad + (if m.find_opt((i, i+1)).value_or(-1) == i*1000 {0} else {1})
+    }
+    EXPECT_EQ(`nbad`, 0)
+    EXPECT_EQ(`m.size()`, 200)
+    EXPECT_EQ(`m.find_opt((500, 501)).value_or(-1)`, -1)
+
+    // nested tuple keys
+    val mn = Hashmap.empty(8, ((0, 0), 0), false)
+    mn.add(((1, 2), 3), true)
+    EXPECT_EQ(`mn.find_opt(((1, 2), 3)).value_or(false)`, true)
+    EXPECT_EQ(`mn.find_opt(((1, 2), 4)).value_or(false)`, false)
+
+    // record ('{...}') keys exercise hash(x: {...})
+    val mr = Hashmap.empty(8, (point_t {x=0, y=0}), -1)
+    mr.add(point_t {x=1, y=2}, 42)
+    mr.add(point_t {x=3, y=4}, 99)
+    EXPECT_EQ(`mr.find_opt(point_t {x=1, y=2}).value_or(-1)`, 42)
+    EXPECT_EQ(`mr.find_opt(point_t {x=1, y=3}).value_or(-1)`, -1)
+})
