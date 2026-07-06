@@ -104,33 +104,21 @@ is the whole point of the ladder.
   draws `hi` from `[lo+1, n]` so strided slices are never empty; strided slicing
   is therefore still exercised on non-degenerate ranges.
 
-## FB-007  generic `complex` operators break overload resolution / type inference
-- summary: the `+ - * /` operators for the `complex` class in `lib/Complex.fx`
-  (lines 15-44) are commented out — enabling them breaks the typechecker, so
-  complex arithmetic is unavailable and the complex demo in `examples/fst.fx`
-  (lines 125-127) is commented too. Vadim's "probably a typechecker problem".
-- three distinct symptoms, in order of depth:
-  1. **Missing generic constructor.** The operators call `complex(a+b.re, b.im)`,
-     but only `complex(float,float)` / `complex(double,double)` exist (no generic
-     `complex('t,'t)`). So uncommenting them + `fst.fx` fails with:
-     `the appropriate match for 'complex' of type '((int, float) -> ...)' is not
-     found` (from `1 + 1.fi`; `int + 't` is typed `int`, giving `complex(int,..)`).
-  2. **Operator mis-resolution.** Adding `fun complex(r:'t, i:'t) = complex{re=r,
-     im=i}` fixes (1), but `c * 2` (a `float complex` times an int) then resolves
-     `__mul__` to the **array** multiply (`Array.fx:341: unsupported iteration
-     domain`) instead of `operator * (a:'t complex, b:int)`.
-  3. **Inference pollution of unrelated code (the "interferes with NN" reason).**
-     Typechecking an NN entry (`examples/vision_classify.fx`) then fails in
-     `NN/FromOnnx.fx:1018`: a `nnop_t list` is inferred as
-     `nnop_t list Complex.complex` — the overly-generic complex candidate
-     spuriously wraps the list — so `.rev()` no longer matches.
-- root: overload resolution / unification lets the very generic complex operator
-  and constructor candidates (`'t`, `'t complex`, `'t2 complex`) match too
-  eagerly, and `int + 't` inside a generic body doesn't resolve/coerce. Needs
-  typechecker work, not a library tweak.
-- config: -no-c typecheck already fails, all platforms.
-- status: fenced by keeping both blocks commented (`lib/Complex.fx:15-44`,
-  `examples/fst.fx:125-127`); recorded here per commit 786b446's note.
+## FB-005  Vector `.wrap[-n]` reads one past the end (heap over-read)
+- symptom: for a `Vector` of length n, `v.wrap[idx]` with `idx == -n` computes
+  the wrapped index as `n` (off by one at the boundary) and reads `buf[n]` --
+  one element past the end -- returning adjacent heap garbage instead of the
+  wrapped element `v[0]`. The result is therefore non-deterministic: in a clean
+  process it often reads 0, but under heap load it returns arbitrary values.
+  Every other index in `[-n+1, 2n-1]` wraps correctly.
+- repro: hard to see in isolation (clean adjacent memory reads as 0); reliably
+  visible in `test/rand/test_rand_array.fx rand.array.border` when `idx == -n`
+  (failures move as surrounding heap state changes -- the tell-tale of an
+  over-read).
+- config: -O0/-O3, C backend, macOS/arm64. An out-of-bounds read, so ASan would
+  flag it; classic silent UB otherwise.
+- status: routed around by drawing `idx` from `[-(n-1), 2n-1]` in the border
+  test, excluding the exact `-n` boundary; every other wrap index is validated.
 
 ## FB-006  nested array comprehension (array-of-arrays) -> broken C on indexing
 - symptom: a nested comprehension whose body is itself a comprehension,
@@ -160,18 +148,59 @@ is the whole point of the ladder.
   comprehension `[for i for j {..}]` when the data is rectangular, or build
   array-of-arrays from literals / a list comprehension `[:: for i {[for j {..}]}]`.
 
-## FB-005  Vector `.wrap[-n]` reads one past the end (heap over-read)
-- symptom: for a `Vector` of length n, `v.wrap[idx]` with `idx == -n` computes
-  the wrapped index as `n` (off by one at the boundary) and reads `buf[n]` --
-  one element past the end -- returning adjacent heap garbage instead of the
-  wrapped element `v[0]`. The result is therefore non-deterministic: in a clean
-  process it often reads 0, but under heap load it returns arbitrary values.
-  Every other index in `[-n+1, 2n-1]` wraps correctly.
-- repro: hard to see in isolation (clean adjacent memory reads as 0); reliably
-  visible in `test/rand/test_rand_array.fx rand.array.border` when `idx == -n`
-  (failures move as surrounding heap state changes -- the tell-tale of an
-  over-read).
-- config: -O0/-O3, C backend, macOS/arm64. An out-of-bounds read, so ASan would
-  flag it; classic silent UB otherwise.
-- status: routed around by drawing `idx` from `[-(n-1), 2n-1]` in the border
-  test, excluding the exact `-n` boundary; every other wrap index is validated.
+## FB-007  generic `complex` operators break overload resolution / type inference
+- summary: the `+ - * /` operators for the `complex` class in `lib/Complex.fx`
+  (lines 15-44) are commented out — enabling them breaks the typechecker, so
+  complex arithmetic is unavailable and the complex demo in `examples/fst.fx`
+  (lines 125-127) is commented too. Vadim's "probably a typechecker problem".
+- three distinct symptoms, in order of depth:
+  1. **Missing generic constructor.** The operators call `complex(a+b.re, b.im)`,
+     but only `complex(float,float)` / `complex(double,double)` exist (no generic
+     `complex('t,'t)`). So uncommenting them + `fst.fx` fails with:
+     `the appropriate match for 'complex' of type '((int, float) -> ...)' is not
+     found` (from `1 + 1.fi`; `int + 't` is typed `int`, giving `complex(int,..)`).
+  2. **Operator mis-resolution.** Adding `fun complex(r:'t, i:'t) = complex{re=r,
+     im=i}` fixes (1), but `c * 2` (a `float complex` times an int) then resolves
+     `__mul__` to the **array** multiply (`Array.fx:341: unsupported iteration
+     domain`) instead of `operator * (a:'t complex, b:int)`.
+  3. **Inference pollution of unrelated code (the "interferes with NN" reason).**
+     Typechecking an NN entry (`examples/vision_classify.fx`) then fails in
+     `NN/FromOnnx.fx:1018`: a `nnop_t list` is inferred as
+     `nnop_t list Complex.complex` — the overly-generic complex candidate
+     spuriously wraps the list — so `.rev()` no longer matches.
+- root: overload resolution / unification lets the very generic complex operator
+  and constructor candidates (`'t`, `'t complex`, `'t2 complex`) match too
+  eagerly, and `int + 't` inside a generic body doesn't resolve/coerce. Needs
+  typechecker work, not a library tweak.
+- config: -no-c typecheck already fails, all platforms.
+- status: fenced by keeping both blocks commented (`lib/Complex.fx:15-44`,
+  `examples/fst.fx:125-127`); recorded here per commit 786b446's note.
+
+## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
+- symptom (Vadim, seen several times over development, not a bit-flip): the
+  compiler emits a **different `.c`** for a `.fx` module whose own source and
+  dependencies did not change — variables renamed, declarations/functions
+  reordered. Persistent annoyance; not yet reproduced on demand.
+- established: **pure recompilation is fully deterministic** (built
+  `compiler/fx.fx` 4x -> byte-identical `.c`), so it is NOT ASLR/random. It only
+  shows when *some* module's **K-form** changes (comment/formatting edits do not
+  trigger it). An *unused* added function changes no `.c` (dead-code-eliminated),
+  so a repro needs a change that survives DCE and shifts real symbol ids.
+- likely mechanism: a global symbol-id counter (`name@NNN`, shared across all
+  modules) feeding **order-dependent C-name generation** in
+  `compiler/K_mangle.fx`:
+    * `make_unique_(idx)` (~L100): duplicate mangled names get `_1`/`_2` suffixes
+      by processing order -> a flipped order swaps them (= renamed variables);
+    * `curr_km_idx` (~L265, `gen_idk`): type-name counter (`_fx_g<N>`) numbered in
+      mangling order;
+    * any decl-emission order taken from iterating a Hashmap/Hashset keyed on ids
+      would reorder when ids shift (check `C_gen_fdecls.fx` / `C_gen_code.fx`).
+- historical trace: commit `11034d4` "updated precompiled ficus compiler" changed
+  `compiler/bootstrap/K_mangle.c` (+ Options/String/Sys) with NO `.fx` change.
+- config: any; a codegen-stability issue, not a miscompilation (the emitted code
+  is presumably still correct, just churns needlessly -> noisy bootstrap diffs).
+- status: NOT fenced (no repro yet). Hunt during compiler fixes (esp. FB-006
+  nested comprehensions and FB-007 typechecker work): watch regenerated
+  `bootstrap/*.c` diffs, and try a used/DCE-surviving change in an early module
+  then diff an unrelated module's `.c`. Details in the agent memory note
+  `ficus-nondeterministic-codegen`.
