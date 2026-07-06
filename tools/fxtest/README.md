@@ -184,4 +184,34 @@ python3 tools/fxtest/fxtest.py ir --update-golden    # writes .ast/.k0/.k golden
 python3 tools/fxtest/fxtest.py ir                     # must be green
 ```
 
-<!-- T5 (rand) section added in P4. -->
+## T5 — deterministic randomized suites
+
+`test/rand/` runs random *data* through fixed code paths and checks the result
+against a straightforward reference implementation. These are ordinary UTest
+modules wired into `test_all.fx`, so they also ride the T2 differential: the
+reference and the optimized comprehension must agree at every optimization
+level.
+
+- `RandUtil.fx` — splitmix64 generator (pure Ficus; see FB-002 workaround),
+  random array/string/list builders, and reproducible per-case seeding.
+- `test_rand_arith.fx` — integer wraparound / div-mod / shifts / saturating
+  casts / float↔int / NaN-Inf vs scalar references.
+- `test_rand_array.fx` — comprehensions, zip, 2D, slicing, border access vs
+  handwritten loops.
+- `test_rand_str.fx` — string slice / find / split-join / concat / Unicode
+  length vs naive references.
+
+**Reproducibility.** The base seed is `FXTEST_SEED` (default a fixed constant),
+and each case derives `case_seed = splitmix64(base ^ hash(test_name) ^ index)`.
+Every failure prints its per-case seed and index; replay it directly with
+`mk_rng(seed)`. Same `FXTEST_SEED` ⇒ identical run; change it to explore more of
+the input space.
+
+```sh
+FXTEST_SEED=999 bin/ficus -run test/test_all.fx -- -f "rand.*"
+```
+
+Case counts are tuned so T5 adds only a couple of seconds to `test_all.fx`.
+Several compiler bugs (FB-002..FB-005) were found while writing these suites and
+are routed around in the suite code with a comment + a `docs/found_bugs.md`
+entry.
