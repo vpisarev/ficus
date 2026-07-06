@@ -104,6 +104,62 @@ is the whole point of the ladder.
   draws `hi` from `[lo+1, n]` so strided slices are never empty; strided slicing
   is therefore still exercised on non-degenerate ranges.
 
+## FB-007  generic `complex` operators break overload resolution / type inference
+- summary: the `+ - * /` operators for the `complex` class in `lib/Complex.fx`
+  (lines 15-44) are commented out — enabling them breaks the typechecker, so
+  complex arithmetic is unavailable and the complex demo in `examples/fst.fx`
+  (lines 125-127) is commented too. Vadim's "probably a typechecker problem".
+- three distinct symptoms, in order of depth:
+  1. **Missing generic constructor.** The operators call `complex(a+b.re, b.im)`,
+     but only `complex(float,float)` / `complex(double,double)` exist (no generic
+     `complex('t,'t)`). So uncommenting them + `fst.fx` fails with:
+     `the appropriate match for 'complex' of type '((int, float) -> ...)' is not
+     found` (from `1 + 1.fi`; `int + 't` is typed `int`, giving `complex(int,..)`).
+  2. **Operator mis-resolution.** Adding `fun complex(r:'t, i:'t) = complex{re=r,
+     im=i}` fixes (1), but `c * 2` (a `float complex` times an int) then resolves
+     `__mul__` to the **array** multiply (`Array.fx:341: unsupported iteration
+     domain`) instead of `operator * (a:'t complex, b:int)`.
+  3. **Inference pollution of unrelated code (the "interferes with NN" reason).**
+     Typechecking an NN entry (`examples/vision_classify.fx`) then fails in
+     `NN/FromOnnx.fx:1018`: a `nnop_t list` is inferred as
+     `nnop_t list Complex.complex` — the overly-generic complex candidate
+     spuriously wraps the list — so `.rev()` no longer matches.
+- root: overload resolution / unification lets the very generic complex operator
+  and constructor candidates (`'t`, `'t complex`, `'t2 complex`) match too
+  eagerly, and `int + 't` inside a generic body doesn't resolve/coerce. Needs
+  typechecker work, not a library tweak.
+- config: -no-c typecheck already fails, all platforms.
+- status: fenced by keeping both blocks commented (`lib/Complex.fx:15-44`,
+  `examples/fst.fx:125-127`); recorded here per commit 786b446's note.
+
+## FB-006  nested array comprehension (array-of-arrays) -> broken C on indexing
+- symptom: a nested comprehension whose body is itself a comprehension,
+  `[for i {[for j {..}]}]`, has type `'t [] []` (array of arrays). Building it is
+  fine, but **indexing the result** emits malformed C and fails to compile:
+  `error: expected expression`. The generated element-copy reads from a literal
+  `{0}` instead of the inner array, e.g.
+  `fx_copy_arr(&{0}, dstptr_0);`  // should be `&arr_0` (the inner comp result)
+  -- so even if it compiled, each outer element would be copied from an *empty*
+  array (wrong result). The same `'t [] []` built from an **array literal**
+  (`[r0, r1]`) indexes correctly -- the bug is specific to the comprehension
+  producing the array-of-arrays.
+- repro:
+  ```
+  val aa = [for i <- 0:2 {[for j <- 0:2 {i + j}]}]   // int [] []
+  println(aa[0][0])          // C error: fx_copy_arr(&{0}, ...) -> expected expression
+  // ok: val aa = [[0,1],[1,2]]; println(aa[0][0])   // literal array-of-arrays
+  ```
+- config: -O0 and -O3, C backend, macOS/clang. Codegen wires the inner
+  comprehension result to `{0}` instead of its array variable. (An unused such
+  `aa` compiles only because dead-code elimination drops it.)
+- discovered: 2026-07-06, searching for a remembered nested-comprehension
+  miscompilation (Vadim). NOT the same as the commented-out
+  `NN.Quantized.globalAvgPool` test, whose `[for n for c {..scalar..}]` is a
+  rectangular 2D comprehension (`uint8 [,]`) and compiles fine.
+- status: not yet fenced by a test. Route-arounds: use a rectangular 2D
+  comprehension `[for i for j {..}]` when the data is rectangular, or build
+  array-of-arrays from literals / a list comprehension `[:: for i {[for j {..}]}]`.
+
 ## FB-005  Vector `.wrap[-n]` reads one past the end (heap over-read)
 - symptom: for a `Vector` of length n, `v.wrap[idx]` with `idx == -n` computes
   the wrapped index as `n` (off by one at the boundary) and reads `buf[n]` --
