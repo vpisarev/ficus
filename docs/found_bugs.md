@@ -428,7 +428,7 @@ is the whole point of the ladder.
   `// FIXME` note points back here). This is the unit failure the PR #27 CI
   handoff saw (its log had truncated the test name); see FB-011 for the mixup.
 
-## FB-014  [open] bare positive literal 2^63 silently wraps to INT64_MIN
+## FB-014  bare positive literal 2^63 silently wrapped to INT64_MIN
 - discovered: 2026-07-07 while widening the int64 literal range (housekeeping
   follow-up to FB-010).
 - detail: the lexer (`LexerUtils.getnumber_`) accumulates a decimal magnitude in
@@ -441,15 +441,18 @@ is the whole point of the ladder.
   overflow error. Only the exact value 2^63 slips through (2^63+1.. give a lex
   OutOfRangeError).
 - config: any backend; the exact bare positive literal 2^63.
-- status: OPEN, not fixed. A correct fix must reject the bare positive 2^63 while
-  still allowing the negated form, which the lexer cannot currently distinguish
-  (the unary minus is a separate token folded after `getnumber` has already
-  wrapped the magnitude) -- a lexer/parse restructure, tracked as a language item
-  in `docs/language_changes_brief.md` §1.3. Widening the typechecker's int64
-  bound to the true INT64_MIN (housekeeping, so `var y: int64; y = -2^63` and
-  int64 array-element assignment work -- previously rejected by a symmetric
-  `[-(2^63-1), 2^63-1]` range) makes this wrap *consistent* across default-`int`
-  and sized-`int64` coercion contexts rather than introducing it: the default-int
-  case (`val x = 9223372036854775808`) already wrapped silently. NB: implicit
-  literal coercion to a different type is rare in Ficus by design (args almost
-  never coerce), so this reaches few contexts.
+- fixed: branch `housekeeping-1` (Vadim). `Lexer.fx` threads an
+  `expect_neg_number` flag: the unary-minus handler sets it (toggle + restore)
+  around the `nexttokens()` call that lexes the following number, and the number
+  branch rejects a wrapped-negative magnitude (`LitInt`/`LitSInt` with value < 0)
+  unless a minus was expected -- so bare positive `9223372036854775808` now errors
+  ("the numeric literal is out of range for the specified type") while
+  `-9223372036854775808` still denotes INT64_MIN. The toggle handles nested minus
+  by parity: `- -9223372036854775808` (= 2^63) and `-(9223372036854775808)`
+  (parenthesized, not immediately negated) both correctly error. Bonus: a `-` in
+  front of an unsigned literal (`-5u8`) is now a clear lexer error rather than a
+  silent `MINUS :: LitUInt`. Regression goldens: `test/negative/007_pos_int64_
+  overflow` and `008_neg_unsigned_literal`. Only `Lexer.c` changed in the
+  bootstrap; fixpoint holds; full ladder green. (This complements the FB-010 /
+  int64-range work: the typechecker now accepts the true INT64_MIN and the lexer
+  now rejects the bare positive 2^63 that used to alias it.)

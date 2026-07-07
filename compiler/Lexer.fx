@@ -270,6 +270,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
     var backquote_pos = -1
     var backquote_loc = (0, 0)
     var fmt: format_t? = None
+    var expect_neg_number = false
 
     fun getloc(pos: int) = (strm.lineno, max(pos - strm.bol, 0) + 1)
     fun addloc(loc: lloc_t, tokens: token_t list) = [:: for t <- tokens {(t, loc)} ]
@@ -375,6 +376,12 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
 
         if '0' <= c <= '9' {
             val (p, (t, c)) = getnumber(buf, pos, loc, prev_dot, !prev_dot)
+            match t {
+            | LITERAL(Ast.LitInt(i)) => if i < 0 && !expect_neg_number {throw Lxu.LexerError(getloc(pos), "the numeric literal is out of range for the specified type")}
+            | LITERAL(Ast.LitSInt(_, i)) => if i < 0 && !expect_neg_number {throw Lxu.LexerError(getloc(pos), "the numeric literal is out of range for the specified type")}
+            | LITERAL(Ast.LitUInt(_, i)) => if expect_neg_number {throw Lxu.LexerError(getloc(pos), "'-' in front of unsigned integer literal")}
+            | _ => {}
+            }
             new_exp = false
             prev_dot = false
             pos = p
@@ -612,7 +619,10 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 if c1 == '=' {pos += 1; [:: (AUG_BINOP(Ast.OpSub), loc)]}
                 else if c1 == '>' {pos += 1; [:: (ARROW, loc)]}
                 else if !prev_ne {[:: (MINUS(false), loc)]} else {
-                    match nexttokens() {
+                    expect_neg_number = !expect_neg_number
+                    val ts = nexttokens()
+                    expect_neg_number = !expect_neg_number
+                    match ts {
                     | (LITERAL(Ast.LitInt(x)), _) :: rest => (LITERAL(Ast.LitInt(-x)), loc) :: rest
                     | (LITERAL(Ast.LitSInt(b, x)), _) :: rest => (LITERAL(Ast.LitSInt(b, -x)), loc) :: rest
                     | (LITERAL(Ast.LitFloat(b, x)), _) :: rest => (LITERAL(Ast.LitFloat(b, -x)), loc) :: rest

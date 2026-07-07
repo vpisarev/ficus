@@ -1,0 +1,1 @@
+008_neg_unsigned_literal.fx:2:10: error: '-' in front of unsigned integer literal

@@ -128,13 +128,19 @@ arithmetic since it has no bare literal form). `basic.int64_min` gained
 var-assignment and array-element cases. Only `Ast_typecheck.c` changed in the
 bootstrap; full ladder green.
 
-New bug filed, **not** fixed: **FB-014** — a bare *positive* `9223372036854775808`
-silently wraps to INT64_MIN in the lexer. It is pre-existing (already true for
-default-`int`); widening the bound only makes it *consistent* across default and
-sized-int coercion rather than introducing it. A real fix needs the lexer to
-distinguish a negated 2^63 from a bare one — a parse-side restructure, parked in
-`language_changes_brief.md` §1.3. Implicit literal coercion to another type is
-rare in Ficus by design (args almost never coerce), so few contexts are affected.
+**FB-014** — a bare *positive* `9223372036854775808` used to silently wrap to
+INT64_MIN in the lexer (pre-existing; already true for default-`int`, and
+widening the bound above surfaced it in sized-int coercion too). **Now fixed**
+(Vadim): `Lexer.fx` threads an `expect_neg_number` flag — the unary-minus handler
+sets it (toggle + restore) around the number-lexing call, and the number branch
+rejects a wrapped-negative magnitude unless a minus was expected. So bare
+positive 2^63 errors ("out of range"), `-9223372036854775808` still denotes
+INT64_MIN, and nested/parenthesized forms (`- -2^63`, `-(2^63)`) correctly error;
+a `-` before an unsigned literal is now a clear error too. Regression goldens:
+`test/negative/007_pos_int64_overflow`, `008_neg_unsigned_literal`. Only
+`Lexer.c` changed in the bootstrap; fixpoint holds; full ladder green.
+(Implicit literal coercion to another type stays a separate, open topic — args
+almost never coerce in Ficus by design.)
 
 ---
 
