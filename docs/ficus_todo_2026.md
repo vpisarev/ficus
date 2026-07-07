@@ -36,6 +36,7 @@
 - [ ] add dynamically-typed `tensor` type? Currently we have array, which is statically typed and CPU-only (for now). In many cases static typing really helps, we get performance close to C/C++. In some cases static typing is inconvenient, e.g. for OpenCV bindings. Maybe we need to add `tensor` type that is a black box, sitting in CPU, GPU or NPU memory and there is a set of operations on it (with fusion etc.)
 
 # Code generation, runtime
+- [ ] put compiler version (git commit?) into __fxbuild__/<something> directories, so that after compiler is updated, all the previously generated .c files are discarded.
 - [ ] we now use compact rpmalloc. Shall we replace it with bigger, but hopefully better supported mimalloc?
 - [ ] we use atomic reference counting, and many of ficus data key structures are immutable or have immutable headers, but still multi-threaded program may crash program, e.g. when two different threads are writing into the same mutable location, e.g. array consisting of arrays, e.g. float [,] [,] (2D array of 2D arrays of floats): `for k <- 0:100 { val i=rng.uniform(0, n), j = rng.uniform(0, n); arr[i, j] = array((rng.iniform(1, 10), rng.uniform(1, 10)), rng.uniform(-1.f, 1.f))}`. That is, 'complex' mutable fields should probably be written in transaction-style way, even if it's slower. For general number cranching it should not affect speed (maybe do something like '"Cache-Sensitive Software Transactional Memory" by Robert Ennals'?)
 
