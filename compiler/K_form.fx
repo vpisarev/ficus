@@ -1417,12 +1417,26 @@ fun flt2str(v: double, suffix: string)
     }
 }
 
+// FB-010: INT64_MIN (-2^63) has no well-formed decimal form in C. The token
+// -9223372036854775808 parses as unary minus applied to 9223372036854775808,
+// which exceeds LLONG_MAX and is therefore *unsigned* -- a default
+// "-Wimplicitly-unsigned-literal" warning, and (worse) unsigned semantics in any
+// enclosing expression (which is how a folded INT64_MIN operand disagreed with
+// the runtime). A bare `LL` suffix does NOT help: 9223372036854775808LL is still
+// an out-of-range, unsigned constant. Emit the canonical warning-free, signed
+// split form instead. -(2^63-1) is the most negative value ficus admits as a
+// literal (typechecker range is symmetric), so `v < -(2^63-1)` is exactly
+// INT64_MIN.
+fun i64_c_literal(v: int64, suffix: string): string =
+    if v < -9223372036854775807i64 { f"(-9223372036854775807LL - 1)" }
+    else { f"{v}{suffix}" }
+
 fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
 {
     match lit {
-    | KLitInt(v) => f"{v}"
+    | KLitInt(v) => if cmode { i64_c_literal(v, "") } else { f"{v}" }
     | KLitSInt(64, v) =>
-        if cmode { f"{v}LL" } else { f"{v}i{64}" }
+        if cmode { i64_c_literal(v, "LL") } else { f"{v}i{64}" }
     | KLitUInt(64, v) =>
         if cmode { f"{v}ULL" } else { f"{v}i{64}" }
     | KLitSInt(b, v) =>

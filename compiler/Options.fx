@@ -43,6 +43,10 @@ type options_t =
 fun default_options() = options_t {}
 var opt = default_options()
 
+// WP-H1: forced by Compiler.k_skip_some when a build dir's stamp no longer
+// matches the current compiler binary / codegen options (see build_stamp).
+fun force_full_rebuild() { opt.force_rebuild = true }
+
 fun print_help(detailed: bool) {
     val fxname = Filename.basename(Sys.argv.hd())
     println(f"Ficus compiler v{__ficus_version_str__} (git {__ficus_git_commit__})")
