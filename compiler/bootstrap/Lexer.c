@@ -4,15 +4,15 @@
 
 struct _fx_N20LexerUtils__stream_t_data_t;
 
-static void _fx_free_N20LexerUtils__stream_t(struct _fx_N20LexerUtils__stream_t_data_t** dst);
+static void _fx_free_N20LexerUtils__stream_t(struct _fx_N20LexerUtils__stream_t_data_t**);
 
 struct _fx_N13Ast__binary_t_data_t;
 
-static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst);
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t**);
 
 struct _fx_Nt10Hashmap__t2ST2N14Lexer__token_ti_data_t;
 
-static void _fx_free_Nt10Hashmap__t2ST2N14Lexer__token_ti(struct _fx_Nt10Hashmap__t2ST2N14Lexer__token_ti_data_t** dst);
+static void _fx_free_Nt10Hashmap__t2ST2N14Lexer__token_ti(struct _fx_Nt10Hashmap__t2ST2N14Lexer__token_ti_data_t**);
 
 typedef struct _fx_R8format_t {
    char_ fill;
@@ -908,113 +908,97 @@ _fx_N14Lexer__token_t _fx_g15Lexer__PP_UNDEF = { 102 };
 _fx_N14Lexer__token_t _fx_g15Lexer__PP_ERROR = { 103 };
 _fx_N14Lexer__token_t _fx_g17Lexer__PP_WARNING = { 104 };
 _fx_Nt10Hashmap__t2ST2N14Lexer__token_ti _fx_g21Lexer__ficus_keywords = 0;
-FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
+FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t*, fx_exn_t*);
 
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_, fx_arr_t*, void*);
 
-FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t* x, void* fx_fv);
+FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t*, void*);
 
-FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
+FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
 
-FX_EXTERN_C int _fx_M3AstFM7lit2strS1N10Ast__lit_t(struct _fx_N10Ast__lit_t* c_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM7lit2strS1N10Ast__lit_t(struct _fx_N10Ast__lit_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M6StringFM12decapitalizeS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM12decapitalizeS1S(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__binary_t(
-   struct _fx_N13Ast__binary_t_data_t* bop_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N12Ast__cmpop_t(struct _fx_N12Ast__cmpop_t* c_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N12Ast__cmpop_t(struct _fx_N12Ast__cmpop_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M10LexerUtilsFM9getnumberT5ildiC5SiBBB(
-   fx_str_t* s_0,
-   int_ pos_0,
-   bool just_int_0,
-   bool get_suffix_0,
-   bool allow_complex_0,
-   struct _fx_T5ildiC* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M10LexerUtilsFM9getnumberT5ildiC5SiBBB(fx_str_t*, int_, bool, bool, bool, struct _fx_T5ildiC*, void*);
 
-FX_EXTERN_C void _fx_M3AstFM9LitStringN10Ast__lit_t1S(fx_str_t* arg0, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM9LitStringN10Ast__lit_t1S(fx_str_t*, struct _fx_N10Ast__lit_t*);
 
-FX_EXTERN_C void _fx_M3AstFM6LitIntN10Ast__lit_t1l(int64_t arg0, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM6LitIntN10Ast__lit_t1l(int64_t, struct _fx_N10Ast__lit_t*);
 
-FX_EXTERN_C void _fx_M3AstFM7LitSIntN10Ast__lit_t2il(int_ arg0, int64_t arg1, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM7LitSIntN10Ast__lit_t2il(int_, int64_t, struct _fx_N10Ast__lit_t*);
 
-FX_EXTERN_C void _fx_M3AstFM7LitUIntN10Ast__lit_t2iq(int_ arg0, uint64_t arg1, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM7LitUIntN10Ast__lit_t2iq(int_, uint64_t, struct _fx_N10Ast__lit_t*);
 
-FX_EXTERN_C void _fx_M3AstFM8LitFloatN10Ast__lit_t2id(int_ arg0, double arg1, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM8LitFloatN10Ast__lit_t2id(int_, double, struct _fx_N10Ast__lit_t*);
 
-FX_EXTERN_C int _fx_F6stringS1C(char_ c, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1C(char_, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(struct _fx_Ta2i* arg0, fx_str_t* arg1, fx_exn_t* fx_result);
+FX_EXTERN_C int _fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(struct _fx_Ta2i*, fx_str_t*, fx_exn_t*);
 
 FX_EXTERN_C_VAL(int FX_EXN_OverflowError)
 FX_EXTERN_C_VAL(int FX_EXN_OutOfRangeError)
 FX_EXTERN_C_VAL(int FX_EXN_BadArgError)
-FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t* a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t*, fx_str_t*, void*);
 
-FX_EXTERN_C void _fx_M3AstFM7LitBoolN10Ast__lit_t1B(bool arg0, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM7LitBoolN10Ast__lit_t1B(bool, struct _fx_N10Ast__lit_t*);
 
-FX_EXTERN_C void _fx_M3AstFM7LitCharN10Ast__lit_t1C(char_ arg0, struct _fx_N10Ast__lit_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM7LitCharN10Ast__lit_t1C(char_, struct _fx_N10Ast__lit_t*);
 
 FX_EXTERN_C int
    _fx_M5LexerFM7make_fpFPLT2N14Lexer__token_tTa2i08rTa2irirNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
-   struct _fx_rTa2i_data_t* arg0,
-   struct _fx_ri_data_t* arg1,
-   struct _fx_rNt6option1R8format_t_data_t* arg2,
-   struct _fx_rB_data_t* arg3,
-   struct _fx_rLT2N14Lexer__token_tTa2i_data_t* arg4,
-   struct _fx_ri_data_t* arg5,
-   struct _fx_rB_data_t* arg6,
-   struct _fx_N20LexerUtils__stream_t_data_t* arg7,
-   struct _fx_FPLT2N14Lexer__token_tTa2i0* fx_result);
+   struct _fx_rTa2i_data_t*,
+   struct _fx_ri_data_t*,
+   struct _fx_rNt6option1R8format_t_data_t*,
+   struct _fx_rB_data_t*,
+   struct _fx_rLT2N14Lexer__token_tTa2i_data_t*,
+   struct _fx_ri_data_t*,
+   struct _fx_rB_data_t*,
+   struct _fx_N20LexerUtils__stream_t_data_t*,
+   struct _fx_FPLT2N14Lexer__token_tTa2i0*);
 
-FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M10LexerUtilsFM11skip_spacesT3CiB3N20LexerUtils__stream_tiB(
-   struct _fx_N20LexerUtils__stream_t_data_t* s_0,
-   int_ pos_0,
-   bool allow_nested_0,
-   struct _fx_T3CiB* fx_result,
-   void* fx_fv);
+   struct _fx_N20LexerUtils__stream_t_data_t*,
+   int_,
+   bool,
+   struct _fx_T3CiB*,
+   void*);
 
 FX_EXTERN_C int _fx_M10LexerUtilsFM9getstringT4iSiB6SiTa2iCBB(
-   fx_str_t* s_0,
-   int_ pos_0,
-   struct _fx_Ta2i* loc_0,
-   char_ term_0,
-   bool raw_0,
-   bool fmt_0,
-   struct _fx_T4iSiB* fx_result,
-   void* fx_fv);
+   fx_str_t*,
+   int_,
+   struct _fx_Ta2i*,
+   char_,
+   bool,
+   bool,
+   struct _fx_T4iSiB*,
+   void*);
 
-FX_EXTERN_C int _fx_M6StringFM4copyS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM4copyS1S(fx_str_t*, fx_str_t*, void*);
 
-static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
-   struct _fx_LT2N14Lexer__token_tTa2i_data_t** fx_result,
-   void* fx_fv);
+static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(struct _fx_LT2N14Lexer__token_tTa2i_data_t**, void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isspaceB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isspaceB1C(char_, void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isalphaB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isalphaB1C(char_, void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isalnumB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isalnumB1C(char_, void*);
 
-FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F3chrC1i(int_ i_0, char_* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F3chrC1i(int_, char_*, void*);
 
-FX_EXTERN_C int _fx_F12parse_formatT2R8format_ti2Si(
-   fx_str_t* fmt,
-   int_ start,
-   struct _fx_T2R8format_ti* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_F12parse_formatT2R8format_ti2Si(fx_str_t*, int_, struct _fx_T2R8format_ti*, void*);
 
-FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t*, fx_str_t*, void*);
 
 typedef struct {
    int_ rc;

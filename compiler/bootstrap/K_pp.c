@@ -4,15 +4,15 @@
 
 struct _fx_N13Ast__binary_t_data_t;
 
-static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst);
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t**);
 
 struct _fx_N14K_form__ktyp_t_data_t;
 
-static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst);
+static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t**);
 
 struct _fx_N14K_form__kexp_t_data_t;
 
-static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t** dst);
+static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t**);
 
 typedef struct _fx_LS_data_t {
    int_ rc;
@@ -3039,297 +3039,255 @@ static int _fx_cons_LR17K_form__kmodule_t(
 
 static _fx_N14K_form__ktyp_t_data_t KTypString_data_1 = { 1, 10 };
 _fx_N14K_form__ktyp_t _fx_g16K_pp__KTypString = &KTypString_data_1;
-FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
-   struct _fx_R9Ast__id_t* a_0,
-   struct _fx_R9Ast__id_t* b_0,
-   bool* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(struct _fx_R9Ast__id_t*, struct _fx_R9Ast__id_t*, bool*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM3strv2RM1tS(struct _fx_R5PP__t* pp_0, fx_str_t* s_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM3strv2RM1tS(struct _fx_R5PP__t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* msg_0,
-   fx_exn_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(struct _fx_R10Ast__loc_t*, fx_str_t*, fx_exn_t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM5beginv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5beginv1RM1t(struct _fx_R5PP__t*, void*);
 
 static int _fx_M4K_ppFM7ppktyp_v4N14K_form__ktyp_tiR10Ast__loc_tR5PP__t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   int_ prec_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   int_,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM9KTypTupleN14K_form__ktyp_t1LN14K_form__ktyp_t(
-   struct _fx_LN14K_form__ktyp_t_data_t* arg0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result);
+   struct _fx_LN14K_form__ktyp_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**);
 
-FX_EXTERN_C int _fx_M2PPFM5spacev1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5spacev1RM1t(struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM3endv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM3endv1RM1t(struct _fx_R5PP__t*, void*);
 
 static int _fx_M4K_ppFM9ppktypsufv6N14K_form__ktyp_tSR10Ast__loc_tiR5PP__ti(
-   struct _fx_N14K_form__ktyp_t_data_t* t1_0,
-   fx_str_t* suf_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   int_ p1_0,
-   struct _fx_R5PP__t* pp_0,
-   int_ prec_0,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   fx_str_t*,
+   struct _fx_R10Ast__loc_t*,
+   int_,
+   struct _fx_R5PP__t*,
+   int_,
+   void*);
 
-FX_EXTERN_C int _fx_F7__mul__S2Ci(char_ c, int_ n, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F7__mul__S2Ci(char_, int_, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   void*);
 
 static int _fx_M4K_ppFM11ppktyplist_v4SLN14K_form__ktyp_tR10Ast__loc_tR5PP__t(
-   fx_str_t* prefix_0,
-   struct _fx_LN14K_form__ktyp_t_data_t* args_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   fx_str_t*,
+   struct _fx_LN14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
-FX_EXTERN_C int _fx_M2PPFM3cutv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM3cutv1RM1t(struct _fx_R5PP__t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM8klit2strS3N14K_form__klit_tBR10Ast__loc_t(
-   struct _fx_N14K_form__klit_t* lit_0,
-   bool cmode_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__klit_t*,
+   bool,
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM12get_kexp_locR10Ast__loc_t1N14K_form__kexp_t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_R10Ast__loc_t* fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   void*);
 
-FX_EXTERN_C int _fx_M2PPFM6beginvv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6beginvv1RM1t(struct _fx_R5PP__t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__kdefval_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__kdefval_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6Ast_ppFM16pprint_val_flagsv2R5PP__tR16Ast__val_flags_t(
-   struct _fx_R5PP__t* pp_0,
-   struct _fx_R16Ast__val_flags_t* flags_0,
-   void* fx_fv);
+   struct _fx_R5PP__t*,
+   struct _fx_R16Ast__val_flags_t*,
+   void*);
 
 static int _fx_M4K_ppFM9pp_idtyp_v5R9Ast__id_tN14K_form__ktyp_tBR10Ast__loc_tR5PP__t(
-   struct _fx_R9Ast__id_t* i_0,
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   bool detailed_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   bool,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
-static int _fx_M4K_ppFM7pp_exp_v2N14K_form__kexp_tR5PP__t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+static int _fx_M4K_ppFM7pp_exp_v2N14K_form__kexp_tR5PP__t(struct _fx_N14K_form__kexp_t_data_t*, struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM6beginvv2RM1ti(struct _fx_R5PP__t* pp_0, int_ indent_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6beginvv2RM1ti(struct _fx_R5PP__t*, int_, void*);
 
 FX_EXTERN_C int _fx_M6Ast_ppFM16pprint_fun_flagsv2R5PP__tR16Ast__fun_flags_t(
-   struct _fx_R5PP__t* pp_0,
-   struct _fx_R16Ast__fun_flags_t* flags_0,
-   void* fx_fv);
+   struct _fx_R5PP__t*,
+   struct _fx_R16Ast__fun_flags_t*,
+   void*);
 
 static int _fx_M4K_ppFM6pp_id_v3R9Ast__id_tR10Ast__loc_tR5PP__t(
-   struct _fx_R9Ast__id_t* i_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
 FX_EXTERN_C int _fx_M6K_formFM8KTypNameN14K_form__ktyp_t1R9Ast__id_t(
-   struct _fx_R9Ast__id_t* arg0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**);
 
 static int _fx_M4K_ppFM8pp_ktyp_v3N14K_form__ktyp_tR10Ast__loc_tR5PP__t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
 static int _fx_M4K_ppFM16pp_exp_as_block_v4N14K_form__kexp_tBBR5PP__t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   bool flow_0,
-   bool closing_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   bool,
+   bool,
+   struct _fx_R5PP__t*,
+   void*);
 
-FX_EXTERN_C int _fx_M3AstFM8ctor2strS1N17Ast__fun_constr_t(
-   struct _fx_N17Ast__fun_constr_t* f_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM8ctor2strS1N17Ast__fun_constr_t(struct _fx_N17Ast__fun_constr_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM7newlinev1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM7newlinev1RM1t(struct _fx_R5PP__t*, void*);
 
 static int _fx_M4K_ppFM5ppktpv2Nt6option1R17K_form__ktprops_tR5PP__t(
-   struct _fx_Nt6option1R17K_form__ktprops_t* ktp_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_Nt6option1R17K_form__ktprops_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
 static int _fx_M4K_ppFM17pp_ktyp_detailed_v3N14K_form__ktyp_tR10Ast__loc_tR5PP__t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
-FX_EXTERN_C void _fx_M6K_formFM10KLitStringN14K_form__klit_t1S(fx_str_t* arg0, struct _fx_N14K_form__klit_t* fx_result);
+FX_EXTERN_C void _fx_M6K_formFM10KLitStringN14K_form__klit_t1S(fx_str_t*, struct _fx_N14K_form__klit_t*);
 
 FX_EXTERN_C void _fx_M6K_formFM7AtomLitN14K_form__atom_t1N14K_form__klit_t(
-   struct _fx_N14K_form__klit_t* arg0,
-   struct _fx_N14K_form__atom_t* fx_result);
+   struct _fx_N14K_form__klit_t*,
+   struct _fx_N14K_form__atom_t*);
 
 FX_EXTERN_C int _fx_M6K_formFM8KExpAtomN14K_form__kexp_t2N14K_form__atom_tT2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_N14K_form__atom_t* arg0,
-   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* arg1,
-   struct _fx_N14K_form__kexp_t_data_t** fx_result);
+   struct _fx_N14K_form__atom_t*,
+   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t*,
+   struct _fx_N14K_form__kexp_t_data_t**);
 
 static int _fx_M4K_ppFM8pp_atom_v3N14K_form__atom_tR10Ast__loc_tR5PP__t(
-   struct _fx_N14K_form__atom_t* a_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__atom_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__binary_t(
-   struct _fx_N13Ast__binary_t_data_t* bop_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
-FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N12Ast__unary_t(struct _fx_N12Ast__unary_t* uop_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N12Ast__unary_t(struct _fx_N12Ast__unary_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t* iop_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t*, fx_str_t*, void*);
 
 static int _fx_M4K_ppFM8ppatoms_v3LN14K_form__atom_tR10Ast__loc_tR5PP__t(
-   struct _fx_LN14K_form__atom_t_data_t* al_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_LN14K_form__atom_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM6kinfo_N15K_form__kinfo_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_N15K_form__kinfo_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N15K_form__kinfo_t*,
+   void*);
 
-FX_EXTERN_C int _fx_M6K_formFM6stringS1N14K_form__ktyp_t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M6K_formFM6stringS1N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM6breakuv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6breakuv1RM1t(struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM6breakiv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6breakiv1RM1t(struct _fx_R5PP__t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM20get_closure_freevarsT2LT2R9Ast__id_tN14K_form__ktyp_tLR9Ast__id_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* f_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_T2LT2R9Ast__id_tN14K_form__ktyp_tLR9Ast__id_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_T2LT2R9Ast__id_tN14K_form__ktyp_tLR9Ast__id_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM18get_kinterface_optNt6option1rRM15kdefinterface_t2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_Nt6option1rR23K_form__kdefinterface_t* fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_Nt6option1rR23K_form__kdefinterface_t*,
+   void*);
 
-FX_EXTERN_C int _fx_M3AstFM10border2strS2N13Ast__border_tB(
-   struct _fx_N13Ast__border_t* border_0,
-   bool f_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM10border2strS2N13Ast__border_tB(struct _fx_N13Ast__border_t*, bool, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM10interp2strS2N18Ast__interpolate_tB(
-   struct _fx_N18Ast__interpolate_t* interp_0,
-   bool f_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM10interp2strS2N18Ast__interpolate_tB(struct _fx_N18Ast__interpolate_t*, bool, fx_str_t*, void*);
 
 static int _fx_M4K_ppFM7pp_dom_v3N13K_form__dom_tR10Ast__loc_tR5PP__t(
-   struct _fx_N13K_form__dom_t* r_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N13K_form__dom_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
 static int _fx_M4K_ppFM11pp_if_chainv3N14K_form__kexp_tBR5PP__t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   bool start_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_R5PP__t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6Ast_ppFM16pprint_for_flagsv2R5PP__tR16Ast__for_flags_t(
-   struct _fx_R5PP__t* pp_0,
-   struct _fx_R16Ast__for_flags_t* flags_0,
-   void* fx_fv);
+   struct _fx_R5PP__t*,
+   struct _fx_R16Ast__for_flags_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM7KExpNopN14K_form__kexp_t1R10Ast__loc_t(
-   struct _fx_R10Ast__loc_t* arg0,
-   struct _fx_N14K_form__kexp_t_data_t** fx_result);
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N14K_form__kexp_t_data_t**);
 
 static int _fx_M4K_ppFM11pp_for_hdr_v5N14K_form__kexp_tLT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tR10Ast__loc_tR5PP__t(
-   struct _fx_N14K_form__kexp_t_data_t* pre_exp_0,
-   struct _fx_LT2R9Ast__id_tN13K_form__dom_t_data_t* for_cl_0,
-   struct _fx_LR9Ast__id_t_data_t* at_ids_0,
-   struct _fx_R10Ast__loc_t* eloc_0,
-   struct _fx_R5PP__t* pp_0,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_LT2R9Ast__id_tN13K_form__dom_t_data_t*,
+   struct _fx_LR9Ast__id_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R5PP__t*,
+   void*);
 
-FX_EXTERN_C int _fx_M3AstFM6stringS1N15Ast__for_make_t(struct _fx_N15Ast__for_make_t* fm_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6stringS1N15Ast__for_make_t(struct _fx_N15Ast__for_make_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM12get_kexp_ctxT2N14K_form__ktyp_tR10Ast__loc_t1N14K_form__kexp_t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t* fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_T2N14K_form__ktyp_tR10Ast__loc_t*,
+   void*);
 
-FX_EXTERN_C int _fx_M2PPFM8opt_semiv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM8opt_semiv1RM1t(struct _fx_R5PP__t*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_R7File__t _fx_g12File__stdout)
-FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(struct _fx_R7File__t* f, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(struct _fx_R7File__t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM16pprint_to_stdoutRM1t2ii(
-   int_ margin_0,
-   int_ default_indent_0,
-   struct _fx_R5PP__t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM16pprint_to_stdoutRM1t2ii(int_, int_, struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
+FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(
-   int_ margin_0,
-   int_ default_indent_0,
-   struct _fx_R5PP__t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(int_, int_, struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM6break0v1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6break0v1RM1t(struct _fx_R5PP__t*, void*);
 
-FX_EXTERN_C int _fx_F12join_embraceS4SSSLS(
-   fx_str_t* begin_0,
-   fx_str_t* end_0,
-   fx_str_t* sep_0,
-   struct _fx_LS_data_t* strs_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_F12join_embraceS4SSSLS(fx_str_t*, fx_str_t*, fx_str_t*, struct _fx_LS_data_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M4K_ppFM6__ne__B2R9Ast__id_tR9Ast__id_t(
    struct _fx_R9Ast__id_t* a_0,

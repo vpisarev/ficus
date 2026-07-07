@@ -4,19 +4,19 @@
 
 struct _fx_N14K_form__ktyp_t_data_t;
 
-static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst);
+static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t**);
 
 struct _fx_N14C_form__ctyp_t_data_t;
 
-static void _fx_free_N14C_form__ctyp_t(struct _fx_N14C_form__ctyp_t_data_t** dst);
+static void _fx_free_N14C_form__ctyp_t(struct _fx_N14C_form__ctyp_t_data_t**);
 
 struct _fx_N14C_form__cexp_t_data_t;
 
-static void _fx_free_N14C_form__cexp_t(struct _fx_N14C_form__cexp_t_data_t** dst);
+static void _fx_free_N14C_form__cexp_t(struct _fx_N14C_form__cexp_t_data_t**);
 
 struct _fx_N15C_form__cstmt_t_data_t;
 
-static void _fx_free_N15C_form__cstmt_t(struct _fx_N15C_form__cstmt_t_data_t** dst);
+static void _fx_free_N15C_form__cstmt_t(struct _fx_N15C_form__cstmt_t_data_t**);
 
 typedef struct _fx_Ta2i {
    int_ t0;
@@ -2531,38 +2531,34 @@ static _fx_N14C_form__ctyp_t_data_t CTypExn_data_1 = { 1, 13 };
 _fx_N14C_form__ctyp_t _fx_g18C_gen_std__CTypExn = &CTypExn_data_1;
 static _fx_N14C_form__ctyp_t_data_t CTypAny_data_1 = { 1, 23 };
 _fx_N14C_form__ctyp_t _fx_g18C_gen_std__CTypAny = &CTypAny_data_1;
-FX_EXTERN_C int _fx_M6C_formFM7gen_idcR9Ast__id_t2iS(
-   int_ m_idx_0,
-   fx_str_t* s_0,
-   struct _fx_R9Ast__id_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M6C_formFM7gen_idcR9Ast__id_t2iS(int_, fx_str_t*, struct _fx_R9Ast__id_t*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
-FX_EXTERN_C int _fx_M3AstFM17default_fun_flagsRM11fun_flags_t0(struct _fx_R16Ast__fun_flags_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM17default_fun_flagsRM11fun_flags_t0(struct _fx_R16Ast__fun_flags_t*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_R10Ast__loc_t _fx_g10Ast__noloc)
 FX_EXTERN_C void _fx_M6C_formFM4CFunN15C_form__cinfo_t1rRM9cdeffun_t(
-   struct _fx_rR17C_form__cdeffun_t_data_t* arg0,
-   struct _fx_N15C_form__cinfo_t* fx_result);
+   struct _fx_rR17C_form__cdeffun_t_data_t*,
+   struct _fx_N15C_form__cinfo_t*);
 
 FX_EXTERN_C int _fx_M6C_formFM13set_idc_entryv2R9Ast__id_tN15C_form__cinfo_t(
-   struct _fx_R9Ast__id_t* i_0,
-   struct _fx_N15C_form__cinfo_t* entry_0,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N15C_form__cinfo_t*,
+   void*);
 
 FX_EXTERN_C void _fx_M6C_formFM6CMacroN15C_form__cinfo_t1rRM11cdefmacro_t(
-   struct _fx_rR19C_form__cdefmacro_t_data_t* arg0,
-   struct _fx_N15C_form__cinfo_t* fx_result);
+   struct _fx_rR19C_form__cdefmacro_t_data_t*,
+   struct _fx_N15C_form__cinfo_t*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g18C_form__std_sizeof)
 FX_EXTERN_C_VAL(struct _fx_N14C_form__ctyp_t_data_t* _fx_g23C_form__std_CTypVoidPtr)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g21C_form__std_fx_malloc)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g19C_form__std_fx_free)
-FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t*, struct _fx_R9Ast__id_t*, void*);
 
 FX_EXTERN_C int _fx_M6C_formFM8CTypNameN14C_form__ctyp_t1R9Ast__id_t(
-   struct _fx_R9Ast__id_t* arg0,
-   struct _fx_N14C_form__ctyp_t_data_t** fx_result);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N14C_form__ctyp_t_data_t**);
 
 FX_EXTERN_C_VAL(struct _fx_N14C_form__ctyp_t_data_t* _fx_g21C_form__std_fx_free_t)
 FX_EXTERN_C_VAL(struct _fx_N14C_form__ctyp_t_data_t* _fx_g21C_form__std_fx_copy_t)
@@ -2597,15 +2593,15 @@ FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_FX_MAKE_STR)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_FX_FREE_STR)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_FX_COPY_STR)
 FX_EXTERN_C int _fx_M6C_formFM8make_ptrN14C_form__ctyp_t1N14C_form__ctyp_t(
-   struct _fx_N14C_form__ctyp_t_data_t* t_0,
-   struct _fx_N14C_form__ctyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14C_form__ctyp_t_data_t*,
+   struct _fx_N14C_form__ctyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_fx_free_str)
 FX_EXTERN_C int _fx_M6C_formFM14make_const_ptrN14C_form__ctyp_t1N14C_form__ctyp_t(
-   struct _fx_N14C_form__ctyp_t_data_t* t_0,
-   struct _fx_N14C_form__ctyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14C_form__ctyp_t_data_t*,
+   struct _fx_N14C_form__ctyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_fx_copy_str)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g21C_form__std_fx_substr)
@@ -2638,7 +2634,7 @@ FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g21C_form__std_FX_CHKIDX)
 FX_EXTERN_C_VAL(struct _fx_LR9Ast__id_t_data_t* _fx_g21C_form__std_FX_PTR_xD)
 FX_EXTERN_C_VAL(struct _fx_LR9Ast__id_t_data_t* _fx_g26C_form__std_FX_PTR_xD_CLIP)
 FX_EXTERN_C_VAL(struct _fx_LR9Ast__id_t_data_t* _fx_g26C_form__std_FX_PTR_xD_ZERO)
-FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_LR9Ast__id_t_data_t* _fx_g26C_form__std_FX_PTR_xD_WRAP)
 FX_EXTERN_C_VAL(struct _fx_N14C_form__ctyp_t_data_t* _fx_g24C_form__std_CTypAnyArray)
@@ -2665,9 +2661,9 @@ FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_fx_free_vec)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_fx_copy_vec)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g23C_form__std_fx_make_vec)
 FX_EXTERN_C int _fx_M6C_formFM10CTypRawPtrN14C_form__ctyp_t2LN19C_form__ctyp_attr_tN14C_form__ctyp_t(
-   struct _fx_LN19C_form__ctyp_attr_t_data_t* arg0,
-   struct _fx_N14C_form__ctyp_t_data_t* arg1,
-   struct _fx_N14C_form__ctyp_t_data_t** fx_result);
+   struct _fx_LN19C_form__ctyp_attr_t_data_t*,
+   struct _fx_N14C_form__ctyp_t_data_t*,
+   struct _fx_N14C_form__ctyp_t_data_t**);
 
 FX_EXTERN_C_VAL(struct _fx_N14C_form__ctyp_t_data_t* _fx_g28C_form__std_fx_ifaces_t_cptr)
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g25C_form__std_FX_COPY_IFACE)

@@ -57,9 +57,9 @@ fx_str_t _fx_g20__ficus_git_commit__ =
 FX_MAKE_STR(FX_GIT_COMMIT)
 ;
 fx_str_t _fx_g21__ficus_version_str__ = {0};
-FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F6stringS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1S(fx_str_t*, fx_str_t*, void*);
 
 fx_exn_t _fx_E10ASCIIErrorv = {0};
 fx_exn_t _fx_E11AssertErrorv = {0};

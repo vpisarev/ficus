@@ -97,17 +97,17 @@ static void _fx_make_Ta2S(fx_str_t* t0, fx_str_t* t1, struct _fx_Ta2S* fx_result
 }
 
 _fx_Nt6option1S _fx_g14Filename__None = { 1 };
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t* s, fx_str_t* suffix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
+FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int_ _fx_M6StringFM5rfindi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM5rfindi3SSi(fx_str_t*, fx_str_t*, int_, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t* s, fx_str_t* prefix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t*, fx_str_t*, int_, void*);
 
 FX_EXTERN_C void _fx_M8FilenameFM4SomeNt6option1S1S(fx_str_t* arg0, struct _fx_Nt6option1S* fx_result)
 {

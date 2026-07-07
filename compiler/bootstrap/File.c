@@ -41,7 +41,7 @@ int_ _fx_g14File__SEEK_END =
 (int)SEEK_END
 ;
 _fx_R7File__t _fx_g12File__stdout = {0};
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
 
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {

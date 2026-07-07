@@ -325,12 +325,12 @@ static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1
 
 bool _fx_g6fx__ok;
 bool _fx_g8fx__ok1_;
-FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7OptionsFM13parse_optionsB0(bool*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_R18Options__options_t _fx_g12Options__opt)
-FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t*, bool*, void*);
 
-FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result);
+FX_EXTERN_C int _fx_F9make_ExitE1i(int_, fx_exn_t*);
 
 FX_EXTERN_C int fx_init_fx(void)
 {

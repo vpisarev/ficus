@@ -16,7 +16,7 @@ static int decodeoct(char_ c)
 
 struct _fx_N20LexerUtils__stream_t_data_t;
 
-static void _fx_free_N20LexerUtils__stream_t(struct _fx_N20LexerUtils__stream_t_data_t** dst);
+static void _fx_free_N20LexerUtils__stream_t(struct _fx_N20LexerUtils__stream_t_data_t**);
 
 typedef struct _fx_Ta2i {
    int_ t0;
@@ -142,11 +142,11 @@ static void _fx_make_T4iSiB(int_ t0, fx_str_t* t1, int_ t2, bool t3, struct _fx_
 }
 
 int _FX_EXN_E22LexerUtils__LexerError = 0;
-FX_EXTERN_C int _fx_M4FileFM9read_utf8S1S(fx_str_t* fname, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM9read_utf8S1S(fx_str_t*, fx_str_t*, void*);
 
 FX_EXTERN_C_VAL(int FX_EXN_OverflowError)
 FX_EXTERN_C_VAL(int FX_EXN_BadArgError)
-FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t* a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t*, fx_str_t*, void*);
 
 fx_exn_info_t _fx_E22LexerUtils__LexerError_info = {0};
 typedef struct {
