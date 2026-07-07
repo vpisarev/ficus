@@ -1,0 +1,16 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+fun list.sum@g0(list.l@g1: int list): (int list -> int) =
+{
+   match <int list>list.l@g1 {
+       | (list.a@g2 :: list.rest@g3) => (<int>list.a@g2 + <(int list -> int)>list.sum@g0(<int list>list.rest@g3)) | _ =>
+         0}
+}
+
+<(int -> void)>Builtins.println@g4(<(int list -> int)>list.sum@g0((1 :: 2 :: 3 :: 4 :: [])))

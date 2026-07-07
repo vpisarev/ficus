@@ -1,0 +1,3 @@
+202_if_no_else.fx:2:9: error: if() expression of non-void type has no 'else' branch
+
+1 errors occured during type checking.

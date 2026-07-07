@@ -107,9 +107,9 @@ static void _fx_make_T2SB(fx_str_t* t0, bool t1, struct _fx_T2SB* fx_result)
    fx_result->t1 = t1;
 }
 
-FX_EXTERN_C int _fx_F3ordi1C(char_ c_0, int_* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F3ordi1C(char_, int_*, void*);
 
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t*, struct _fx_LS_data_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M6StringFM4copyS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv)
 {

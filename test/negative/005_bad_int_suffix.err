@@ -1,0 +1,1 @@
+005_bad_int_suffix.fx:2:9: error: invalid i/u suffix (should be 8, 16, 32 or 64)

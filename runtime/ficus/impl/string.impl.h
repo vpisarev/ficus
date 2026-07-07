@@ -556,7 +556,11 @@ int fx_strjoin(const fx_str_t* begin, const fx_str_t* end, const fx_str_t* sep,
             ofs += seplen;
         }
         int_ len_i = s[i].length;
-        memcpy(result->data + ofs, s[i].data, len_i*szch);
+        // guard len_i>0: an empty element has s[i].data==NULL, and
+        // memcpy(dst, NULL, 0) is UB (nonnull attribute). Matches the
+        // guarded begin/sep/end memcpy's above/below.
+        if (len_i > 0)
+            memcpy(result->data + ofs, s[i].data, len_i*szch);
         ofs += len_i;
     }
     if (endlen) {

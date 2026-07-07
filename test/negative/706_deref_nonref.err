@@ -1,0 +1,3 @@
+706_deref_nonref.fx:3:10: error: incorrect type of value 'x': expected='<unknown> ref', actual='int'
+
+1 errors occured during type checking.

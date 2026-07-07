@@ -1,0 +1,12 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+val ref_mut.r@g0: int ref = (REF 0)
+(* <int ref>ref_mut.r@g0) = 5
+(* <int ref>ref_mut.r@g0) = ((* <int ref>ref_mut.r@g0) + 3)
+<(int -> void)>Builtins.println@g1((* <int ref>ref_mut.r@g0))

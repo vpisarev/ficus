@@ -1,0 +1,21 @@
+fun list.sum@g0(l@g1: int list): int
+{
+    if l@g1 != null {
+       @tempref val rest@g2: int list = __intrin_tl__(l@g1)
+       @temp val a@g3: int = __intrin_hd__(l@g1)
+       @temp val v@g4: int = list.sum@g0(rest@g2)
+       a@g3 + v@g4
+    }
+    else {
+       0
+    }
+
+}
+
+@temp val z@g5: int list = null
+@temp val v@g6: int list = 4 :: z@g5
+@temp val v@g7: int list = 3 :: v@g6
+@temp val v@g8: int list = 2 :: v@g7
+@temp val v@g9: int list = 1 :: v@g8
+@temp val v@g10: int = list.sum@g0(v@g9)
+println@g11(v@g10)

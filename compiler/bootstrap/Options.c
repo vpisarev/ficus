@@ -290,51 +290,45 @@ _fx_R18Options__options_t _fx_g12Options__opt = {0};
 bool _fx_g18Options__is_arch64 = 
 (bool)(sizeof(void*) > 4)
 ;
-FX_EXTERN_C int _fx_F4reprS1S(fx_str_t* a_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4reprS1S(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F12join_embraceS4SSSA1S(
-   fx_str_t* begin,
-   fx_str_t* end,
-   fx_str_t* sep,
-   fx_arr_t* strs,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_F12join_embraceS4SSSA1S(fx_str_t*, fx_str_t*, fx_str_t*, fx_arr_t*, fx_str_t*, void*);
 
-FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t* a, void* fx_fv);
+FX_EXTERN_C void _fx_F12print_stringv1S(fx_str_t*, void*);
 
-FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
+FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C void _fx_M6StringFM7to_int_Nt6option1i2Si(fx_str_t* a, int_ base, struct _fx_Nt6option1i* fx_result, void* fx_fv);
+FX_EXTERN_C void _fx_M6StringFM7to_int_Nt6option1i2Si(fx_str_t*, int_, struct _fx_Nt6option1i*, void*);
 
-FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t* a, int_ defval, int_ base, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t*, int_, int_, void*);
 
 FX_EXTERN_C_VAL(struct _fx_LS_data_t* _fx_g9Sys__argv)
-FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t*, fx_str_t*, void*);
 
 FX_EXTERN_C_VAL(fx_str_t _fx_g21__ficus_version_str__)
 FX_EXTERN_C_VAL(fx_str_t _fx_g20__ficus_git_commit__)
-FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t*, void*);
 
-FX_EXTERN_C int_ _fx_M6StringFM4findi2SC(fx_str_t* s, char_ c, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM4findi2SC(fx_str_t*, char_, void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isalphaB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isalphaB1C(char_, void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isalnumB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isalnumB1C(char_, void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM10startswithB2SC(fx_str_t* s, char_ prefix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM10startswithB2SC(fx_str_t*, char_, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM8endswithB2SC(fx_str_t* s, char_ suffix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM8endswithB2SC(fx_str_t*, char_, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t* s, fx_str_t* prefix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t*, fx_str_t*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_FPS1B _fx_g11Sys__osname)
-FX_EXTERN_C int _fx_M3SysFM10cc_versionS0(fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3SysFM10cc_versionS0(fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t* dir_0, fx_str_t* fname_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM9normalizeS2SS(fx_str_t*, fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M8FilenameFM16remove_extensionS1S(fx_str_t* path_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M8FilenameFM16remove_extensionS1S(fx_str_t*, fx_str_t*, void*);
 
 FX_EXTERN_C void _fx_M7OptionsFM5link2LS2LSLS(
    struct _fx_LS_data_t* l1,

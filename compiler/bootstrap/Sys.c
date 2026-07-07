@@ -100,29 +100,21 @@ bool _fx_g9Sys__unix =
 #endif
 ;
 _fx_FPS1B _fx_g11Sys__osname = {0};
-FX_EXTERN_C int _fx_M3SysFM7make_fpFPS1B2rSrS(
-   struct _fx_rS_data_t* arg0,
-   struct _fx_rS_data_t* arg1,
-   struct _fx_FPS1B* fx_result);
+FX_EXTERN_C int _fx_M3SysFM7make_fpFPS1B2rSrS(struct _fx_rS_data_t*, struct _fx_rS_data_t*, struct _fx_FPS1B*);
 
-static int _fx_M3SysFM10__lambda__S1B(bool get_version_0, fx_str_t* fx_result, void* fx_fv);
+static int _fx_M3SysFM10__lambda__S1B(bool, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t* cmdname_0, fx_str_t* mode_0, struct _fx_R7File__t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM5popenRM1t2SS(fx_str_t*, fx_str_t*, struct _fx_R7File__t*, void*);
 
-FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv);
+FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t*, void*);
 
-FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t*, fx_str_t*, int_, void*);
 
-FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
-   fx_str_t* s_0,
-   char_ c_0,
-   bool allow_empty_0,
-   struct _fx_LS_data_t** fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(fx_str_t*, char_, bool, struct _fx_LS_data_t**, void*);
 
 typedef struct {
    int_ rc;

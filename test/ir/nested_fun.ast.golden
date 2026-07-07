@@ -1,0 +1,16 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+fun nested_fun.outer@g0(nested_fun.n@g1: int): (int -> int) =
+{
+   fun nested_fun.inner@g2(nested_fun.x@g3: int): (int -> int) = { (<int>nested_fun.x@g3 + 1) }
+
+   (<(int -> int)>nested_fun.inner@g2(<int>nested_fun.n@g1) * 2)
+}
+
+<(int -> void)>Builtins.println@g4(<(int -> int)>nested_fun.outer@g0(7))

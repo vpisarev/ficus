@@ -130,7 +130,7 @@ char* fx_rrb_find_border(const fx_rrbvec_t* vec, int_ idx, int border)
     if ((size_t)idx >= (size_t)size) {
         if (border == 'z' || size == 0) return (char*)fx_zerobuf;
         if (border == 'w')
-            idx = (idx % size) + (idx < 0 ? size : 0);
+            idx = ((idx % size) + size) % size;
         else
             idx = idx < 0 ? 0 : size-1;
     }

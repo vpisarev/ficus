@@ -32,6 +32,9 @@ import test_nn_nms
 import test_nn_permute
 import test_nn_quant
 import test_nn_reduce
+import rand.test_rand_arith
+import rand.test_rand_array
+import rand.test_rand_str
 
 fun print_hdr()
 {

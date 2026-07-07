@@ -1,0 +1,17 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+exception exception.MyErr@g0: int
+fun exception.safe@g1(exception.x@g2: int): (int -> int) =
+{
+   try
+      if (<int>exception.x@g2 < 0) { throw <(int -> exn)>exception.MyErr@g0(<int>exception.x@g2) } else
+         { <int>exception.x@g2 } catch{ | exception.MyErr@g0(exception.e@g3) => (- <int>exception.e@g3)}
+}
+
+<(int -> void)>Builtins.println@g4(<(int -> int)>exception.safe@g1(-7))

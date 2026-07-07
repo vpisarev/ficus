@@ -1,0 +1,3 @@
+209_call_non_function.fx:3:9: error: incorrect type of value 'x': expected='(int -> <unknown>)', actual='int'
+
+1 errors occured during type checking.

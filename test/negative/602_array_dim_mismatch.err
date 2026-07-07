@@ -1,0 +1,3 @@
+602_array_dim_mismatch.fx:2:13: error: the array literal should produce an array
+
+1 errors occured during type checking.

@@ -1,0 +1,15 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+fun tailrec.fact@g0(tailrec.n@g1: int, tailrec.acc@g2: int): ((int, int) -> int) =
+{
+   if (<int>tailrec.n@g1 <= 1) { <int>tailrec.acc@g2 } else
+      { <((int, int) -> int)>tailrec.fact@g0((<int>tailrec.n@g1 - 1), (<int>tailrec.acc@g2 * <int>tailrec.n@g1)) }
+}
+
+<(int -> void)>Builtins.println@g3(<((int, int) -> int)>tailrec.fact@g0(10, 1))

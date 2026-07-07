@@ -1,0 +1,11 @@
+fun option.unwrap@g0(o@g1: option@g2): int
+{
+    @temp val tag@g3: int32 = __intrin_variant_tag__(o@g1)
+    if tag@g3 == 2 { @temp val v@g4: int = __intrin_variant_case__(o@g1, 2); v@g4 } else { 0 }
+}
+
+@temp val v@g5: option@g2 = Some@g6(5)
+@temp val v@g7: int = option.unwrap@g0(v@g5)
+println@g8(v@g7)
+@temp val v@g9: int = option.unwrap@g0(None@g10)
+println@g8(v@g9)

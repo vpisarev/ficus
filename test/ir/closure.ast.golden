@@ -1,0 +1,17 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+fun closure.make_adder@g0(closure.n@g1: int): (int -> (int -> int)) =
+{
+   fun closure.add@g2(closure.x@g3: int): (int -> int) = { (<int>closure.x@g3 + <int>closure.n@g1) }
+
+   <(int -> int)>closure.add@g2
+}
+
+val closure.add10@g4: (int -> int) = <(int -> (int -> int))>closure.make_adder@g0(10)
+<(int -> void)>Builtins.println@g5(<(int -> int)>closure.add10@g4(5))

@@ -1,0 +1,9 @@
+@global val ref_mut.r@g0: int ref = ref 0
+@tempref var v@g1: int = *ref_mut.r@g0
+v@g1 = 5
+@temp val v@g2: int = *ref_mut.r@g0
+@temp val v@g3: int = v@g2 + 3
+@tempref var v@g4: int = *ref_mut.r@g0
+v@g4 = v@g3
+@temp val v@g5: int = *ref_mut.r@g0
+println@g6(v@g5)

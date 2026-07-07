@@ -1,0 +1,20 @@
+@@complex type _fx_FPi1i = (int -> int)
+
+fun _fx_M7closureFM10make_adderFPi1i1i(n@g0: int): _fx_FPi1i
+{ __make_closure__ _fx_M7closureFM7make_fpFPi1i1i{ __fp__ = _fx_M7closureFM3addi1i, n@g1 = n@g0 }
+}
+
+@private @uses_fv fun _fx_M7closureFM3addi1i(x@g2: int; cv@g3: _fx_M7closureFM3addi1i_cldata_t): int
+{ @tempref val n@g4: int = cv@g3.0; x@g2 + n@g4
+}
+
+closure_data _fx_M7closureFM3addi1i_cldata_t = {
+   n@g1: int;
+   }
+
+fun _fx_M7closureFM7make_fpFPi1i1i(arg0@g5: int): _fx_FPi1i = Constructor(fp(add@g6))
+
+@global val _fx_g14closure__add10: _fx_FPi1i = _fx_M7closureFM10make_adderFPi1i1i(10)
+@temp val v@g7: int = _fx_g14closure__add10(5)
+_fx_F5printv1i(v@g7)
+_fx_F12print_stringv1S("\n")

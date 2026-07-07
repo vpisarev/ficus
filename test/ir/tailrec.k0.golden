@@ -1,0 +1,12 @@
+fun tailrec.fact@g0(n@g1: int, acc@g2: int): int
+{
+    @temp val v@g3: bool = n@g1 <= 1
+    if v@g3 {
+       acc@g2
+    } else {
+       @temp val v@g4: int = n@g1 - 1; @temp val v@g5: int = acc@g2 * n@g1; tailrec.fact@g0(v@g4, v@g5)
+    }
+}
+
+@temp val v@g6: int = tailrec.fact@g0(10, 1)
+println@g7(v@g6)

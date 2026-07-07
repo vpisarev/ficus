@@ -1,0 +1,10 @@
+fun nested_fun.outer@g0(n@g1: int): int
+{
+    @private fun nested_fun.inner@g2(x@g3: int): int { x@g3 + 1 }
+
+    @temp val v@g4: int = nested_fun.inner@g2(n@g1)
+    v@g4 * 2
+}
+
+@temp val v@g5: int = nested_fun.outer@g0(7)
+println@g6(v@g5)

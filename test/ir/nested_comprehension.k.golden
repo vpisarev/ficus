@@ -1,0 +1,5 @@
+@global val _fx_g24nested_comprehension__aa: int [] [] = [ for i@g0 <- 0:2 { [ for j@g1 <- 0:2 { i@g0 + j@g1 }] }]
+@tempref val v@g2: int [] = _fx_g24nested_comprehension__aa[1]
+@global val _fx_g23nested_comprehension__x: int = v@g2[0]
+_fx_F5printv1i(_fx_g23nested_comprehension__x)
+_fx_F12print_stringv1S("\n")

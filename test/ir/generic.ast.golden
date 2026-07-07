@@ -1,0 +1,17 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+template<'t> fun generic.ident@g0(x: 't): ('t -> <auto>) = { <<auto>>x }
+[[instances:
+   @instance fun generic.ident@g1(generic.x@g2: string): (string -> string) = { <string>generic.x@g2 }
+
+   @instance fun generic.ident@g3(generic.x@g4: int): (int -> int) = { <int>generic.x@g4 }
+
+   ]]
+<(int -> void)>Builtins.println@g5(<(int -> int)>generic.ident@g3(42))
+<(string -> void)>Builtins.println@g6(<(string -> string)>generic.ident@g1("hello"))

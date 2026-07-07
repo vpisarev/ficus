@@ -1,0 +1,16 @@
+@temp var result@g0: int = 0
+@temp var n@g1: int = 10
+@temp var acc@g2: int = 1
+while true {
+   @temp val n@g3: int = n@g1
+   @temp val acc@g4: int = acc@g2
+   @temp val v@g5: bool = n@g3 <= 1
+   if v@g5 {
+      result@g0 = acc@g4; break
+   } else {
+      @temp val v@g6: int = n@g3 - 1; @temp val v@g7: int = acc@g4 * n@g3; n@g1 = v@g6; acc@g2 = v@g7
+   }
+}
+@temp val v@g8: int = result@g0
+_fx_F5printv1i(v@g8)
+_fx_F12print_stringv1S("\n")

@@ -1,0 +1,3 @@
+505_return_outside_function.fx:2:1: error: return statement occurs outside of a function body
+
+1 errors occured during type checking.

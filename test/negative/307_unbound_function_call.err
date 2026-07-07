@@ -1,0 +1,3 @@
+307_unbound_function_call.fx:2:9: error: the appropriate match for 'totally_undefined_fn' of type '(int -> <unknown>)' is not found.
+
+1 errors occured during type checking.

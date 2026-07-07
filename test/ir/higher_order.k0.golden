@@ -1,0 +1,6 @@
+fun higher_order.apply2@g0(f@g1: (int -> int), x@g2: int): int { @temp val v@g3: int = f@g1(x@g2); f@g1(v@g3) }
+
+@private fun higher_order.__lambda__@g4(y@g5: int): int { y@g5 * 2 }
+
+@temp val v@g6: int = higher_order.apply2@g0(higher_order.__lambda__@g4, 3)
+println@g7(v@g6)

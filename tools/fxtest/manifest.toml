@@ -1,0 +1,109 @@
+# fxtest corpus manifest
+# ----------------------
+# One [corpus.<name>] table per runnable .fx entry.  The T2 differential runner
+# compiles & runs each entry at -O0 and -O3 (with -no-openmp for determinism)
+# and compares stdout according to `compare`.
+#
+# Recognized keys (all optional unless noted):
+#   path         (required) repo-relative path to the .fx file
+#   args         list of command-line args passed after `--`   (default [])
+#   compare      "exact" | "float" | "artifact" | "none"       (default "exact")
+#                  exact    - byte-exact stdout after normalization
+#                  float    - numbers compared with rtol/atol, other text exact
+#                  artifact - compare the file named by `artifact` (not stdout)
+#                  none     - smoke only: builds, runs, exits 0
+#   rtol, atol   tolerances for compare="float"        (default rtol=1e-10 atol=0)
+#   artifact     output filename for compare="artifact"
+#   strip_header drop test_all.fx banner lines          (default false)
+#   timeout_sec  run timeout                             (default 60)
+#   compile_timeout_sec  build timeout                   (default 180)
+#   quarantine   reason string; entry is listed but skipped (see docs/found_bugs.md)
+#
+# Benchmark-style examples MUST get a small N here -- they default to huge N.
+
+# ---- the whole unit suite, as a single differential entry -------------------
+[corpus.test_all]
+path = "test/test_all.fx"
+compare = "exact"
+strip_header = true
+timeout_sec = 300
+compile_timeout_sec = 300
+# FB-001 (interface C++ codegen) fixed on harden-1: the -c++ smoke now passes,
+# so the cpp_xfail fence is removed and the -c++ build is checked for real.
+
+# ---- self-contained deterministic examples ----------------------------------
+[corpus.btree]
+path = "examples/btree.fx"
+args = ["10"]
+compare = "exact"
+
+[corpus.checkdate]
+path = "examples/checkdate.fx"
+args = ["2024-01-01", "2024-12-31"]
+compare = "exact"
+
+[corpus.cpp_tree]
+path = "examples/cpp_tree.fx"
+compare = "exact"
+
+[corpus.fst]
+path = "examples/fst.fx"
+compare = "exact"
+
+[corpus.jsonpp]
+path = "examples/jsonpp.fx"
+compare = "exact"
+
+[corpus.mandelbrot]
+path = "examples/mandelbrot.fx"
+args = ["256"]
+compare = "artifact"        # writes a binary PGM to result.pgm, not stdout
+artifact = "result.pgm"
+
+[corpus.quine]
+path = "examples/quine.fx"
+compare = "exact"
+
+[corpus.rec_test]
+path = "examples/rec_test.fx"
+compare = "exact"
+
+[corpus.spectralnorm]
+path = "examples/spectralnorm.fx"
+args = ["300"]
+compare = "float"           # prints a single double; -O3 may reassociate
+rtol = 1e-9
+
+[corpus.ycomb]
+path = "examples/ycomb.fx"
+compare = "exact"
+
+# ---- quarantined: cannot participate in the differential --------------------
+# These stay listed (so coverage is auditable) but are skipped by the runner.
+[corpus.nbody]
+path = "examples/nbody.fx"
+quarantine = "hardcoded 50M-iteration loop, not arg-controlled; too slow to diff. nbody logic is covered via test_nbody inside test_all."
+
+[corpus.knucleotide]
+path = "examples/knucleotide.fx"
+quarantine = "needs an external FASTA stream on stdin; no bundled input."
+
+[corpus.testmod]
+path = "examples/testmod.fx"
+quarantine = "helper module imported by fst.fx; no standalone output."
+
+[corpus.onnx]
+path = "examples/onnx.fx"
+quarantine = "needs an external .onnx model file."
+
+[corpus.opencv_objdetect]
+path = "examples/opencv_objdetect.fx"
+quarantine = "needs an external model + image."
+
+[corpus.vision_classify]
+path = "examples/vision_classify.fx"
+quarantine = "needs an external model + image."
+
+[corpus.vision_detect]
+path = "examples/vision_detect.fx"
+quarantine = "needs an external model + image."

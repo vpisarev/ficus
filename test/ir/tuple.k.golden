@@ -1,0 +1,12 @@
+@@complex type _fx_T3iSd = (int, string, double)
+
+@global val _fx_g8tuple__t: _fx_T3iSd = (1, "two", 3.0)
+@global val _fx_g8tuple__a: int = _fx_g8tuple__t.0
+@global val _fx_g8tuple__b: string = _fx_g8tuple__t.1
+@global val _fx_g8tuple__c: double = _fx_g8tuple__t.2
+_fx_F5printv1i(_fx_g8tuple__a)
+_fx_F12print_stringv1S("\n")
+_fx_F12print_stringv1S(_fx_g8tuple__b)
+_fx_F12print_stringv1S("\n")
+_fx_F5printv1d(_fx_g8tuple__c)
+_fx_F12print_stringv1S("\n")

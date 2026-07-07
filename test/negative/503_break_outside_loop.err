@@ -1,0 +1,3 @@
+503_break_outside_loop.fx:2:11: error: cannot use 'break' outside of loop
+
+1 errors occured during type checking.

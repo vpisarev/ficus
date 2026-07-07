@@ -1,0 +1,1 @@
+109_import_inside_function.fx:3:5: error: import directives can only be used at the module level

@@ -330,7 +330,13 @@ type assoc_t = AssocLeft | AssocRight
         val nargs = cf_args.length()
         for (n, t, _)@i <- cf_args {
             val last = i == nargs - 1
-            pp_ctyp__(pp, "", if last {""} else {","}, t, Some(n), true, cf_loc)
+            // In a prototype (forward declaration) the parameter names are
+            // irrelevant to C and their generated cnames are not always stable
+            // across unrelated changes (temps/dup'd builtin args fall back to
+            // `name_<id>` in idc2str). Omit them so prototypes are deterministic;
+            // the definition (fwd_mode=false) still prints real names. See FB-008.
+            val id_opt = if fwd_mode { None } else { Some(n) }
+            pp_ctyp__(pp, "", if last {""} else {","}, t, id_opt, true, cf_loc)
             if !last { pp.space() }
         }
     }

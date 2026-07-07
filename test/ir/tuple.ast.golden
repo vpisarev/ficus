@@ -1,0 +1,13 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+val tuple.t@g0: (int, string, double) = (1, "two", 3.0)
+val (tuple.a@g1, tuple.b@g2, tuple.c@g3): (int, string, double) = <(int, string, double)>tuple.t@g0
+<(int -> void)>Builtins.println@g4(<int>tuple.a@g1)
+<(string -> void)>Builtins.println@g5(<string>tuple.b@g2)
+<(double -> void)>Builtins.println@g6(<double>tuple.c@g3)

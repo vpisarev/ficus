@@ -1,0 +1,3 @@
+406_ref_pattern_nonref.fx:2:21: error: 'ref' pattern is used with non-reference type
+
+1 errors occured during type checking.

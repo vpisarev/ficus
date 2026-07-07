@@ -1,0 +1,5 @@
+@global val string_ops.s@g0: string = "hello"
+@temp val v@g1: int = String.length@g2(string_ops.s@g0)
+println@g3(v@g1)
+@temp val v@g4: string = __intrin_str_concat__(string_ops.s@g0, " world")
+println@g5(v@g4)

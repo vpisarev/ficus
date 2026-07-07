@@ -1,0 +1,11 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+val string_ops.s@g0: string = "hello"
+<(int -> void)>Builtins.println@g1(<(string -> int)>String.length@g2(<string>string_ops.s@g0))
+<(string -> void)>Builtins.println@g3((<string>string_ops.s@g0 + " world"))

@@ -1,0 +1,9 @@
+@global var while_loop.i@g0: int = 0
+@global var while_loop.s@g1: int = 0
+while while_loop.i@g0 < 5 {
+   @temp val v@g2: int = while_loop.s@g1 + while_loop.i@g0
+   while_loop.s@g1 = v@g2
+   @temp val v@g3: int = while_loop.i@g0 + 1
+   while_loop.i@g0 = v@g3
+}
+println@g4(while_loop.s@g1)

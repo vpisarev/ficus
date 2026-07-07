@@ -1,0 +1,3 @@
+506_duplicate_param.fx:2:15: error: duplicate identifier 'a' in the pattern
+
+1 errors occured during type checking.

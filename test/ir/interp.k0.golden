@@ -1,0 +1,8 @@
+@global val interp.n@g0: int = 42
+@temp val v@g1: string = string@g2(interp.n@g0)
+@temp val v@g3: string = __intrin_str_concat__("n=", v@g1)
+@temp val v@g4: string = __intrin_str_concat__(v@g3, ", square=")
+@temp val v@g5: int = interp.n@g0 * interp.n@g0
+@temp val v@g6: string = string@g2(v@g5)
+@temp val v@g7: string = __intrin_str_concat__(v@g4, v@g6)
+println@g8(v@g7)

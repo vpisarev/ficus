@@ -1,0 +1,3 @@
+604_index_dim_mismatch.fx:3:9: error: the array type/dimensionality 'int []' does not match the expected type/dimensionality '<unknown> [,]'
+
+1 errors occured during type checking.

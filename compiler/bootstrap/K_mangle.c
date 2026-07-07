@@ -4,57 +4,57 @@
 
 struct _fx_Nt9Dynvec__t1S_data_t;
 
-static void _fx_free_Nt9Dynvec__t1S(struct _fx_Nt9Dynvec__t1S_data_t** dst);
+static void _fx_free_Nt9Dynvec__t1S(struct _fx_Nt9Dynvec__t1S_data_t**);
 
 struct _fx_N13Ast__binary_t_data_t;
 
-static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t** dst);
+static void _fx_free_N13Ast__binary_t(struct _fx_N13Ast__binary_t_data_t**);
 
 struct _fx_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t(
-   struct _fx_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t** dst);
+   struct _fx_Nt6option1FPv3N14K_form__atom_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t**);
 
 struct _fx_Nt6option1FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t(
-   struct _fx_Nt6option1FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t_data_t** dst);
+   struct _fx_Nt6option1FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t_data_t**);
 
 struct _fx_Nt6option1FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t(
-   struct _fx_Nt6option1FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t** dst);
+   struct _fx_Nt6option1FPv3N14K_form__ktyp_tR10Ast__loc_tR22K_form__k_fold_callb_t_data_t**);
 
 struct _fx_Nt6option1FPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t(
-   struct _fx_Nt6option1FPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t_data_t** dst);
+   struct _fx_Nt6option1FPN14K_form__atom_t3N14K_form__atom_tR10Ast__loc_tR17K_form__k_callb_t_data_t**);
 
 struct _fx_Nt6option1FPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t(
-   struct _fx_Nt6option1FPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_data_t** dst);
+   struct _fx_Nt6option1FPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t_data_t**);
 
 struct _fx_Nt6option1FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t_data_t;
 
 static void _fx_free_Nt6option1FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t(
-   struct _fx_Nt6option1FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t_data_t** dst);
+   struct _fx_Nt6option1FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t_data_t**);
 
 struct _fx_N14K_form__ktyp_t_data_t;
 
-static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst);
+static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t**);
 
 struct _fx_N14K_form__kexp_t_data_t;
 
-static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t** dst);
+static void _fx_free_N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t**);
 
 struct _fx_Nt10Hashmap__t2ii_data_t;
 
-static void _fx_free_Nt10Hashmap__t2ii(struct _fx_Nt10Hashmap__t2ii_data_t** dst);
+static void _fx_free_Nt10Hashmap__t2ii(struct _fx_Nt10Hashmap__t2ii_data_t**);
 
 struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t;
 
-static void _fx_free_Nt10Hashmap__t2SR9Ast__id_t(struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t** dst);
+static void _fx_free_Nt10Hashmap__t2SR9Ast__id_t(struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t**);
 
 typedef struct _fx_LS_data_t {
    int_ rc;
@@ -3309,297 +3309,279 @@ _fx_Nt6option1R9Ast__id_t _fx_g16K_mangle__None3_ = { 1 };
 static _fx_N14K_form__ktyp_t_data_t KTypVoid_data_2 = { 1, 7 };
 _fx_N14K_form__ktyp_t _fx_g18K_mangle__KTypVoid = &KTypVoid_data_2;
 _fx_N15K_form__kinfo_t _fx_g15K_mangle__KNone = { 1 };
-FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(
-   struct _fx_R9Ast__id_t* a_0,
-   struct _fx_R9Ast__id_t* b_0,
-   bool* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6__eq__B2RM4id_tRM4id_t(struct _fx_R9Ast__id_t*, struct _fx_R9Ast__id_t*, bool*, void*);
 
 FX_EXTERN_C bool _fx_M8K_mangleFM8__same__B2LT2R9Ast__id_tN14K_form__ktyp_tLT2R9Ast__id_tN14K_form__ktyp_t(
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* a,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* b,
-   void* fx_fv);
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t*,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M8K_mangleFM6__eq__B2T2R9Ast__id_tN14K_form__ktyp_tT2R9Ast__id_tN14K_form__ktyp_t(
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* a_0,
-   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* b_0,
-   bool* fx_result,
-   void* fx_fv);
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t*,
+   struct _fx_T2R9Ast__id_tN14K_form__ktyp_t*,
+   bool*,
+   void*);
 
 FX_EXTERN_C bool _fx_M8K_mangleFM8__same__B2LN14K_form__ktyp_tLN14K_form__ktyp_t(
-   struct _fx_LN14K_form__ktyp_t_data_t* a,
-   struct _fx_LN14K_form__ktyp_t_data_t* b,
-   void* fx_fv);
+   struct _fx_LN14K_form__ktyp_t_data_t*,
+   struct _fx_LN14K_form__ktyp_t_data_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M8K_mangleFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__ktyp_t(
-   struct _fx_N14K_form__ktyp_t_data_t* a_0,
-   struct _fx_N14K_form__ktyp_t_data_t* b_0,
-   bool* fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   bool*,
+   void*);
 
-FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t* sep_0, struct _fx_LS_data_t* strs_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t*, struct _fx_LS_data_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_ size_0, fx_arr_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M7HashmapFM9makeindexA1i1i(int_, fx_arr_t*, void*);
 
-FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result);
+FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t*, fx_exn_t*);
 
-FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t* x, void* fx_fv);
+FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t*, void*);
 
-FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t* a, fx_str_t* b, void* fx_fv);
+FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv);
+FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
 
-FX_EXTERN_C int _fx_M6StringFM7replaceS3SSS(
-   fx_str_t* s,
-   fx_str_t* substr,
-   fx_str_t* new_substr,
-   fx_str_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM7replaceS3SSS(fx_str_t*, fx_str_t*, fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM15get_module_nameRM4id_t1i(int_ m_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM15get_module_nameRM4id_t1i(int_, struct _fx_R9Ast__id_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t* i_0, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM2ppS1RM4id_t(struct _fx_R9Ast__id_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM6kinfo_N15K_form__kinfo_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_N15K_form__kinfo_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N15K_form__kinfo_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM10get_kscopeLN12Ast__scope_t1N15K_form__kinfo_t(
-   struct _fx_N15K_form__kinfo_t* info_0,
-   struct _fx_LN12Ast__scope_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N15K_form__kinfo_t*,
+   struct _fx_LN12Ast__scope_t_data_t**,
+   void*);
 
-FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_ c, void* fx_fv);
+FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_, void*);
 
-FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t* a, int_ defval, int_ base, void* fx_fv);
+FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t*, int_, int_, void*);
 
-FX_EXTERN_C int _fx_F6stringS1i(int_ a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
 static int _fx_M8K_mangleFM12make_unique_Ta2S6iNt10Hashmap__t2SR9Ast__id_tR9Ast__id_tSSS(
-   int_ idx_0,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* mangle_map_0,
-   struct _fx_R9Ast__id_t* n_id_0,
-   fx_str_t* name_0,
-   fx_str_t* prefix_0,
-   fx_str_t* suffix_0,
-   struct _fx_Ta2S* fx_result,
-   void* fx_fv);
+   int_,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_R9Ast__id_t*,
+   fx_str_t*,
+   fx_str_t*,
+   fx_str_t*,
+   struct _fx_Ta2S*,
+   void*);
 
-FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t* s, fx_str_t* prefix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t*, fx_str_t*, void*);
 
 static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_LS_data_t* result_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* mangle_map_0,
-   struct _fx_LS_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_LS_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_LS_data_t**,
+   void*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
-FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* msg_0,
-   fx_exn_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(struct _fx_R10Ast__loc_t*, fx_str_t*, fx_exn_t*, void*);
 
 FX_EXTERN_C int _fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__kdefval_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__kdefval_t*,
+   void*);
 
 FX_EXTERN_C void _fx_M6K_formFM4KValN15K_form__kinfo_t1RM9kdefval_t(
-   struct _fx_R17K_form__kdefval_t* arg0,
-   struct _fx_N15K_form__kinfo_t* fx_result);
+   struct _fx_R17K_form__kdefval_t*,
+   struct _fx_N15K_form__kinfo_t*);
 
 FX_EXTERN_C int _fx_M6K_formFM13set_idk_entryv2R9Ast__id_tN15K_form__kinfo_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_N15K_form__kinfo_t* info_0,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N15K_form__kinfo_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   fx_str_t* fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   void*);
 
 FX_EXTERN_C int
    _fx_M8K_mangleFM7make_fpFPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_ri_data_t* arg0,
-   struct _fx_rLN14K_form__kexp_t_data_t* arg1,
-   bool arg2,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* arg3,
-   struct _fx_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t* fx_result);
+   struct _fx_ri_data_t*,
+   struct _fx_rLN14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t*);
 
 FX_EXTERN_C int
    _fx_M8K_mangleFM7make_fpFPN14K_form__ktyp_t7R9Ast__id_tR10Ast__loc_tR17K_form__k_callb_trirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_ri_data_t* arg0,
-   struct _fx_rLN14K_form__kexp_t_data_t* arg1,
-   bool arg2,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* arg3,
-   struct _fx_FPN14K_form__ktyp_t7R9Ast__id_tR10Ast__loc_tR17K_form__k_callb_trirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t*
-      fx_result);
+   struct _fx_ri_data_t*,
+   struct _fx_rLN14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_FPN14K_form__ktyp_t7R9Ast__id_tR10Ast__loc_tR17K_form__k_callb_trirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t*);
 
 FX_EXTERN_C int
    _fx_M8K_mangleFM7make_fpFPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t4rirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_ri_data_t* arg0,
-   struct _fx_rLN14K_form__kexp_t_data_t* arg1,
-   bool arg2,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* arg3,
-   struct _fx_FPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t* fx_result);
+   struct _fx_ri_data_t*,
+   struct _fx_rLN14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_FPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t*);
 
-FX_EXTERN_C void _fx_M3AstFM8ScModuleN12Ast__scope_t1i(int_ arg0, struct _fx_N12Ast__scope_t* fx_result);
+FX_EXTERN_C void _fx_M3AstFM8ScModuleN12Ast__scope_t1i(int_, struct _fx_N12Ast__scope_t*);
 
 FX_EXTERN_C int _fx_M6K_formFM8KTypNameN14K_form__ktyp_t1R9Ast__id_t(
-   struct _fx_R9Ast__id_t* arg0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**);
 
-FX_EXTERN_C int _fx_M6K_formFM7gen_idkR9Ast__id_t2iS(
-   int_ m_idx_0,
-   fx_str_t* s_0,
-   struct _fx_R9Ast__id_t* fx_result,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M6K_formFM7gen_idkR9Ast__id_t2iS(int_, fx_str_t*, struct _fx_R9Ast__id_t*, void*);
 
 FX_EXTERN_C void _fx_M6K_formFM4KTypN15K_form__kinfo_t1rRM9kdeftyp_t(
-   struct _fx_rR17K_form__kdeftyp_t_data_t* arg0,
-   struct _fx_N15K_form__kinfo_t* fx_result);
+   struct _fx_rR17K_form__kdeftyp_t_data_t*,
+   struct _fx_N15K_form__kinfo_t*);
 
 FX_EXTERN_C int _fx_M6K_formFM7KDefTypN14K_form__kexp_t1rRM9kdeftyp_t(
-   struct _fx_rR17K_form__kdeftyp_t_data_t* arg0,
-   struct _fx_N14K_form__kexp_t_data_t** fx_result);
+   struct _fx_rR17K_form__kdeftyp_t_data_t*,
+   struct _fx_N14K_form__kexp_t_data_t**);
 
 static int _fx_M8K_mangleFM18walk_ktyp_n_mangleN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM9walk_ktypN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tRM9k_callb_t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 static int
    _fx_M8K_mangleFM13mangle_id_typN14K_form__ktyp_t7R9Ast__id_tR10Ast__loc_tR17K_form__k_callb_trirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_R9Ast__id_t* i_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_ri_data_t* curr_km_idx_ref_0,
-   struct _fx_rLN14K_form__kexp_t_data_t* curr_top_code_ref_0,
-   bool final_mode_0,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* mangle_map_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_ri_data_t*,
+   struct _fx_rLN14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM13get_val_scopeLN12Ast__scope_t1R16Ast__val_flags_t(
-   struct _fx_R16Ast__val_flags_t* flags_0,
-   struct _fx_LN12Ast__scope_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_R16Ast__val_flags_t*,
+   struct _fx_LN12Ast__scope_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM12get_idk_ktypN14K_form__ktyp_t2R9Ast__id_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 static int
    _fx_M8K_mangleFM25mangle_ktyp_retain_recordN14K_form__ktyp_t7N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_trirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_N14K_form__ktyp_t_data_t* t_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_ri_data_t* curr_km_idx_ref_0,
-   struct _fx_rLN14K_form__kexp_t_data_t* curr_top_code_ref_0,
-   bool final_mode_0,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* mangle_map_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_ri_data_t*,
+   struct _fx_rLN14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM10KTypRecordN14K_form__ktyp_t2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t(
-   struct _fx_R9Ast__id_t* arg0,
-   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* arg1,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**);
 
 static int
    _fx_M8K_mangleFM12mangle_idomlv8LT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_tR10Ast__loc_tR17K_form__k_callb_trirLN14K_form__kexp_tBNt10Hashmap__t2SR9Ast__id_t(
-   struct _fx_LT2R9Ast__id_tN13K_form__dom_t_data_t* idoml_0,
-   struct _fx_LR9Ast__id_t_data_t* at_ids_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_ri_data_t* curr_km_idx_ref_0,
-   struct _fx_rLN14K_form__kexp_t_data_t* curr_top_code_ref_0,
-   bool final_mode_0,
-   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t* mangle_map_0,
-   void* fx_fv);
+   struct _fx_LT2R9Ast__id_tN13K_form__dom_t_data_t*,
+   struct _fx_LR9Ast__id_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_ri_data_t*,
+   struct _fx_rLN14K_form__kexp_t_data_t*,
+   bool,
+   struct _fx_Nt10Hashmap__t2SR9Ast__id_t_data_t*,
+   void*);
 
 static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_N14K_form__kexp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_N14K_form__kexp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM7KDefValN14K_form__kexp_t3R9Ast__id_tN14K_form__kexp_tR10Ast__loc_t(
-   struct _fx_R9Ast__id_t* arg0,
-   struct _fx_N14K_form__kexp_t_data_t* arg1,
-   struct _fx_R10Ast__loc_t* arg2,
-   struct _fx_N14K_form__kexp_t_data_t** fx_result);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N14K_form__kexp_t_data_t**);
 
 FX_EXTERN_C int _fx_M6K_formFM10get_kf_typN14K_form__ktyp_t3LR9Ast__id_tN14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_LR9Ast__id_t_data_t* kf_params_0,
-   struct _fx_N14K_form__ktyp_t_data_t* kf_rt_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_LR9Ast__id_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM10deref_ktypN14K_form__ktyp_t2N14K_form__ktyp_tR10Ast__loc_t(
-   struct _fx_N14K_form__ktyp_t_data_t* kt_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_R10Ast__loc_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM9KTypTupleN14K_form__ktyp_t1LN14K_form__ktyp_t(
-   struct _fx_LN14K_form__ktyp_t_data_t* arg0,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result);
+   struct _fx_LN14K_form__ktyp_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**);
 
 FX_EXTERN_C int _fx_M6K_formFM7KTypFunN14K_form__ktyp_t2LN14K_form__ktyp_tN14K_form__ktyp_t(
-   struct _fx_LN14K_form__ktyp_t_data_t* arg0,
-   struct _fx_N14K_form__ktyp_t_data_t* arg1,
-   struct _fx_N14K_form__ktyp_t_data_t** fx_result);
+   struct _fx_LN14K_form__ktyp_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t*,
+   struct _fx_N14K_form__ktyp_t_data_t**);
 
 FX_EXTERN_C int _fx_M6K_formFM9walk_kexpN14K_form__kexp_t2N14K_form__kexp_tRM9k_callb_t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_R17K_form__k_callb_t* callb_0,
-   struct _fx_N14K_form__kexp_t_data_t** fx_result,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_R17K_form__k_callb_t*,
+   struct _fx_N14K_form__kexp_t_data_t**,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM9fold_kexpv2N14K_form__kexp_tRM14k_fold_callb_t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_R22K_form__k_fold_callb_t* callb_0,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_R22K_form__k_fold_callb_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M8K_mangleFM7make_fpFPv2N14K_form__kexp_tR22K_form__k_fold_callb_t2rNt10Hashmap__t2iirNt10Hashmap__t2ii(
-   struct _fx_rNt10Hashmap__t2ii_data_t* arg0,
-   struct _fx_rNt10Hashmap__t2ii_data_t* arg1,
-   struct _fx_FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t* fx_result);
+   struct _fx_rNt10Hashmap__t2ii_data_t*,
+   struct _fx_rNt10Hashmap__t2ii_data_t*,
+   struct _fx_FPv2N14K_form__kexp_tR22K_form__k_fold_callb_t*);
 
 static int _fx_M8K_mangleFM14gen_kval_cnamev4R9Ast__id_tR10Ast__loc_tBrNt10Hashmap__t2ii(
-   struct _fx_R9Ast__id_t* n_0,
-   struct _fx_R10Ast__loc_t* loc_0,
-   bool global_0,
-   struct _fx_rNt10Hashmap__t2ii_data_t* prefix_hash_ref_0,
-   void* fx_fv);
+   struct _fx_R9Ast__id_t*,
+   struct _fx_R10Ast__loc_t*,
+   bool,
+   struct _fx_rNt10Hashmap__t2ii_data_t*,
+   void*);
 
 FX_EXTERN_C_VAL(struct _fx_Nt9Dynvec__t1S_data_t* _fx_g14Ast__all_names)
-FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t* s_0, struct _fx_R9Ast__id_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M3AstFM6get_idRM4id_t1S(fx_str_t*, struct _fx_R9Ast__id_t*, void*);
 
 static int _fx_M8K_mangleFM12mangle_kexp_v2N14K_form__kexp_tR22K_form__k_fold_callb_t(
-   struct _fx_N14K_form__kexp_t_data_t* e_0,
-   struct _fx_R22K_form__k_fold_callb_t* callb_0,
-   void* fx_fv);
+   struct _fx_N14K_form__kexp_t_data_t*,
+   struct _fx_R22K_form__k_fold_callb_t*,
+   void*);
 
 typedef struct {
    int_ rc;

@@ -1,0 +1,4 @@
+fun comprehension.sqr@g0(x@g1: int): int { x@g1 * x@g1 }
+
+@global val comprehension.a@g2: int [] = [ for i@g3 <- 0:5 { comprehension.sqr@g0(i@g3) }]
+println@g4(comprehension.a@g2)

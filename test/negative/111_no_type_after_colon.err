@@ -1,0 +1,1 @@
+111_no_type_after_colon.fx:2:8: error: type is expected here (starting from indent, type var, '(' or '{'

@@ -30,7 +30,10 @@ import Math, Hashmap
 
 type aclass_t =
     | ConstZero
-    | ConstInt: int64
+    // (value, is_u64): the bool is true ONLY for full-width uint64. All narrower
+    // integer types (incl. uint8/16/32) are exactly representable in int64 and
+    // are kept signed-flagged; only uint64 needs unsigned-aware folding (FB-002).
+    | ConstInt: (int64, bool)
     | ConstFloat: double
     | ConstBool: bool
     | ConstString: string
@@ -39,7 +42,7 @@ type aclass_t =
 fun string(a: aclass_t) =
     match a {
     | ConstZero => "Zero"
-    | ConstInt i => f"ConstInt({i}i)"
+    | ConstInt (i, u) => val suf = if u {"u64"} else {"i"}; f"ConstInt({i}{suf})"
     | ConstFloat f => f"ConstInt({f})"
     | ConstBool b => f"ConstBool({b})"
     | ConstString s => f"ConstString({s})"
@@ -50,9 +53,10 @@ fun classify_atom(a: atom_t, z: bool): aclass_t =
     match a {
     | AtomLit la =>
         match la {
-        | KLitInt x => if z && x == 0i64 { ConstZero } else { ConstInt(x) }
-        | KLitSInt(_, x) => if z && x == 0i64 { ConstZero } else { ConstInt(x) }
-        | KLitUInt(_, x) => if z && x == 0u64 { ConstZero } else { ConstInt(int64(x)) }
+        | KLitInt x => if z && x == 0i64 { ConstZero } else { ConstInt(x, false) }
+        | KLitSInt(_, x) => if z && x == 0i64 { ConstZero } else { ConstInt(x, false) }
+        | KLitUInt(64, x) => if z && x == 0u64 { ConstZero } else { ConstInt(int64(x), true) }
+        | KLitUInt(_, x) => if z && x == 0u64 { ConstZero } else { ConstInt(int64(x), false) }
         | KLitFloat(_, x) => if z && x == 0. { ConstZero } else { ConstFloat(x) }
         | KLitBool x => if z && x == false { ConstZero } else { ConstBool(x) }
         | KLitChar x => ConstString(string(x))
@@ -97,15 +101,16 @@ fun finalize_cfold_result(c_opt: aclass_t?, at_opt: (atom_t, ktyp_t)?, res_t: kt
             | KTypString => mk_some_lit_atom(KLitString(""))
             | _ => None
             }
-        | ConstInt x =>
+        | ConstInt (x, u) =>
             match res_t {
             | KTypInt => mk_some_lit_atom(KLitInt(x))
             | KTypCInt => mk_some_lit_atom(KLitSInt(32, (x << 32) >> 32))
             | KTypSInt b => mk_some_lit_atom(KLitSInt(b, (x << (64-b)) >> (64-b)))
             | KTypUInt b => mk_some_lit_atom(KLitUInt(b, (uint64(x) << (64-b)) >> (64-b)))
-            | KTypFloat b => mk_some_lit_atom(KLitFloat(b, double(x)))
+            // a folded uint64 >= 2^63 must convert to float/string as unsigned
+            | KTypFloat b => mk_some_lit_atom(KLitFloat(b, if u {double(uint64(x))} else {double(x)}))
             | KTypBool => mk_some_lit_atom(KLitBool(x != 0i64))
-            | KTypString => mk_some_lit_atom(KLitString(string(x)))
+            | KTypString => mk_some_lit_atom(KLitString(if u {string(uint64(x))} else {string(x)}))
             | _ => None
             }
         | ConstFloat x =>
@@ -173,69 +178,84 @@ fun cfold_bop(bop: binary_t, a: atom_t, b: atom_t, res_t: ktyp_t, loc: loc_t)
         }
     | (OpAdd, ConstZero, _) => retain_b()
     | (OpAdd, _, ConstZero) => retain_a()
-    | (OpAdd, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia + ib)), None)
-    | (OpAdd, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(ia + fb)), None)
-    | (OpAdd, ConstFloat fa, ConstInt ib) => (Some(ConstFloat(fa + ib)), None)
+    | (OpAdd, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia + ib, ua)), None)
+    | (OpAdd, ConstInt (ia, _), ConstFloat fb) => (Some(ConstFloat(ia + fb)), None)
+    | (OpAdd, ConstFloat fa, ConstInt (ib, _)) => (Some(ConstFloat(fa + ib)), None)
     | (OpAdd, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(fa + fb)), None)
     | (OpAdd, ConstString sa, ConstString sb) => (Some(ConstString(sa + sb)), None)
     | (OpSub, ConstZero, ConstZero) => (Some(ac), None)
-    | (OpSub, ConstZero, ConstInt x) => (Some(ConstInt(-x)), None)
+    | (OpSub, ConstZero, ConstInt (x, ux)) => (Some(ConstInt(-x, ux)), None)
     | (OpSub, ConstZero, ConstFloat x) => (Some(ConstFloat(-x)), None)
     | (OpSub, _, ConstZero) => retain_a()
-    | (OpSub, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia - ib)), None)
-    | (OpSub, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(ia - fb)), None)
-    | (OpSub, ConstFloat fa, ConstInt ib) => (Some(ConstFloat(fa - ib)), None)
+    | (OpSub, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia - ib, ua)), None)
+    | (OpSub, ConstInt (ia, _), ConstFloat fb) => (Some(ConstFloat(ia - fb)), None)
+    | (OpSub, ConstFloat fa, ConstInt (ib, _)) => (Some(ConstFloat(fa - ib)), None)
     | (OpSub, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(fa - fb)), None)
     | (OpMul, ConstZero, _) => (Some(ConstZero), None)
     | (OpMul, _, ConstZero) => (Some(ConstZero), None)
-    | (OpMul, ConstInt (1i64), _) => retain_b()
+    | (OpMul, ConstInt (1i64, _), _) => retain_b()
     | (OpMul, ConstFloat (1.), _) => retain_b()
-    | (OpMul, _, ConstInt (1i64)) => retain_a()
+    | (OpMul, _, ConstInt (1i64, _)) => retain_a()
     | (OpMul, _, ConstFloat (1.)) => retain_a()
-    | (OpMul, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia * ib)), None)
-    | (OpMul, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(ia * fb)), None)
-    | (OpMul, ConstFloat fa, ConstInt ib) => (Some(ConstFloat(fa * ib)), None)
+    | (OpMul, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia * ib, ua)), None)
+    | (OpMul, ConstInt (ia, _), ConstFloat fb) => (Some(ConstFloat(ia * fb)), None)
+    | (OpMul, ConstFloat fa, ConstInt (ib, _)) => (Some(ConstFloat(fa * ib)), None)
     | (OpMul, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(fa * fb)), None)
     | (OpDiv, _, ConstZero) | (OpMod, _, ConstZero) =>
         if !is_ktyp_integer(at, true) { (None, None) }
         else { throw compile_err(loc, "division by constant 0") }
-    | (OpDiv, _, ConstInt (1i64)) => retain_a()
+    | (OpDiv, _, ConstInt (1i64, _)) => retain_a()
     | (OpDiv, _, ConstFloat (1.)) => retain_a()
-    | (OpDiv, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia / ib)), None)
-    | (OpDiv, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(ia / fb)), None)
-    | (OpDiv, ConstFloat fa, ConstInt ib) => (Some(ConstFloat(fa / ib)), None)
+    // FB-002: uint64 division/modulo are UNSIGNED
+    | (OpDiv, ConstInt (ia, ua), ConstInt (ib, _)) =>
+        (Some(ConstInt(if ua {int64(uint64(ia) / uint64(ib))} else {ia / ib}, ua)), None)
+    | (OpDiv, ConstInt (ia, _), ConstFloat fb) => (Some(ConstFloat(ia / fb)), None)
+    | (OpDiv, ConstFloat fa, ConstInt (ib, _)) => (Some(ConstFloat(fa / ib)), None)
     | (OpDiv, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(fa / fb)), None)
-    | (OpMod, ConstInt ia, ConstInt ib) => (Some(ConstInt((ia % ib))), None)
-    | (OpMod, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(double(ia) % fb)), None)
-    | (OpMod, ConstFloat fa, ConstInt ib) => (Some(ConstFloat(fa % double(ib))), None)
+    | (OpMod, ConstInt (ia, ua), ConstInt (ib, _)) =>
+        (Some(ConstInt(if ua {int64(uint64(ia) % uint64(ib))} else {ia % ib}, ua)), None)
+    | (OpMod, ConstInt (ia, _), ConstFloat fb) => (Some(ConstFloat(double(ia) % fb)), None)
+    | (OpMod, ConstFloat fa, ConstInt (ib, _)) => (Some(ConstFloat(fa % double(ib))), None)
     | (OpMod, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(fa % fb)), None)
     | (OpBitwiseAnd, ConstZero, _) => (Some(ConstZero), None)
     | (OpBitwiseAnd, _, ConstZero) => (Some(ConstZero), None)
-    | (OpBitwiseAnd, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia & ib)), None)
+    | (OpBitwiseAnd, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia & ib, ua)), None)
     | (OpBitwiseAnd, ConstBool ba, ConstBool bb) => (Some(ConstBool(ba & bb)), None)
     | (OpBitwiseOr, ConstZero, _) => retain_b()
     | (OpBitwiseOr, _, ConstZero) => retain_a()
-    | (OpBitwiseOr, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia | ib)), None)
+    | (OpBitwiseOr, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia | ib, ua)), None)
     | (OpBitwiseOr, ConstBool ba, ConstBool bb) => (Some(ConstBool(ba | bb)), None)
     | (OpBitwiseXor, ConstZero, _) => retain_b()
     | (OpBitwiseXor, _, ConstZero) => retain_a()
-    | (OpBitwiseXor, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia ^ ib)), None)
+    | (OpBitwiseXor, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia ^ ib, ua)), None)
     | (OpBitwiseXor, ConstBool ba, ConstBool bb) => (Some(ConstBool(ba ^ bb)), None)
-    | (OpPow, ConstInt ia, ConstInt ib) =>
+    | (OpPow, ConstInt (ia, ua), ConstInt (ib, _)) =>
         if ib >= 0i64 {
-            (Some(ConstInt(int64(round(Math.pow(double(ia), double(ib)))))), None)
+            val base = if ua {double(uint64(ia))} else {double(ia)}
+            (Some(ConstInt(int64(round(Math.pow(base, double(ib)))), ua)), None)
         } else {
             throw compile_err(loc, "integer is raised to negative power; just use literal '0' instead")
         }
-    | (OpPow, ConstInt ia, ConstFloat fb) => (Some(ConstFloat(Math.pow(double(ia), fb))), None)
-    | (OpPow, ConstFloat fa, ConstInt ib) => (Some(ConstFloat(Math.pow(fa, double(ib)))), None)
+    | (OpPow, ConstInt (ia, _), ConstFloat fb) => (Some(ConstFloat(Math.pow(double(ia), fb))), None)
+    | (OpPow, ConstFloat fa, ConstInt (ib, _)) => (Some(ConstFloat(Math.pow(fa, double(ib)))), None)
     | (OpPow, ConstFloat fa, ConstFloat fb) => (Some(ConstFloat(Math.pow(fa, fb))), None)
-    | (OpCmp(CmpEQ), ConstInt ia, ConstInt ib) => (Some(ConstBool(ia == ib)), None)
-    | (OpCmp(CmpNE), ConstInt ia, ConstInt ib) => (Some(ConstBool(ia != ib)), None)
-    | (OpCmp(CmpLT), ConstInt ia, ConstInt ib) => (Some(ConstBool(ia < ib)), None)
-    | (OpCmp(CmpGT), ConstInt ia, ConstInt ib) => (Some(ConstBool(ia > ib)), None)
-    | (OpCmp(CmpLE), ConstInt ia, ConstInt ib) => (Some(ConstBool(ia <= ib)), None)
-    | (OpCmp(CmpGE), ConstInt ia, ConstInt ib) => (Some(ConstBool(ia >= ib)), None)
+    // FB-002: uint64 comparisons are UNSIGNED
+    | (OpCmp(cop), ConstInt (ia, ua), ConstInt (ib, _)) =>
+        val r =
+        if ua {
+            match cop {
+            | CmpEQ => uint64(ia) == uint64(ib) | CmpNE => uint64(ia) != uint64(ib)
+            | CmpLT => uint64(ia) < uint64(ib)  | CmpGT => uint64(ia) > uint64(ib)
+            | CmpLE => uint64(ia) <= uint64(ib) | CmpGE => uint64(ia) >= uint64(ib)
+            }
+        } else {
+            match cop {
+            | CmpEQ => ia == ib | CmpNE => ia != ib
+            | CmpLT => ia < ib  | CmpGT => ia > ib
+            | CmpLE => ia <= ib | CmpGE => ia >= ib
+            }
+        }
+        (Some(ConstBool(r)), None)
     | (OpCmp(CmpEQ), ConstString sa, ConstString sb) => (Some(ConstBool(sa == sb)), None)
     | (OpCmp(CmpNE), ConstString sa, ConstString sb) => (Some(ConstBool(sa != sb)), None)
     | (OpCmp(CmpEQ), ConstFloat fa, ConstFloat fb) => (Some(ConstBool(fa == fb)), None)
@@ -252,10 +272,13 @@ fun cfold_bop(bop: binary_t, a: atom_t, b: atom_t, res_t: ktyp_t, loc: loc_t)
     | (OpCmp(CmpGE), ConstBool ba, ConstBool bb) => (Some(ConstBool(ba >= bb)), None)
     | (OpShiftLeft, ConstZero, _) => (Some(ConstZero), None)
     | (OpShiftLeft, _, ConstZero) => retain_a()
-    | (OpShiftLeft, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia << ib)), None)
+    // left shift is bit-identical for signed/unsigned; finalize masks to width
+    | (OpShiftLeft, ConstInt (ia, ua), ConstInt (ib, _)) => (Some(ConstInt(ia << ib, ua)), None)
     | (OpShiftRight, ConstZero, _) => (Some(ConstZero), None)
     | (OpShiftRight, _, ConstZero) => retain_a()
-    | (OpShiftRight, ConstInt ia, ConstInt ib) => (Some(ConstInt(ia >> ib)), None)
+    // FB-002: uint64 >> is LOGICAL (zero-fill), not arithmetic (sign-extend)
+    | (OpShiftRight, ConstInt (ia, ua), ConstInt (ib, _)) =>
+        (Some(ConstInt(if ua {int64(uint64(ia) >> int(ib))} else {ia >> ib}, ua)), None)
     | _ => (None, None)
     }
     finalize_cfold_result(c_opt, a_opt, res_t, loc)
@@ -272,9 +295,11 @@ fun cfold_uop(uop: unary_t, a: atom_t, res_t: ktyp_t, loc: loc_t)
     | (OpPlus, NonConst) => retain_a()
     | (OpPlus, ConstInt _) => retain_a()
     | (OpPlus, ConstFloat _) => retain_a()
-    | (OpNegate, ConstInt x) => (Some(ConstInt(-x)), None)
+    // negate/bit-not preserve the uint64 flag; the value wraps mod 2^64 either
+    // way (finalize masks), so the signed int64 op gives the correct bits.
+    | (OpNegate, ConstInt (x, ux)) => (Some(ConstInt(-x, ux)), None)
     | (OpNegate, ConstFloat x) => (Some(ConstFloat(-x)), None)
-    | (OpBitwiseNot, ConstInt x) => (Some(ConstInt(~x)), None)
+    | (OpBitwiseNot, ConstInt (x, ux)) => (Some(ConstInt(~x, ux)), None)
     | (OpBitwiseNot, ConstBool x) => (Some(ConstBool(!x)), None)
     | (OpLogicNot, ConstBool x) => (Some(ConstBool(!x)), None)
     | _ => (None, None)

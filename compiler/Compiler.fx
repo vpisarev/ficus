@@ -260,20 +260,15 @@ fun k_skip_some(kmods: kmodule_t list)
         val skip_module = same_kform && all(for d <- km_deps {skip_flags[d]})
         val status_j = if status_j != "" {status_j} else if skip_module {"skip"} else {clrmsg(MsgBlue, "process")}
         pr_verbose(f"K {km_cname}: {status_j}")
-        if skip_module {
-            for e <- km_top {
-                | K_form.KDefFun kf when kf->kf_flags.fun_flag_ctor == Ast.CtorNone =>
-                    val {kf_flags, kf_rt, kf_loc} = *kf
-                    *kf = kf->{
-                        kf_flags=kf_flags.{
-                            fun_flag_ccode=true,
-                            fun_flag_inline=false,
-                            },
-                        kf_body=K_form.KExpCCode("", (kf_rt, kf_loc)),
-                        }
-                | _ => {}
-            }
-        }
+        // NB (FB-008): we deliberately do NOT replace the bodies of a skipped
+        // module's functions with empty `KExpCCode("")` stubs here. Doing so
+        // (as the code used to) runs BEFORE the K_inline pass and therefore
+        // suppresses cross-module inlining of the skipped module's functions
+        // into the modules that ARE recompiled -- making the recompiled .c
+        // differ from a full (from-scratch) build purely because of what got
+        // skipped. Keeping the real bodies lets the optimizer behave exactly as
+        // in a full build; the skipped module's own .c/.o are still reused (not
+        // regenerated) via `cmod_skip` in the final code-gen/compile loop.
         skip_flags[km_idx] = skip_module
         km.{km_skip=skip_module}
     } ]
@@ -436,7 +431,12 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             } else {
                 ("", "", "", "")
             }
-            val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
+            // -fwrapv: define signed integer overflow as 2's-complement wrap, matching
+            // ficus semantics and the constant folder (K_cfold_dealias). Without it,
+            // gcc/clang at -O2/-O3 exploit signed-overflow UB and miscompile overflowing
+            // integer arithmetic (e.g. a comparison folded to a constant while the value
+            // itself is materialized correctly). Supported by every gcc 3.x+/clang.
+            val common_cflags = "-fwrapv -Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
             val ggdb_opt = if opt_level == 0 { " -D_DEBUG -ggdb" } else {
                     val stk_overflow = if opt_level == 100 {" -DFX_NO_STACK_OVERFLOW_CHECK"} else {""}
                     f" -DNDEBUG{stk_overflow}"

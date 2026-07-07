@@ -1,0 +1,20 @@
+@@simple type _fx_N22match_variant__shape_t = | match_variant.Circle@g0: double | match_variant.Square@g1: double
+
+@nothrow fun _fx_M13match_variantFM6CircleN22match_variant__shape_t1d(arg0@g2: double): _fx_N22match_variant__shape_t =
+   Constructor(variant(1))
+
+@temp val v@g3: _fx_N22match_variant__shape_t = _fx_M13match_variantFM6CircleN22match_variant__shape_t1d(2.0)
+@temp val tag@g4: int32 = __intrin_variant_tag__(v@g3)
+@temp val v@g5: double =
+   if tag@g4 == 1 {
+      @temp val r@g6: double = __intrin_variant_case__(v@g3, 1); @temp val v@g7: double = 3.14159 * r@g6; v@g7 * r@g6
+   }
+   else if tag@g4 == 2 {
+      @temp val a@g8: double = __intrin_variant_case__(v@g3, 2); a@g8 * a@g8
+   }
+   else {
+      throw _fx_E12NoMatchErrorv
+   }
+
+_fx_F5printv1d(v@g5)
+_fx_F12print_stringv1S("\n")

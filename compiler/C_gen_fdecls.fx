@@ -307,8 +307,12 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
             val entries_ctyp = CTypRawArray([::CTypStatic], entry_ctyp)
             var fold init_ccode = [], ids = [], pairs = [], all_ids = empty_idset
                 for (iname, methods) <- kvar_ifaces {
+                // FB-001: an explicit (void*) cast on each method pointer -- C
+                // implicitly converts a function pointer to void*, but C++ (the
+                // -c++ backend) rejects it in the `const void* vtbl[]` initializer.
                 val mptrs = [:: for m <- methods
-                    { make_id_t_exp(m, std_CTypVoidPtr, kvar_loc) }]
+                    { CExpCast(make_id_t_exp(m, std_CTypVoidPtr, kvar_loc),
+                               std_CTypVoidPtr, kvar_loc) }]
                 val vtbl_ctyp = CTypRawArray([::CTypStatic, CTypConst], std_CTypVoidPtr)
                 val vtbl_init_exp = CExpInit(mptrs, (vtbl_ctyp, kvar_loc))
                 val vtbl = gen_idc(cm_idx, "vtbl")
@@ -358,7 +362,10 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
             val (ids_exp, init_ccode) = create_cdefval(ifaces_ids, ids_ctyp,
                 default_tempval_flags(), "", Some(ids_init_exp), init_ccode, kvar_loc)
             val init_ifaces_args =
-                [:: make_id_t_exp(free_f, std_fx_free_t, kvar_loc),
+                // FB-001: fx_init_ifaces takes `void* free_f`; cast the free fn
+                // pointer explicitly so the -c++ backend accepts the call.
+                [:: CExpCast(make_id_t_exp(free_f, std_fx_free_t, kvar_loc),
+                             std_CTypVoidPtr, kvar_loc),
                 make_int_exp(ids.length(), kvar_loc), ids_exp, iface_entries_exp,
                 cexp_get_addr(ifaces_id_exp)]
             val call_init_ifaces = make_call(get_id("fx_init_ifaces"), init_ifaces_args, CTypVoid, kvar_loc)

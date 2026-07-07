@@ -1,0 +1,16 @@
+fun recursion.fib@g0(n@g1: int): int
+{
+    @temp val v@g2: bool = n@g1 < 2
+    if v@g2 {
+       n@g1
+    } else {
+       @temp val v@g3: int = n@g1 - 1
+       @temp val v@g4: int = recursion.fib@g0(v@g3)
+       @temp val v@g5: int = n@g1 - 2
+       @temp val v@g6: int = recursion.fib@g0(v@g5)
+       v@g4 + v@g6
+    }
+}
+
+@temp val v@g7: int = recursion.fib@g0(10)
+println@g8(v@g7)

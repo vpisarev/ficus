@@ -1,0 +1,20 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+fun higher_order.apply2@g0(higher_order.f@g1: (int -> int), higher_order.x@g2: int): (((int -> int), int) -> int) =
+{ <(int -> int)>higher_order.f@g1(<(int -> int)>higher_order.f@g1(<int>higher_order.x@g2)) }
+
+<(int ->
+    void)>Builtins.println@g3(<(((int -> int), int) ->
+                                   int)>higher_order.apply2@g0({
+                                                                  @private fun higher_order.__lambda__@g4(
+                                                                     higher_order.y@g5: int): (int -> int) =
+                                                                  { (<int>higher_order.y@g5 * 2) }
+
+                                                                  <(int -> int)>higher_order.__lambda__@g4
+                                                               }, 3))

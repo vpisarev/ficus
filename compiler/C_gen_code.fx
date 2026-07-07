@@ -2865,7 +2865,14 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             (true, dst_data.rev(), decl_dstptr_ccode_all + pre_body_ccode, body_ccode)
                         }
                     }
-                    val (result, body_ccode) = kexp2cexp(body, ref None, body_ccode)
+                    // FB-006: some value-producing bodies (e.g. a NESTED
+                    // comprehension building the inner array of an array-of-arrays)
+                    // deliver their result by writing it back into dstexp_r rather
+                    // than through the return value, which is then a dummy `{0}`.
+                    // Read the ref back so the element copy sources the real array.
+                    val body_dst_r = ref None
+                    val (result0, body_ccode) = kexp2cexp(body, body_dst_r, body_ccode)
+                    val result = match *body_dst_r { | Some r => r | _ => result0 }
                     /* [TODO] if the result is temporarily created value, then it would be more efficient
                                to "move" it to the output collection instead of copying it there:
                         1. the result should be a local variable that is defined in the body prologue

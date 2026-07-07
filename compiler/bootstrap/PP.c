@@ -362,61 +362,53 @@ _fx_N13PP__ppstyle_t _fx_g14PP__Consistent = { 3 };
 _fx_N11PP__pptok_t _fx_g9PP__PPEnd = { 4 };
 _fx_N11PP__pptok_t _fx_g9PP__PPEof = { 5 };
 FX_EXTERN_C int _fx_M2PPFM7make_fpFPv1S4ririrA1CrLS(
-   struct _fx_ri_data_t* arg0,
-   struct _fx_ri_data_t* arg1,
-   struct _fx_rA1C_data_t* arg2,
-   struct _fx_rLS_data_t* arg3,
-   struct _fx_FPv1S* fx_result);
+   struct _fx_ri_data_t*,
+   struct _fx_ri_data_t*,
+   struct _fx_rA1C_data_t*,
+   struct _fx_rLS_data_t*,
+   struct _fx_FPv1S*);
 
 FX_EXTERN_C int _fx_M2PPFM7make_fpFPLS03rirA1CrLS(
-   struct _fx_ri_data_t* arg0,
-   struct _fx_rA1C_data_t* arg1,
-   struct _fx_rLS_data_t* arg2,
-   struct _fx_FPLS0* fx_result);
+   struct _fx_ri_data_t*,
+   struct _fx_rA1C_data_t*,
+   struct _fx_rLS_data_t*,
+   struct _fx_FPLS0*);
 
-static int _fx_M2PPFM7print_fv1S(fx_str_t* s_0, void* fx_fv);
+static int _fx_M2PPFM7print_fv1S(fx_str_t*, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM8endswithB2SC(fx_str_t* s, char_ suffix, void* fx_fv);
+FX_EXTERN_C bool _fx_M6StringFM8endswithB2SC(fx_str_t*, char_, void*);
 
-FX_EXTERN_C int _fx_F6stringS1A1C(fx_arr_t* a, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F6stringS1A1C(fx_arr_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M6StringFM6rstripS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM6rstripS1S(fx_str_t*, fx_str_t*, void*);
 
-static int _fx_M2PPFM5get_fLS0(struct _fx_LS_data_t** fx_result, void* fx_fv);
+static int _fx_M2PPFM5get_fLS0(struct _fx_LS_data_t**, void*);
 
-FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM7make_fpFPv1S1R7File__t(struct _fx_R7File__t* arg0, struct _fx_FPv1S* fx_result);
+FX_EXTERN_C int _fx_M2PPFM7make_fpFPv1S1R7File__t(struct _fx_R7File__t*, struct _fx_FPv1S*);
 
-static int _fx_M2PPFM9print_f1_v1S(fx_str_t* s_0, void* fx_fv);
+static int _fx_M2PPFM9print_f1_v1S(fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_M4FileFM5printv2RM1tS(struct _fx_R7File__t* f, fx_str_t* x, void* fx_fv);
+FX_EXTERN_C int _fx_M4FileFM5printv2RM1tS(struct _fx_R7File__t*, fx_str_t*, void*);
 
 FX_EXTERN_C_VAL(struct _fx_R7File__t _fx_g12File__stdout)
-FX_EXTERN_C int _fx_M2PPFM11check_stackv2RM1ti(struct _fx_R5PP__t* pp_0, int_ k_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM11check_stackv2RM1ti(struct _fx_R5PP__t*, int_, void*);
 
-FX_EXTERN_C int _fx_M2PPFM12advance_lefti1RM1t(struct _fx_R5PP__t* pp_0, int_* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM12advance_lefti1RM1t(struct _fx_R5PP__t*, int_*, void*);
 
-FX_EXTERN_C int _fx_M2PPFM5beginv3RM1tiN13PP__ppstyle_t(
-   struct _fx_R5PP__t* pp_0,
-   int_ indent_0,
-   struct _fx_N13PP__ppstyle_t* style_0,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM5beginv3RM1tiN13PP__ppstyle_t(struct _fx_R5PP__t*, int_, struct _fx_N13PP__ppstyle_t*, void*);
 
 FX_EXTERN_C_VAL(fx_exn_t _fx_E19PP__PPQueueOverflowv)
-FX_EXTERN_C int _fx_M2PPFM9scan_pushv2RM1ti(struct _fx_R5PP__t* pp_0, int_ i_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM9scan_pushv2RM1ti(struct _fx_R5PP__t*, int_, void*);
 
-FX_EXTERN_C int _fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(
-   struct _fx_R5PP__t* pp_0,
-   struct _fx_N11PP__pptok_t* x_0,
-   int_ len_0,
-   void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(struct _fx_R5PP__t*, struct _fx_N11PP__pptok_t*, int_, void*);
 
-FX_EXTERN_C int _fx_M2PPFM12check_streamv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv);
+FX_EXTERN_C int _fx_M2PPFM12check_streamv1RM1t(struct _fx_R5PP__t*, void*);
 
 FX_EXTERN_C_VAL(fx_exn_t _fx_E16PP__PPEmptyStackv)
 FX_EXTERN_C_VAL(fx_exn_t _fx_E19PP__PPStackOverflowv)
-FX_EXTERN_C int _fx_F7__mul__S2Ci(char_ c, int_ n, fx_str_t* fx_result, void* fx_fv);
+FX_EXTERN_C int _fx_F7__mul__S2Ci(char_, int_, fx_str_t*, void*);
 
 fx_exn_info_t _fx_E19PP__PPStackOverflow_info = {0};
 fx_exn_t _fx_E19PP__PPStackOverflowv = {0};
