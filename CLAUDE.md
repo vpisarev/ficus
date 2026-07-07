@@ -29,7 +29,16 @@ bin/ficus -no-c file.fx                   # parse + typecheck only (fast)
   (after modifying code or compiler) and compare generated code,
   pass `-o output_name`. ficus will put app `output_name` and all
   intermediate files (.c; (.k, .ast) if requested) to
-  `<ficus_root>__fxbuild__/output_name`.
+  `<ficus_root>/__fxbuild__/output_name`.
+- **Regenerating the bootstrap** (after editing any `compiler/*.fx`): the
+  pre-gen C in `compiler/bootstrap/*.c` (one per module) must be refreshed so a
+  fresh clone builds the updated compiler. Recipe: `bin/ficus -O3 -o boot
+  compiler/fx.fx` (freshly-built compiler regenerates its own C into
+  `__fxbuild__/boot/`), then copy the changed `.c` over `compiler/bootstrap/`.
+  Sanity: only the module(s) whose `.fx` you edited should differ (`diff` each),
+  and after `make` the self-hosted compiler must reproduce the bootstrap
+  byte-for-byte (regenerate again → 0 further diffs = fixpoint). `rm -f ./boot`
+  after (the `-o` binary litters the repo root).
 
 ## Testing — the fxtest ladder (see tools/fxtest/README.md)
 
@@ -101,6 +110,27 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   clean build is deterministic; incremental churn was FB-008.
 - **ASan+UBSan** via `bin/ficus -run -cflags "-fsanitize=address,undefined
   -fno-omit-frame-pointer" -clibs "<same>"`. The runtime is clean post-Brief-2.
+- **Signed integer overflow wraps (2's complement)**: ficus builds generated C
+  (and itself) with `-fwrapv` — the constant folder wraps, and the runtime must
+  match. Do NOT rely on signed overflow being UB, and do NOT drop `-fwrapv`
+  (`compiler/Compiler.fx` cflags + `GNUmakefile` CC). Without it, gcc 15 at
+  `-O2/-O3` miscompiled overflowing arithmetic (FB-011).
+- **UB signature at -O2/-O3**: if a value *prints* correctly but a branch/compare
+  on it goes the wrong way (e.g. `printf` shows `-4` yet `if (x != -4)` is taken),
+  that's the compiler exploiting UB (signed overflow, null-after-check, strict
+  aliasing) — the *predicate* is folded to a constant while the *value* is
+  materialized correctly. Repro in pure C; `-fwrapv`/`-fno-strict-*` confirm.
+- **fxtest caches its own build dir** (`build/fxtest/<suite>/...`); since the
+  cfold/oracle source is regenerated identically each run, a compiler fix won't
+  be picked up there — `rm -rf build/fxtest` before re-measuring after any
+  compiler change (same incremental trap as above; CI is a clean checkout so it's
+  unaffected).
+- **IR/`-pr-ast` snapshots are extracted by the harness**, which strips the
+  per-module `<abs-path>.fx: <deps>` header. That header is width-wrapped, so a
+  long repo path (CI's `/home/runner/work/ficus/ficus/...`) can wrap a dep onto
+  its own line and confuse extraction — a golden that passes on a short dev path
+  can fail on CI without any compiler change (FB-013). Suspect the harness, not
+  the compiler, when only `:ast` differs while `:k0`/`:k` match.
 
 **Iterate tiny**: write 10-20 lines → `bin/ficus -run f.fx` → fix → extend.
 The compiler's error messages are ground truth. If it rejects something the
