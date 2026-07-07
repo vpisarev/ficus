@@ -1,0 +1,33 @@
+FB-008 -- generated-C stability (Brief #2 WP-A)
+
+Repro perturbation: add ONE DCE-surviving builtin id to compiler/Ast.fx
+  val (std__detprobe__, builtin_ids) = std_id("__detprobe__", builtin_ids)
+
+KEY FINDING: a full (from-scratch) build is already byte-deterministic under
+this unrelated change -- two clean builds (clean Ast vs perturbed Ast) produce
+byte-identical .c for all 52 other modules. Bootstrap regeneration is a full
+build, so it was never the source of churn.
+
+The churn is an INCREMENTAL-rebuild artifact (reusing the build dir, as during
+development): perturb Ast.fx, rebuild into the same dir -> 25/53 unchanged
+modules' .c changed. Two causes:
+
+  (1) extern-prototype parameter names (22 modules, 4-6 lines each).
+      idc2str falls back to name_<id> / bare builtin names for dup'd args, which
+      are not stable. FIX: omit parameter names in prototypes (C ignores them).
+      C_pp.fx pprint_fun_hdr, fwd_mode branch. 25 -> 3 modules.
+
+  (2) suppressed cross-module inlining (3 modules: Lexer 1130, C_pp 122,
+      Parser 24). Compiler.fx k_skip_some replaced skipped modules' function
+      bodies with empty KExpCCode("") BEFORE the K_inline pass, so recompiled
+      modules could not inline the skipped modules' functions -> a temp that
+      would have come from an inlined body (res_0) degraded to a plain call temp
+      (v_7) -> different .c. FIX: keep the real bodies; the skipped module's own
+      .c/.o are still reused via cmod_skip. 3 -> 0 modules.
+
+Post-fix: full-build determinism preserved (0), incremental determinism fixed
+(0). Sanity green (test_all 131 PASS, fxtest all PASS). No new unused-symbol
+warnings (committed bootstrap 4611 vs post-fix 4613; pre-existing ficus
+per-module type-utility emission, unrelated to the fix).
+
+Regression test: tools/fxtest/determinism.py (fxtest.py determinism).

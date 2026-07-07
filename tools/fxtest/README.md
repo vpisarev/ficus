@@ -23,7 +23,8 @@ tools/fxtest/
 | `corpus`   | T2    | every runnable `.fx` gives identical output at `-O0` and `-O3` (miscompilation detector) |
 | `negative` | T3    | intentionally-broken programs produce the expected compiler diagnostics (golden `.err`) |
 | `ir`       | T4    | small programs produce the expected typechecked-AST / K-form (golden snapshots) |
-| `all`      |       | all of the above |
+| `determinism` | | the compiler's generated `.c` is stable: N from-scratch builds are byte-identical, and an incremental rebuild after an unrelated change leaves unchanged modules' `.c` byte-identical (FB-008 regression; slow, CI-nightly) |
+| `all`      |       | unit + negative + ir + corpus (not `determinism` — too slow) |
 
 ## Usage
 
@@ -34,6 +35,7 @@ python3 tools/fxtest/fxtest.py corpus --opt O0,O3 --jobs 8
 python3 tools/fxtest/fxtest.py corpus --cpp-smoke --openmp-smoke   # nightly axes
 python3 tools/fxtest/fxtest.py corpus --filter "mandelbrot"
 python3 tools/fxtest/fxtest.py unit
+python3 tools/fxtest/fxtest.py determinism --rebuilds 2         # FB-008, slow
 ```
 
 **Exit code**: `0` = all green. Quarantined / `xfail` entries never fail the run;
@@ -106,12 +108,32 @@ matrix `CC`/`CXX` env is what ficus uses to compile the generated C/C++
 - **push / PR:** `make` then `fxtest.py all` (unit + negative + ir +
   corpus O0/O3) — the fast, deterministic core.
 - **nightly (cron):** additionally `corpus --opt O0,O1,O3 --cpp-smoke
-  --openmp-smoke` — the heavier axes kept out of the PR budget.
+  --openmp-smoke` and `determinism --rebuilds 2` — the heavier axes kept out of
+  the PR budget.
 
 macOS OpenMP is the bundled `runtime/lib/macos_arm64/libomp.a` (no install);
 Linux installs `libomp-dev` for clang's `-fopenmp`. The build compiler and
 `bin/ficus` are cached, keyed on the compiler/stdlib/runtime source hash. On
 failure the generated C under `build/fxtest/` is uploaded as an artifact.
+
+## determinism — generated-C stability (FB-008)
+
+`fxtest.py determinism` proves the compiler emits stable C. It drives only
+`bin/ficus` (compiling `compiler/fx.fx` to C in `__fxbuild__/det_*`), never
+linking against the compiler. Two checks:
+
+- **`--rebuilds N`** — N from-scratch builds must produce a byte-identical set of
+  `.c` (full-build determinism). Full builds were already deterministic; this
+  guards against regressions.
+- **`--unrelated-change`** (default) — the actual FB-008 property. Build,
+  snapshot the `.c`; add one DCE-surviving builtin id to `compiler/Ast.fx`;
+  **incrementally** rebuild into the same dir (as during development); assert
+  every module whose own source did not change still has byte-identical `.c`.
+  Pre-fix this churned 25/53 modules (extern-prototype param names + cross-module
+  inlining suppressed for skipped modules); post-fix it is 0. The check always
+  restores `Ast.fx`, even on failure.
+
+Each full build is ~1 min, so this runs **nightly only**, not in `all`.
 
 ## Found bugs
 

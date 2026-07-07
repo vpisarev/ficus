@@ -435,6 +435,13 @@ def cmd_ir(args):
     return run_ir(REPO, FICUS, update=args.update_golden, jobs=args.jobs)
 
 
+def cmd_determinism(args):
+    from determinism import run_determinism  # noqa
+    return run_determinism(REPO, FICUS,
+                           rebuilds=args.rebuilds,
+                           unrelated_change=not args.no_unrelated_change)
+
+
 def _try(fn, args):
     """Run a subcommand module that may not exist yet (P2/P3)."""
     try:
@@ -486,6 +493,14 @@ def main(argv=None):
     p = sub.add_parser("unit", help="wrap test_all.fx")
     add_common(p)
     p.set_defaults(func=cmd_unit)
+
+    p = sub.add_parser("determinism", help="FB-008 generated-C stability (slow; CI nightly)")
+    p.add_argument("--rebuilds", type=int, default=2,
+                   help="N from-scratch builds must be byte-identical (>=2)")
+    p.add_argument("--no-unrelated-change", action="store_true",
+                   help="skip the incremental unrelated-change check")
+    add_common(p)
+    p.set_defaults(func=cmd_determinism)
 
     p = sub.add_parser("all", help="run everything")
     p.add_argument("--opt", default="O0,O3")

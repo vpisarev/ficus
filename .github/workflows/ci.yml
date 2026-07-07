@@ -85,6 +85,12 @@ jobs:
           python3 tools/fxtest/fxtest.py corpus --opt O0,O1,O3 \
             --cpp-smoke --openmp-smoke --jobs "$(getconf _NPROCESSORS_ONLN)"
 
+      # Nightly: FB-008 generated-C stability. Rebuilds the whole compiler a few
+      # times (~1 min each), so it is too slow for the PR leg.
+      - name: fxtest determinism (FB-008)
+        if: steps.mode.outputs.nightly == 'true'
+        run: python3 tools/fxtest/fxtest.py determinism --rebuilds 2
+
       # On failure, keep the generated C and build dirs for post-mortem.
       - name: Upload build artifacts on failure
         if: failure()

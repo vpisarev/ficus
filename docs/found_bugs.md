@@ -204,3 +204,39 @@ is the whole point of the ladder.
   `bootstrap/*.c` diffs, and try a used/DCE-surviving change in an early module
   then diff an unrelated module's `.c`. Details in the agent memory note
   `ficus-nondeterministic-codegen`.
+- CONFIRMED (2026-07-07, Brief #2 WP-A1): repro built. Adding a single
+  DCE-surviving builtin id to `compiler/Ast.fx`
+  (`val (std__detprobe__, builtin_ids) = std_id("__detprobe__", builtin_ids)`)
+  churned **25 unrelated compiler modules'** `.c` (Ast.c itself +21 lines),
+  from 4 lines up to Lexer.c 1166, C_pp.c 170, Parser.c 50. An *unused* function
+  in Ast.fx (`ignore(f(x))` at -O3) is fully DCE'd → zero churn, matching the
+  earlier note. Two observed mechanisms:
+    * M1 name-suffix disambiguation: params/locals gain or lose `_N`
+      (`size_0`↔`size`, `f_0`↔`f`, `sep_0`↔`sep`) — a shifted global id makes a
+      previously-ambiguous name unambiguous (or vice versa).
+    * M2 declaration emission order: generated ref/closure types and their
+      `_fx_make_*` fns reorder (e.g. `_fx_ri` = `int ref` block moves in Lexer.c)
+      — emission order is keyed on numeric id, which shifts.
+  Evidence in `docs/fb008_evidence/`.
+- REFINED + fixed (2026-07-07, Brief #2 WP-A2): the earlier "M1/M2" note was
+  measured through incrementally-confounded build dirs. The corrected picture:
+  **a full (from-scratch) build is already byte-deterministic** under the
+  unrelated change (two clean builds → identical `.c` for all 52 other modules;
+  so bootstrap regeneration, a full build, never churned). FB-008 is an
+  **incremental-rebuild** artifact (reuse the build dir, as during development):
+  perturb `Ast.fx`, rebuild in place → 25/53 unchanged modules' `.c` change.
+  Two causes, both fixed:
+    * extern-prototype parameter names (22 modules): `idc2str` falls back to
+      `name_<id>` / bare builtin-arg names, which are unstable. Fixed by omitting
+      parameter names in prototypes (C ignores them) — `C_pp.fx` `pprint_fun_hdr`
+      `fwd_mode` branch. 25→3 modules.
+    * suppressed cross-module inlining (3 modules): `Compiler.fx` `k_skip_some`
+      replaced skipped modules' bodies with empty `KExpCCode("")` *before* the
+      `K_inline` pass, so recompiled modules couldn't inline them → an inlined-body
+      temp (`res_0`) degraded to a call temp (`v_7`). Fixed by keeping the real
+      bodies (skipped modules' `.c`/`.o` are still reused via `cmod_skip`). 3→0.
+- fixed: branch `harden-1` (C_pp.fx + Compiler.fx), unfenced by new test `tools/fxtest/determinism.py`
+  (`fxtest.py determinism`): 2+ from-scratch builds byte-identical AND an
+  incremental rebuild after an unrelated `Ast.fx` change leaves every unchanged
+  module's `.c` byte-identical. Post-fix both green; full-build determinism
+  preserved; no new unused-symbol warnings (4611→4613).
