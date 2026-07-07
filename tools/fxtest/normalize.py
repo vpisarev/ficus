@@ -139,7 +139,17 @@ def ir_extract_module(text: str, stem: str):
     hdrs = [i for i, l in enumerate(lines) if hdr_re.search(l)]
     if hdrs:
         start = hdrs[-1] + 1
-        if start < len(lines) and set(lines[start].strip()) == {"-"}:
+        # The `<abs-path>.fx: <dep, dep, ...>` header is pretty-printed with a
+        # width limit, so a long dependency list WRAPS onto indented
+        # continuation lines before the `-----` rule.  The wrap point depends on
+        # the absolute path length, which differs per machine (e.g. a short
+        # /home/<user>/... dev path keeps it on one line, but a longer CI path
+        # like /home/runner/work/ficus/ficus/... pushes the last dep onto its
+        # own `   Foo` line).  Skip everything up to and including that rule so
+        # the extracted body is identical regardless of where the repo lives.
+        while start < len(lines) and set(lines[start].strip()) != {"-"}:
+            start += 1
+        if start < len(lines):   # skip the `-----` rule line itself
             start += 1
         return "\n".join(lines[start:]).strip("\n")
 

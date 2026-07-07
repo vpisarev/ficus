@@ -380,6 +380,31 @@ is the whole point of the ladder.
 - fix: guard `if (len_i > 0)` around the memcpy, matching the already-guarded
   begin/sep/end memcpy's in the same function. Sanitize clean after.
 
+## FB-013  fxtest IR extractor: wrapped `.fx:` module header leaks into snapshot  [FIXED]
+- discovered: 2026-07-07 -- this is the PR #27 CI handoff's "Failure 2"
+  (`nested_comprehension:ast` differs on CI, k0/k match), finally root-caused. It
+  does NOT reproduce on a short dev path and looked like a platform-dependent AST
+  print; it is neither -- it is a harness extraction bug.
+- symptom: `-pr-ast` prints each module as `<abs-path>/<mod>.fx: <dep, dep, ...>`
+  then a `-----` rule then the body. That header is pretty-printed with a width
+  limit, so a long dependency list WRAPS onto an indented continuation line
+  (`   String`) before the rule. `normalize.ir_extract_module` skipped only a
+  single rule line after the `.fx:` header, so on a long path the wrapped
+  `   String` + rule leaked in as the first two snapshot lines. The wrap point
+  depends on the absolute path length: local `/home/vpisarev/.../nested_
+  comprehension.fx` (117 cols) stays on one line and passes; CI
+  `/home/runner/work/ficus/ficus/.../nested_comprehension.fx` (and the mac
+  `/Users/runner/...`) wraps and fails. Only nested_comprehension has a long
+  enough dep list (Builtins..String) to sit right at the boundary, which is why
+  the other 19 IR programs passed everywhere.
+- config: any host whose repo path is long enough to wrap the header; the
+  compiler and the golden are both correct.
+- fix: `tools/fxtest/normalize.py` -- after the `.fx:` header, skip forward to
+  (and past) the `-----` rule instead of assuming exactly one line, so the
+  extracted body is identical regardless of where the repo lives. Verified by
+  dumping the same program from a short and a CI-length path: both normalize to
+  the committed golden. No golden regen and no compiler change needed.
+
 ## (non-compiler) NN.Quantized.dequantizeLinear -- DL-inference-engine bug  [FENCED]
 - NOT a compiler bug. `lib/NN/OpQuantized.run_dequantize` (the scalar/non-NEON
   int8 path) yields 0 instead of the expected dequantized value on Linux/x86, so

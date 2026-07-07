@@ -27,11 +27,8 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-latest, cc: gcc,   cxx: g++ }
-          # TEMPORARILY disabled to conserve GitHub Actions minutes while
-          # debugging the nested_comprehension:ast snapshot diff. Restore both
-          # once green on ubuntu-gcc.
-          # - { os: ubuntu-latest, cc: clang, cxx: clang++ }
-          # - { os: macos-latest,  cc: clang, cxx: clang++ }   # arm64
+          - { os: ubuntu-latest, cc: clang, cxx: clang++ }
+          - { os: macos-latest,  cc: clang, cxx: clang++ }   # arm64
     env:
       # ficus reads $CC/$CXX to compile the generated C/C++ (Compiler.fx).
       CC: ${{ matrix.cc }}
