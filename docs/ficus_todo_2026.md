@@ -1,11 +1,24 @@
 # Syntax and semantics
 
+- [ ] properly resolve instances of generic functions. Adjust the type checker not to stop at the first appropriate candidate.
 - [ ] new syntax for generic types and its instances: `t list => list<t>
-  - [ ] Q: what would be a syntax for generic functions?
+  - [ ] Q: what would be a syntax for generic functions? `fun [u, v] add(a: u, b: v) {...}`?
 - [ ] new syntax for fold: `fold acc = 0 for x <- arr {acc + x}` => `fold acc = 0 for x <- arr {acc += x}`
 - [ ] add syntax to append elements to lists, vectors during fold? We already have runtime support for vector writers for vector comprehensions, maybe need to add list writer as well. E.g. fold val l = [] for x <- 1:n {if isprime(n) {l+=x}}. It partially duplicates list comprehensions, but fold is more universal. In fact, list comprehensions can then be converted to just fold's that are, in their turn, are converted to simple loops.   
 - [ ] because of new syntax for generic types, we can get rid of (x :> new_type) type cast syntax and switch to normal new_type(x).
+- [ ] currently we use Matlab-style .op for elemwise-operations, but it looks weird
+      sometimes for those who are not familiar with Matlab. Shall we drop all .op
+      operations and use Python-style '@' for matrix multiplication? We also use @ for
+      preprocessor in Ficus, but we should be able to differentiate between binary @,
+      unary @ and macro interpolation '@{...}'.
 - [ ] not quite a new syntax: support string literals inside f-strings interpolations (see CLAUDE.md)
+- [ ] revise records:
+  - [ ] keep/drop/revise record update syntax?
+        `var pt = Point {x=5, y=10}; pt .= {y = pt.y+5}`.
+        actually, we can simply write `pt.y += 5`. The syntax above might be useful for non-destructive record update (`pt.{y = pt.y + 5}`). But is it really useful in
+        practice?
+  - [ ] when we have variant type with record options, there is no way to pack data
+        for the particular option: `type employee_t = Engineer: {age: int; computer: string; claude_subscr: string} | Manager: {age: int; tablet: string; team: list[employee_t]}`, how to we take and operate on all Engineer fields as a whole? It's suggested to automatically introduce `Engineer.t` type. It should be possible to construct employee_t directly from Engineer.t: `val e = Engineer(data: Engineer.t)`
 - [ ] rename half to `hfloat` (as in OpenCV) or `float16`, because half is quite generic name.
 - [ ] add `bfloat` or `bfloat16`.
 - [ ] add more array reductions, e.g. sum(0., for x <- arr {x**2}). Shall we somehow infer automatically the initial value, not to pass explicit '0.'?
