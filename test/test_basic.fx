@@ -863,4 +863,14 @@ TEST("basic.int64_min", fun() {
     EXPECT_EQ(folded % 7, -1)                     // remainder takes dividend sign
     EXPECT_EQ(folded + 1, -9223372036854775807)  // INT64_MIN + 1
     EXPECT_EQ(-folded - 1, 9223372036854775807)  // -(INT64_MIN) wraps; -1 -> MAX
+    // Assigning INT64_MIN to an explicit int64 lvalue used to be rejected by a
+    // symmetric typechecker range [-(2^63-1), 2^63-1]; now the full two's-
+    // complement min is accepted (consistent with int8/16/32).
+    val min64 = -9223372036854775807i64 - 1i64
+    var y = 0i64
+    y = -9223372036854775808
+    EXPECT_EQ(y, min64)
+    val arr = [0i64, 0i64]
+    arr[1] = -9223372036854775808
+    EXPECT_EQ(arr[1], min64)
 })

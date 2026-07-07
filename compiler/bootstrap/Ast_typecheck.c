@@ -13895,7 +13895,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM14typ_bounds_intTa2l1N10Ast__typ_t(
    }
    if (tag_0 == 6) {
       if (t_0->u.TypSInt == 64) {
-         _fx_Ta2l tup_3 = { -9223372036854775807LL, 9223372036854775807LL }; *fx_result = tup_3; goto _fx_endmatch_0;
+         _fx_Ta2l tup_3 = { (-9223372036854775807LL - 1), 9223372036854775807LL }; *fx_result = tup_3; goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 7) {
@@ -13919,7 +13919,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM14typ_bounds_intTa2l1N10Ast__typ_t(
       }
    }
    if (tag_0 == 8) {
-      _fx_Ta2l tup_8 = { -9223372036854775807LL, 9223372036854775807LL }; *fx_result = tup_8; goto _fx_endmatch_0;
+      _fx_Ta2l tup_8 = { (-9223372036854775807LL - 1), 9223372036854775807LL }; *fx_result = tup_8; goto _fx_endmatch_0;
    }
    if (tag_0 == 9) {
       if (t_0->u.TypFloat == 16) {

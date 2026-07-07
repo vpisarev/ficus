@@ -501,12 +501,15 @@ fun typ_bounds_int(t: typ_t): (int64, int64)
     | TypSInt(8) => (-128i64, 127i64)
     | TypSInt(16) => (-32768i64, 32767i64)
     | TypSInt(32) => (-2147483648i64, 2147483647i64)
-    | TypSInt(64) => (-9223372036854775807i64, 9223372036854775807i64)
+    // full two's-complement range; the min is written `-(2^63-1) - 1` because
+    // INT64_MIN has no bare literal form (this table historically used the
+    // symmetric -(2^63-1) only because the value couldn't be spelled here).
+    | TypSInt(64) => (-9223372036854775807i64 - 1, 9223372036854775807i64)
     | TypUInt(8) => (0i64, 255i64)
     | TypUInt(16) => (0i64, 65535i64)
     | TypUInt(32) => (0i64, 4294967295i64)
     | TypUInt(64) => (0i64, 9223372036854775807i64)
-    | TypLong => (-9223372036854775807i64, 9223372036854775807i64)
+    | TypLong => (-9223372036854775807i64 - 1, 9223372036854775807i64)
     | TypFloat(16) => (-4096i64, 4096i64)
     | TypFloat(32) => (-16777216i64, 16777216i64)
     | TypFloat(64) => (-9007199254740992i64, 9007199254740992i64)

@@ -110,6 +110,32 @@ split form appearing 50× in a 500-expr oracle. FB-010 moved to *fixed*; the
 typechecker's symmetric *literal* range (rejecting a bare `-2^63` in source) is
 left as-is — a language-design item parked in `docs/language_changes_brief.md` §1.3.
 
+## Follow-up — INT64_MIN as an int64 literal (author-requested)
+
+While closing out, Vadim asked to revisit the "INT64_MIN can't be a literal"
+limitation. Investigation showed most of it was already gone (post WP-H3 a bare
+`-9223372036854775808`, the `...i64` suffix form, casts and array literals all
+work); what remained was a **symmetric typechecker range** `[-(2^63-1), 2^63-1]`
+for `TypSInt(64)`/`TypLong` (`typ_bounds_int`), while the narrow types already
+used their true two's-complement min. The "why": it was a 2021 placeholder —
+INT64_MIN couldn't be *spelled* in the bounds table itself. It bit real code:
+`var y: int64; y = -9223372036854775808` and int64 array-element assignment were
+rejected (max worked, min didn't).
+
+Fix (one line each, `Ast_typecheck.fx`): widen the `TypSInt(64)` and `TypLong`
+lower bound to `-9223372036854775807i64 - 1` (the true INT64_MIN, written via
+arithmetic since it has no bare literal form). `basic.int64_min` gained
+var-assignment and array-element cases. Only `Ast_typecheck.c` changed in the
+bootstrap; full ladder green.
+
+New bug filed, **not** fixed: **FB-014** — a bare *positive* `9223372036854775808`
+silently wraps to INT64_MIN in the lexer. It is pre-existing (already true for
+default-`int`); widening the bound only makes it *consistent* across default and
+sized-int coercion rather than introducing it. A real fix needs the lexer to
+distinguish a negated 2^63 from a bare one — a parse-side restructure, parked in
+`language_changes_brief.md` §1.3. Implicit literal coercion to another type is
+rare in Ficus by design (args almost never coerce), so few contexts are affected.
+
 ---
 
 ## CLAUDE.md diff — sections removed

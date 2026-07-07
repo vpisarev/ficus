@@ -427,3 +427,29 @@ is the whole point of the ladder.
   compiler. Fenced by commenting the TEST block in `test/test_nn_quant.fx` (a
   `// FIXME` note points back here). This is the unit failure the PR #27 CI
   handoff saw (its log had truncated the test name); see FB-011 for the mixup.
+
+## FB-014  [open] bare positive literal 2^63 silently wraps to INT64_MIN
+- discovered: 2026-07-07 while widening the int64 literal range (housekeeping
+  follow-up to FB-010).
+- detail: the lexer (`LexerUtils.getnumber_`) accumulates a decimal magnitude in
+  `uint64` and, for a *bare* (unsuffixed) literal, accepts magnitudes up to and
+  including 2^63 (`maxval = 1<<63`). This is deliberate so that
+  `-9223372036854775808` (unary minus folded onto the literal in `Lexer.fx`) can
+  denote INT64_MIN. The side effect: a bare **positive** `9223372036854775808`
+  also parses -- `(int64_t)(1<<63)` wraps to INT64_MIN -- so `val x =
+  9223372036854775808` silently yields `-9223372036854775808` instead of an
+  overflow error. Only the exact value 2^63 slips through (2^63+1.. give a lex
+  OutOfRangeError).
+- config: any backend; the exact bare positive literal 2^63.
+- status: OPEN, not fixed. A correct fix must reject the bare positive 2^63 while
+  still allowing the negated form, which the lexer cannot currently distinguish
+  (the unary minus is a separate token folded after `getnumber` has already
+  wrapped the magnitude) -- a lexer/parse restructure, tracked as a language item
+  in `docs/language_changes_brief.md` §1.3. Widening the typechecker's int64
+  bound to the true INT64_MIN (housekeeping, so `var y: int64; y = -2^63` and
+  int64 array-element assignment work -- previously rejected by a symmetric
+  `[-(2^63-1), 2^63-1]` range) makes this wrap *consistent* across default-`int`
+  and sized-`int64` coercion contexts rather than introducing it: the default-int
+  case (`val x = 9223372036854775808`) already wrapped silently. NB: implicit
+  literal coercion to a different type is rare in Ficus by design (args almost
+  never coerce), so this reaches few contexts.
