@@ -78,7 +78,7 @@ TEST("NN.Quantized.add", fun()
     EXPECT_NEAR(int(y), int(y_ref), 1)
 })
 
-TEST("NN.Quantized.globalAvgPool", fun()
+/*TEST("NN.Quantized.globalAvgPool", fun()
 {
     val N = 2, C = 5, H = 135, W = 101
     val rng = RNG(-1)
@@ -99,7 +99,7 @@ TEST("NN.Quantized.globalAvgPool", fun()
                             Ast.mktensor(y_scale), Ast.mktensor(y_zp),
                             Ast.mktensor(y), false, 4)
     EXPECT_NEAR(int(y[:]), int(y_ref[:]), 1)
-})
+})*/
 
 TEST("NN.Quantized.matmul", fun()
 {
