@@ -5,8 +5,12 @@ name: fxtest CI
 # nightly to stay within the per-leg time budget.
 
 on:
+  # Only push-to-master triggers a push run; feature branches are covered by the
+  # pull_request event instead. This avoids the duplicate run (push + PR) that
+  # fires for every commit to a branch with an open PR -- 3 matrix legs, not 6.
+  # (A branch with no PR yet gets CI once its PR is opened.)
   push:
-    branches: ["**"]
+    branches: [master]
   pull_request:
   schedule:
     - cron: "0 5 * * *"   # nightly, 05:00 UTC
