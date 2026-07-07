@@ -47,6 +47,14 @@ is the whole point of the ladder.
   from test_oop.fx which exercises interfaces).
 - status: fenced -- `cpp_xfail` on the `test_all` corpus entry; the -c++ smoke
   reports XFAIL and will report XPASS when the codegen is fixed.
+- fixed: branch `harden-1`. `C_gen_fdecls.fx` (the `KDefVariant` interface-init
+  path) now emits explicit `(void*)` casts on (a) each method pointer in the
+  `const void* vtbl[]` initializer and (b) the free-function pointer passed to
+  `fx_init_ifaces`. C converts fn-ptr->void* implicitly; C++ does not, hence the
+  two errors per iface init site. No compiler/stdlib module declares an
+  interface, so the bootstrap is unchanged; only interface-using user programs
+  gain the (harmless-in-C) casts. Unfenced: `cpp_xfail` removed from
+  `manifest.toml`; the `-c++` smoke on `test_all` (and the whole corpus) is green.
 
 ## FB-002  uint64 `>>` is an arithmetic (sign-extending) shift, not logical
 - symptom: right-shifting a `uint64` whose top bit is set fills with sign bits

@@ -28,9 +28,8 @@ compare = "exact"
 strip_header = true
 timeout_sec = 300
 compile_timeout_sec = 300
-# FB-001: test_oop.fx uses interfaces, whose C++ codegen does not compile.
-# Fenced so the -c++ smoke reports XFAIL (and XPASS loudly if fixed).
-cpp_xfail = "FB-001: interface C++ codegen (fx_init_ifaces / const void* fn-ptr)"
+# FB-001 (interface C++ codegen) fixed on harden-1: the -c++ smoke now passes,
+# so the cpp_xfail fence is removed and the -c++ build is checked for real.
 
 # ---- self-contained deterministic examples ----------------------------------
 [corpus.btree]
