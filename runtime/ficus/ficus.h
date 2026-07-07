@@ -453,7 +453,7 @@ FX_INLINE char_ fx_str_elem_wrap(const fx_str_t* str, int_ idx)
 {
     int_ len = str->length;
     return (size_t)idx < (size_t)len ? str->data[idx] :
-           len == 0 ? (char_)0 : str->data[(idx % len) + (idx < 0 ? len : 0)];
+           len == 0 ? (char_)0 : str->data[((idx % len) + len) % len];
 }
 #define FX_STR_ELEM_CLIP(str, idx) \
     fx_str_elem_clip(&(str), (idx))
@@ -791,14 +791,14 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
     (arr).dim[3].step*(idx3)) + (idx4))
 
 #define FX_CLIP_IDX(idx, sz) ((size_t)idx < (size_t)sz ? idx : idx < 0 ? 0 : sz-1)
-#define FX_WRAP_IDX(idx, sz) ((size_t)idx < (size_t)sz ? idx : (idx % sz) + (idx < 0 ? sz : 0))
+#define FX_WRAP_IDX(idx, sz) ((size_t)idx < (size_t)sz ? idx : (((idx) % (sz)) + (sz)) % (sz))
 #define FX_PTR_1D_CLIP(typ, arr, idx) \
     ({ \
         fx_arr_t* __arr__ = &(arr); \
         int __idx__ = (idx), __sz0__ = __arr__->dim[0].size; \
-        ((size_t)__idx__ < (size_t)__sz0__) ? FX_PTR_1D(typ, *__arr__, __idx0__) : \
+        ((size_t)__idx__ < (size_t)__sz0__) ? FX_PTR_1D(typ, *__arr__, __idx__) : \
         __sz0__ == 0 ? (typ*)fx_zerobuf : FX_PTR_1D(typ, *__arr__, (__idx__ < 0 ? 0 : __sz0__ - 1)); \
-    ))
+    })
 #define FX_PTR_2D_CLIP(typ, arr, idx0, idx1) \
     ({ \
         fx_arr_t* __arr__ = &(arr); \
@@ -872,7 +872,7 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
         fx_arr_t* __arr__ = &(arr); \
         int __idx__ = (idx), __sz0__ = __arr__->dim[0].size; \
         (size_t)__idx__ < (size_t)__sz0__ ? ((typ*)__arr__->data + __idx__) : (typ*)fx_zerobuf; \
-    ))
+    })
 #define FX_PTR_2D_ZERO(typ, arr, idx0, idx1) \
     ({ \
         fx_arr_t* __arr__ = &(arr); \
@@ -925,9 +925,9 @@ FX_INLINE int fx_check_idx_range(int_ arrsz, int_ a, int_ b, int_ delta, int_ sc
     ({ \
         fx_arr_t* __arr__ = &(arr); \
         int __idx__ = (idx), __sz0__ = __arr__->dim[0].size; \
-        ((size_t)__idx__ < (size_t)__sz0__) ? FX_PTR_1D(typ, *__arr__, __idx0__) : \
-        __sz0__ == 0 ? (typ*)fx_zerobuf : FX_PTR_1D(typ, *__arr__, (__idx__ % __sz0__) + (__idx__ < 0 ? __sz0__ : 0)); \
-    ))
+        ((size_t)__idx__ < (size_t)__sz0__) ? FX_PTR_1D(typ, *__arr__, __idx__) : \
+        __sz0__ == 0 ? (typ*)fx_zerobuf : FX_PTR_1D(typ, *__arr__, ((__idx__ % __sz0__) + __sz0__) % __sz0__); \
+    })
 #define FX_PTR_2D_WRAP(typ, arr, idx0, idx1) \
     ({ \
         fx_arr_t* __arr__ = &(arr); \

@@ -85,6 +85,16 @@ is the whole point of the ladder.
 - status: routed around in `test/rand/test_rand_array.fx` (border test uses a
   `Vector`, the supported type). Not caught by T2 (never compiles) nor T3
   (passes -no-c typecheck) -- a pure C-backend codegen bug.
+- fixed: branch `harden-1`. Two runtime-header bugs in the 1D border macros
+  (`runtime/ficus/ficus.h`): (1) `FX_PTR_1D_CLIP`/`FX_PTR_1D_WRAP` used
+  `__idx0__` (undeclared) instead of `__idx__`; (2) all three 1D macros closed
+  the GCC statement-expression with `))` instead of `})`. 2D+ macros were fine.
+  While here: string `.wrap` emitted `<noid>` because `std_FX_STR_ELEM_WRAP`
+  was declared (`C_form.fx`) but never registered in `C_gen_std.fx` (`.clip`/
+  `.zero` were, which is why the lexer's `.zero` usage worked). Unfenced: the T5
+  `rand.array.border` suite now tests plain arrays too, and a new
+  `array.border_matrix` unit test covers {1D array, 2D array, Vector, string} x
+  {clip, zero, wrap}.
 
 ## FB-004  empty strided array slice produces a corrupt view -> SIGSEGV on use
 - symptom: an *empty* strided slice `a[lo:lo:step]` with `step >= 2` yields a
@@ -103,6 +113,15 @@ is the whole point of the ladder.
 - status: routed around in `test/rand/test_rand_array.fx` -- the slice test
   draws `hi` from `[lo+1, n]` so strided slices are never empty; strided slicing
   is therefore still exercised on non-degenerate ranges.
+- fixed: branch `harden-1`. `fx_subarr` (`runtime/ficus/impl/array.impl.h`) took
+  the copy path for strided slices (`need_copy` when `delta != 1`) and ran a
+  `do { fx_copy_arr_elems(...); } while (fx_next_slice(...))` loop whose body
+  executes once even when the result has 0 elements, copying from/deriving a
+  null slice pointer. Added an early `if (total == 0) return FX_OK;` after
+  `fx_make_arr` (the empty array is already correctly built). Unfenced: the T5
+  slice suite now draws `hi` from `[lo, n]` (empty strided slices included) and a
+  new `array.empty_slice` unit test covers empty at start/middle/end, step>len,
+  `lo==hi==n`, and empty negative-step.
 
 ## FB-005  Vector `.wrap[-n]` reads one past the end (heap over-read)
 - symptom: for a `Vector` of length n, `v.wrap[idx]` with `idx == -n` computes
@@ -119,6 +138,14 @@ is the whole point of the ladder.
   flag it; classic silent UB otherwise.
 - status: routed around by drawing `idx` from `[-(n-1), 2n-1]` in the border
   test, excluding the exact `-n` boundary; every other wrap index is validated.
+- fixed: branch `harden-1`. The wrap index was computed as
+  `(idx % n) + (idx < 0 ? n : 0)`, which yields `n` (one past the end) when
+  `idx % n == 0` and `idx < 0` (i.e. `idx == -n, -2n, ...`). Replaced with a
+  true Euclidean modulo `((idx % n) + n) % n` in all copies of the formula:
+  `fx_rrb_find_border` (Vector, `rrbvec.impl.h`), `FX_PTR_1D_WRAP` + `FX_WRAP_IDX`
+  (arrays) and `fx_str_elem_wrap` (strings) in `ficus.h`. Unfenced: the T5
+  `rand.array.border` suite now draws `idx` from `[-3n, 3n)` with the boundaries
+  `-n, -2n, 2n` forced in, for both Vector and plain array.
 
 ## FB-006  nested array comprehension (array-of-arrays) -> broken C on indexing
 - symptom: a nested comprehension whose body is itself a comprehension,

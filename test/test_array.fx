@@ -6,6 +6,51 @@
 // btree.fx example converted into a test. Binary tree traversal
 
 from UTest import *
+import Vector
+
+// FB-003 / FB-005: border access (.clip/.wrap/.zero) on the four supported
+// containers x the three modes. Plain 1D arrays used to emit broken C
+// (__idx0__/`))` in FX_PTR_1D_*), string .wrap was never wired
+// (std_FX_STR_ELEM_WRAP unregistered), and .wrap[-n] read one past the end.
+TEST("array.border_matrix", fun() {
+    // plain 1D array
+    val a = [10, 20, 30, 40, 50]
+    EXPECT_EQ(a.clip[7], 50); EXPECT_EQ(a.clip[-3], 10)
+    EXPECT_EQ(a.zero[7], 0);  EXPECT_EQ(a.zero[2], 30)
+    EXPECT_EQ(a.wrap[7], 30); EXPECT_EQ(a.wrap[-1], 50)
+    EXPECT_EQ(a.wrap[-5], 10)          // idx == -n boundary (was FB-005)
+    EXPECT_EQ(a.wrap[-10], 10)         // multiple wraps
+    // plain 2D array (2x3): 0 1 2 / 3 4 5
+    val m = [for i <- 0:2 for j <- 0:3 {i*3 + j}]
+    EXPECT_EQ(m.clip[5, 5], 5); EXPECT_EQ(m.clip[-1, -1], 0)
+    EXPECT_EQ(m.zero[9, 9], 0); EXPECT_EQ(m.zero[1, 2], 5)
+    EXPECT_EQ(m.wrap[-1, -1], 5); EXPECT_EQ(m.wrap[2, 3], 0)
+    // Vector
+    val v = vector(a)
+    EXPECT_EQ(v.clip[7], 50); EXPECT_EQ(v.zero[7], 0)
+    EXPECT_EQ(v.wrap[-5], 10); EXPECT_EQ(v.wrap[-1], 50)
+    // string (char sequence)
+    val s = "abcde"
+    EXPECT_EQ(s.clip[7], 'e'); EXPECT_EQ(s.zero[2], 'c')
+    EXPECT_EQ(s.wrap[-1], 'e'); EXPECT_EQ(s.wrap[-5], 'a')
+})
+
+// FB-004: an empty strided slice a[lo:lo:step] (step>=2) built a corrupt view
+// and segfaulted on any use. It must now be a well-formed size-0 array.
+TEST("array.empty_slice", fun() {
+    val a = [1, 2, 3, 4, 5]
+    EXPECT_EQ(size(a[0:0:2]), 0)          // empty at start
+    EXPECT_EQ(size(a[2:2:2]), 0)          // empty in the middle
+    EXPECT_EQ(size(a[5:5:2]), 0)          // lo == hi == n
+    EXPECT_EQ(size(a[1:1:9]), 0)          // step > len
+    EXPECT_EQ(size(a[4:4:-2]), 0)         // empty, negative step
+    // a size-0 view is safe to compare / iterate
+    EXPECT_EQ(a[2:2:2] == [for k <- 2:2:2 {a[k]}], true)
+    var cnt = 0; for x <- a[2:2:2] {cnt += 1}; EXPECT_EQ(cnt, 0)
+    // non-empty strided slices (both directions) still correct
+    EXPECT_EQ(a[0:5:2], [1, 3, 5])
+    EXPECT_EQ(a[4:0:-2], [5, 3])
+})
 
 TEST("array.stat", fun() {
     val arr = [ 1, 2, 3, 4, 5 ]

@@ -67,6 +67,7 @@ fun init_std_names(): void {
     std_FX_STR_CHKIDX = gen_std_macro("FX_STR_CHKIDX", 3)
     std_FX_STR_ELEM = gen_std_macro("FX_STR_ELEM", 2)
     std_FX_STR_ELEM_CLIP = gen_std_macro("FX_STR_ELEM_CLIP", 2)
+    std_FX_STR_ELEM_WRAP = gen_std_macro("FX_STR_ELEM_WRAP", 2)
     std_FX_STR_ELEM_ZERO = gen_std_macro("FX_STR_ELEM_ZERO", 2)
     std_FX_MAKE_STR = gen_std_macro("FX_MAKE_STR", 1)
     std_FX_FREE_STR = gen_std_macro("FX_FREE_STR", 1)

@@ -64,9 +64,10 @@ TEST("rand.array.slice", fun() {
         val n = next_int(rng, 1, 40)
         val a = rand_iarray(rng, n, -100, 100)
         val lo = next_int(rng, 0, n - 1)
-        // hi > lo: FB-004 makes an EMPTY strided slice a[lo:lo:step] crash on
-        // use, so we keep strided ranges non-empty (still non-degenerate cover).
-        val hi = next_int(rng, lo + 1, n)
+        // hi drawn from [lo, n], so EMPTY strided slices a[lo:lo:step] are
+        // exercised too (FB-004, fixed: an empty strided view is now safe to
+        // build/compare/copy instead of segfaulting).
+        val hi = next_int(rng, lo, n)
         val step = next_int(rng, 1, 4)
         val gc = a[lo:hi],       rc = [for k <- lo:hi {a[k]}]
         val gs = a[lo:hi:step],  rs = [for k <- lo:hi:step {a[k]}]
@@ -78,33 +79,41 @@ TEST("rand.array.slice", fun() {
     }
 })
 
-// Border access (.clip/.wrap/.zero) is exercised on a Vector: FB-003 makes the
-// same access on a plain 't [] array emit broken C, so we use the type on which
-// the feature is supported and compare against explicit index-clamping on the
-// underlying plain array.
+// Border access (.clip/.wrap/.zero) is exercised on BOTH a plain 't [] array
+// (FB-003, fixed) and a Vector, over idx in [-3n, 3n) so wrapping is tested in
+// both directions across multiple periods; the exact boundaries -n, -2n, 2n are
+// forced in (FB-005: Vector/array .wrap[-n] used to read one past the end).
 TEST("rand.array.border", fun() {
     val name = "rand.array.border"
-    for i <- 0:500 {
+    for i <- 0:600 {
         val seed = case_seed(name, i)
         val rng = mk_rng(seed)
         val n = next_int(rng, 1, 30)
         val a = rand_iarray(rng, n, -100, 100)
         val v = vector(a)
-        // Domain [-(n-1), 2n-1]: a single wrap, excluding idx == -n which
-        // triggers FB-005 (Vector.wrap[-n] reads one past the buffer end).
-        val idx = next_int(rng, -(n - 1), 2*n - 1)
-        val gc = v.clip[idx], rc = a[max(0, min(n - 1, idx))]
-        val gz = v.zero[idx], rz = if 0 <= idx < n {a[idx]} else {0}
-        // wrap reference matches Vector's contract: w = idx%n + (n if idx<0),
-        // with a zero fallback at the exact boundary idx == -n (w == n).
-        val w = (idx % n) + (if idx < 0 {n} else {0})
-        val gw = v.wrap[idx], rw = if 0 <= w < n {a[w]} else {0}
-        if gc != rc || gz != rz || gw != rw {
-            println(f"  [repro] {name} case={i} seed={seed} n={n} idx={idx}")
+        // most cases random in [-3n, 3n); a few forced boundary values.
+        val idx = match i % 8 {
+            | 0 => -n | 1 => -2*n | 2 => 2*n | 3 => n
+            | _ => next_int(rng, -3*n, 3*n - 1)
+            }
+        val cref = a[max(0, min(n - 1, idx))]           // clip
+        val zref = if 0 <= idx < n {a[idx]} else {0}    // zero
+        val w = ((idx % n) + n) % n                     // true Euclidean modulo
+        val wref = a[w]                                 // wrap (always an element)
+        // plain array (FB-003)
+        if a.clip[idx] != cref || a.zero[idx] != zref || a.wrap[idx] != wref {
+            println(f"  [repro] {name}[arr] case={i} seed={seed} n={n} idx={idx}")
         }
-        EXPECT_EQ(gc, rc)
-        EXPECT_EQ(gz, rz)
-        EXPECT_EQ(gw, rw)
+        EXPECT_EQ(a.clip[idx], cref)
+        EXPECT_EQ(a.zero[idx], zref)
+        EXPECT_EQ(a.wrap[idx], wref)
+        // Vector (FB-005)
+        if v.clip[idx] != cref || v.zero[idx] != zref || v.wrap[idx] != wref {
+            println(f"  [repro] {name}[vec] case={i} seed={seed} n={n} idx={idx}")
+        }
+        EXPECT_EQ(v.clip[idx], cref)
+        EXPECT_EQ(v.zero[idx], zref)
+        EXPECT_EQ(v.wrap[idx], wref)
     }
 })
 

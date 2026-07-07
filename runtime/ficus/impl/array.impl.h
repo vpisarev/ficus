@@ -560,6 +560,13 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
     }
     dstptr = subarr->data;
 
+    // FB-004: an empty strided subarray (e.g. a[lo:lo:step], step>=2) has total==0.
+    // fx_make_arr above already produced a valid empty array; the do-while below
+    // would still execute its body once and copy from/derive a null slice pointer,
+    // segfaulting. Bail out early for the empty case.
+    if (total == 0)
+        return FX_OK;
+
     do {
         fx_arriter_pos_t* top = &stack[stacksize-1];
         fx_copy_arr_elems(top->ptr, dstptr, nelems, elemsize, arr->copy_elem);
