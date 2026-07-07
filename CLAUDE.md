@@ -79,8 +79,7 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   (`-17 % 5 == -2`). `int(x)` truncates toward zero; `floor`/`ceil` return the
   **float/double** type, not int (use `int(floor(x))`).
 - **Border access is `arr.MODE[i]`** (mode before the bracket): `a.clip[i]`,
-  `a.wrap[i]`, `a.zero[i]`. Works on `Vector` and strings; **broken on plain
-  `'t []` arrays** (FB-003).
+  `a.wrap[i]`, `a.zero[i]`. Works on `Vector`, strings and arrays.
 - Comprehensions: 1D `[for i <- 0:n {..}]`; **2D is nested** `[for i <- 0:m for
   j <- 0:n {..}]`; **zip is comma** `for x <- a, y <- b {..}`; index binding
   `for x@i <- a` (1D) / `for x@(i,j) <- m` (2D); fold `fold acc=init for x <- a
