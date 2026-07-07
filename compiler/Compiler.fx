@@ -18,6 +18,79 @@ import C_post_rename_locals, C_post_adjust_decls
 
 exception CumulativeParseError
 
+@ccode {
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include <sys/stat.h>
+#if defined __APPLE__
+    #include <mach-o/dyld.h>
+    #include <unistd.h>
+#elif defined _WIN32
+    #include <windows.h>
+#else
+    #include <unistd.h>
+#endif
+}
+
+// WP-H1: a cheap, stable fingerprint of the running compiler binary -- its own
+// file size + mtime. Used (via build_stamp) to invalidate a build dir whose
+// cached .k/.c/.o were produced by a different compiler. We deliberately use
+// size+mtime instead of an md5 of the ~6.5 MB executable: this is queried once
+// per compile (hundreds of times across an fxtest run), and mtime is exactly the
+// signal ccache's default compiler_check uses. Returns "unknown" if the
+// executable path can't be resolved (the stamp then rests on the options only).
+fun compiler_signature(): string = @ccode {
+    char path[8192];
+    char buf[128];
+    struct stat st;
+    path[0] = 0;
+#if defined __APPLE__
+    uint32_t psz = (uint32_t)sizeof(path);
+    if (_NSGetExecutablePath(path, &psz) != 0) path[0] = 0;
+#elif defined _WIN32
+    if (GetModuleFileNameA(NULL, path, (DWORD)sizeof(path)) == 0) path[0] = 0;
+#else
+    {
+        ssize_t n = readlink("/proc/self/exe", path, sizeof(path)-1);
+        if (n > 0) path[n] = 0; else path[0] = 0;
+    }
+#endif
+    if (path[0] != 0 && stat(path, &st) == 0) {
+        long long ns = 0;
+#if defined __APPLE__
+        ns = (long long)st.st_mtimespec.tv_nsec;
+#elif defined __linux__
+        ns = (long long)st.st_mtim.tv_nsec;
+#endif
+        sprintf(buf, "%lld:%lld.%09lld", (long long)st.st_size,
+                (long long)st.st_mtime, ns);
+    } else {
+        strcpy(buf, "unknown");
+    }
+    return fx_cstr2str(buf, -1, fx_result);
+}
+
+// WP-H1: the identity a build dir's cached products depend on -- the compiler
+// binary plus every codegen-affecting option. A mismatch means the cache was
+// produced by a different compiler or build mode and must be regenerated.
+fun build_stamp(): string {
+    val o = Options.opt
+    val defs = ";".join([:: for (n, v) <- o.defines {
+        val vs = match v {
+            | Options.OptBool(b) => f"{b}"
+            | Options.OptInt(i) => f"{i}"
+            | Options.OptString(s) => s
+        }
+        f"{n}={vs}" }])
+    val env_cflags = Sys.getenv("FICUS_CFLAGS", "")
+    val opt_sig =
+        f"O{o.optimize_level} omp={o.enable_openmp} cpp={o.compile_by_cpp} " +
+        f"dbg={o.debug} inl={o.inline_thresh} iters={o.optim_iters} " +
+        f"cflags=[{o.cflags}] envcflags=[{env_cflags}] defs=[{defs}]"
+    compiler_signature() + "\n" + opt_sig + "\n"
+}
+
 type id_t = Ast.id_t
 type kmodule_t = K_form.kmodule_t
 val pr_verbose = Ast.pr_verbose
@@ -208,6 +281,24 @@ fun k_skip_some(kmods: kmodule_t list)
     val build_dir = Options.opt.build_dir
     var ok = ok && Sys.mkdir(build_dir, 0755)
     val obj_ext = if Sys.win32 {".obj"} else {".o"}
+
+    // WP-H1: if this build dir was last written by a different compiler binary
+    // or a codegen-affecting build mode (opt level, OpenMP, C/C++, debug, inline
+    // threshold, cflags/defines), its cached .k/.c/.o cannot be trusted. Compare
+    // a stamp; on mismatch force a full rebuild (regenerate every .k/.c/.o) and
+    // refresh the stamp. This retires the "rm -rf the build dir between runs"
+    // folklore (the FB-008/FB-011 stale-cache and omp/no-omp link traps).
+    val stamp_file = Filename.normalize(build_dir, ".fxstamp")
+    val cur_stamp = build_stamp()
+    val old_stamp = try File.read_utf8(stamp_file) catch { | IOError | FileOpenError => "" }
+    if cur_stamp != old_stamp {
+        if !Options.opt.force_rebuild && old_stamp != "" {
+            pr_verbose(clrmsg(MsgBlue, "build stamp changed (compiler/mode) -> full rebuild"))
+        }
+        Options.force_full_rebuild()
+        try File.write_utf8(stamp_file, cur_stamp)
+        catch { | IOError | FileOpenError => {} }
+    }
 
     val kmods = [:: for km <- kmods {
         val {km_idx, km_cname, km_top, km_deps, km_pragmas} = km

@@ -101,11 +101,15 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   intermediates under `__fxbuild__/name/`. `rm -f name` after, or it litters.
 - **`-run` hides a runtime SIGSEGV as exit 1** (no output). To see a real crash,
   build a binary (`-o`) and run it directly — you'll get exit 139 and the trace.
-- **Incremental compilation reuses the `-o`/`-B` build dir** (it skips a module
-  whose K-form *dump*, gensym numbers included, is unchanged). For a clean
-  before/after `.c` comparison you MUST `rm -rf` the build dir between builds —
-  otherwise stale `.c` from a prior run silently confounds the diff. A full
-  clean build is deterministic; incremental churn was FB-008.
+- **Build dirs self-invalidate via a `.fxstamp`** (WP-H1): a `-o`/`-B` dir
+  caches each module's `.c`/`.o` and reuses them across runs (it skips a module
+  whose K-form dump is unchanged), but the compiler now stamps the dir with its
+  own binary identity (size+mtime) + the codegen-affecting options (opt level,
+  OpenMP, C/C++, `-debug`, inline threshold, cflags/defines). A changed compiler
+  or build mode auto-triggers a full rebuild — no `rm -rf` needed between
+  before/after diffs, and flipping `-no-openmp`↔OpenMP in one dir no longer
+  causes `omp_outlined` link errors. Full clean builds are deterministic;
+  incremental churn was FB-008.
 - **ASan+UBSan** via `bin/ficus -run -cflags "-fsanitize=address,undefined
   -fno-omit-frame-pointer" -clibs "<same>"`. The runtime is clean post-Brief-2.
 - **Signed integer overflow wraps (2's complement)**: ficus builds generated C
@@ -116,11 +120,10 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   that's the compiler exploiting UB (signed overflow, null-after-check, strict
   aliasing) — the *predicate* is folded to a constant while the *value* is
   materialized correctly. Repro in pure C; `-fwrapv`/`-fno-strict-*` confirm.
-- **fxtest caches its own build dir** (`build/fxtest/<suite>/...`); since the
-  cfold/oracle source is regenerated identically each run, a compiler fix won't
-  be picked up there — `rm -rf build/fxtest` before re-measuring after any
-  compiler change (same incremental trap as above; CI is a clean checkout so it's
-  unaffected).
+- **fxtest wipes `build/fxtest` when `bin/ficus` changes** (WP-H1): the harness
+  stamps its cache with the md5 of the compiler and clears it on mismatch, so a
+  compiler fix is always picked up (was the FB-011 stale-`.o` trap). Two runs
+  with the same compiler reuse the cache — no `rm -rf build/fxtest` needed.
 - **IR/`-pr-ast` snapshots are extracted by the harness**, which strips the
   per-module `<abs-path>.fx: <deps>` header. That header is width-wrapped, so a
   long repo path (CI's `/home/runner/work/ficus/ficus/...`) can wrap a dep onto
@@ -140,9 +143,7 @@ module name (`Char`, `List`, `String`, `Array`, `Math`, `Map`, ...): the input
 file's directory is searched first for the auto-imported preamble, so
 `char.fx` shadows the real `Char`. Numeric prefixes (`001_name.fx`) are safe.
 Subdir modules import as `Dir.Module` (`import NN.Ast as Ast`); siblings in the
-same dir import by bare name. Don't reuse one `-B` build dir across `-no-openmp`
-and OpenMP builds — stale `.o` files cause `omp_outlined` link errors; use
-isolated build dirs.
+same dir import by bare name.
 
 ## Environment notes (macos only)
 

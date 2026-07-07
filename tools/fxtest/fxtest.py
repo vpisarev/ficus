@@ -19,7 +19,9 @@ stdlib Python only.  See tools/fxtest/README.md.
 import argparse
 import concurrent.futures
 import fnmatch
+import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -32,6 +34,45 @@ MANIFEST = os.path.join(HERE, "manifest.toml")
 
 sys.path.insert(0, HERE)
 import normalize  # noqa: E402
+
+
+# ============================================================================
+# build-cache invalidation (WP-H1)
+# ============================================================================
+#
+# fxtest reuses build/fxtest/** across runs for speed.  But the cached .c/.o
+# were produced by a specific bin/ficus; if the compiler is rebuilt, reusing
+# them silently tests the OLD compiler (this is the FB-011 trap: a compiler fix
+# landed, yet a stale pre-fix .o kept the test red).  Stamp the cache with the
+# md5 of bin/ficus and wipe it whenever the compiler changes.  Two runs with the
+# same compiler match the stamp -> cache is reused (no perf regression).
+
+def _ficus_md5() -> str:
+    h = hashlib.md5()
+    with open(FICUS, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def invalidate_stale_cache():
+    """Wipe build/fxtest if it was produced by a different bin/ficus."""
+    stamp = os.path.join(BUILD, ".fxstamp")
+    cur = _ficus_md5()
+    try:
+        with open(stamp) as f:
+            old = f.read().strip()
+    except FileNotFoundError:
+        old = None
+    if old == cur:
+        return
+    if old is not None and os.path.isdir(BUILD):
+        print(f"[fxtest] bin/ficus changed since last run -> wiping "
+              f"{os.path.relpath(BUILD, REPO)}")
+    shutil.rmtree(BUILD, ignore_errors=True)
+    os.makedirs(BUILD, exist_ok=True)
+    with open(stamp, "w") as f:
+        f.write(cur + "\n")
 
 
 # ============================================================================
@@ -600,6 +641,7 @@ def main(argv=None):
     if not os.path.exists(FICUS):
         print(f"error: {FICUS} not found; run `make` first", file=sys.stderr)
         return 2
+    invalidate_stale_cache()
     return args.func(args)
 
 

@@ -515,6 +515,13 @@ FX_EXTERN_C int _fx_M7OptionsFM15default_optionsRM9options_t0(struct _fx_R18Opti
    return fx_status;
 }
 
+FX_EXTERN_C int _fx_M7OptionsFM18force_full_rebuildv0(void* fx_fv)
+{
+   int fx_status = 0;
+   _fx_g12Options__opt.force_rebuild = true;
+   return fx_status;
+}
+
 FX_EXTERN_C int _fx_M7OptionsFM10print_helpv1B(bool detailed_0, void* fx_fv)
 {
    fx_str_t v_0 = {0};
