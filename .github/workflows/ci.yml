@@ -21,6 +21,14 @@ on:
         type: boolean
         default: false
 
+# Cancel a still-running run when a newer commit for the same ref arrives, so
+# rapid pushes to a PR don't pile up superseded runs. Only PR runs are cancelled
+# -- master runs are left to finish so the mainline keeps a complete CI record
+# (useful for bisecting). Flip cancel-in-progress to `true` to also cancel master.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   fxtest:
     name: ${{ matrix.os }} / ${{ matrix.cc }}
