@@ -64,7 +64,8 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `nan` gives a confusing "pattern is expected" / "not an l-value" error.
 - **Casts must be parenthesized *with* the operand**: write `(x :> uint8)`, not
   `(x) :> uint8`. Even a bare `x :> T` in some positions (e.g. a `match` arm
-  body) fails — wrap it: `(x :> T)`. Chained: `((x :> uint32) :> int32)`. For simple types a functional notation, e.g. `uint32(x)`, works too.
+  body) fails — wrap it: `(x :> T)`. Chained: `((x :> uint32) :> int32)`.
+  For simple types a functional notation, e.g. `uint32(x)`, works too.
 - **`println` takes ONE argument.** For several values use an f-string or a
   tuple: `println(f"{a} {b}")` / `println((a, b))`.
 - **f-string `{}` interpolation can't contain a quoted string literal** —
@@ -112,9 +113,7 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   -fno-omit-frame-pointer" -clibs "<same>"`. The runtime is clean post-Brief-2.
 - **Signed integer overflow wraps (2's complement)**: ficus builds generated C
   (and itself) with `-fwrapv` — the constant folder wraps, and the runtime must
-  match. Do NOT rely on signed overflow being UB, and do NOT drop `-fwrapv`
-  (`compiler/Compiler.fx` cflags + `GNUmakefile` CC). Without it, gcc 15 at
-  `-O2/-O3` miscompiled overflowing arithmetic (FB-011).
+  match. Do NOT rely on signed overflow being UB, and do NOT drop `-fwrapv`.
 - **UB signature at -O2/-O3**: if a value *prints* correctly but a branch/compare
   on it goes the wrong way (e.g. `printf` shows `-4` yet `if (x != -4)` is taken),
   that's the compiler exploiting UB (signed overflow, null-after-check, strict
@@ -148,7 +147,8 @@ same dir import by bare name. Don't reuse one `-B` build dir across `-no-openmp`
 and OpenMP builds — stale `.o` files cause `omp_outlined` link errors; use
 isolated build dirs.
 
-## Environment notes (this machine)
+## Environment notes (macos only)
 
-- Local Python is **3.9** (no `tomllib` — the harness ships a fallback parser).
+- on macos python is **3.9** (no `tomllib` — the harness ships a fallback parser).
+  On linux it's more fresh.
 - macOS `sed` is BSD (no `\b`); use `perl -pe` for word-boundary edits.
