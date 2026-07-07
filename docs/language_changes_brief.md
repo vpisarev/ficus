@@ -27,19 +27,23 @@ already landed in `doc/ficustut.md` during harden-1; expand at rewrite time).
 `ConstInt: (int64, bool)` with the flag set only for full-width uint64. Shift
 count must be `int`. → tutorial.
 
-### 1.3 int64 literal range — PARTLY DONE (housekeeping)
-Typechecker now accepts the full two's-complement range `[-2^63, 2^63-1]`
-(`typ_bounds_int`), so INT64_MIN can be assigned to an int64 lvalue / array
-element (was a symmetric `[-(2^63-1), 2^63-1]` placeholder — set that way in 2021
-only because INT64_MIN couldn't be spelled in the bounds table itself; the narrow
-types already used their true min). Emission fixed separately (FB-010 / WP-H3).
-REMAINING OPEN: the lexer accepts a bare **positive** `9223372036854775808` and
-silently wraps it to INT64_MIN (FB-014). A clean fix must reject the bare
-positive 2^63 while still allowing the negated form — the lexer can't currently
-tell them apart (the unary minus is folded onto the literal only after
-`getnumber` has already wrapped the magnitude). Related: implicit literal
-coercion to another type is rare in Ficus by design (args almost never coerce) —
-a separate, larger topic.
+### 1.3 int64 literal range — DONE (housekeeping)
+Three coupled pieces, now all resolved:
+- Typechecker accepts the full two's-complement range `[-2^63, 2^63-1]`
+  (`typ_bounds_int`), so INT64_MIN can be assigned to an int64 lvalue / array
+  element (was a symmetric `[-(2^63-1), 2^63-1]` placeholder — set that way in
+  2021 only because INT64_MIN couldn't be spelled in the bounds table itself; the
+  narrow types already used their true min).
+- C emission of a folded INT64_MIN uses the signed split form (FB-010 / WP-H3).
+- The lexer now rejects a bare **positive** `9223372036854775808` (which used to
+  silently wrap to INT64_MIN) while still accepting `-9223372036854775808`
+  (FB-014): an `expect_neg_number` flag, set by the unary-minus handler around
+  the number-lexing call, blesses only an immediately-negated 2^63; nested/
+  parenthesized forms (`- -2^63`, `-(2^63)`) correctly error. A `-` before an
+  unsigned literal is now a clear error too.
+
+Separate, still open: implicit literal coercion to another type is rare in Ficus
+by design (args almost never coerce) — its own topic, not addressed here.
 
 ### 1.4 Saturating arithmetic — DEFERRED (design direction only)
 With wrap as the defined default, add explicit saturating ops (integer, and
