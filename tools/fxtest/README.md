@@ -24,7 +24,8 @@ tools/fxtest/
 | `negative` | T3    | intentionally-broken programs produce the expected compiler diagnostics (golden `.err`) |
 | `ir`       | T4    | small programs produce the expected typechecked-AST / K-form (golden snapshots) |
 | `determinism` | | the compiler's generated `.c` is stable: N from-scratch builds are byte-identical, and an incremental rebuild after an unrelated change leaves unchanged modules' `.c` byte-identical (FB-008 regression; slow, CI-nightly) |
-| `all`      |       | unit + negative + ir + corpus (not `determinism` — too slow) |
+| `sanitize` |       | `test_all` (+ T5 suites) runs clean under ASan+UBSan — silent-UB class, e.g. FB-005 (slow, CI-nightly) |
+| `all`      |       | unit + negative + ir + corpus (not `determinism` / `sanitize` — too slow) |
 
 ## Usage
 
@@ -36,6 +37,7 @@ python3 tools/fxtest/fxtest.py corpus --cpp-smoke --openmp-smoke   # nightly axe
 python3 tools/fxtest/fxtest.py corpus --filter "mandelbrot"
 python3 tools/fxtest/fxtest.py unit
 python3 tools/fxtest/fxtest.py determinism --rebuilds 2         # FB-008, slow
+python3 tools/fxtest/fxtest.py sanitize                         # ASan+UBSan, slow
 ```
 
 **Exit code**: `0` = all green. Quarantined / `xfail` entries never fail the run;
@@ -108,8 +110,8 @@ matrix `CC`/`CXX` env is what ficus uses to compile the generated C/C++
 - **push / PR:** `make` then `fxtest.py all` (unit + negative + ir +
   corpus O0/O3) — the fast, deterministic core.
 - **nightly (cron):** additionally `corpus --opt O0,O1,O3 --cpp-smoke
-  --openmp-smoke` and `determinism --rebuilds 2` — the heavier axes kept out of
-  the PR budget.
+  --openmp-smoke`, `determinism --rebuilds 2` and `sanitize` (ASan+UBSan) — the
+  heavier axes kept out of the PR budget.
 
 macOS OpenMP is the bundled `runtime/lib/macos_arm64/libomp.a` (no install);
 Linux installs `libomp-dev` for clang's `-fopenmp`. The build compiler and

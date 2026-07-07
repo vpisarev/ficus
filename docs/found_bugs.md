@@ -275,3 +275,22 @@ is the whole point of the ladder.
   incremental rebuild after an unrelated `Ast.fx` change leaves every unchanged
   module's `.c` byte-identical. Post-fix both green; full-build determinism
   preserved; no new unused-symbol warnings (4611→4613).
+
+## FB-009  runtime pointer-arithmetic UB on reverse/negative-step slices
+- discovered: 2026-07-07 by the new `fxtest.py sanitize` leg (ASan+UBSan) while
+  running `test_all` -- exactly the silent-UB class the leg was added for.
+- symptom: `array.impl.h:408` `fx_next_slice` did `s->ptr += s->step` with `step`
+  typed `size_t` but holding a *signed* byte offset (negative for reverse /
+  negative-step slices). UBSan: "addition of unsigned offset ... overflowed".
+  Benign on real targets (the wrap-around lands on the right address) but UB.
+- config: any; only reached by negative-step array iteration.
+- status: fixed on branch `harden-1` -- cast to `(ptrdiff_t)` at both pointer-
+  advance sites (`s->ptr` and the carry `stack[i].ptr`). After the fix `test_all`
+  (+ T5 suites) runs clean under `-fsanitize=address,undefined`.
+- note on FB-005 vs ASan: the B5 acceptance asked to show ASan catches FB-005.
+  It does NOT reliably: reverting the wrap fix, `a.wrap[-n]`/`v.wrap[-n]` reads
+  `buf[n]`, which the `fx_make_arr` allocation usually leaves as *valid adjacent
+  heap* (it prints garbage, no ASan trap) -- precisely why FB-005 was a silent
+  UB and why the reference-checked T5 suite, not the sanitizer, is what caught
+  it. The sanitizer leg still earns its place: it found FB-009, invisible to
+  every other layer.

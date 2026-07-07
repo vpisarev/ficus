@@ -405,14 +405,17 @@ FX_INLINE bool fx_next_slice(fx_arriter_pos_t* stack, int ndims)
     fx_arriter_pos_t* s = &stack[ndims-1];
     int i;
     if (++s->pos < s->size) {
-        s->ptr += s->step;
+        // step is size_t but holds a signed byte offset (negative for
+        // reverse/negative-step slices); use ptrdiff_t so the pointer
+        // arithmetic is well-defined instead of overflowing (UBSan).
+        s->ptr += (ptrdiff_t)s->step;
         return true;
     }
     for (i = ndims-2; i >= 0 && ++stack[i].pos >= stack[i].size; i--)
         ;
     if (i < 0)
         return false;
-    stack[i].ptr += stack[i].step;
+    stack[i].ptr += (ptrdiff_t)stack[i].step;
     for (++i; i < ndims; i++) {
         stack[i].ptr = stack[i-1].ptr;
         stack[i].pos = 0;

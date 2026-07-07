@@ -435,6 +435,38 @@ def cmd_ir(args):
     return run_ir(REPO, FICUS, update=args.update_golden, jobs=args.jobs)
 
 
+def cmd_sanitize(args):
+    """Build & run test_all (which imports the T5 randomized suites) under
+    AddressSanitizer + UndefinedBehaviorSanitizer. Closes the silent-UB class
+    (FB-005 was an out-of-bounds read). Slow (~2 min); CI-nightly."""
+    san = "-fsanitize=address,undefined -fno-omit-frame-pointer"
+    broot = os.path.join(BUILD, "sanitize")
+    os.makedirs(broot, exist_ok=True)
+    env = dict(os.environ,
+               ASAN_OPTIONS="detect_leaks=0:abort_on_error=1",
+               UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1")
+    src = os.path.join(REPO, "test", "test_all.fx")
+    cmd = [FICUS, "-run", "-O1", "-no-openmp",
+           "-cflags", san, "-clibs", san, "-B", broot, src]
+    try:
+        p = subprocess.run(cmd, cwd=broot, capture_output=True, env=env,
+                           timeout=1800)
+        out = (p.stdout + p.stderr).decode("utf-8", "replace")
+        rc = p.returncode
+    except subprocess.TimeoutExpired:
+        out, rc = "", None
+    markers = ("runtime error:", "AddressSanitizer", "UndefinedBehaviorSanitizer",
+               "ERROR: ", "SUMMARY: ")
+    hits = [ln.strip() for ln in out.splitlines() if any(m in ln for m in markers)]
+    if rc == 0 and not hits:
+        results = [Result("test_all", PASS, "clean under ASan+UBSan")]
+    else:
+        detail = hits[0][:110] if hits else (f"exit {rc}" if rc is not None else "timeout")
+        results = [Result("test_all", FAIL, detail)]
+    counts = print_table("sanitize (ASan+UBSan)", results)
+    return 1 if run_failed(counts) else 0
+
+
 def cmd_determinism(args):
     from determinism import run_determinism  # noqa
     return run_determinism(REPO, FICUS,
@@ -493,6 +525,10 @@ def main(argv=None):
     p = sub.add_parser("unit", help="wrap test_all.fx")
     add_common(p)
     p.set_defaults(func=cmd_unit)
+
+    p = sub.add_parser("sanitize", help="run test_all under ASan+UBSan (slow; CI nightly)")
+    add_common(p)
+    p.set_defaults(func=cmd_sanitize)
 
     p = sub.add_parser("determinism", help="FB-008 generated-C stability (slow; CI nightly)")
     p.add_argument("--rebuilds", type=int, default=2,

@@ -91,6 +91,12 @@ jobs:
         if: steps.mode.outputs.nightly == 'true'
         run: python3 tools/fxtest/fxtest.py determinism --rebuilds 2
 
+      # Nightly: run test_all (+ T5 suites) under ASan+UBSan to catch silent UB
+      # (the FB-005 class). Slow (~2 min).
+      - name: fxtest sanitize (ASan+UBSan)
+        if: steps.mode.outputs.nightly == 'true'
+        run: python3 tools/fxtest/fxtest.py sanitize
+
       # On failure, keep the generated C and build dirs for post-mortem.
       - name: Upload build artifacts on failure
         if: failure()
