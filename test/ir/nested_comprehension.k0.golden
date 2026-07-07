@@ -1,0 +1,4 @@
+@global val nested_comprehension.aa@g0: int [] [] = [ for i@g1 <- 0:2 { [ for j@g2 <- 0:2 { i@g1 + j@g2 }] }]
+@tempref val v@g3: int [] = nested_comprehension.aa@g0[1]
+@global val nested_comprehension.x@g4: int = v@g3[0]
+println@g5(nested_comprehension.x@g4)

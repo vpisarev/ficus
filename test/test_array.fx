@@ -52,6 +52,27 @@ TEST("array.empty_slice", fun() {
     EXPECT_EQ(a[4:0:-2], [5, 3])
 })
 
+// FB-006: indexing an array-of-arrays built by a NESTED comprehension used to
+// emit `fx_copy_arr(&{0}, ...)` -- the inner comprehension's result array was
+// dropped (delivered via dstexp_r, but the outer map read the dummy return).
+TEST("array.nested_comprehension", fun() {
+    // 2-level int [] []
+    val aa = [for i <- 0:3 {[for j <- 0:3 {i*10 + j}]}]
+    EXPECT_EQ(aa[0][0], 0); EXPECT_EQ(aa[1][2], 12); EXPECT_EQ(aa[2][1], 21)
+    // 3-level int [] [] []
+    val aaa = [for i <- 0:2 {[for j <- 0:2 {[for k <- 0:2 {i*100 + j*10 + k}]}]}]
+    EXPECT_EQ(aaa[1][0][1], 101); EXPECT_EQ(aaa[0][1][0], 10)
+    // 2-level with tuple elements
+    val tt = [for i <- 0:2 {[for j <- 0:2 {(i, j, i + j)}]}]
+    EXPECT_EQ(tt[1][0], (1, 0, 1)); EXPECT_EQ(tt[0][1], (0, 1, 1))
+    // comprehension vs literal vs list-comprehension must agree element-wise
+    val byComp = [for i <- 0:2 {[for j <- 0:3 {i*10 + j}]}]
+    val byLit  = [[0, 1, 2], [10, 11, 12]]
+    val byList = [:: for i <- 0:2 {[for j <- 0:3 {i*10 + j}]}]
+    EXPECT_EQ(byComp[0], byLit[0]); EXPECT_EQ(byComp[1], byLit[1])
+    EXPECT_EQ(byComp[0], byList.hd()); EXPECT_EQ(byComp[1], byList.tl().hd())
+})
+
 TEST("array.stat", fun() {
     val arr = [ 1, 2, 3, 4, 5 ]
     EXPECT_EQ(`sum(arr)`, double(1+2+3+4+5))

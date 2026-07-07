@@ -211,6 +211,17 @@ is the whole point of the ladder.
 - status: not yet fenced by a test. Route-arounds: use a rectangular 2D
   comprehension `[for i for j {..}]` when the data is rectangular, or build
   array-of-arrays from literals / a list comprehension `[:: for i {[for j {..}]}]`.
+- fixed: branch `harden-1`. Not a K-form bug (the K-form correctly indexes the
+  inner array); it was C emission. In `C_gen_code.fx`'s array/vector/list
+  comprehension, the loop body is evaluated with `kexp2cexp(body, ref None, ..)`
+  and the body's value copied into the destination element. But a value-producing
+  comprehension delivers its result by writing it back into `dstexp_r` (returning
+  a dummy `{0}`), so when the body is itself a comprehension the outer map copied
+  from `{0}`. Fix: pass a named `body_dst_r` ref and read it back
+  (`match *body_dst_r { Some r => r | _ => result0 }`). Unfenced: new unit test
+  `array.nested_comprehension` (2/3-level, tuple elements, comprehension vs
+  literal vs list-comp agree), T5 `rand.array.nested_comp`, and a T4 IR snapshot
+  `test/ir/nested_comprehension.fx`.
 
 ## FB-007  generic `complex` operators break overload resolution / type inference
 - summary: the `+ - * /` operators for the `complex` class in `lib/Complex.fx`

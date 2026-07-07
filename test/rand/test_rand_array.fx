@@ -117,6 +117,28 @@ TEST("rand.array.border", fun() {
     }
 })
 
+// FB-006: nested comprehension (array-of-arrays) built then indexed. Compare
+// aa[r][c] against the flat reference the inner values came from.
+TEST("rand.array.nested_comp", fun() {
+    val name = "rand.array.nested_comp"
+    for it <- 0:200 {
+        val seed = case_seed(name, it)
+        val rng = mk_rng(seed)
+        val m = next_int(rng, 1, 8)
+        val n = next_int(rng, 1, 8)
+        val flat = rand_iarray(rng, m*n, -1000, 1000)
+        val aa = [for r <- 0:m {[for c <- 0:n {flat[r*n + c]}]}]
+        var ok = true
+        for r <- 0:m {
+            for c <- 0:n {
+                if aa[r][c] != flat[r*n + c] { ok = false }
+            }
+        }
+        if !ok { println(f"  [repro] {name} case={it} seed={seed} m={m} n={n}") }
+        EXPECT_EQ(ok, true)
+    }
+})
+
 TEST("rand.array.fold", fun() {
     val name = "rand.array.fold"
     for i <- 0:300 {

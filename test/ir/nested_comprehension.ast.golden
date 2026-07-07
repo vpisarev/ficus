@@ -1,0 +1,16 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Vector
+import Char
+import String
+val nested_comprehension.aa@g0: int [] [] =
+   [ for nested_comprehension.i@g1 <- (0:2:1)
+      {
+         [ for nested_comprehension.j@g2 <- (0:2:1)
+            { (<int>nested_comprehension.i@g1 + <int>nested_comprehension.j@g2) }]
+      }]
+val nested_comprehension.x@g3: int = <int [] []>nested_comprehension.aa@g0[1][0]
+<(int -> void)>Builtins.println@g4(<int>nested_comprehension.x@g3)
