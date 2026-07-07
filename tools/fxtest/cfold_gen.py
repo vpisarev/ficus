@@ -47,14 +47,11 @@ def _mask(bits):
 
 def _range(signed, bits):
     if signed:
-        lo = -(1 << (bits - 1))
-        # ficus's typechecker treats the 64-bit signed range as symmetric
-        # [-(2^63-1), 2^63-1] (Ast_typecheck.fx); the true INT64_MIN -2^63 is
-        # outside the supported *literal* range and its C emission (`-9223...808`
-        # without an LL suffix) is a gray area, so do not generate it.
-        if bits == 64:
-            lo = -(1 << (bits - 1)) + 1
-        return lo, (1 << (bits - 1)) - 1
+        # Full two's-complement range, INCLUDING INT64_MIN (-2^63). ficus's
+        # typechecker rejects the bare -2^63 *literal* (its 64-bit signed range is
+        # symmetric), so _lit() reaches that one value via arithmetic instead --
+        # this exercises FB-010's C emission of a folded INT64_MIN.
+        return -(1 << (bits - 1)), (1 << (bits - 1)) - 1
     return 0, (1 << bits) - 1
 
 
@@ -94,8 +91,17 @@ def _val(rng, signed, bits):
     return lo + (rng.next() % span)
 
 
+_INT64_MIN = -(1 << 63)
+
+
 def _lit(v, suffix):
     # ficus literals: negative literals are fine as `-N`; hex not needed.
+    # Exception: INT64_MIN (-2^63) is outside the typechecker's symmetric literal
+    # range, so express it via arithmetic on in-range operands -(2^63-1) - 1. The
+    # folder collapses that to the true INT64_MIN, and its C emission is what
+    # FB-010 fixed (the signed split form, not a bare unsigned literal).
+    if v == _INT64_MIN:
+        return f"(-9223372036854775807{suffix} - 1{suffix})"
     return f"{v}{suffix}"
 
 

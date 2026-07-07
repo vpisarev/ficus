@@ -845,3 +845,22 @@ TEST("basic.format", fun() {
     val abc = "abc"
     EXPECT_EQ(f"{abc:~^30}", "~~~~~~~~~~~~~abc~~~~~~~~~~~~~~")
 })
+
+TEST("basic.int64_min", fun() {
+    // FB-010: INT64_MIN (-2^63) has no bare decimal form in C -- the token
+    // -9223372036854775808 is parsed as unary minus on an *unsigned* constant.
+    // The compiler must emit the signed split form (-9223372036854775807LL - 1).
+    // Reach INT64_MIN by constant folding and by runtime arithmetic (operands
+    // read from an array, so the folder can't collapse them), and require both
+    // agree and behave with signed -- not unsigned -- semantics.
+    val folded = -9223372036854775807 - 1
+    val data = [-9223372036854775807, 1]
+    val runtime = data[0] - data[1]
+    EXPECT_EQ(folded, runtime)
+    EXPECT_EQ(folded, -9223372036854775807 - 1)
+    EXPECT_EQ(folded < 0, true)                  // signed: INT64_MIN < 0
+    EXPECT_EQ(folded / 2, -4611686018427387904)  // signed halving, not 2^62
+    EXPECT_EQ(folded % 7, -1)                     // remainder takes dividend sign
+    EXPECT_EQ(folded + 1, -9223372036854775807)  // INT64_MIN + 1
+    EXPECT_EQ(-folded - 1, 9223372036854775807)  // -(INT64_MIN) wraps; -1 -> MAX
+})

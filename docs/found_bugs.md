@@ -89,20 +89,34 @@ is the whole point of the ladder.
   runtime over 500 random expressions at -O0/-O3 (in `fxtest.py all`).
   Integer-semantics paragraph added to `doc/ficustut.md`.
 
-## FB-010  [gray area] literal INT64_MIN (-2^63) emitted without an LL suffix
+## FB-010  folded INT64_MIN (-2^63) emitted as a bare (unsigned) C literal
 - discovered: 2026-07-07 while building the FB-002 cfold oracle -- it emitted a
   `-9223372036854775808` operand and the runtime path disagreed with the fold.
 - detail: ficus's typechecker treats the 64-bit signed range as the symmetric
   `[-(2^63-1), 2^63-1]` (`Ast_typecheck.fx:504`), so `-9223372036854775808` is
-  outside the supported *literal* range. When it slips through, `int` (no suffix)
-  codegen emits bare `-9223372036854775808`, which C parses as unsigned (warns
-  `-Wimplicitly-unsigned-literal`) -> wrong value. Explicit `...i64` gets an `LL`
-  suffix and is fine.
-- config: C backend; only the exact value -2^63 as a bare `int` literal.
-- status: NOT a fix target here (outside FB-002; a rarely-hit gray area). Fenced
-  in the oracle by generating 64-bit signed values in `[-(2^63-1), 2^63-1]`
-  (`cfold_gen.py _range`); recorded here for a future codegen pass (emit 64-bit
-  literals with an `LL`/`ULL` suffix, or special-case INT64_MIN).
+  outside the supported *literal* range. But the **constant folder** can still
+  reach INT64_MIN by arithmetic (e.g. `-9223372036854775807 - 1`). Its C emission
+  (`klit2str`, `KLitInt`/`KLitSInt(64)`) printed the value bare as
+  `-9223372036854775808`, which C parses as unary minus on `9223372036854775808`
+  -- a constant too large for `long long`, hence **unsigned** (a default
+  `-Wimplicitly-unsigned-literal` warning, and unsigned semantics in any
+  enclosing expression, which is how the folded operand disagreed with the signed
+  runtime). A bare `LL` suffix does NOT help: `9223372036854775808LL` is still an
+  out-of-range unsigned constant that warns.
+- config: C backend; the exact value -2^63 reached by folding, at -O0 and -O3.
+- fixed: branch `housekeeping-1` (WP-H3). `klit2str` now emits INT64_MIN as the
+  canonical warning-free **signed split form** `(-9223372036854775807LL - 1)` for
+  both `KLitInt` and `KLitSInt(64)` (via `i64_c_literal`); all other literals are
+  unchanged (bare `int`, `LL`/`ULL` for explicit 64-bit) -- blanket-suffixing
+  every `int` literal was rejected: it churns every module for zero correctness
+  gain and still warns on INT64_MIN. `uint64` was already correct (`ULL`; 2^64-1
+  fits). Unfenced in the oracle: `cfold_gen.py` now generates the full signed
+  range `[-2^63, 2^63-1]`, reaching INT64_MIN via in-range arithmetic operands
+  (`_lit`); `fxtest cfold` is 0/500 at -O0 and -O3 across seeds. Directed
+  `basic.int64_min` unit test covers fold-vs-runtime agreement and signed
+  expression semantics. The typechecker's symmetric *literal* range (rejecting a
+  bare -2^63 in source) is left as-is on purpose -- a language-design question
+  parked in `docs/language_changes_brief.md`, out of scope here.
 
 ## FB-003  border access `.clip/.wrap/.zero` on a plain 1D array emits broken C
 - symptom: `arr.clip[i]` (also `.wrap` / `.zero`) on a plain array `'t []`
