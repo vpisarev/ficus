@@ -431,7 +431,12 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
             } else {
                 ("", "", "", "")
             }
-            val common_cflags = "-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
+            // -fwrapv: define signed integer overflow as 2's-complement wrap, matching
+            // ficus semantics and the constant folder (K_cfold_dealias). Without it,
+            // gcc/clang at -O2/-O3 exploit signed-overflow UB and miscompile overflowing
+            // integer arithmetic (e.g. a comparison folded to a constant while the value
+            // itself is materialized correctly). Supported by every gcc 3.x+/clang.
+            val common_cflags = "-fwrapv -Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses"
             val ggdb_opt = if opt_level == 0 { " -D_DEBUG -ggdb" } else {
                     val stk_overflow = if opt_level == 100 {" -DFX_NO_STACK_OVERFLOW_CHECK"} else {""}
                     f" -DNDEBUG{stk_overflow}"

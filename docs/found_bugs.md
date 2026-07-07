@@ -334,3 +334,57 @@ is the whole point of the ladder.
   UB and why the reference-checked T5 suite, not the sanitizer, is what caught
   it. The sanitizer leg still earns its place: it found FB-009, invisible to
   every other layer.
+
+## FB-011  signed-overflow UB in generated C miscompiled by gcc 15 at -O2/-O3  [FIXED]
+- discovered: 2026-07-07 by the `fxtest.py cfold` oracle (differential fold vs
+  runtime) on Linux/gcc 15.2. This was mis-attributed by the PR #27 CI handoff:
+  the truncated CI log (`[ FAILED ] 1 test(s):`) was assumed to be a nested-
+  comprehension regression, but the actual unit failure was an unrelated DL bug
+  (see the dequantize note below) and the real compiler-relevant failure was
+  this cfold O3 mismatch, which does NOT reproduce on older gcc/clang.
+- symptom: the oracle reported `1 mismatches / 500`, e.g.
+  `MISMATCH t=int32 x=2147483646 + y=2147483646 fold=-4 run=-4` -- fold and run
+  BOTH print -4, yet `f != o` is true. Generated C:
+  `int32_t o = (int32_t)((int32_t)(2147483646+Z) + (int32_t)(2147483646+Z)); if (-4 != o) {...}`.
+  `int32 + int32` promotes to `int` and overflows -> **signed-overflow UB**.
+- mechanism (verified, gcc 15.2, pure C too): gcc does NOT compute an overflowed
+  value; it attaches `nsw` (no-signed-wrap) flags and VRP folds the *predicate*
+  `-4 != o` to the constant `1` under the no-overflow axiom, while the *value* `o`
+  is materialized separately by the real add (== -4 at runtime). Same `printf`
+  shows `o=-4` and `(-4 != o)=1` simultaneously -- the signature of UB
+  exploitation. It is NOT infinite-precision/GMP folding and never yields INT_MAX;
+  gcc constant-folds integers in the type's width (wrap + TREE_OVERFLOW), never
+  saturates. The constant folder (K_cfold_dealias) is CORRECT here: it wraps in
+  int64 and sign-extends to int32 (`(x<<32)>>32 = -4`, emitted as literal -4).
+- config: -O2/-O3, gcc 15 (also -O2 clang-class exploiters). -O0 is fine.
+- fix: add `-fwrapv` to the default unix/gcc/clang cflags
+  (`compiler/Compiler.fx`, `common_cflags`). Defines signed overflow as
+  2's-complement wrap, matching ficus/folder semantics and killing the whole UB
+  class for all generated programs. `-fwrapv` is supported by every gcc 3.x+ /
+  clang (safe on old distros, e.g. Ubuntu 16.04). MSVC path untouched (it wraps
+  and does not do strict-overflow opts). After the fix cfold is 0/500 at O0 & O3;
+  full ladder + sanitize + determinism green. NOTE: the fxtest build dir
+  (`build/fxtest/cfold/<opt>`) is cached across runs and the oracle source is
+  fixed, so a stale pre-fix `.o` will keep failing -- `rm -rf build/fxtest`
+  before re-measuring (CLAUDE.md incremental-build trap; CI is a clean checkout).
+
+## FB-012  fx_str_join: memcpy(dst, NULL, 0) on an empty element (nonnull UB)  [FIXED]
+- discovered: 2026-07-07 by `fxtest.py sanitize` (UBSan) on Linux, running
+  test_all's randomized string-join tests.
+- symptom: `runtime/ficus/impl/string.impl.h:559` did an unguarded
+  `memcpy(result->data+ofs, s[i].data, len_i*szch)`; for an empty joined element
+  `s[i].data==NULL, len_i==0`, so `memcpy(dst, NULL, 0)` violates memcpy's
+  nonnull attribute. Benign (0 bytes) but real UB -- same class as FB-011: an
+  optimizer may assume the pointer non-null and drop a later null check.
+- config: any; only reached when a joined element is the empty string.
+- fix: guard `if (len_i > 0)` around the memcpy, matching the already-guarded
+  begin/sep/end memcpy's in the same function. Sanitize clean after.
+
+## (non-compiler) NN.Quantized.dequantizeLinear -- DL-inference-engine bug  [FENCED]
+- NOT a compiler bug. `lib/NN/OpQuantized.run_dequantize` (the scalar/non-NEON
+  int8 path) yields 0 instead of the expected dequantized value on Linux/x86, so
+  the `NN.Quantized.dequantizeLinear` unit test fails at runtime (Actual 0.0 vs
+  Expected -262.0). Per Vadim this is a known DL-engine defect, unrelated to the
+  compiler. Fenced by commenting the TEST block in `test/test_nn_quant.fx` (a
+  `// FIXME` note points back here). This is the unit failure the PR #27 CI
+  handoff saw (its log had truncated the test name); see FB-011 for the mixup.

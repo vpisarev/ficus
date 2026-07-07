@@ -10726,7 +10726,8 @@ FX_EXTERN_C int _fx_M8CompilerFM6run_ccB2LR17C_form__cmodule_tS(
       FX_CALL(_fx_M8CompilerFM6stringS1S(&opt_level_str_0, &v_17, 0), _fx_cleanup);
       FX_CALL(_fx_M8CompilerFM6stringS1S(&ggdb_opt_0, &v_18, 0), _fx_cleanup);
       FX_CALL(_fx_M8CompilerFM6stringS1S(&cflags_2, &v_19, 0), _fx_cleanup);
-      fx_str_t slit_64 = FX_MAKE_STR("-Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses");
+      fx_str_t slit_64 =
+         FX_MAKE_STR("-fwrapv -Wno-unknown-warning-option -Wno-dangling-else -Wno-static-in-inline -Wno-parentheses");
       FX_CALL(_fx_M8CompilerFM6stringS1S(&slit_64, &v_20, 0), _fx_cleanup);
       FX_CALL(_fx_M8CompilerFM6stringS1S(&incdirs_1, &v_21, 0), _fx_cleanup);
       FX_CALL(_fx_M8CompilerFM6stringS1S(&runtime_include_path_0, &v_22, 0), _fx_cleanup);
