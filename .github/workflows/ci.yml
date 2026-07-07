@@ -77,6 +77,25 @@ jobs:
       - name: Build ficus
         run: make -j"$(getconf _NPROCESSORS_ONLN)"
 
+      # Guard the self-hosting invariant: the checked-in compiler/bootstrap/*.c
+      # must match what the freshly-built compiler regenerates, so a fresh clone
+      # always builds the updated compiler (a stale bootstrap drifts silently and
+      # eventually can't compile the sources). Runs on ONE leg only (the emitted C
+      # is machine-independent) and reuses the just-built bin/ficus (--no-make, no
+      # extra compiler build). Skipped when the PR/push didn't touch compiler/lib/
+      # runtime -- a stale bootstrap is impossible then, so no CI time is spent.
+      - name: Bootstrap up-to-date check
+        if: matrix.cc == 'gcc' && matrix.os == 'ubuntu-latest'
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -n "$base" ] && git rev-parse --verify -q "$base^{commit}" >/dev/null; then
+            if git diff --quiet "$base" HEAD -- compiler lib runtime; then
+              echo "no compiler/lib/runtime changes since $base -> bootstrap cannot be stale; skipping"
+              exit 0
+            fi
+          fi
+          python3 tools/update_compiler.py --check --no-make
+
       - name: Determine run mode
         id: mode
         run: |

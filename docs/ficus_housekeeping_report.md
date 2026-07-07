@@ -150,8 +150,10 @@ pointing at `tools/update_compiler.py`, keeping one sentence on the fixpoint).
   stays clean. Prefer the surgical fix + evidence when they diverge.
 - **Prose recipes rot; scripts assert.** The bootstrap recipe drifted from the
   real invocation; `update_compiler.py` now *is* the source of truth and fails
-  loudly on a broken fixpoint. Candidate follow-up: a CI leg running
-  `update_compiler.py --check` so a stale bootstrap can never merge.
+  loudly on a broken fixpoint. Wired into CI as a **"Bootstrap up-to-date check"**
+  step on the ubuntu-gcc leg (`--check --no-make`, reusing the just-built
+  compiler; skipped unless the PR touched `compiler`/`lib`/`runtime`), so a stale
+  bootstrap can never merge — at ~zero added CI time for non-compiler PRs.
 
 ## Closing checklist (this run)
 
