@@ -23,9 +23,10 @@ tools/fxtest/
 | `corpus`   | T2    | every runnable `.fx` gives identical output at `-O0` and `-O3` (miscompilation detector) |
 | `negative` | T3    | intentionally-broken programs produce the expected compiler diagnostics (golden `.err`) |
 | `ir`       | T4    | small programs produce the expected typechecked-AST / K-form (golden snapshots) |
+| `cfold`    |       | constant folding == runtime evaluation over N random integer expressions at -O0/-O3 (FB-002 oracle) |
 | `determinism` | | the compiler's generated `.c` is stable: N from-scratch builds are byte-identical, and an incremental rebuild after an unrelated change leaves unchanged modules' `.c` byte-identical (FB-008 regression; slow, CI-nightly) |
 | `sanitize` |       | `test_all` (+ T5 suites) runs clean under ASan+UBSan — silent-UB class, e.g. FB-005 (slow, CI-nightly) |
-| `all`      |       | unit + negative + ir + corpus (not `determinism` / `sanitize` — too slow) |
+| `all`      |       | unit + negative + ir + cfold + corpus (not `determinism` / `sanitize` — too slow) |
 
 ## Usage
 
@@ -36,6 +37,7 @@ python3 tools/fxtest/fxtest.py corpus --opt O0,O3 --jobs 8
 python3 tools/fxtest/fxtest.py corpus --cpp-smoke --openmp-smoke   # nightly axes
 python3 tools/fxtest/fxtest.py corpus --filter "mandelbrot"
 python3 tools/fxtest/fxtest.py unit
+python3 tools/fxtest/fxtest.py cfold --count 500               # FB-002 oracle
 python3 tools/fxtest/fxtest.py determinism --rebuilds 2         # FB-008, slow
 python3 tools/fxtest/fxtest.py sanitize                         # ASan+UBSan, slow
 ```
@@ -117,6 +119,26 @@ macOS OpenMP is the bundled `runtime/lib/macos_arm64/libomp.a` (no install);
 Linux installs `libomp-dev` for clang's `-fopenmp`. The build compiler and
 `bin/ficus` are cached, keyed on the compiler/stdlib/runtime source hash. On
 failure the generated C under `build/fxtest/` is uploaded as an artifact.
+
+## cfold — folding == runtime oracle (FB-002)
+
+`fxtest.py cfold` (in `all`) proves the constant folder agrees with runtime
+evaluation. `cfold_gen.py` emits a `.fx` program of N random integer expressions
+(splitmix64-seeded from `FXTEST_SEED`, same policy as T5) over
+`{int, int8/16/32/64, uint8/16/32/64} × {+ - * / % << >> & | ^, comparisons}`.
+Each expression is evaluated twice and asserted bit-equal:
+
+- **fold path** — literal operands, so `K_cfold_dealias` computes it at compile
+  time;
+- **runtime path** — each operand is routed through a module-level `var`
+  (`(lit + Z<T>) :> T`, with `Z<T>` set to 0 at startup from `argv`, so the
+  optimizer cannot fold it). Opacity verified once via `-pr-k`: the op survives
+  as e.g. `bool o = Zu64 > Zu64` in the emitted C rather than a folded constant.
+
+Runtime is the reference; a mismatch is the FB-002 class (uint64 `>>`/`/`/`%`/
+compare folded with signed semantics). Divisors are nonzero and shift counts are
+in `[0, width)`; 64-bit signed values avoid the `-2^63` literal gray area
+(FB-010). Runs at -O0 and -O3.
 
 ## determinism — generated-C stability (FB-008)
 

@@ -12,17 +12,15 @@
 
 import Sys
 
-// FB-002 workaround: `>>` on uint64 is an arithmetic (sign-extending) shift in
-// the current compiler, so emulate a logical shift by masking off the top bits
-// the arithmetic shift would have sign-extended.  (uint8/16/32 are unaffected.)
-@inline fun lsr(x: uint64, n: int): uint64 = (x >> n) & ((1u64 << (64 - n)) - 1u64)
-
+// FB-002 (uint64 `>>` folded as an arithmetic shift) is fixed, so plain `>>`
+// is used directly here; the splitmix64 reference vectors in the rand suites
+// guard the fix forever.
 fun splitmix64(x: uint64): uint64
 {
     val z0 = x + 0x9e3779b97f4a7c15u64
-    val z1 = (z0 ^ lsr(z0, 30)) * 0xbf58476d1ce4e5b9u64
-    val z2 = (z1 ^ lsr(z1, 27)) * 0x94d049bb133111ebu64
-    z2 ^ lsr(z2, 31)
+    val z1 = (z0 ^ (z0 >> 30)) * 0xbf58476d1ce4e5b9u64
+    val z2 = (z1 ^ (z1 >> 27)) * 0x94d049bb133111ebu64
+    z2 ^ (z2 >> 31)
 }
 
 type rndstate_t = { s: uint64 ref }
@@ -34,9 +32,9 @@ fun next_u64(rng: rndstate_t): uint64
 {
     val ns = *rng.s + 0x9e3779b97f4a7c15u64
     *rng.s = ns
-    val z1 = (ns ^ lsr(ns, 30)) * 0xbf58476d1ce4e5b9u64
-    val z2 = (z1 ^ lsr(z1, 27)) * 0x94d049bb133111ebu64
-    z2 ^ lsr(z2, 31)
+    val z1 = (ns ^ (ns >> 30)) * 0xbf58476d1ce4e5b9u64
+    val z2 = (z1 ^ (z1 >> 27)) * 0x94d049bb133111ebu64
+    z2 ^ (z2 >> 31)
 }
 
 fun next_i32(rng: rndstate_t): int32 = ((next_u64(rng) :> uint32) :> int32)

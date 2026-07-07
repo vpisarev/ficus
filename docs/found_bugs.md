@@ -74,6 +74,35 @@ is the whole point of the ladder.
   `lsr(x,n) = (x >> n) & ((1u64 << (64-n)) - 1u64)`; the T5 RandUtil splitmix64
   is validated against reference vectors, so if the workaround ever breaks the
   randomized suites fail loudly. Not fenced as xfail (no dedicated diagnostic).
+- scope note: only the CONSTANT FOLDER is affected; the runtime path (C codegen
+  on `uint64_t`) is correct -- an opaque `b >> 1` prints the right value, only a
+  literal `a >> 1` folds wrong. So it is invisible to T2 (same wrong result at
+  -O0/-O3) and needed a compile-time-vs-runtime oracle to pin down.
+- fixed: branch `harden-1`. `K_cfold_dealias.fx`: the folder's `ConstInt` now
+  carries an `is_u64` flag (`ConstInt: (int64, bool)`, true only for full-width
+  uint64; narrower unsigned stay signed-flagged, being exactly representable in
+  int64). `OpShiftRight`, `OpDiv`, `OpMod` and `OpCmp` fold with unsigned
+  semantics when the flag is set, and uint64->float/string conversions in
+  `finalize_cfold_result` use the unsigned value. Unfenced: `lsr()` removed from
+  `RandUtil.fx` (plain `>>`, guarded by the splitmix64 reference vectors); new
+  oracle `tools/fxtest/cfold_gen.py` + `fxtest.py cfold` proves compile-time ==
+  runtime over 500 random expressions at -O0/-O3 (in `fxtest.py all`).
+  Integer-semantics paragraph added to `doc/ficustut.md`.
+
+## FB-010  [gray area] literal INT64_MIN (-2^63) emitted without an LL suffix
+- discovered: 2026-07-07 while building the FB-002 cfold oracle -- it emitted a
+  `-9223372036854775808` operand and the runtime path disagreed with the fold.
+- detail: ficus's typechecker treats the 64-bit signed range as the symmetric
+  `[-(2^63-1), 2^63-1]` (`Ast_typecheck.fx:504`), so `-9223372036854775808` is
+  outside the supported *literal* range. When it slips through, `int` (no suffix)
+  codegen emits bare `-9223372036854775808`, which C parses as unsigned (warns
+  `-Wimplicitly-unsigned-literal`) -> wrong value. Explicit `...i64` gets an `LL`
+  suffix and is fine.
+- config: C backend; only the exact value -2^63 as a bare `int` literal.
+- status: NOT a fix target here (outside FB-002; a rarely-hit gray area). Fenced
+  in the oracle by generating 64-bit signed values in `[-(2^63-1), 2^63-1]`
+  (`cfold_gen.py _range`); recorded here for a future codegen pass (emit 64-bit
+  literals with an `LL`/`ULL` suffix, or special-case INT64_MIN).
 
 ## FB-003  border access `.clip/.wrap/.zero` on a plain 1D array emits broken C
 - symptom: `arr.clip[i]` (also `.wrap` / `.zero`) on a plain array `'t []`

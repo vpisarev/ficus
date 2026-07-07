@@ -435,6 +435,47 @@ def cmd_ir(args):
     return run_ir(REPO, FICUS, update=args.update_golden, jobs=args.jobs)
 
 
+def cmd_cfold(args):
+    """Oracle: compile-time constant folding == runtime evaluation, over N random
+    integer expressions at -O0 and -O3. Catches the FB-002 class (uint64 >> / div
+    / mod / compare folded with signed semantics)."""
+    import cfold_gen
+    seed = cfold_gen.base_seed()
+    prog = cfold_gen.generate(seed, args.count)
+    broot = os.path.join(BUILD, "cfold")
+    os.makedirs(broot, exist_ok=True)
+    src = os.path.join(broot, "cfold_oracle.fx")
+    with open(src, "w") as f:
+        f.write(prog)
+    results = []
+    for opt in args.opt.split(","):
+        opt = opt.strip()
+        bdir = os.path.join(broot, opt)
+        os.makedirs(bdir, exist_ok=True)
+        cmd = [FICUS, "-run", "-" + opt, "-no-openmp", "-B", bdir, src]
+        try:
+            p = subprocess.run(cmd, cwd=bdir, capture_output=True, timeout=600)
+            out = (p.stdout + p.stderr).decode("utf-8", "replace")
+            rc = p.returncode
+        except subprocess.TimeoutExpired:
+            results.append(Result(opt, FAIL, "timeout"))
+            continue
+        # the program prints "cfold-oracle: <k> mismatches / <n> expressions"
+        line = [l for l in out.splitlines() if "cfold-oracle:" in l]
+        if rc != 0:
+            results.append(Result(opt, FAIL, f"exit {rc}"))
+        elif not line:
+            results.append(Result(opt, FAIL, "no result line"))
+        elif line[-1].split()[1] != "0":
+            miss = [l for l in out.splitlines() if l.startswith("MISMATCH")][:3]
+            results.append(Result(opt, FAIL, line[-1].split("cfold-oracle:")[1].strip()
+                                  + (f"  e.g. {miss[0]}" if miss else "")))
+        else:
+            results.append(Result(opt, PASS, f"{args.count} exprs fold==runtime"))
+    counts = print_table(f"cfold oracle (seed={seed:#x})", results)
+    return 1 if run_failed(counts) else 0
+
+
 def cmd_sanitize(args):
     """Build & run test_all (which imports the T5 randomized suites) under
     AddressSanitizer + UndefinedBehaviorSanitizer. Closes the silent-UB class
@@ -488,6 +529,7 @@ def cmd_all(args):
     rc |= _try(cmd_unit, args)
     rc |= _try(cmd_negative, args)
     rc |= _try(cmd_ir, args)
+    rc |= _try(cmd_cfold, args)
     rc |= _try(cmd_corpus, args)
     print(f"\n[fxtest all] {'FAILED' if rc else 'PASSED'}")
     return rc
@@ -530,6 +572,12 @@ def main(argv=None):
     add_common(p)
     p.set_defaults(func=cmd_sanitize)
 
+    p = sub.add_parser("cfold", help="oracle: constant folding == runtime (FB-002)")
+    p.add_argument("--count", type=int, default=500, help="number of random expressions")
+    p.add_argument("--opt", default="O0,O3")
+    add_common(p)
+    p.set_defaults(func=cmd_cfold)
+
     p = sub.add_parser("determinism", help="FB-008 generated-C stability (slow; CI nightly)")
     p.add_argument("--rebuilds", type=int, default=2,
                    help="N from-scratch builds must be byte-identical (>=2)")
@@ -541,6 +589,7 @@ def main(argv=None):
     p = sub.add_parser("all", help="run everything")
     p.add_argument("--opt", default="O0,O3")
     p.add_argument("--filter", default=None)
+    p.add_argument("--count", type=int, default=500, help="cfold oracle expression count")
     p.add_argument("--update-golden", action="store_true")
     p.add_argument("--cpp-smoke", action="store_true")
     p.add_argument("--openmp-smoke", action="store_true")

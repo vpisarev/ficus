@@ -621,6 +621,16 @@ Operators form the foundation of expressions. The table below describes Ficus op
  (:: for ...)                      ∞          N/A           tuple type           tuple comprehension
  *name1* {*name2*=*exp2*,...}      ∞          N/A           record type          make record
 
+**Integer semantics.** The bitwise, shift, division and comparison operators are
+*signedness-aware*, and match the semantics of the corresponding native C integer
+types. For **signed** types `>>` is an arithmetic shift (the sign bit is
+replicated), whereas for **unsigned** types (`uint8`/`uint16`/`uint32`/`uint64`)
+it is a logical shift (zero-fill). Likewise, division `/`, remainder `%` and the
+comparisons `< <= > >=` are unsigned when their operands are unsigned. Integer
+division truncates *toward zero*, and `%` takes the sign of the dividend
+(`-17 % 5 == -2`). These rules hold identically whether the expression is
+computed at run time or folded to a constant at compile time.
+
 
 As in the case of other languages, the precedence and associativity rules minimise the use of `(` `)` in many cases, but you can explicitly enclose some sub-expressions into parentheses to change the evaluation order.
 
