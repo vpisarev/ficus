@@ -30,15 +30,13 @@ bin/ficus -no-c file.fx                   # parse + typecheck only (fast)
   pass `-o output_name`. ficus will put app `output_name` and all
   intermediate files (.c; (.k, .ast) if requested) to
   `<ficus_root>/__fxbuild__/output_name`.
-- **Regenerating the bootstrap** (after editing any `compiler/*.fx`): the
-  pre-gen C in `compiler/bootstrap/*.c` (one per module) must be refreshed so a
-  fresh clone builds the updated compiler. Recipe: `bin/ficus -O3 -o boot
-  compiler/fx.fx` (freshly-built compiler regenerates its own C into
-  `__fxbuild__/boot/`), then copy the changed `.c` over `compiler/bootstrap/`.
-  Sanity: only the module(s) whose `.fx` you edited should differ (`diff` each),
-  and after `make` the self-hosted compiler must reproduce the bootstrap
-  byte-for-byte (regenerate again → 0 further diffs = fixpoint). `rm -f ./boot`
-  after (the `-o` binary litters the repo root).
+- **Regenerating the bootstrap** (after editing any `compiler/*.fx`): run
+  `python3 tools/update_compiler.py`. It rebuilds the compiler, regenerates the
+  pre-gen C in `compiler/bootstrap/*.c`, copies over only the changed modules,
+  and asserts the self-hosting **fixpoint** — the freshly-built compiler must
+  regenerate its own bootstrap byte-for-byte, else it's a determinism
+  regression (`fxtest.py determinism`). `--check` is a CI-friendly dry run
+  (exit 1 if the bootstrap is stale); `--no-make` skips the initial build.
 
 ## Testing — the fxtest ladder (see tools/fxtest/README.md)
 
