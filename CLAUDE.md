@@ -25,6 +25,11 @@ bin/ficus -no-c file.fx                   # parse + typecheck only (fast)
 - ficus compiles the generated C/C++ with `$CC` / `$CXX` (default `cc`) — set
   these to pick gcc vs clang. macOS OpenMP is bundled at
   `runtime/lib/macos_arm64/libomp.a` (no install needed).
+- to build the same program, including compiler, several times
+  (after modifying code or compiler) and compare generated code,
+  pass `-o output_name`. ficus will put app `output_name` and all
+  intermediate files (.c; (.k, .ast) if requested) to
+  `<ficus_root>__fxbuild__/output_name`.
 
 ## Testing — the fxtest ladder (see tools/fxtest/README.md)
 
@@ -50,7 +55,7 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `nan` gives a confusing "pattern is expected" / "not an l-value" error.
 - **Casts must be parenthesized *with* the operand**: write `(x :> uint8)`, not
   `(x) :> uint8`. Even a bare `x :> T` in some positions (e.g. a `match` arm
-  body) fails — wrap it: `(x :> T)`. Chained: `((x :> uint32) :> int32)`.
+  body) fails — wrap it: `(x :> T)`. Chained: `((x :> uint32) :> int32)`. For simple types a functional notation, e.g. `uint32(x)`, works too.
 - **`println` takes ONE argument.** For several values use an f-string or a
   tuple: `println(f"{a} {b}")` / `println((a, b))`.
 - **f-string `{}` interpolation can't contain a quoted string literal** —
@@ -77,6 +82,25 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
 - `array(n, init)` / `array((m, n), init)` allocate mutable arrays. Ranges
   `a:b`, `a:b:step`; slices `a[i:j]`, `a[i:j:step]`, `a[:]`, `a[::-1]`.
 - `Sys.getenv(name, defval)`; `s.to_int(): int?`; `s.to_int_or(defval)`.
+- **A `match` arm body may be a block**: `| pat => val r = ...; expr` is fine
+  (the arm extends to the next `|`); no extra `{ }` needed.
+- **Shift count must be `int`**: `uint64 >> int64` does **not** typecheck
+  (`__shr__ (uint64,int64)` not found); write `x >> int(n)`. Runtime uint64 `>>`
+  is a correct logical shift — only the *constant folder* got it wrong (FB-002).
+
+### Build/run & measurement traps (Brief #2)
+
+- **`-o name` drops the executable at the repo ROOT** (`./name`), with all
+  intermediates under `__fxbuild__/name/`. `rm -f name` after, or it litters.
+- **`-run` hides a runtime SIGSEGV as exit 1** (no output). To see a real crash,
+  build a binary (`-o`) and run it directly — you'll get exit 139 and the trace.
+- **Incremental compilation reuses the `-o`/`-B` build dir** (it skips a module
+  whose K-form *dump*, gensym numbers included, is unchanged). For a clean
+  before/after `.c` comparison you MUST `rm -rf` the build dir between builds —
+  otherwise stale `.c` from a prior run silently confounds the diff. A full
+  clean build is deterministic; incremental churn was FB-008.
+- **ASan+UBSan** via `bin/ficus -run -cflags "-fsanitize=address,undefined
+  -fno-omit-frame-pointer" -clibs "<same>"`. The runtime is clean post-Brief-2.
 
 **Iterate tiny**: write 10-20 lines → `bin/ficus -run f.fx` → fix → extend.
 The compiler's error messages are ground truth. If it rejects something the
