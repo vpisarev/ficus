@@ -19,9 +19,11 @@ change is semantics-preserving.  They are high-maintenance, so the suite is kept
 small (core constructs only).
 """
 
+import difflib
 import glob
 import os
 import subprocess
+import sys
 
 import fxtest as F
 import normalize
@@ -66,8 +68,26 @@ def _run_stage(repo, ficus, src, stage, flags, update):
         return F.Result(name, F.FAIL, "no golden; run --update-golden")
     with open(golden, "r") as f:
         want = f.read().rstrip("\n")
-    return (F.Result(name, F.PASS, f"{stage} match") if norm == want
-            else F.Result(name, F.FAIL, f"{stage} snapshot differs from golden"))
+    if norm == want:
+        return F.Result(name, F.PASS, f"{stage} match")
+    # Snapshot differs: emit the actual-vs-golden unified diff so the failure is
+    # debuggable straight from the log (esp. platform-dependent prints that don't
+    # reproduce on the author's box). ThreadPool workers share stdout; write the
+    # whole block in one call to avoid interleaving with other threads.
+    diff = list(difflib.unified_diff(
+        want.splitlines(), norm.splitlines(),
+        fromfile=f"golden:{os.path.relpath(golden, repo)}",
+        tofile=f"actual:{name}", lineterm=""))
+    MAXL = 300
+    shown = diff[:MAXL]
+    if len(diff) > MAXL:
+        shown.append(f"... ({len(diff) - MAXL} more diff lines)")
+    sys.stdout.write(
+        f"\n----- {name}: snapshot differs "
+        f"(golden {len(want.splitlines())} lines, actual {len(norm.splitlines())} lines) -----\n"
+        + "\n".join(shown)
+        + f"\n----- end {name} diff -----\n\n")
+    return F.Result(name, F.FAIL, f"{stage} snapshot differs from golden (diff above)")
 
 
 def run_ir(repo, ficus, update=False, jobs=None):
