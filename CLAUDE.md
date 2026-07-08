@@ -30,13 +30,21 @@ bin/ficus -no-c file.fx                   # parse + typecheck only (fast)
   pass `-o output_name`. ficus will put app `output_name` and all
   intermediate files (.c; (.k, .ast) if requested) to
   `<ficus_root>/__fxbuild__/output_name`.
-- **Regenerating the bootstrap** (after editing any `compiler/*.fx`): run
-  `python3 tools/update_compiler.py`. It rebuilds the compiler, regenerates the
-  pre-gen C in `compiler/bootstrap/*.c`, copies over only the changed modules,
-  and asserts the self-hosting **fixpoint** — the freshly-built compiler must
-  regenerate its own bootstrap byte-for-byte, else it's a determinism
-  regression (`fxtest.py determinism`). `--check` is a CI-friendly dry run
-  (exit 1 if the bootstrap is stale); `--no-make` skips the initial build.
+- **Regenerating the bootstrap** — required after editing any `compiler/*.fx`
+  **or any stdlib module the compiler pulls in** (`compiler/bootstrap/` has 54
+  modules incl. `Builtins.c`, `Complex.c`, `String.c`, ... — `ls` it when in
+  doubt): run `python3 tools/update_compiler.py`. It rebuilds the compiler,
+  regenerates the pre-gen C in `compiler/bootstrap/*.c`, copies over only the
+  changed modules, and asserts the self-hosting **fixpoint** — the
+  freshly-built compiler must regenerate its own bootstrap byte-for-byte, else
+  it's a determinism regression (`fxtest.py determinism`). `--check` is a
+  CI-friendly dry run (exit 1 if the bootstrap is stale); `--no-make` skips
+  the initial build. **CI runs `--check` on every push that touches
+  compiler/lib/runtime** — a lib-only commit with a stale bootstrap is a red
+  master (learned 2026-07-08: lib/Complex.fx edit, forgotten regen). The regen
+  doubles as the ONLY routine self-build of the compiler, so it also catches
+  stdlib changes that break compiling the compiler itself — `fxtest all` does
+  NOT rebuild the compiler and cannot catch that class.
 
 ## Testing — the fxtest ladder (see tools/fxtest/README.md)
 
@@ -117,6 +125,15 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `val n: int = []` is a typecheck error and a `[]`-initialized fold
   accumulator can't be captured by a non-collection overload. If the
   collection kind is never pinned, K-normalization asks for an annotation.
+- **Return-type annotations on generic operators are viability filters, not
+  decoration.** A generic `operator` whose return type is left to inference
+  returns a free var that unifies with ANY expected type, so the candidate
+  stays viable at under-constrained call sites (free fold/recursion
+  accumulators) and can steal them via the env-order fallback — dropping
+  `: 't complex` from Complex's mixed operators broke the compiler's own
+  build (C_gen_code.fx:1328). Annotate with a FRESH var (`: 't3 complex`,
+  "returns SOME complex") to reject non-complex contexts while keeping
+  mixed-type widening.
 
 ### Build/run & measurement traps (Brief #2)
 

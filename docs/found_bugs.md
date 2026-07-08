@@ -392,6 +392,22 @@ is the whole point of the ladder.
   (`fun h(a: int, b: 't) = a + b; h(2, 1.5) == 3.5` works); the morning
   mixed-type failure was a stray free-var return annotation (`: 't complex`
   with an unbound 't) plus the pass-through component, NOT deferral.
+- **NEAR-MISS (same evening, hotfix-1): mixed `+`/`-` without return
+  annotations broke the compiler's own build** (caught by
+  `update_compiler.py --check` on CI; `fxtest all` does NOT rebuild the
+  compiler and stayed green). Mechanism: the homogeneous operators' return
+  annotation `: 't complex` was a LOAD-BEARING viability filter — at
+  `C_gen_code.fx:1328` (`val ai_ccode: cstmt_t list = ai_ccode + prologue`,
+  RHS `ai_ccode` still free — a recursion-typed accumulator, the S3 shape
+  with a free var instead of `[]`) the expected result type `cstmt_t list`
+  refused to unify with `'t complex`, killing the candidate at the trial.
+  The annotation-less mixed variants return a free var that unifies with
+  anything → viable → env-order fallback picked complex-+ over list-concat
+  → cascade. Fix: `: 't3 complex` return annotations with a FRESH type var
+  ("returns SOME complex") on ALL mixed variants — rejects non-complex
+  contexts, keeps widening (`2.0 + fcomplex` → double complex). Bisect
+  proof: 861a988 OK (homogeneous), 4096963 OK (mixed `*`/`/` — no
+  list-`*` competitor exists), 7e10f29 BREAKS (mixed `+`/`-`).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the
