@@ -371,6 +371,16 @@ is the whole point of the ladder.
   The `++`/`.`-concatenation idea (§4 of language_changes_brief.md) is now a
   pure language-design question, no longer needed for correctness (Vadim
   demoted it to "maybe not" in ficus_todo_2026.md).
+- **Imaginary-literal follow-up (same day)**: `N.fi`/`N.i`/`N.hi` never
+  actually worked — the lexer desugared them into `complex(0, N)` with an
+  **int** zero (`LitInt(0)`), so the real demo `1 + 1.fi` typed as
+  `complex(int, float)` and no constructor matched (part of the S1 symptom
+  as originally recorded above). Fixed in `Lexer.fx`: the zero real part is
+  a float literal of the same width as the imaginary part. The fst.fx demo
+  is live as `val c = ref (1.f + 1.fi); *c *= 2.f`. Mixed-type operator
+  variants (`'t1 op 't2 complex`) were tried and reverted — their bodies are
+  exactly the S1 shape; scalars must match the complex element type until
+  session-2 deferral lands (`1.f + 1.fi`, not `1 + 1.fi`).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the

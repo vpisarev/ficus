@@ -1000,8 +1000,8 @@ fun print(a: 't) = print_string(string(a))
 @nothrow fun print(a: int16): void = @ccode { printf("%d", (int)a) }
 @nothrow fun print(a: uint32): void = @ccode { printf("%u", a) }
 @nothrow fun print(a: int32): void = @ccode { printf("%d", a) }
-@nothrow fun print(a: uint64): void = @ccode { printf("%llu", a) }
-@nothrow fun print(a: int64): void = @ccode { printf("%lld", a) }
+@nothrow fun print(a: uint64): void = @ccode { printf("%llu", (unsigned long long)a) }
+@nothrow fun print(a: int64): void = @ccode { printf("%lld", (long long)a) }
 fun print(a: long): void = @ccode {
     fx_cstr_t str;
     int fx_status = fx_ltoa_ascii(a, 'd', false, &str);

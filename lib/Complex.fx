@@ -12,10 +12,13 @@ fun conj(a: 't complex) = complex {re=a.re, im=-a.im}
 fun abs(a: 't complex) = sqrt(a.re*a.re + a.im*a.im)
 fun phase(a: 't complex) = atan2(a.im, a.re)
 
+operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
 operator + (a: 't complex, b: 't): 't complex = complex(a.re + b, a.im)
 operator + (a: 't complex, b: 't complex) = complex(a.re + b.re, a.im + b.im)
+operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, -b.im)
 operator - (a: 't complex, b: 't): 't complex = complex(a.re - b, a.im)
 operator - (a: 't complex, b: 't complex) = complex(a.re - b.re, a.im - b.im)
+operator * (a: 't, b: 't complex): 't complex = complex(a * b.re, a * b.im)
 operator * (a: 't complex, b: 't): 't complex = complex(a.re * b, a.im * b)
 operator * (a: 't complex, b: 't complex) =
     complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re)
@@ -24,18 +27,6 @@ operator / (a: 't complex, b: 't complex) {
     val denom = b.re*b.re + b.im*b.im
     complex((a.re*b.re + a.im*b.im)/denom, (a.im*b.re - a.re*b.im)/denom)
 }
-
-/* The scalar-on-the-LEFT variants, UNFENCED by resolve-2 (TypVarCollection):
-   `op (a: 't, b: 't complex)` has an unconstrained 't in the first position,
-   so it used to be viable alongside list-concatenation `+('t list, 't list)`
-   at a call site whose second operand was a free-typed `[]` fold accumulator
-   (the NN/FromOnnx.fx:1012 shape, FB-007/S3) -- and the under-constrained-tie
-   fallback could pick it by import order. Now `[]` is typed TypVarCollection
-   ("some list/vector/array"), which refuses to unify with `'t complex`, so
-   these variants are simply not viable at list sites anymore. */
-operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
-operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, -b.im)
-operator * (a: 't, b: 't complex): 't complex = complex(a * b.re, a * b.im)
 operator / (a: 't, b: 't complex): 't complex {
     val denom = b.re*b.re + b.im*b.im
     complex(a*b.re/denom, -a*b.im/denom)

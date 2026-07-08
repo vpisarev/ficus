@@ -68,6 +68,21 @@ var-form; it only enters through `[]`.
   `val n: int = []` is a typecheck-time error now.
 - The `++`/`.`-concatenation candidate (language_changes §4) is demoted from
   "needed for correctness" to a pure taste question (Vadim: "maybe not").
+- **Imaginary literals `N.fi` / `N.i` / `N.hi` work now** (follow-up commit):
+  the lexer desugared them into `complex(0, N)` with an **int** zero
+  (`LitInt(0)`), so the tokens typed as `complex(int, float)` and no
+  constructor matched — one of the reasons the original 2021 demo
+  `val c = ref (1+1.fi)` was fenced. The zero real part is now a float
+  literal of the same width as the imaginary part (`Lexer.fx`, the `c == 'c'`
+  branch). `examples/fst.fx` runs the demo as `1.f + 1.fi` and prints the
+  mathematically correct values (`abs((1+1i)*2)=2.8284271`,
+  `1-(2+2i)=-1.0-2.0i`).
+- Mixed-type operator variants (`op (a: 't1, b: 't2 complex)`) were tried by
+  Vadim and reverted: their bodies do `'t1 op 't2` arithmetic, which is
+  pinned at declaration/instantiation boundaries — exactly FB-007/S1, i.e.
+  session-2 deferral work. Scalar variants stay homogeneous (`'t op
+  't complex`), so `1 + 1.fi` (int + float complex) is correctly rejected;
+  write `1.f + 1.fi`.
 
 FB-007 is now reduced to **S1 only**: mixed-type arithmetic (`int + 't`)
 inside generic bodies is pinned at declaration check — that is genuine

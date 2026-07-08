@@ -388,8 +388,18 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
             if c == 'l' {
                 [:: (IDENT(true, "long"), loc), (LPAREN(false), loc), (t, loc), (RPAREN, loc)]
             } else if c == 'c' {
+                /* an imaginary literal N.fi/N.i/N.hi is desugared into
+                   complex(0, N); the zero real part must be a float literal
+                   of the SAME width as the imaginary part, or the
+                   complex(float,float)/complex(double,double) constructors
+                   won't match (the imaginary suffix is float-only, see
+                   LexerUtils.getnumber_) */
+                val zero = match t {
+                    | LITERAL(Ast.LitFloat(bits, _)) => Ast.LitFloat(bits, 0.)
+                    | _ => Ast.LitInt(0i64)
+                    }
                 [:: (IDENT(true, "complex"), loc), (LPAREN(false), loc),
-                    (LITERAL(Ast.LitInt(0i64)), loc), (COMMA, loc), (t, loc), (RPAREN, loc)]
+                    (LITERAL(zero), loc), (COMMA, loc), (t, loc), (RPAREN, loc)]
             } else {
                 [:: (t, loc)]
             }
