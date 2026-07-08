@@ -380,6 +380,52 @@ fun unskolemize_typ(t: typ_t, skolems: id_t list): typ_t {
     unskolem_(t, callb)
 }
 
+/* FB-017 fix: freeze the anonymous "var-form" template types -- {...}
+   (TypVarRecord), (...) / ('t ...) (TypVarTuple), 't [+] (TypVarArray) -- into
+   opaque "some specific, but unknown" sentinels on the RIGID side of a
+   generality trial, mirroring what skolemize_fun_sig does for named template
+   parameters. Without this maybe_unify binds a free record/tuple/array-var to
+   a concrete type in EITHER direction, so "concrete record vs {...}-generic"
+   read as EqGeneric and ~224 real sites of the E1 census could not be ranked.
+
+   Sentinel choices (each still unifies with a FREE var-form of the same kind
+   or a plain free TypVar on the other side, but never with a *different*
+   concrete type):
+     {...}    -> TypRecord with a single __skolem_rec__ field: a record no
+                 user record matches (the field name+type cannot unify)
+     (...)    -> TypTuple of two DISTINCT opaque constants: a free (...)
+                 still covers it, but ('t ...) does not (elements differ),
+                 and no concrete tuple matches the opaque constants
+     ('t ...) -> TypTuple([frozen 't]): covered by (...) and ('u ...), not by
+                 (int ...) or any concrete tuple
+     't [+]   -> TypArray(-1, frozen 't): dimension -1 matches no concrete
+                 array, so only 'u [+] and plain 'u cover it
+   Non-destructive (same walk_typ pattern as unskolemize_typ): the input tree,
+   which callers and test_gencmp reuse, is never mutated. */
+fun freeze_varform_typs(t: typ_t): typ_t {
+    fun freeze_(t: typ_t, callb: ast_callb_t): typ_t =
+        match t {
+        | TypVar (ref Some(TypVarRecord)) =>
+            val k = get_id("__skolem_rec__")
+            TypRecord(ref ([:: (default_val_flags(), k, TypApp([], k), ExpNop(noloc))], true))
+        | TypVar (ref Some(TypVarTuple(t_opt))) =>
+            match t_opt {
+            | Some(t1) => TypTuple([:: freeze_(t1, callb)])
+            | _ => TypTuple([:: TypApp([], get_id("__skolem1__")),
+                               TypApp([], get_id("__skolem2__"))])
+            }
+        | TypVar (ref Some(TypVarArray(et))) => TypArray(-1, freeze_(et, callb))
+        | TypVar (ref Some(t1)) => TypVar(ref Some(freeze_(t1, callb)))
+        | TypVar _ => t
+        | TypRecord(r) =>
+            val (relems, ordered) = *r
+            TypRecord(ref ([:: for (fl, n, t, v) <- relems {(fl, n, freeze_(t, callb), v)}], ordered))
+        | _ => walk_typ(t, callb)
+        }
+    val callb = ast_callb_t {ast_cb_typ=Some(freeze_), ast_cb_exp=None, ast_cb_pat=None}
+    freeze_(t, callb)
+}
+
 /* Core of §3: is t1 more/less/equally/in-comparably general than t2, where
    skolems1/skolems2 identify the (already frozen) template parameters embedded
    in t1/t2 as opaque TypApp([], id) constants.
@@ -387,6 +433,9 @@ fun unskolemize_typ(t: typ_t, skolems: id_t list): typ_t {
    Two one-way maybe_unify(update_refs=false) trials -- neither commits anything:
      covers1_2 : does t1-made-free match t2-rigid?  (t1 can specialize onto t2)
      covers2_1 : does t2-made-free match t1-rigid?  (t2 can specialize onto t1)
+   The rigid side additionally has its var-form types ({...} & friends) frozen
+   by freeze_varform_typs (FB-017); on the free side they remain free var-forms,
+   which is exactly their "maximally general" reading.
    Classification (result describes t1 relative to t2):
      both    -> EqGeneric      (mutually applicable: same generality)
      1 only  -> MoreGeneric    (t1 covers t2 but not vice versa)
@@ -397,8 +446,10 @@ fun compare_typ_generality(t1: typ_t, skolems1: id_t list,
 {
     val free1 = unskolemize_typ(t1, skolems1)
     val free2 = unskolemize_typ(t2, skolems2)
-    val covers1_2 = maybe_unify(free1, t2, noloc, false)
-    val covers2_1 = maybe_unify(free2, t1, noloc, false)
+    val rigid1 = freeze_varform_typs(t1)
+    val rigid2 = freeze_varform_typs(t2)
+    val covers1_2 = maybe_unify(free1, rigid2, noloc, false)
+    val covers2_1 = maybe_unify(free2, rigid1, noloc, false)
     match (covers1_2, covers2_1) {
     | (true, true) => EqGeneric
     | (true, false) => MoreGeneric
