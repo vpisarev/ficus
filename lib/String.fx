@@ -7,6 +7,11 @@
 
 @ccode { #include <string.h> }
 
+// NOTE: length/join re-declare Builtins helpers with identical signatures.
+// They are NOT redundant: `s.length()` method syntax resolves through the
+// object-type fallback to `String.length(s)`, so the names must exist in this
+// module. Inside this file, call the Builtins versions QUALIFIED to keep every
+// call site unambiguous under least-generic overload ranking (resolve-1).
 @inline fun length(s: string) = __intrin_size__(s)
 @inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
 @inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
@@ -81,7 +86,7 @@
     return i;
 }
 
-@inline fun rfind(s: string, part: string): int = rfind(s, part, s.length()-1)
+@inline fun rfind(s: string, part: string): int = rfind(s, part, __intrin_size__(s)-1)
 
 @pure @nothrow fun rfind(s: string, c: char): int
 @ccode {
@@ -344,5 +349,5 @@ fun escaped(s: string, ~quotes: bool=true)
             else { (ll, verb) }
         }
     }
-    join("", (q :: s[verb:] :: ll).rev())
+    Builtins.join("", (q :: s[verb:] :: ll).rev())
 }
