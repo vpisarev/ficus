@@ -158,8 +158,13 @@ call `Module.__op__(a, b)`; a prettier `Module.(op)` spelling is a Brief #3
 grammar item. Not-found diagnostics list each candidate with a one-line
 rejection reason.
 
-`lib/Complex.fx` operators + the `examples/fst.fx` demo are UNLOCKED in a
-homogeneous form (all bodies `'t op 't` — sidesteps S1).
+`lib/Complex.fx` operators + the `examples/fst.fx` demo are UNLOCKED, all
+four operators MIXED-TYPE (`'t1 op 't2`, result type inferred; builtin
+numeric coercion combines the types per instantiation — the widening-cast
+idiom `1.0 * fcomplex`). For `+`/`-` the pass-through result component is
+nudged to the coerced type by Vadim's `r - r` pattern, which constant
+folding erases at both -O0 and -O3 (bare `:>` cast in the K-form).
+`1 + 1.fi` — the verbatim 2021 demo — runs in fst.fx.
 
 **resolve-2 (2026-07-08, same day): `TypVarCollection`** — the empty-collection
 literal `[]` is typed as a new var-form "some list/vector/array" instead of a
@@ -172,11 +177,19 @@ variants are UNFENCED, and `val n: int = []` became a typecheck-time error
 (post-reform): `[]` = empty *list* only + a dedicated empty-array spelling
 (e.g. `[.]`).
 
-Session 2 (OPEN): deferral — `int + 't` inside generic bodies (S1, for
-mixed-type operator variants) and under-constrained calls in general (the
-commit-half: ranking at sites whose arg types are still free, beyond the
-collection case); error recovery (TypErr poisoning, multiple errors per
-run); edit-distance "did you mean".
+**Deferral: REJECTED as a near-term item (2026-07-08 evening, with Vadim).**
+Re-measured after TypVarCollection: generic bodies already re-resolve per
+instantiation (`fun h(a: int, b: 't) = a + b` works — the recorded S1
+mechanism is dead post-resolve-1), and the census shows only 7 harmless
+env-order-fallback sites in 68K lines. The cheap endpoint, deferred to the
+reform epoch: turn the remaining under-constrained tie fallback into a hard
+"ambiguous, annotate the type" error (~7 annotations in the compiler, zero
+new machinery). Tripwire: the `-pr-resolve` fallback counter — revisit only
+if it grows on real code.
+
+Session 2 (OPEN, diagnostics only now): error recovery (TypErr poisoning,
+multiple errors per run); edit-distance "did you mean"; `Module.(op)`
+spelling.
 
 ## 7. Deferred / additive (post-reform; decide direction only)
 

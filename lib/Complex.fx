@@ -12,12 +12,32 @@ fun conj(a: 't complex) = complex {re=a.re, im=-a.im}
 fun abs(a: 't complex) = sqrt(a.re*a.re + a.im*a.im)
 fun phase(a: 't complex) = atan2(a.im, a.re)
 
-operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
-operator + (a: 't complex, b: 't): 't complex = complex(a.re + b, a.im)
-operator + (a: 't complex, b: 't complex) = complex(a.re + b.re, a.im + b.im)
-operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, -b.im)
-operator - (a: 't complex, b: 't): 't complex = complex(a.re - b, a.im)
-operator - (a: 't complex, b: 't complex) = complex(a.re - b.re, a.im - b.im)
+/* All operators are mixed-type ('t1 op 't2): the result type is INFERRED
+   from the body, where builtin numeric coercion combines the two types at
+   instantiation -- so `1 + 1.fi` works and `1.0 * fcomplex` widens to
+   double complex (the widening-cast idiom). For + and - one component of
+   the result does not naturally pass through a mixed operation; it is
+   nudged to the coerced type by adding `r - r` (Vadim's pattern), which
+   constant folding provably erases at BOTH -O0 and -O3, leaving a bare
+   cast in the K-form -- so no runtime cost and no inf/nan artifacts. */
+operator + (a: 't1, b: 't2 complex) {
+    val r = a + b.re
+    complex(r, b.im + (r - r))
+}
+operator + (a: 't1 complex, b: 't2) {
+    val r = a.re + b
+    complex(r, a.im + (r - r))
+}
+operator + (a: 't1 complex, b: 't2 complex) = complex(a.re + b.re, a.im + b.im)
+operator - (a: 't1, b: 't2 complex) {
+    val r = a - b.re
+    complex(r, (r - r) - b.im)
+}
+operator - (a: 't1 complex, b: 't2) {
+    val r = a.re - b
+    complex(r, a.im + (r - r))
+}
+operator - (a: 't1 complex, b: 't2 complex) = complex(a.re - b.re, a.im - b.im)
 operator * (a: 't1, b: 't2 complex) = complex(a * b.re, a * b.im)
 operator * (a: 't1 complex, b: 't2) = complex(a.re * b, a.im * b)
 operator * (a: 't1 complex, b: 't2 complex) =

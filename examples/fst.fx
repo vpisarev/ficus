@@ -122,7 +122,7 @@ fun find_idx(a: 't [], f: 't -> bool): int
 val i4 = find_idx(a, fun (i) {i < 0})
 println(f"excepion-based search: negative number in {a}: {gen_msg(i4, a)}")
 
-val c = ref (1.f + 1.fi)
+val c = ref (1 + 1.fi)   // the verbatim 2021 demo expression: mixed-type int + float complex
 *c -= 2.f
 val c2 = 3. * *c   // scalar-on-the-left variant (unfenced by resolve-2)
 println(f"abs((1+1i)-2)={abs(*c)}, 3*(-1+i)={c2}")

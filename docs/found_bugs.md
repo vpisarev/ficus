@@ -377,14 +377,21 @@ is the whole point of the ladder.
   `complex(int, float)` and no constructor matched (part of the S1 symptom
   as originally recorded above). Fixed in `Lexer.fx`: the zero real part is
   a float literal of the same width as the imaginary part. The fst.fx demo
-  is live as `val c = ref (1.f + 1.fi); *c *= 2.f`. Mixed-type variants:
-  `*` and `/` are mixed (`'t1 op 't2`, return type INFERRED — both result
-  components go through a mixed primitive op, so builtin numeric coercion
-  resolves at instantiation; doubles as the widening-cast idiom
-  `1.0 * fcomplex`, and `v *= 2` works with an int scalar). `+`/`-` must
-  stay homogeneous until S1 deferral: one component passes through unchanged
-  (`b.im`), and a mixed variant would build a record with differently-typed
-  fields (`1.f + 1.fi`, not `1 + 1.fi`).
+  is live as `val c = ref (1 + 1.fi); *c -= 2.f` — the VERBATIM 2021 demo
+  expression. ALL operators are mixed-type now (`'t1 op 't2`, return type
+  INFERRED): builtin numeric coercion combines the types at instantiation,
+  which doubles as the widening-cast idiom (`1.0 * fcomplex` → double
+  complex; `v *= 2` works with an int scalar). For `+`/`-`, whose one result
+  component does not naturally go through a mixed op, **Vadim's `r - r`
+  pattern** is used: `val r = a + b.re; complex(r, b.im + (r - r))` — the
+  `r - r` nudges the component to the coerced type and is provably erased by
+  constant folding at BOTH -O0 and -O3 (checked in the K-form: only a bare
+  `:> cast` remains), so no runtime cost and no inf/nan artifacts.
+  NB (2026-07-08 evening re-test): the S1 mechanism turned out to be already
+  dead post-resolve-1 — generic bodies re-resolve at instantiation
+  (`fun h(a: int, b: 't) = a + b; h(2, 1.5) == 3.5` works); the morning
+  mixed-type failure was a stray free-var return annotation (`: 't complex`
+  with an unbound 't) plus the pass-through component, NOT deferral.
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the

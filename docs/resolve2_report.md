@@ -74,25 +74,33 @@ var-form; it only enters through `[]`.
   constructor matched — one of the reasons the original 2021 demo
   `val c = ref (1+1.fi)` was fenced. The zero real part is now a float
   literal of the same width as the imaginary part (`Lexer.fx`, the `c == 'c'`
-  branch). `examples/fst.fx` runs the demo as `1.f + 1.fi` and prints the
-  mathematically correct values (`abs((1+1i)*2)=2.8284271`,
-  `1-(2+2i)=-1.0-2.0i`).
-- Mixed-type operator variants: `*` and `/` ARE mixed (`'t1 (complex) op
-  't2 (complex)`, Vadim) — with NO return-type annotation, both components
-  of the result go through a mixed primitive op (`a * b.re`), so builtin
-  numeric coercion resolves everything at instantiation and the result type
-  is inferred. This doubles as the **widening-cast idiom**:
-  `1.0 * fcomplex_val` is a double complex; even `v *= 2` (int scalar) works.
-  `+`/`-` stay homogeneous: one component passes through unchanged (`b.im`),
-  so a mixed variant would construct a record with differently-typed fields
-  — that needs FB-007/S1 deferral (or explicit casts in the body). So:
-  `1.f + 1.fi`, but `2 * (1.f + 1.fi)` is fine.
+  branch). `examples/fst.fx` runs the demo as `val c = ref (1 + 1.fi)` —
+  verbatim the expression fenced in 2021 — and prints mathematically
+  correct values.
+- Mixed-type operator variants: ALL of `+ - * /` are mixed (`'t1 (complex)
+  op 't2 (complex)`, Vadim) — with NO return-type annotation, the result
+  type is inferred from the body, where builtin numeric coercion combines
+  the two types at instantiation. Doubles as the **widening-cast idiom**:
+  `1.0 * fcomplex_val` is a double complex; `v *= 2` (int scalar) works;
+  `1 + 1.fi` — the verbatim 2021 demo expression — works, and fst.fx runs it.
+  For `+`/`-` the pass-through component is nudged to the coerced type by
+  **Vadim's `r - r` pattern** (`val r = a + b.re; complex(r, b.im + (r-r))`):
+  constant folding provably erases it at both -O0 and -O3, leaving a bare
+  `:>` cast in the K-form (verified) — no runtime cost, no inf/nan artifacts.
 
-FB-007 is now reduced to **S1 only**: mixed-type arithmetic (`int + 't`)
-inside generic bodies is pinned at declaration check — that is genuine
-session-2 deferral work. True deferral of under-constrained calls in general
-also remains session-2 scope; TypVarCollection removes the `[]` collision
-class, not the mechanism.
+FB-007 post-mortem: the S1 mechanism turned out to be already dead after
+resolve-1 — generic bodies re-resolve per instantiation (verified:
+`fun h(a: int, b: 't) = a + b; h(2, 1.5) == 3.5`, and a user-overload call
+`foo(y)` inside a generic body picks the right instance per 't). The morning
+mixed-type failure was a stray free-var return annotation (`: 't complex`
+with an unbound 't) plus the structural pass-through problem — neither is a
+resolution-order issue. General deferral of under-constrained calls was
+re-evaluated with Vadim (2026-07-08 evening) and REJECTED as a near-term
+item: after TypVarCollection the census shows 7 harmless fallback sites in
+68K lines; the cheap endpoint (reform epoch) is to turn the remaining
+env-order fallback into a hard "ambiguous, annotate" error instead of
+building worklist machinery. The `-pr-resolve` fallback counter is the
+tripwire.
 
 ## Verification
 
