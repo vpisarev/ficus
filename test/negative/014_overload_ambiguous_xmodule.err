@@ -1,6 +1,6 @@
-014_overload_ambiguous_xmodule.fx:8:9: error: ambiguous call of overloaded 'sqrt': the candidates overlap, but none is the most specific. Candidates:
- sqrt('t, {n: int}) -> <unknown> [generic: 't] @ 014_overload_ambiguous_xmodule.fx:7:1
- sqrt(double) -> double @ Math.fx:L:C
-define/import a more specific overload, or use a module-qualified call (e.g. Module.sqrt(...)) to disambiguate
+014_overload_ambiguous_xmodule.fx:13:9: error: ambiguous call of overloaded 'length': the candidates are equally applicable. Candidates:
+ length(string) -> int @ 014_overload_ambiguous_xmodule.fx:12:1
+ length(string) -> int @ Builtins.fx:L:C
+use a module-qualified call (e.g. Module.length(...)) to select one
 
 1 errors occured during type checking.

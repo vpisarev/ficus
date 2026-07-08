@@ -107,7 +107,9 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `Module.__mul__(a, b)` (`Module.(*)` does not parse). Two identical-signature
   overloads only error at a call that sees both. When argument types still
   contain free type vars, ties silently fall back to first-match (deferral is
-  pending) — don't rely on it in new code.
+  pending) — don't rely on it in new code. A candidate viable only via
+  all-defaulted keyword args loses to an exact keywordless match
+  (`sqrt(81.0)` → `Math.sqrt(double)`, not a local `sqrt('t, ~n=2)`).
 
 ### Build/run & measurement traps (Brief #2)
 

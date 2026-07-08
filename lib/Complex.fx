@@ -12,36 +12,41 @@ fun conj(a: 't complex) = complex {re=a.re, im=-a.im}
 fun abs(a: 't complex) = sqrt(a.re*a.re + a.im*a.im)
 fun phase(a: 't complex) = atan2(a.im, a.re)
 
-/*operator + (a: int, b: 't complex): 't complex = complex(a + b.re, b.im)
-operator + (a: 't complex, b: int): 't complex = complex(a.re + b, a.im)
-operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
 operator + (a: 't complex, b: 't): 't complex = complex(a.re + b, a.im)
-operator + (a: 't complex, b: 't2 complex) = complex(a.re + b.re, a.im + b.im)
-operator - (a: int, b: 't complex): 't complex = complex(a - b.re, b.im)
-operator - (a: 't complex, b: int): 't complex = complex(a.re - b, a.im)
-operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, b.im)
+operator + (a: 't complex, b: 't complex) = complex(a.re + b.re, a.im + b.im)
 operator - (a: 't complex, b: 't): 't complex = complex(a.re - b, a.im)
-operator - (a: 't complex, b: 't2 complex) = complex(a.re - b.re, a.im - b.im)
-operator * (a: int, b: 't complex): 't complex = complex(a * b.re, a * b.im)
-operator * (a: 't complex, b: int): 't complex = complex(a.re * b, a.im * b)
-operator * (a: 't, b: 't complex): 't complex = complex(a * b.re, a * b.im)
+operator - (a: 't complex, b: 't complex) = complex(a.re - b.re, a.im - b.im)
 operator * (a: 't complex, b: 't): 't complex = complex(a.re * b, a.im * b)
-operator * (a: 't complex, b: 't2 complex) =
+operator * (a: 't complex, b: 't complex) =
     complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re)
-operator / (a: int, b: 't complex): 't complex {
+operator / (a: 't complex, b: 't): 't complex = complex(a.re/b, a.im/b)
+operator / (a: 't complex, b: 't complex) {
     val denom = b.re*b.re + b.im*b.im
-    complex(a*b.re/denom, -a*b.im/denom)
+    complex((a.re*b.re + a.im*b.im)/denom, (a.im*b.re - a.re*b.im)/denom)
 }
-operator / (a: 't complex, b: int): 't complex = complex(a.re/b, a.im/b)
+
+/* The scalar-on-the-LEFT variants stay FENCED for now (FB-007, S3):
+   `op (a: 't, b: 't complex)` has an unconstrained 't in the first position,
+   so at a call site whose SECOND operand's type is still a free inference
+   variable (the canonical case: a fold accumulator initialized with `[]`,
+   as in `rev_more_ops + prog` at NN/FromOnnx.fx:1012) it is viable alongside
+   the list-concatenation `+('t list, 't list)`, the two are genuinely
+   incomparable, and the under-constrained-tie fallback picks by import order
+   -- wrongly. They can return when either (a) session-2 deferral lands
+   (resolution of under-constrained calls is postponed until the variable is
+   bound, at which point these variants stop being viable at list sites), or
+   (b) list concatenation stops being spelled `+` (see the `++` /
+   dot-concatenation idea in docs/language_changes_brief.md), which removes
+   the colliding candidate altogether. Until then: write `c + s`, not `s + c`.
+
+operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
+operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, b.im)
+operator * (a: 't, b: 't complex): 't complex = complex(a * b.re, a * b.im)
 operator / (a: 't, b: 't complex): 't complex {
     val denom = b.re*b.re + b.im*b.im
     complex(a*b.re/denom, -a*b.im/denom)
 }
-operator / (a: 't complex, b: 't): 't complex = complex(a.re/b, a.im/b)
-operator / (a: 't complex, b: 't2 complex) {
-    val denom = b.re*b.re + b.im*b.im
-    complex((a.re*b.re + a.im*b.im)/denom, (a.im*b.re - a.re*b.im)/denom)
-}*/
+*/
 
 fun exp(a: 't complex) {
     val er = exp(a.re)

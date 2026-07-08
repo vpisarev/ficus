@@ -7,6 +7,8 @@ Candidates:
  __add__('t list, 't list) -> <unknown> [generic: 't] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match ''t list',
  __add__(long, long) -> long @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'long',
  __add__(('t1 ...), ('t2 ...)) -> <unknown> [generic: 't1, 't2, __var_tuple__] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match '('t1 ...)',
+ __add__('t Complex.complex@3, 't) -> 't Complex.complex@3 [generic: 't] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t Complex.complex@3',
+ __add__('t Complex.complex@3, 't Complex.complex@3) -> <unknown> [generic: 't] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t Complex.complex@3',
  __add__('ta [+], 'tb [+]) -> <unknown> [generic: 'ta, 'tb, __var_array__] @ Array.fx:L:C -- argument 1 of type 'int' does not match ''ta [+]'
 
 

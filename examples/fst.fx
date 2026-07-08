@@ -122,9 +122,9 @@ fun find_idx(a: 't [], f: 't -> bool): int
 val i4 = find_idx(a, fun (i) {i < 0})
 println(f"excepion-based search: negative number in {a}: {gen_msg(i4, a)}")
 
-/*val c = ref (1+1.fi)
-*c *= 2
-println(f"abs((1+1i)*2)={abs(*c)}")*/
+val c = ref complex(1.f, 1.f)
+*c *= 2.f
+println(f"abs((1+1i)*2)={abs(*c)}")
 
 val fixed_choice = "five"
 

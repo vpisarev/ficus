@@ -502,6 +502,29 @@ fun compare_fun_generality(df1: deffun_t ref, df2: deffun_t ref): gen_cmp_t
 {
     val (t1, sk1) = skolemize_fun_sig(df1)
     val (t2, sk2) = skolemize_fun_sig(df2)
+    /* Keyword normalization (Q2 revision, resolve-1): when exactly one of the
+       two candidates has keyword parameters, append an empty OPEN keyword
+       record to the keywordless one's parameter tuple -- mirroring what
+       lookup_id_opt does to the CALLER type per-candidate. Without this the
+       pair reads as arity-incomparable, which is an artifact of the implicit
+       trailing record, not real overlap. With it the coverage test gives the
+       natural order on keywordless calls: a candidate that is viable only via
+       all-defaulted keywords accepts strictly more, so an exact keywordless
+       match ranks more specific (e.g. string(nntensor_t, ~border=..) beats
+       the record-generic string({...}) on string(t); Math.sqrt(double) beats
+       a local sqrt('t, ~n=2) on sqrt(81.0)). This is coverage semantics, not
+       a Swift-style tie-break ladder. */
+    val kw1 = df1->df_flags.fun_flag_have_keywords
+    val kw2 = df2->df_flags.fun_flag_have_keywords
+    val (t1, t2) =
+        if kw1 == kw2 { (t1, t2) }
+        else {
+            fun add_kwrec(t: typ_t) = match t {
+                | TypTuple(tl) => TypTuple(tl + [:: TypRecord(ref ([], false))])
+                | _ => t   // constructors compare the whole TypFun: skip
+                }
+            if kw1 { (t1, add_kwrec(t2)) } else { (add_kwrec(t1), t2) }
+        }
     compare_typ_generality(t1, sk1, t2, sk2)
 }
 

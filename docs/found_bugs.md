@@ -308,6 +308,38 @@ is the whole point of the ladder.
   `lib/Complex.fx:15-44` + `examples/fst.fx:125-127` therefore STAY FENCED
   until session 2 (when unfencing, also add the generic `complex(r:'t, i:'t)`
   constructor — sanctioned above).
+- **UNFENCED (2026-07-08, resolve-1, follow-up commit)** — the operators are
+  live again, in a simplified, homogeneous form (Vadim), which sidesteps both
+  remaining symptoms without waiting for session-2 deferral:
+  - All operator bodies are now `'t op 't`-homogeneous (the `int`/`'t2` mixed
+    variants removed) => **no cross-type arithmetic inside generic bodies =>
+    S1 never triggers**. The `fst.fx` demo is rewritten accordingly
+    (`ref complex(1.f, 1.f)`, `*c *= 2.f`) and runs; `fst.fx` is in the fxtest
+    corpus, so complex arithmetic is now permanently regression-tested.
+  - The scalar-on-the-LEFT variants `op (a: 't, b: 't complex)` remain FENCED
+    (commented in Complex.fx with an explanation): their unconstrained 't makes
+    them viable at any `known + still-free` call site (the FromOnnx.fx:1012
+    fold-accumulator shape) where they tie incomparably with list-concat `+`
+    and the under-constrained fallback picks by import order. They return with
+    session-2 deferral, or with the concatenation-spelling change below.
+    Until then: `c + s` works, `s + c` does not.
+  - The second collision found on the way (NN/Inference.fx:94
+    `string(tensor)`: `string(nntensor_t, ~border=8, ~braces=true)` vs the
+    ninja record-generic `string({...})`) was resolved properly by the **Q2
+    keyword normalization** in `compare_fun_generality`: when exactly one
+    candidate has keyword params, the keywordless one's tuple gets the same
+    implicit empty keyword record the caller gets, and coverage then ranks an
+    exact keywordless match ABOVE a candidate viable only via all-defaulted
+    keywords (so `sqrt(81.0)` now resolves to `Math.sqrt(double)` over a local
+    `sqrt('t, ~n=2)` instead of erroring; negative golden 014 was repurposed
+    to the identical-signature cross-module case).
+  - **Language-design direction (Vadim), recorded here for follow-up**: drop
+    the functional record-update operator `.{...}` and reuse `.` as the
+    concatenation operator, or spell concatenation `++`. Either way list/string
+    concatenation stops overloading arithmetic `+`; the free-typed-`[]`
+    accumulator collision class disappears, and the fenced scalar-left complex
+    variants can return unconditionally. Tracked in
+    `docs/language_changes_brief.md` §4.
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the

@@ -171,6 +171,38 @@ Mixed-tuple arithmetic is now a clean not-found error (one corpus site
 existed: the `basic.overloaded` showcase, updated). This retires open item 4
 below.
 
+## Addendum 2 — Complex.fx UNLOCKED + Q2 keyword normalization
+
+Vadim simplified `lib/Complex.fx` to homogeneous operators (`'t op 't` bodies
+only — no cross-type arithmetic inside generic bodies, so **S1 never
+triggers**), rewrote the `fst.fx` demo (`ref complex(1.f,1.f)`, `*c *= 2.f`),
+and the experiment confirmed the unlock works today:
+
+- The scalar-on-the-LEFT variants `op('t, 't complex)` stay fenced (commented
+  with an explanation in Complex.fx): unconstrained 't makes them viable at
+  `known + still-free` sites (the FromOnnx:1012 fold-accumulator shape), where
+  they tie incomparably with list-concat `+` and the fallback picks by import
+  order. They return with session-2 deferral — or with the new language
+  candidate recorded in `language_changes_brief.md` §4: spell concatenation
+  `++` (or reuse `.` after dropping `.{...}`), which removes the collision
+  class entirely.
+- The second collision surfaced by the unlock (`string(tensor)` in
+  `NN/Inference.fx:94`: `string(nntensor_t, ~border, ~braces)` vs the ninja
+  `string({...})`) is resolved by the **Q2 revision**: `compare_fun_generality`
+  now normalizes the keyword asymmetry (the keywordless candidate's tuple gets
+  the same implicit empty keyword record the caller gets). Coverage semantics
+  then rank an exact keywordless match above a candidate viable only via
+  all-defaulted keywords — NOT a Swift-style tie-break ladder. Effects:
+  `string(tensor)` picks the tensor printer; `sqrt(81.0)` (the phase-2
+  test_basic case) now resolves to `Math.sqrt(double)` instead of erroring;
+  negative golden 014 was repurposed to the identical-signature cross-module
+  case (`length(string)` vs `Builtins.length`); golden 207 gained the two
+  Complex candidates in its listing.
+- `fst.fx` (with live complex arithmetic) and `vision_classify` typecheck are
+  in the corpus — complex is permanently regression-tested from here on.
+- Census after: unchanged — 343 ranked + 7 under-constrained fallbacks + 0
+  ambiguity errors; bootstrap fixpoint again limited to `Ast_typecheck.c`.
+
 ## Open items for session 2
 
 1. **Deferral** (proposal §5 + under-constrained calls): S1 (`int + 't` in

@@ -111,6 +111,15 @@ Mechanical, automigrator-friendly.
   type positions; matters for function types).
 - **f-strings — CANDIDATE (parser fix)**: allow string literals inside `{}`
   interpolations (`f"{find(\"x\")}"`).
+- **Concatenation operator — CANDIDATE (Vadim, resolve-1 follow-up)**: stop
+  spelling list/string concatenation as arithmetic `+`. Either drop the
+  functional record-update operator `.{...}` and reuse `.` as concatenation,
+  or introduce `++`. Motivation: `+('t list, 't list)` currently competes with
+  every user-defined `+` at under-constrained call sites (a free-typed `[]`
+  fold accumulator being concatenated — the FromOnnx.fx:1012 / FB-007 S3
+  shape), forcing the scalar-left complex operators `op('t, 't complex)` to
+  stay fenced. A dedicated concatenation spelling removes that entire
+  collision class without deferral.
 
 ## 5. Modules
 
@@ -131,16 +140,28 @@ is an **ambiguity error** (two flavors: equally-applicable -> qualify the
 call; overlapping-but-unordered -> also possible to add a more specific
 overload); at an **under-constrained** call (free type vars among the args)
 a tie falls back to env-order first-match — today's semantics, kept until
-deferral. No fewer-defaults keyword tie-break (Q2), no scope-proximity
+deferral. Q2 resolved by **keyword normalization** (not a tie-break ladder):
+when exactly one candidate has keyword params, the keywordless one is
+compared with the same implicit empty keyword record the caller gets, so an
+exact keywordless match ranks more specific than a candidate viable only via
+all-defaulted keywords (`string(tensor)` picks `string(nntensor_t, ~kw..)`
+over the record-generic; `sqrt(81.0)` picks `Math.sqrt(double)` over a local
+`sqrt('t, ~n=2)`). No scope-proximity
 ranking (§6 of the proposal). Escape hatch: module-qualified mangled-operator
 call `Module.__op__(a, b)`; a prettier `Module.(op)` spelling is a Brief #3
 grammar item. Not-found diagnostics list each candidate with a one-line
 rejection reason.
 
-Session 2 (OPEN): deferral — `int + 't` inside generic bodies (S1) and
-under-constrained calls (S3 commit-half: `FromOnnx.fx:1012`), then unlock
-`lib/Complex.fx` operators + `examples/fst.fx`; error recovery (TypErr
-poisoning, multiple errors per run); edit-distance "did you mean".
+`lib/Complex.fx` operators + the `examples/fst.fx` demo are UNLOCKED in a
+homogeneous form (all bodies `'t op 't` — sidesteps S1; scalar-on-the-left
+variants stay fenced, see FB-007 and the concatenation-operator candidate in
+§4).
+
+Session 2 (OPEN): deferral — `int + 't` inside generic bodies (S1, for
+mixed-type operator variants) and under-constrained calls (S3 commit-half:
+`FromOnnx.fx:1012` shape; un-fences the scalar-left complex variants and the
+S3 test in `test/test_resolve.fx`); error recovery (TypErr poisoning,
+multiple errors per run); edit-distance "did you mean".
 
 ## 7. Deferred / additive (post-reform; decide direction only)
 
