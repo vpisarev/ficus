@@ -340,6 +340,37 @@ is the whole point of the ladder.
     accumulator collision class disappears, and the fenced scalar-left complex
     variants can return unconditionally. Tracked in
     `docs/language_changes_brief.md` §4.
+- **S3 FIXED (2026-07-08, branch `resolve-2`): `TypVarCollection`** — instead of
+  changing the concatenation spelling or waiting for session-2 deferral, the
+  ROOT of the collision was removed: the empty-collection literal `[]`
+  (`LitEmpty`) is no longer typed as a fully free `make_new_typ()`
+  (`Ast.fx: get_lit_typ`) but as a new var-form
+  `TypVar(ref Some(TypVarCollection))` — "some collection: list, vector or
+  array, element type unknown". `maybe_unify` binds it only to
+  `TypList`/`TypVector`/`TypArray`/`'t [+]`/a plain free var/another
+  collection-var; everything else fails. Consequences:
+  - a free-typed `[]` fold accumulator can no longer be captured by an
+    unrelated generic parameter: at `rev_more_ops + prog` (FromOnnx.fx:1012)
+    the scalar-left `+('t, 't complex)` **dies at the viability trial**
+    (`'t := [...]`, then `'t complex` vs `nnop_t list` fails), so only
+    list-concat remains and the under-constrained fallback picks correctly.
+  - the scalar-left variants `op (a: 't, b: 't complex)` are **UNFENCED** in
+    `lib/Complex.fx` (with the latent sign bug in `-` fixed on the way:
+    `s - c` now negates `im`), `examples/fst.fx` exercises `1.f - *c` in the
+    corpus, and the self-contained S3 test in `test/test_resolve.fx` is
+    unfenced and passing (`fb007.s3_free_accumulator`).
+  - `val n: int = []` is now a TYPE CHECKER error (used to pass `-no-c` and
+    only die at K-normalization's "[] is misused"); new negative golden
+    `test/negative/215_empty_collection_scalar.fx`. An unresolvable `[]`
+    still errors at K-normalization, with a clearer message.
+  - `typ2str` renders the new var-form as `[...]`; `typ_has_free_vars` counts
+    it as free (so `[]`-sites remain "under-constrained" for the tie policy);
+    `freeze_varform_typs` freezes it to an opaque constant.
+  Remaining FB-007 tail: **S1 only** (mixed-type arithmetic like `int + 't`
+  inside generic bodies pinned at declaration check — session-2 deferral).
+  The `++`/`.`-concatenation idea (§4 of language_changes_brief.md) is now a
+  pure language-design question, no longer needed for correctness (Vadim
+  demoted it to "maybe not" in ficus_todo_2026.md).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the

@@ -110,6 +110,11 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   pending) — don't rely on it in new code. A candidate viable only via
   all-defaulted keyword args loses to an exact keywordless match
   (`sqrt(81.0)` → `Math.sqrt(double)`, not a local `sqrt('t, ~n=2)`).
+- **`[]` is typed "some collection" (resolve-2, `TypVarCollection`)**: it
+  unifies only with a list/vector/array (or a free type var), so
+  `val n: int = []` is a typecheck error and a `[]`-initialized fold
+  accumulator can't be captured by a non-collection overload. If the
+  collection kind is never pinned, K-normalization asks for an annotation.
 
 ### Build/run & measurement traps (Brief #2)
 

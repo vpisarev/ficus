@@ -111,15 +111,15 @@ Mechanical, automigrator-friendly.
   type positions; matters for function types).
 - **f-strings — CANDIDATE (parser fix)**: allow string literals inside `{}`
   interpolations (`f"{find(\"x\")}"`).
-- **Concatenation operator — CANDIDATE (Vadim, resolve-1 follow-up)**: stop
-  spelling list/string concatenation as arithmetic `+`. Either drop the
-  functional record-update operator `.{...}` and reuse `.` as concatenation,
-  or introduce `++`. Motivation: `+('t list, 't list)` currently competes with
-  every user-defined `+` at under-constrained call sites (a free-typed `[]`
-  fold accumulator being concatenated — the FromOnnx.fx:1012 / FB-007 S3
-  shape), forcing the scalar-left complex operators `op('t, 't complex)` to
-  stay fenced. A dedicated concatenation spelling removes that entire
-  collision class without deferral.
+- **Concatenation operator — CANDIDATE, urgency REMOVED by resolve-2 (Vadim:
+  "maybe not")**: stop spelling list/string concatenation as arithmetic `+`
+  (drop `.{...}` and reuse `.`, or introduce `++`). The original correctness
+  motivation — `+('t list, 't list)` competing with every user-defined `+` at
+  under-constrained call sites (a free-typed `[]` fold accumulator being
+  concatenated, the FromOnnx.fx:1012 / FB-007 S3 shape) — was resolved at the
+  root by `TypVarCollection` (resolve-2): `[]` is now "some collection" and
+  cannot be captured by a non-collection candidate, so the scalar-left complex
+  operators are unfenced. What remains is a pure taste/readability question.
 
 ## 5. Modules
 
@@ -153,15 +153,24 @@ grammar item. Not-found diagnostics list each candidate with a one-line
 rejection reason.
 
 `lib/Complex.fx` operators + the `examples/fst.fx` demo are UNLOCKED in a
-homogeneous form (all bodies `'t op 't` — sidesteps S1; scalar-on-the-left
-variants stay fenced, see FB-007 and the concatenation-operator candidate in
-§4).
+homogeneous form (all bodies `'t op 't` — sidesteps S1).
+
+**resolve-2 (2026-07-08, same day): `TypVarCollection`** — the empty-collection
+literal `[]` is typed as a new var-form "some list/vector/array" instead of a
+fully free type var. It unifies only with a collection type (or a free var),
+so a `[]`-initialized fold accumulator can no longer be captured by an
+unrelated generic candidate: the FB-007/S3 collision class
+(`FromOnnx.fx:1012`) is gone at the root, the scalar-on-the-left complex
+variants are UNFENCED, and `val n: int = []` became a typecheck-time error
+(negative golden 215). DECIDED for the epoch; a possible follow-up
+(post-reform): `[]` = empty *list* only + a dedicated empty-array spelling
+(e.g. `[.]`).
 
 Session 2 (OPEN): deferral — `int + 't` inside generic bodies (S1, for
-mixed-type operator variants) and under-constrained calls (S3 commit-half:
-`FromOnnx.fx:1012` shape; un-fences the scalar-left complex variants and the
-S3 test in `test/test_resolve.fx`); error recovery (TypErr poisoning,
-multiple errors per run); edit-distance "did you mean".
+mixed-type operator variants) and under-constrained calls in general (the
+commit-half: ranking at sites whose arg types are still free, beyond the
+collection case); error recovery (TypErr poisoning, multiple errors per
+run); edit-distance "did you mean".
 
 ## 7. Deferred / additive (post-reform; decide direction only)
 
