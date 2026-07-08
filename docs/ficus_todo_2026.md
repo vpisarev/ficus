@@ -59,6 +59,7 @@
       e.g. for OpenCV bindings. Maybe we need to add `tensor` type that is a black box, sitting in CPU, GPU or NPU memory and
       there is a set of operations on it (with fusion etc.)
 - [ ] try to accept `(op)` everywhere where `__opname__` is accepted, e.g. `Complex.(*)(a, b)`
+- [ ] introduce infix `++` as concatenation operator. This should solve several problems with incorrect typing.
 
 # Code generation, runtime
 - [+] (we now put compiler modification date, its binary size and the compiler flags as the 'signature')
