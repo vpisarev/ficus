@@ -77,12 +77,16 @@ var-form; it only enters through `[]`.
   branch). `examples/fst.fx` runs the demo as `1.f + 1.fi` and prints the
   mathematically correct values (`abs((1+1i)*2)=2.8284271`,
   `1-(2+2i)=-1.0-2.0i`).
-- Mixed-type operator variants (`op (a: 't1, b: 't2 complex)`) were tried by
-  Vadim and reverted: their bodies do `'t1 op 't2` arithmetic, which is
-  pinned at declaration/instantiation boundaries — exactly FB-007/S1, i.e.
-  session-2 deferral work. Scalar variants stay homogeneous (`'t op
-  't complex`), so `1 + 1.fi` (int + float complex) is correctly rejected;
-  write `1.f + 1.fi`.
+- Mixed-type operator variants: `*` and `/` ARE mixed (`'t1 (complex) op
+  't2 (complex)`, Vadim) — with NO return-type annotation, both components
+  of the result go through a mixed primitive op (`a * b.re`), so builtin
+  numeric coercion resolves everything at instantiation and the result type
+  is inferred. This doubles as the **widening-cast idiom**:
+  `1.0 * fcomplex_val` is a double complex; even `v *= 2` (int scalar) works.
+  `+`/`-` stay homogeneous: one component passes through unchanged (`b.im`),
+  so a mixed variant would construct a record with differently-typed fields
+  — that needs FB-007/S1 deferral (or explicit casts in the body). So:
+  `1.f + 1.fi`, but `2 * (1.f + 1.fi)` is fine.
 
 FB-007 is now reduced to **S1 only**: mixed-type arithmetic (`int + 't`)
 inside generic bodies is pinned at declaration check — that is genuine

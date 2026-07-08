@@ -18,16 +18,16 @@ operator + (a: 't complex, b: 't complex) = complex(a.re + b.re, a.im + b.im)
 operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, -b.im)
 operator - (a: 't complex, b: 't): 't complex = complex(a.re - b, a.im)
 operator - (a: 't complex, b: 't complex) = complex(a.re - b.re, a.im - b.im)
-operator * (a: 't, b: 't complex): 't complex = complex(a * b.re, a * b.im)
-operator * (a: 't complex, b: 't): 't complex = complex(a.re * b, a.im * b)
-operator * (a: 't complex, b: 't complex) =
+operator * (a: 't1, b: 't2 complex) = complex(a * b.re, a * b.im)
+operator * (a: 't1 complex, b: 't2) = complex(a.re * b, a.im * b)
+operator * (a: 't1 complex, b: 't2 complex) =
     complex(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re)
-operator / (a: 't complex, b: 't): 't complex = complex(a.re/b, a.im/b)
-operator / (a: 't complex, b: 't complex) {
+operator / (a: 't1 complex, b: 't2) = complex(a.re/b, a.im/b)
+operator / (a: 't1 complex, b: 't2 complex) {
     val denom = b.re*b.re + b.im*b.im
     complex((a.re*b.re + a.im*b.im)/denom, (a.im*b.re - a.re*b.im)/denom)
 }
-operator / (a: 't, b: 't complex): 't complex {
+operator / (a: 't1, b: 't2 complex) {
     val denom = b.re*b.re + b.im*b.im
     complex(a*b.re/denom, -a*b.im/denom)
 }

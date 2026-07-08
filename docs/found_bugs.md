@@ -377,10 +377,14 @@ is the whole point of the ladder.
   `complex(int, float)` and no constructor matched (part of the S1 symptom
   as originally recorded above). Fixed in `Lexer.fx`: the zero real part is
   a float literal of the same width as the imaginary part. The fst.fx demo
-  is live as `val c = ref (1.f + 1.fi); *c *= 2.f`. Mixed-type operator
-  variants (`'t1 op 't2 complex`) were tried and reverted — their bodies are
-  exactly the S1 shape; scalars must match the complex element type until
-  session-2 deferral lands (`1.f + 1.fi`, not `1 + 1.fi`).
+  is live as `val c = ref (1.f + 1.fi); *c *= 2.f`. Mixed-type variants:
+  `*` and `/` are mixed (`'t1 op 't2`, return type INFERRED — both result
+  components go through a mixed primitive op, so builtin numeric coercion
+  resolves at instantiation; doubles as the widening-cast idiom
+  `1.0 * fcomplex`, and `v *= 2` works with an int scalar). `+`/`-` must
+  stay homogeneous until S1 deferral: one component passes through unchanged
+  (`b.im`), and a mixed variant would build a record with differently-typed
+  fields (`1.f + 1.fi`, not `1 + 1.fi`).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the
