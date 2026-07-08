@@ -87,6 +87,26 @@ var-form; it only enters through `[]`.
   **Vadim's `r - r` pattern** (`val r = a + b.re; complex(r, b.im + (r-r))`):
   constant folding provably erases it at both -O0 and -O3, leaving a bare
   `:>` cast in the K-form (verified) — no runtime cost, no inf/nan artifacts.
+  All mixed variants carry a `: 't3 complex` return annotation with a FRESH
+  type var — a load-bearing viability filter, see the near-miss below.
+
+**Near-miss (hotfix-1, same evening)**: the first mixed `+`/`-` commit
+(7e10f29) omitted the return annotations and BROKE the compiler's own build
+— red master. The homogeneous `: 't complex` annotation had been a silent
+viability filter: at `C_gen_code.fx:1328` a recursion-typed (still free)
+accumulator is concatenated into an annotated `cstmt_t list`, and the
+expected result type rejected the complex candidate at the trial; without
+the annotation the candidate's free return type unified with anything and
+env-order picked it over list-concat. This is the FB-007/S3 shape with a
+plain free var instead of `[]` — TypVarCollection cannot guard it; the
+return annotation does. Caught by `update_compiler.py --check` (the only
+routine self-build of the compiler — `fxtest all` never rebuilds it);
+bisect: homogeneous OK, mixed `*`/`/` OK (no list-`*` competitor), mixed
+`+`/`-` broke. Fix: `: 't3 complex` fresh-var return annotations on all
+mixed variants. Two process rules recorded in CLAUDE.md: bootstrap regen is
+required for stdlib edits too (Complex.c is one of 54 bootstrap modules),
+and generic operators should annotate their return type as a viability
+filter.
 
 FB-007 post-mortem: the S1 mechanism turned out to be already dead after
 resolve-1 — generic bodies re-resolve per instantiation (verified:

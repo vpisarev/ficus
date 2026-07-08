@@ -1,6 +1,6 @@
 # Syntax and semantics
 
-- [ ] properly resolve instances of generic functions.
+- [x] properly resolve instances of generic functions.
       Adjust the type checker not to stop at the first appropriate candidate.
 - [ ] new syntax for generic types and its instances: `t list => list[t]`
   - [ ] Q: what would be a syntax for generic functions? `fun [u, v] add(a: u, b: v) {...}`?
