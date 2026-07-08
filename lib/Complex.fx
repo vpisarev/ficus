@@ -25,28 +25,21 @@ operator / (a: 't complex, b: 't complex) {
     complex((a.re*b.re + a.im*b.im)/denom, (a.im*b.re - a.re*b.im)/denom)
 }
 
-/* The scalar-on-the-LEFT variants stay FENCED for now (FB-007, S3):
+/* The scalar-on-the-LEFT variants, UNFENCED by resolve-2 (TypVarCollection):
    `op (a: 't, b: 't complex)` has an unconstrained 't in the first position,
-   so at a call site whose SECOND operand's type is still a free inference
-   variable (the canonical case: a fold accumulator initialized with `[]`,
-   as in `rev_more_ops + prog` at NN/FromOnnx.fx:1012) it is viable alongside
-   the list-concatenation `+('t list, 't list)`, the two are genuinely
-   incomparable, and the under-constrained-tie fallback picks by import order
-   -- wrongly. They can return when either (a) session-2 deferral lands
-   (resolution of under-constrained calls is postponed until the variable is
-   bound, at which point these variants stop being viable at list sites), or
-   (b) list concatenation stops being spelled `+` (see the `++` /
-   dot-concatenation idea in docs/language_changes_brief.md), which removes
-   the colliding candidate altogether. Until then: write `c + s`, not `s + c`.
-
+   so it used to be viable alongside list-concatenation `+('t list, 't list)`
+   at a call site whose second operand was a free-typed `[]` fold accumulator
+   (the NN/FromOnnx.fx:1012 shape, FB-007/S3) -- and the under-constrained-tie
+   fallback could pick it by import order. Now `[]` is typed TypVarCollection
+   ("some list/vector/array"), which refuses to unify with `'t complex`, so
+   these variants are simply not viable at list sites anymore. */
 operator + (a: 't, b: 't complex): 't complex = complex(a + b.re, b.im)
-operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, b.im)
+operator - (a: 't, b: 't complex): 't complex = complex(a - b.re, -b.im)
 operator * (a: 't, b: 't complex): 't complex = complex(a * b.re, a * b.im)
 operator / (a: 't, b: 't complex): 't complex {
     val denom = b.re*b.re + b.im*b.im
     complex(a*b.re/denom, -a*b.im/denom)
 }
-*/
 
 fun exp(a: 't complex) {
     val er = exp(a.re)

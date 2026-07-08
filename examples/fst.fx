@@ -124,7 +124,8 @@ println(f"excepion-based search: negative number in {a}: {gen_msg(i4, a)}")
 
 val c = ref complex(1.f, 1.f)
 *c *= 2.f
-println(f"abs((1+1i)*2)={abs(*c)}")
+val c2 = 1.f - *c   // scalar-on-the-left variant (unfenced by resolve-2)
+println(f"abs((1+1i)*2)={abs(*c)}, 1-(2+2i)={c2}")
 
 val fixed_choice = "five"
 
