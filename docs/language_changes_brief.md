@@ -121,15 +121,26 @@ Mechanical, automigrator-friendly.
   tree from a mere directory of files. Interacts with the case-insensitive
   stdlib-shadowing trap (test-file naming caveat in CLAUDE.md).
 
-## 6. Overload resolution (FB-007) — OPEN, gated on its design session
+## 6. Overload resolution (FB-007) — SESSION 1 LANDED (`resolve-1`); deferral pending
 
-Specificity ordering (non-generic > generic; partial order à la C++ partial
-ordering), `int + 't` inside generic bodies, cross-module candidate
-visibility; diagnostic half (edit-distance "did you mean") separately.
-Design against the 3.1 model (type+constructors one entity). Implementation
-split: corpus-invariant hardening (bitwise-identical K-form on everything that
-compiles today, Complex operators unlocked) may land pre-reform; anything that
-changes candidate choice in currently-compiling code rides the reform epoch.
+Session 1 (branch `resolve-1`, 2026-07-08) DECIDED & implemented: resolution
+is collect -> rank -> commit; the **least-generic viable candidate wins**
+(C++-style partial ordering via two one-way skolemized unification trials,
+`compare_fun_generality`); at a **fully-determined** call an unresolvable tie
+is an **ambiguity error** (two flavors: equally-applicable -> qualify the
+call; overlapping-but-unordered -> also possible to add a more specific
+overload); at an **under-constrained** call (free type vars among the args)
+a tie falls back to env-order first-match — today's semantics, kept until
+deferral. No fewer-defaults keyword tie-break (Q2), no scope-proximity
+ranking (§6 of the proposal). Escape hatch: module-qualified mangled-operator
+call `Module.__op__(a, b)`; a prettier `Module.(op)` spelling is a Brief #3
+grammar item. Not-found diagnostics list each candidate with a one-line
+rejection reason.
+
+Session 2 (OPEN): deferral — `int + 't` inside generic bodies (S1) and
+under-constrained calls (S3 commit-half: `FromOnnx.fx:1012`), then unlock
+`lib/Complex.fx` operators + `examples/fst.fx`; error recovery (TypErr
+poisoning, multiple errors per run); edit-distance "did you mean".
 
 ## 7. Deferred / additive (post-reform; decide direction only)
 

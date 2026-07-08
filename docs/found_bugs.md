@@ -282,6 +282,32 @@ is the whole point of the ladder.
   (`compare_fun_generality`) already ranks the concrete `complex` operators over
   the generic ones correctly where it can (`-pr-resolve` confirms); the S3
   over-general match is the `int + 't` deferral gap (proposal §5, tranche B).
+- resolve-1 update (2026-07-08, branch `resolve-1`): **PARTIALLY FIXED** by the
+  collect->rank->commit resolver (see FB-016). Per-symptom status:
+  - **S2 — FIXED** (the mis-resolution mechanism): at a determined receiver,
+    `'t cplx * int` now ranks the cplx operator over the array `__mul__`
+    regardless of declaration/import order. Locked as a passing case in
+    `test/test_resolve.fx` (`fb007.s2_cplx_times_int`, mini-cplx module
+    `test/CplxHelper.fx` mirroring the fenced Complex.fx operator shapes).
+    The trial-pollution half of S3 is fixed the same way: a non-winning
+    candidate's unification no longer commits anything.
+  - **S1 — still open (session 2, §5 deferral)**: re-tested with the operators
+    uncommented + a generic `complex(r:'t, i:'t)` ctor added: `1 + 1.fi` still
+    fails — `a + b.re` inside `operator +(a:int, b:'t complex)` is typed `int`
+    at declaration check, so at 't=float the body calls `complex(int, float)`
+    (no match, correctly). Needs instantiation-time re-resolution of operations
+    involving template params.
+  - **S3 commit-half — still open (session 2, deferral of under-constrained
+    calls)**: `vision_classify.fx` still infers `nnop_t list Complex.complex`
+    at `FromOnnx.fx:1012` (`rev_more_ops + prog`, `prog` free): list-concat `+`
+    and `+('t, 't complex)` are genuinely incomparable, so the tie falls back
+    to env-order = the complex one. NEW: this shape now has a SELF-CONTAINED
+    fenced repro (free fold accumulator + `[:: x] + prog`) in
+    `test/test_resolve.fx` — WP-E could not self-contain it; the key is that
+    the accumulator's type must still be fully free at the `+`.
+  `lib/Complex.fx:15-44` + `examples/fst.fx:125-127` therefore STAY FENCED
+  until session 2 (when unfencing, also add the generic `complex(r:'t, i:'t)`
+  constructor — sanctioned above).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the
@@ -526,6 +552,20 @@ is the whole point of the ladder.
   disagreements over 344 viable>1 sites; all 227 disagreements are `<none>` ties
   from under-constrained arguments) -- so this bites user code like the above, not
   the bootstrap.
+- **FIXED** (2026-07-08, branch `resolve-1`, phase 2): `lookup_id_opt` is now
+  collect -> rank -> commit: all candidates are tried side-effect-free
+  (`update_refs=false`), the viable set is ranked by `compare_fun_generality`
+  (unique least-generic wins), and only the winner commits. `f(5)` returns 6
+  (the concrete `f(int)`) regardless of declaration order; the fenced
+  `test/test_resolve.fx` case flipped and is locked as
+  `FB016_fixed.concrete_beats_generic`; the `test/ir/overload_resolve` goldens
+  now show the concrete instances selected. Tie policy (amends proposal §4,
+  per `docs/resolve1_surgery_brief.md`): fully-determined tie -> ambiguity
+  error (negative goldens 012-014); under-constrained tie -> env-order
+  fallback until session-2 deferral. Corpus-invariance proof: bootstrap
+  regeneration through the new resolver changed ONLY the edited
+  `Ast_typecheck.c`; `-pr-resolve` over `compiler/fx.fx`: 350 ranking sites =
+  343 ranked + 7 under-constrained fallbacks + 0 ambiguity errors.
 
 ## FB-017  generality comparator can't order `{...}` (TypVarRecord) auto-generics vs a concrete record
 - discovered: 2026-07-08, WP-E D1/E1. Limitation of the NEW (unwired)
@@ -563,3 +603,13 @@ is the whole point of the ladder.
   package (D1 scope is `df_templ_args` + keyword `TypRecord` + constructor return
   type); documented in `docs/wpe_tests_report.md` and noted in `test/test_gencmp.fx`.
 - status: not fenced (unwired code); tracked here + in the E1 census + the report.
+- **FIXED** (2026-07-08, branch `resolve-1`, phase 1): `compare_typ_generality`
+  now freezes the var-form family on the RIGID side of each trial via the new
+  `freeze_varform_typs` (non-destructive walk): `{...}` -> a record with a
+  unique `__skolem_rec__` field, `(...)` -> a tuple of two distinct opaque
+  constants (so `('t ...)` does not cover it), `('t ...)` -> a 1-tuple of the
+  frozen payload, `'t [+]` -> `TypArray(-1, frozen 't)`. `maybe_unify` itself
+  untouched. +14 verdicts in `test/test_gencmp.fx` (all pre-existing verdicts
+  unchanged). E1 census re-run (`docs/wpe_experiments/e1_census_post_fb017.md`):
+  344/117/227/0 -> 342/341/1/0 (sites/agree/none/concrete-flips); the one
+  remaining `<none>` is the known under-constrained 21-viable `__cmp__` site.

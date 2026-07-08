@@ -99,6 +99,15 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
 - **Shift count must be `int`**: `uint64 >> int64` does **not** typecheck
   (`__shr__ (uint64,int64)` not found); write `x >> int(n)`. Runtime uint64 `>>`
   is a correct logical shift — only the *constant folder* got it wrong (FB-002).
+- **Overload resolution (resolve-1): the least-generic viable candidate wins**,
+  independent of declaration/import order (concrete beats generic, `int complex`
+  beats `'t complex`). If no candidate is strictly most specific at a call whose
+  argument types are fully known, it's an **ambiguity error** — disambiguate
+  with a module-qualified call; for operators use the mangled name:
+  `Module.__mul__(a, b)` (`Module.(*)` does not parse). Two identical-signature
+  overloads only error at a call that sees both. When argument types still
+  contain free type vars, ties silently fall back to first-match (deferral is
+  pending) — don't rely on it in new code.
 
 ### Build/run & measurement traps (Brief #2)
 
