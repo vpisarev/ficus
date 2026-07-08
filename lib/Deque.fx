@@ -20,7 +20,7 @@ fun length(d: 't Deque.t) = d.head.length() + d.tail.length()
 fun rev(d: 't Deque.t) = t {head=d.tail, tail=d.head}
 
 // could improve performance in many cases but the worst one
-operator == (d1: 't Deque.t, d2: 't Deque.t) = list(d1) == list(d2)
+operator == (d1: 't Deque.t, d2: 't Deque.t): bool = list(d1) == list(d2)
 
 fun first(d: 't Deque.t): 't
 {

@@ -132,8 +132,10 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   accumulators) and can steal them via the env-order fallback — dropping
   `: 't complex` from Complex's mixed operators broke the compiler's own
   build (C_gen_code.fx:1328). Annotate with a FRESH var (`: 't3 complex`,
-  "returns SOME complex") to reject non-complex contexts while keeping
-  mixed-type widening.
+  `: 't3 [+]`, `: ('t3 ...)` — "returns SOME complex/array/tuple") to reject
+  foreign contexts while keeping mixed-type widening. **Enforced by
+  `python3 tools/lint_op_returns.py lib` (CI, gcc leg)**; its `--funs` mode
+  is the (not yet clean) worklist for overloaded generic functions.
 
 ### Build/run & measurement traps (Brief #2)
 

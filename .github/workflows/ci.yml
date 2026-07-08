@@ -96,6 +96,13 @@ jobs:
           fi
           python3 tools/update_compiler.py --check --no-make
 
+      # Guard: stdlib generic operators must annotate their return type -- the
+      # annotation is a viability filter for overload resolution (FB-007
+      # near-miss: dropping it broke the compiler's own build). <1s, one leg.
+      - name: Operator return-annotation lint
+        if: matrix.cc == 'gcc' && matrix.os == 'ubuntu-latest'
+        run: python3 tools/lint_op_returns.py lib
+
       - name: Determine run mode
         id: mode
         run: |

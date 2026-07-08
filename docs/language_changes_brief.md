@@ -177,6 +177,17 @@ variants are UNFENCED, and `val n: int = []` became a typecheck-time error
 (post-reform): `[]` = empty *list* only + a dedicated empty-array spelling
 (e.g. `[.]`).
 
+**Operator return annotations = viability filters (annotate-1, follow-up to
+the hotfix-1 near-miss)**: every generic stdlib operator now annotates its
+return type (exact where the signature pins it, fresh-var `: 't3 [+]` /
+`: ('t3 ...)` / `: 't3 vector` for the mixed elementwise families in
+Builtins/Array/Vector/Date/Deque — 106 signatures), so no operator is
+viable at an under-constrained call site whose expected result type is
+foreign. Enforced by `tools/lint_op_returns.py lib` on CI. Its `--funs`
+mode flags overloaded generic FUNCTIONS without return annotations
+(~276 across Builtins/UTest/Array/Math/OpenCV/Map/Set/...) — the worklist
+for a follow-up sweep.
+
 **Deferral: REJECTED as a near-term item (2026-07-08 evening, with Vadim).**
 Re-measured after TypVarCollection: generic bodies already re-resolve per
 instantiation (`fun h(a: int, b: 't) = a + b` works — the recorded S1
