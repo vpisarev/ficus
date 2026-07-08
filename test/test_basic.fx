@@ -272,6 +272,22 @@ TEST("basic.types.templates", fun()
     EXPECT_EQ(`match ct_inst { | C(A(f)) => f(0.f) | _ => -1.f }`, 1.0f)
 })
 
+TEST("basic.fstring_nested_literals", fun()
+{
+    // string literals INSIDE f-string {} interpolations work (unescaped --
+    // do NOT write \" like in C/Python; inside {} the lexer is in normal
+    // token mode). Locks the behavior: the CLAUDE.md/language-changes docs
+    // long claimed this fails to parse, which was a misdiagnosis of the
+    // escaped spelling f"{find(\"x\")}".
+    fun wrap(s: string) = "<" + s + ">"
+    EXPECT_EQ(`f"{wrap("x")}"`, "<x>")
+    EXPECT_EQ(`f"{ "lit" + wrap("y") }"`, "lit<y>")
+    EXPECT_EQ(`f"pre {wrap("z" + "w")} post"`, "pre <zw> post")
+    EXPECT_EQ(`f"{wrap("}")}"`, "<}>")           // brace inside the literal
+    EXPECT_EQ(`f"{wrap("\"q\"")}"`, "<\"q\">")   // escapes inside the LITERAL are fine
+    EXPECT_EQ(`f"{f"{wrap("deep")}"}"`, "<deep>") // f-string inside f-string
+})
+
 TEST("basic.record", fun()
 {
     type 't point_t = {x:'t; y:'t}

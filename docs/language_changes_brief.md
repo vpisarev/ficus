@@ -109,8 +109,14 @@ Mechanical, automigrator-friendly.
   Kills the "println takes ONE argument" trap.
 - **Single-element tuple — CANDIDATE**: Python-style `(x,)` (construction and
   type positions; matters for function types).
-- **f-strings — CANDIDATE (parser fix)**: allow string literals inside `{}`
-  interpolations (`f"{find(\"x\")}"`).
+- **f-strings — RESOLVED (was a misdiagnosis, 2026-07-08)**: string literals
+  inside `{}` interpolations have always worked when written UNESCAPED
+  (`f"{find("x")}"`; even `"}"` inside the literal and nested f-strings are
+  fine — inside `{}` the lexer is in normal token mode). The recorded failure
+  was the C/Python-style escaped spelling `f"{find(\"x\")}"`. Behavior locked
+  by `test_basic.fx: basic.fstring_nested_literals`. Residual nice-to-have: a
+  bare `\` inside `{}` cascades into a misleading "braces are not closed"
+  error — could get a dedicated hint.
 - **Concatenation operator — CANDIDATE, urgency REMOVED by resolve-2 (Vadim:
   "maybe not")**: stop spelling list/string concatenation as arithmetic `+`
   (drop `.{...}` and reuse `.`, or introduce `++`). The original correctness

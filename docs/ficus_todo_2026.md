@@ -17,7 +17,9 @@
       operations and use Python-style `@` for matrix multiplication? We also use `@` for
       preprocessor in Ficus, but we should be able to differentiate between binary `@`,
       unary `@` in front of macros and macro interpolation `@{...}`.
-- [ ] not quite a new syntax: support string literals inside f-strings interpolations (see CLAUDE.md)
+- [x] (turned out to be a misdiagnosis: unescaped `f"{find("x")}"` always worked; only the C/Python-style
+      escaped `f"{find(\"x\")}"` fails, with a misleading error. Locked by `basic.fstring_nested_literals`.)
+      ~~not quite a new syntax: support string literals inside f-strings interpolations (see CLAUDE.md)~~
 - [ ] revise records:
   - [ ] keep/drop/revise record update syntax?
         `var pt = Point {x=5, y=10}; pt .= {y = pt.y+5}`.

@@ -66,8 +66,10 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   For simple types a functional notation, e.g. `uint32(x)`, works too.
 - **`println` takes ONE argument.** For several values use an f-string or a
   tuple: `println(f"{a} {b}")` / `println((a, b))`.
-- **f-string `{}` interpolation can't contain a quoted string literal** —
-  `f"{find(\"x\")}"` fails to parse. Hoist to a `val` first.
+- **f-string `{}` interpolation: write nested string literals UNESCAPED** —
+  `f"{find("x")}"` works (inside `{}` the lexer is in normal token mode; even
+  `"}"` and nested f-strings are fine). The C/Python-style escaped spelling
+  `f"{find(\"x\")}"` is what fails, with a misleading "braces are not closed".
 - **Record *type* fields are separated by `;`** (`{x: int; y: int}`), but record
   *construction* uses `,` (`pt_t {x=1, y=2}`).
 - **Small unsigned types promote to `int` for arithmetic** — `200u8 + 100u8`
