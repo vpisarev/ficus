@@ -3689,6 +3689,12 @@ FX_EXTERN_C int _fx_M2PPFM16pprint_to_stdoutRM1t2ii(int_, int_, struct _fx_R5PP_
 
 FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t*, void*);
 
+FX_EXTERN_C int _fx_M3AstFM7typ2strS1N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t*, fx_str_t*, void*);
+
+FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t*, struct _fx_LS_data_t*, fx_str_t*, void*);
+
+FX_EXTERN_C int _fx_M3AstFM6stringS1RM5loc_t(struct _fx_R10Ast__loc_t*, fx_str_t*, void*);
+
 FX_EXTERN_C int _fx_M6Ast_ppFM6__ne__B2R9Ast__id_tR9Ast__id_t(
    struct _fx_R9Ast__id_t* a_0,
    struct _fx_R9Ast__id_t* b_0,
@@ -7187,6 +7193,126 @@ _fx_cleanup: ;
    }
    FX_FREE_STR(&dm_filename_0);
    _fx_free_R5PP__t(&pp_0);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M6Ast_ppFM10fun2sigstrS1rR13Ast__deffun_t(
+   struct _fx_rR13Ast__deffun_t_data_t* df_0,
+   fx_str_t* fx_result,
+   void* fx_fv)
+{
+   _fx_LR9Ast__id_t df_templ_args_0 = 0;
+   _fx_N10Ast__typ_t df_typ_0 = 0;
+   _fx_N10Ast__typ_t v_0 = 0;
+   _fx_T2LN10Ast__typ_tN10Ast__typ_t v_1 = {0};
+   _fx_LN10Ast__typ_t argtyps_0 = 0;
+   _fx_N10Ast__typ_t rt_0 = 0;
+   _fx_LS v_2 = 0;
+   fx_str_t args_s_0 = {0};
+   fx_str_t gen_s_0 = {0};
+   _fx_LS v_3 = 0;
+   fx_str_t v_4 = {0};
+   fx_str_t v_5 = {0};
+   fx_str_t v_6 = {0};
+   fx_str_t v_7 = {0};
+   int fx_status = 0;
+   _fx_R13Ast__deffun_t* v_8 = &df_0->data;
+   _fx_R10Ast__loc_t df_loc_0 = v_8->df_loc;
+   FX_COPY_PTR(v_8->df_templ_args, &df_templ_args_0);
+   FX_COPY_PTR(v_8->df_typ, &df_typ_0);
+   _fx_R9Ast__id_t df_name_0 = v_8->df_name;
+   FX_CALL(_fx_M3AstFM9deref_typN10Ast__typ_t1N10Ast__typ_t(df_typ_0, &v_0, 0), _fx_cleanup);
+   if (FX_REC_VARIANT_TAG(v_0) == 14) {
+      _fx_T2LN10Ast__typ_tN10Ast__typ_t* vcase_0 = &v_0->u.TypFun;
+      _fx_make_T2LN10Ast__typ_tN10Ast__typ_t(vcase_0->t0, vcase_0->t1, &v_1);
+   }
+   else {
+      _fx_make_T2LN10Ast__typ_tN10Ast__typ_t(0, v_0, &v_1);
+   }
+   FX_CHECK_EXN(_fx_cleanup);
+   FX_COPY_PTR(v_1.t0, &argtyps_0);
+   FX_COPY_PTR(v_1.t1, &rt_0);
+   _fx_LS lstend_0 = 0;
+   _fx_LN10Ast__typ_t lst_0 = argtyps_0;
+   for (; lst_0; lst_0 = lst_0->tl) {
+      fx_str_t res_0 = {0};
+      _fx_N10Ast__typ_t a_0 = lst_0->hd;
+      FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(a_0, &res_0, 0), _fx_catch_0);
+      _fx_LS node_0 = 0;
+      FX_CALL(_fx_cons_LS(&res_0, 0, false, &node_0), _fx_catch_0);
+      FX_LIST_APPEND(v_2, lstend_0, node_0);
+
+   _fx_catch_0: ;
+      FX_FREE_STR(&res_0);
+      FX_CHECK_EXN(_fx_cleanup);
+   }
+   fx_str_t slit_0 = FX_MAKE_STR(", ");
+   FX_CALL(_fx_F4joinS2SLS(&slit_0, v_2, &args_s_0, 0), _fx_cleanup);
+   if (df_templ_args_0 == 0) {
+      fx_str_t slit_1 = FX_MAKE_STR(""); fx_copy_str(&slit_1, &gen_s_0);
+   }
+   else {
+      _fx_LS lstend_1 = 0;
+      _fx_LR9Ast__id_t lst_1 = df_templ_args_0;
+      for (; lst_1; lst_1 = lst_1->tl) {
+         fx_str_t res_1 = {0};
+         _fx_R9Ast__id_t* a_1 = &lst_1->hd;
+         FX_CALL(_fx_M3AstFM2ppS1RM4id_t(a_1, &res_1, 0), _fx_catch_1);
+         _fx_LS node_1 = 0;
+         FX_CALL(_fx_cons_LS(&res_1, 0, false, &node_1), _fx_catch_1);
+         FX_LIST_APPEND(v_3, lstend_1, node_1);
+
+      _fx_catch_1: ;
+         FX_FREE_STR(&res_1);
+         FX_CHECK_EXN(_fx_cleanup);
+      }
+      fx_str_t slit_2 = FX_MAKE_STR(", ");
+      FX_CALL(_fx_F4joinS2SLS(&slit_2, v_3, &v_4, 0), _fx_cleanup);
+      fx_str_t slit_3 = FX_MAKE_STR(" [generic: ");
+      fx_str_t slit_4 = FX_MAKE_STR("]");
+      {
+         const fx_str_t strs_0[] = { slit_3, v_4, slit_4 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &gen_s_0), _fx_cleanup);
+      }
+   }
+   FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&df_name_0, &v_5, 0), _fx_cleanup);
+   FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(rt_0, &v_6, 0), _fx_cleanup);
+   FX_CALL(_fx_M3AstFM6stringS1RM5loc_t(&df_loc_0, &v_7, 0), _fx_cleanup);
+   fx_str_t slit_5 = FX_MAKE_STR("(");
+   fx_str_t slit_6 = FX_MAKE_STR(") -> ");
+   fx_str_t slit_7 = FX_MAKE_STR(" @ ");
+   {
+      const fx_str_t strs_1[] = { v_5, slit_5, args_s_0, slit_6, v_6, gen_s_0, slit_7, v_7 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_1, 8, fx_result), _fx_cleanup);
+   }
+
+_fx_cleanup: ;
+   FX_FREE_LIST_SIMPLE(&df_templ_args_0);
+   if (df_typ_0) {
+      _fx_free_N10Ast__typ_t(&df_typ_0);
+   }
+   if (v_0) {
+      _fx_free_N10Ast__typ_t(&v_0);
+   }
+   _fx_free_T2LN10Ast__typ_tN10Ast__typ_t(&v_1);
+   if (argtyps_0) {
+      _fx_free_LN10Ast__typ_t(&argtyps_0);
+   }
+   if (rt_0) {
+      _fx_free_N10Ast__typ_t(&rt_0);
+   }
+   if (v_2) {
+      _fx_free_LS(&v_2);
+   }
+   FX_FREE_STR(&args_s_0);
+   FX_FREE_STR(&gen_s_0);
+   if (v_3) {
+      _fx_free_LS(&v_3);
+   }
+   FX_FREE_STR(&v_4);
+   FX_FREE_STR(&v_5);
+   FX_FREE_STR(&v_6);
+   FX_FREE_STR(&v_7);
    return fx_status;
 }
 

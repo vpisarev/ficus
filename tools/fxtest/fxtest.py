@@ -261,11 +261,15 @@ def _build_root(name, opt, suffix=""):
 
 
 def compile_and_run(name, src, opt, args, timeout, *,
-                    openmp=False, cpp=False, artifact=None, suffix=""):
+                    openmp=False, cpp=False, artifact=None, suffix="",
+                    extra_flags=None):
     """Compile `src` at `opt` and run it, returning a RunOutcome.
 
     Runs with cwd=build_root so any relative output files (artifacts) are
     isolated per (entry, opt).  -no-openmp unless openmp=True.
+
+    `extra_flags` (list) are inserted before the source path -- used e.g. by the
+    test_gencmp entry, which imports the compiler as a library ("-I compiler").
     """
     broot = _build_root(name, opt, suffix)
     os.makedirs(broot, exist_ok=True)
@@ -274,6 +278,14 @@ def compile_and_run(name, src, opt, args, timeout, *,
         cmd.append("-no-openmp")
     if cpp:
         cmd.append("-c++")
+    if extra_flags:
+        # runs with cwd=broot, so make any "-I <dir>" argument absolute (relative
+        # to the repo root) rather than to the transient build directory.
+        ef = list(extra_flags)
+        for k in range(len(ef) - 1):
+            if ef[k] == "-I" and not os.path.isabs(ef[k + 1]):
+                ef[k + 1] = os.path.join(REPO, ef[k + 1])
+        cmd += ef
     cmd += ["-B", broot, os.path.abspath(src)]
     if args:
         cmd += ["--"] + list(args)
@@ -313,6 +325,7 @@ def _entry_cfg(raw):
         "timeout_sec": int(raw.get("timeout_sec", 60)),
         "compile_timeout_sec": int(raw.get("compile_timeout_sec", 180)),
         "quarantine": raw.get("quarantine"),
+        "extra_flags": raw.get("extra_flags", []),
     }
 
 
@@ -356,7 +369,7 @@ def run_corpus_entry(name, raw, opts):
     for opt in opts:
         runs[opt] = compile_and_run(
             name, src, opt, cfg["args"], timeout,
-            artifact=cfg["artifact"],
+            artifact=cfg["artifact"], extra_flags=cfg["extra_flags"],
         )
     ref_opt = opts[0]
     if len(opts) == 1:

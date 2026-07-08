@@ -35,6 +35,7 @@ type options_t =
     print_k0: bool = false;
     print_k: bool = false;
     print_tokens: bool = false;
+    print_resolve: bool = false;
     run_app: bool = false;
     verbose: bool = false;
     W_unused: bool = true
@@ -73,6 +74,10 @@ where options can be some of:
     -pr-k           Print optimized K-form of the parsed files
                     (only a part of the generated K-form is retained
                     because of the dead code elimination step)
+    -pr-resolve     Trace overload resolution: for every call whose viable
+                    candidate set has >1 entry, print the candidates, the
+                    env-order winner (current behavior) and the generality
+                    winner (WP-E). Diagnostic only; does not change resolution.
     -no-c           Do not generate C code
     -app            Build application (default mode)
     -run            Build application and run it
@@ -151,6 +156,8 @@ fun parse_options(): bool {
                 opt.print_k0 = true; next
             | "-pr-k" :: next =>
                 opt.print_k = true; next
+            | "-pr-resolve" :: next =>
+                opt.print_resolve = true; next
             | "-no-c" :: next =>
                 opt.gen_c = false; next
             | "-app" :: next =>

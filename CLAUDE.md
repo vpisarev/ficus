@@ -91,6 +91,11 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
 - `Sys.getenv(name, defval)`; `s.to_int(): int?`; `s.to_int_or(defval)`.
 - **A `match` arm body may be a block**: `| pat => val r = ...; expr` is fine
   (the arm extends to the next `|`); no extra `{ }` needed.
+- **`continue`/`break` can't be a `match`-arm / `if`-branch *value*, and a bare
+  `return` (no value) doesn't parse** — both give a misleading `unexpected token
+  '}'` (FB-015). Run the `match` as a statement that `continue`s and yield
+  separately (or accumulate into a `var`); invert a void early-`return` guard
+  into a wrapping `if`. `return <expr>` is fine.
 - **Shift count must be `int`**: `uint64 >> int64` does **not** typecheck
   (`__shr__ (uint64,int64)` not found); write `x >> int(n)`. Runtime uint64 `>>`
   is a correct logical shift — only the *constant folder* got it wrong (FB-002).

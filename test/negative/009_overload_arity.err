@@ -1,0 +1,6 @@
+009_overload_arity.fx:5:9: error: the appropriate match for 'ff' of type '(int -> <unknown>)' is not found.
+Candidates:
+ 'ff: ((int, int) -> int)' defined at 009_overload_arity.fx:4:1
+
+
+1 errors occured during type checking.

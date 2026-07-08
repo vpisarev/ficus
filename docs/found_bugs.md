@@ -264,6 +264,24 @@ is the whole point of the ladder.
 - config: -no-c typecheck already fails, all platforms.
 - status: fenced by keeping both blocks commented (`lib/Complex.fx:15-44`,
   `examples/fst.fx:125-127`); recorded here per commit 786b446's note.
+- WP-E update (2026-07-08): all three symptoms **re-confirmed** live by
+  uncommenting `lib/Complex.fx:15-44`:
+  - S2 — `val c = ref (1 + 1.fi); *c *= 2` resolves `__mul__` to the ARRAY
+    multiply (`lib/Array.fx:341: unsupported iteration domain`).
+  - S3 — typechecking `examples/vision_classify.fx` infers
+    `nnop_t list Complex.complex` for a plain `nnop_t list` (`lib/Complex.fx:17`),
+    cascading to `NN/FromOnnx.fx:1018`.
+  Finding: the symptoms are **not reproducible in a self-contained mini-`cplx`
+  class** — S2 needs the `N.fi` imaginary literal (complex-specific) and S3 needs
+  the NN library's generic `+` on `nnop_t list` colliding with the over-general
+  `operator +(a:'t, b:'t complex)`. So the fenced reproductions live against the
+  real `Complex.fx` (uncomment) + `fst.fx`/`vision_classify.fx`, documented as
+  commented `FIXME(FB-007)` blocks in `test/test_resolve.fx` and analyzed in
+  `docs/wpe_tests_report.md`. The minimal, self-contained form of the underlying
+  greedy-first-match gap is split out as **FB-016**. The D1 generality comparator
+  (`compare_fun_generality`) already ranks the concrete `complex` operators over
+  the generic ones correctly where it can (`-pr-resolve` confirms); the S3
+  over-general match is the `int + 't` deferral gap (proposal §5, tranche B).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the
@@ -428,7 +446,7 @@ is the whole point of the ladder.
   `// FIXME` note points back here). This is the unit failure the PR #27 CI
   handoff saw (its log had truncated the test name); see FB-011 for the mixup.
 
-## FB-014  bare positive literal 2^63 silently wrapped to INT64_MIN
+## (FIXED in PR #29) FB-014  bare positive literal 2^63 silently wrapped to INT64_MIN
 - discovered: 2026-07-07 while widening the int64 literal range (housekeeping
   follow-up to FB-010).
 - detail: the lexer (`LexerUtils.getnumber_`) accumulates a decimal magnitude in
@@ -456,3 +474,92 @@ is the whole point of the ladder.
   bootstrap; fixpoint holds; full ladder green. (This complements the FB-010 /
   int64-range work: the typechecker now accepts the true INT64_MIN and the lexer
   now rejects the bare positive 2^63 that used to alias it.)
+
+## FB-015  parser: `continue`/`break` and bare `return` rejected in expression position
+- discovered: 2026-07-08 while writing the WP-E `-pr-resolve` trace (`trace_resolve`
+  in `Ast_typecheck.fx`).
+- detail: two related parser limitations, both surfacing as a misleading
+  `error: unexpected token '}'. An identifier, literal or expression ... is
+  expected here` rather than a targeted diagnostic:
+  1. **`continue` (and presumably `break`) cannot be the *value* of a `match`
+     arm / `if` branch.** `[:: for e <- xs { match e { | A(x) => x | _ => continue } }]`
+     fails to parse; the working idiom is to run the `match` as a statement that
+     may `continue` and yield the element separately (see the existing
+     `add_id_to_env_check`, `Ast_typecheck.fx`), or accumulate into a `var` list.
+  2. **A bare `return` (no value) in a `: void` function does not parse.**
+     `if !cond { return }` errors at the `}`; `return <expr>` is fine (used widely),
+     so only the value-less form is affected. Worked around by inverting the guard
+     into a wrapping `if cond { ... }` instead of an early `return`.
+- config: parser only; both are compile-time parse errors, no codegen involved.
+- status: routed around in `trace_resolve` (accumulator loop + wrapping `if`, no
+  bare `return`, no `continue`-as-expression). NOT a blocker for anything; logged
+  for a later parser look (control-flow keywords as unit-typed expressions, and a
+  clearer diagnostic than "unexpected token '}'"). Also noted in CLAUDE.md gotchas.
+
+## FB-016  overload resolution: greedy first-match ignores specificity (last-declared overload wins)
+- discovered: 2026-07-08 during WP-E, via the new `-pr-resolve` trace / the D1
+  generality comparator. This is the **minimal, self-contained** form of FB-007's
+  symptom S2 (no `complex`/NN machinery needed).
+- repro (`bin/ficus -run`):
+  ```
+  fun f(x: int) = x + 1     // concrete
+  fun f(x: 't) = x          // generic (identity)
+  val a = f(5); println(a)  // prints 5  -- the GENERIC f('t) is chosen
+  ```
+  Reversing the two declarations makes `f(5)` print `6` (the concrete wins). So
+  the chosen overload is purely the **last-declared** one that unifies
+  (`find_first` commits to the first entry in env-list order, which is
+  most-recently-added-first), NOT the most specific. The meaning of `f(5)` thus
+  depends on the declaration order of otherwise-unrelated overloads.
+- expected (per `docs/overload_resolution_proposal_v2.md` §2-§3): collect all
+  viable candidates, then pick the least-generic (most specific); `f(int)` should
+  win regardless of order. The D1 `compare_fun_generality` already returns the
+  right answer here (`f(int)` is `LessGeneric`); `-pr-resolve` shows
+  `env-order winner: f('t)` vs `generality winner: f(int)`, `winners agree: false`.
+- config: any backend; `-no-c` typecheck already selects the wrong instance.
+- status: NOT fenced (it is latent current behavior, not a crash); it is the very
+  thing the resolver surgery (tranche A) fixes. Tracked by: the `-pr-resolve`
+  instrument (D2), the E1 census (`docs/wpe_experiments/e1_census.md`), and a
+  fenced `// FIXME(FB-016/FB-007)` case in `test/test_resolve.fx` that flips to
+  pass when tranche A lands. Corpus note: the compiler's OWN code contains no site
+  where specificity would flip a *concrete* winner (E1: 0 different-concrete-winner
+  disagreements over 344 viable>1 sites; all 227 disagreements are `<none>` ties
+  from under-constrained arguments) -- so this bites user code like the above, not
+  the bootstrap.
+
+## FB-017  generality comparator can't order `{...}` (TypVarRecord) auto-generics vs a concrete record
+- discovered: 2026-07-08, WP-E D1/E1. Limitation of the NEW (unwired)
+  `compare_typ_generality` in `Ast_typecheck.fx`; not a shipping-compiler defect,
+  but it is the dominant reason the E1 census shows so many `<none>` verdicts and
+  it must be closed before the resolver surgery relies on the comparator.
+- detail: the auto-generated record/variant operators are typed with `{...}` =
+  `TypVarRecord` (e.g. `template<__var_record__> operator ==(a: {...}, b: {...})`
+  in `Builtins.fx:580`, and `string`/`<=>`/`hash`/`print` likewise). The
+  comparator ranks generality with two one-way `maybe_unify(update_refs=false)`
+  trials, but `maybe_unify` treats a record-var **symmetrically** -- a
+  `TypVar(ref Some(TypVarRecord))` binds to a concrete record in *either*
+  direction -- so both "covers" trials succeed and the pair is reported
+  `EqGeneric`/`IncompGeneric` (`<none>`) instead of "concrete `≻` `{...}`".
+  Repro: `bin/ficus -no-c -pr-resolve` on
+  ```
+  type pt = {x:int; y:int}
+  fun myeq(a: {...}, b: {...}) = true
+  fun myeq(a: pt, b: pt) = a.x==b.x && a.y==b.y
+  val r = myeq(pt{x=1,y=2}, pt{x=1,y=2})
+  ```
+  -> `env-order winner: myeq(pt,pt)` (correct), `generality winner: <none>`.
+- impact on E1: 224 of 227 census `<none>` sites are exactly this shape
+  (`__eq__` 141, `string` 83) plus a few genuine identical-signature duplicates
+  (e.g. `length(string)` defined in both `String.fx:10` and `Builtins.fx:133`).
+  Crucially NONE is a real divergence: env-order already picks the concrete, and
+  a *complete* comparator would too -- so tranche A stays corpus-invariant once
+  this is fixed. It is comparator incompleteness, not a resolution flip.
+- fix sketch (for the surgery session): skolemize `TypVarRecord` (and by symmetry
+  `TypVarTuple`/`TypVarArray`) on the RIGID side into an opaque "some specific
+  record" sentinel that a *different* concrete record does not unify with, while
+  `unskolemize_typ` restores it to a free `TypVar(ref Some(TypVarRecord))` on the
+  FREE side -- the same rigid-vs-free asymmetry already used for `'t` skolems,
+  extended to the `TypVar*` family. Deliberately NOT done in this WP-E test/instr
+  package (D1 scope is `df_templ_args` + keyword `TypRecord` + constructor return
+  type); documented in `docs/wpe_tests_report.md` and noted in `test/test_gencmp.fx`.
+- status: not fenced (unwired code); tracked here + in the E1 census + the report.

@@ -31,6 +31,25 @@ compile_timeout_sec = 300
 # FB-001 (interface C++ codegen) fixed on harden-1: the -c++ smoke now passes,
 # so the cpp_xfail fence is removed and the -c++ build is checked for real.
 
+# ---- WP-E/D1: generality-comparator unit tests ------------------------------
+# Imports the compiler itself as a library (needs -I compiler) and asserts the
+# gen_cmp_t verdicts of compare_typ_generality on hand-built types. The program
+# throws (nonzero exit) on any wrong verdict, so the O0/O3 differential doubles
+# as an assertion at both opt levels.
+[corpus.test_gencmp]
+path = "test/test_gencmp.fx"
+compare = "exact"
+extra_flags = ["-I", "compiler"]
+compile_timeout_sec = 300
+
+# ---- WP-E/D3: overload-resolution behavior lock (T-res positive suite) -------
+# Self-asserting (throws on a wrong resolution); imports test/ResHelper.fx (a
+# sibling module, found via the source dir -- no -I needed). FIXME(FB-016) cases
+# lock today's wrong behavior and flip when the resolver surgery lands.
+[corpus.test_resolve]
+path = "test/test_resolve.fx"
+compare = "exact"
+
 # ---- self-contained deterministic examples ----------------------------------
 [corpus.btree]
 path = "examples/btree.fx"

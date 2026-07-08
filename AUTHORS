@@ -1,3 +1,9 @@
 Petr Chekmarev (@4ekmah)        multiple improvements and bug fixes in the compiler and in the standard library;
                                 array processing optimizations, re2 module
 Vadim Pisarevsky (@vpisarev)    the language architect and lead developer
+Claude Code                     allmighty contributor, one of (if not the) lead developers!
+Dmitry Solomennikov             syntax highlighting for FarColorer, better font for Ficus tutorial,
+                                a few other small improvements
+Feng Yuantao                    some tests
+Mu Zihao                        several improvements in Ficus NN (inference) engine
+Andrei Golubev                  patches for type checker
