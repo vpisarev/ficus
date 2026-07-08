@@ -707,8 +707,11 @@ TEST("basic.loop.squares", fun()
 
 TEST("basic.overloaded", fun()
 {
-    val t = (1, "abc") + (0.125, "def")
-    EXPECT_EQ(t, (1.125, "abcdef"))
+    // resolve-1: tuple arithmetic is defined on UNIFORM tuples only
+    // (tuples-as-short-vectors); the operands may still have different
+    // element types. Mixed tuples like (1, "abc") no longer support `+`.
+    val t = (1, 2) + (0.125, 0.25)
+    EXPECT_EQ(t, (1.125, 2.25))
     type 't point_t = {x: 't; y: 't}
 
     operator + (p1: 't point_t, p2: 't point_t) =
@@ -801,7 +804,11 @@ TEST("basic.keyword_args", fun()
         }
     }
 
-    EXPECT_NEAR(`sqrt(81.0)`, 9.0, 1e-10)
+    // resolve-1: `sqrt(81.0)` (all keywords defaulted) ties with the concrete
+    // Math.sqrt(double) under least-generic ranking -> ambiguity error, per the
+    // decided policy (proposal §4/§10.Q2: no "fewer defaults" tie-break).
+    // Passing a keyword makes the intent explicit and only the local sqrt viable.
+    EXPECT_NEAR(`sqrt(81.0, n=2)`, 9.0, 1e-10)
     EXPECT_NEAR(`sqrt(-81.0, use_abs=true, n=4)`, 3.0, 1e-10)
     EXPECT_NEAR(`sqrt(-27.f, n=3)`, -3.f, 1e-6f)
 })

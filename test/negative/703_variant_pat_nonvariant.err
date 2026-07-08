@@ -1,6 +1,6 @@
 703_variant_pat_nonvariant.fx:2:21: error: the appropriate match for 'Some' of type '(<unknown> -> int)' is not found.
 Candidates:
- 'Some: ('t -> 't option@12)' defined at Builtins.fx:L:C
+ Some('t) -> 't option@12 [generic: 't] @ Builtins.fx:L:C -- the return type or the signature as a whole does not match
 
 
 1 errors occured during type checking.

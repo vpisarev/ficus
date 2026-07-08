@@ -282,6 +282,109 @@ is the whole point of the ladder.
   (`compare_fun_generality`) already ranks the concrete `complex` operators over
   the generic ones correctly where it can (`-pr-resolve` confirms); the S3
   over-general match is the `int + 't` deferral gap (proposal §5, tranche B).
+- resolve-1 update (2026-07-08, branch `resolve-1`): **PARTIALLY FIXED** by the
+  collect->rank->commit resolver (see FB-016). Per-symptom status:
+  - **S2 — FIXED** (the mis-resolution mechanism): at a determined receiver,
+    `'t cplx * int` now ranks the cplx operator over the array `__mul__`
+    regardless of declaration/import order. Locked as a passing case in
+    `test/test_resolve.fx` (`fb007.s2_cplx_times_int`, mini-cplx module
+    `test/CplxHelper.fx` mirroring the fenced Complex.fx operator shapes).
+    The trial-pollution half of S3 is fixed the same way: a non-winning
+    candidate's unification no longer commits anything.
+  - **S1 — still open (session 2, §5 deferral)**: re-tested with the operators
+    uncommented + a generic `complex(r:'t, i:'t)` ctor added: `1 + 1.fi` still
+    fails — `a + b.re` inside `operator +(a:int, b:'t complex)` is typed `int`
+    at declaration check, so at 't=float the body calls `complex(int, float)`
+    (no match, correctly). Needs instantiation-time re-resolution of operations
+    involving template params.
+  - **S3 commit-half — still open (session 2, deferral of under-constrained
+    calls)**: `vision_classify.fx` still infers `nnop_t list Complex.complex`
+    at `FromOnnx.fx:1012` (`rev_more_ops + prog`, `prog` free): list-concat `+`
+    and `+('t, 't complex)` are genuinely incomparable, so the tie falls back
+    to env-order = the complex one. NEW: this shape now has a SELF-CONTAINED
+    fenced repro (free fold accumulator + `[:: x] + prog`) in
+    `test/test_resolve.fx` — WP-E could not self-contain it; the key is that
+    the accumulator's type must still be fully free at the `+`.
+  `lib/Complex.fx:15-44` + `examples/fst.fx:125-127` therefore STAY FENCED
+  until session 2 (when unfencing, also add the generic `complex(r:'t, i:'t)`
+  constructor — sanctioned above).
+- **UNFENCED (2026-07-08, resolve-1, follow-up commit)** — the operators are
+  live again, in a simplified, homogeneous form (Vadim), which sidesteps both
+  remaining symptoms without waiting for session-2 deferral:
+  - All operator bodies are now `'t op 't`-homogeneous (the `int`/`'t2` mixed
+    variants removed) => **no cross-type arithmetic inside generic bodies =>
+    S1 never triggers**. The `fst.fx` demo is rewritten accordingly
+    (`ref complex(1.f, 1.f)`, `*c *= 2.f`) and runs; `fst.fx` is in the fxtest
+    corpus, so complex arithmetic is now permanently regression-tested.
+  - The scalar-on-the-LEFT variants `op (a: 't, b: 't complex)` remain FENCED
+    (commented in Complex.fx with an explanation): their unconstrained 't makes
+    them viable at any `known + still-free` call site (the FromOnnx.fx:1012
+    fold-accumulator shape) where they tie incomparably with list-concat `+`
+    and the under-constrained fallback picks by import order. They return with
+    session-2 deferral, or with the concatenation-spelling change below.
+    Until then: `c + s` works, `s + c` does not.
+  - The second collision found on the way (NN/Inference.fx:94
+    `string(tensor)`: `string(nntensor_t, ~border=8, ~braces=true)` vs the
+    ninja record-generic `string({...})`) was resolved properly by the **Q2
+    keyword normalization** in `compare_fun_generality`: when exactly one
+    candidate has keyword params, the keywordless one's tuple gets the same
+    implicit empty keyword record the caller gets, and coverage then ranks an
+    exact keywordless match ABOVE a candidate viable only via all-defaulted
+    keywords (so `sqrt(81.0)` now resolves to `Math.sqrt(double)` over a local
+    `sqrt('t, ~n=2)` instead of erroring; negative golden 014 was repurposed
+    to the identical-signature cross-module case).
+  - **Language-design direction (Vadim), recorded here for follow-up**: drop
+    the functional record-update operator `.{...}` and reuse `.` as the
+    concatenation operator, or spell concatenation `++`. Either way list/string
+    concatenation stops overloading arithmetic `+`; the free-typed-`[]`
+    accumulator collision class disappears, and the fenced scalar-left complex
+    variants can return unconditionally. Tracked in
+    `docs/language_changes_brief.md` §4.
+- **S3 FIXED (2026-07-08, branch `resolve-2`): `TypVarCollection`** — instead of
+  changing the concatenation spelling or waiting for session-2 deferral, the
+  ROOT of the collision was removed: the empty-collection literal `[]`
+  (`LitEmpty`) is no longer typed as a fully free `make_new_typ()`
+  (`Ast.fx: get_lit_typ`) but as a new var-form
+  `TypVar(ref Some(TypVarCollection))` — "some collection: list, vector or
+  array, element type unknown". `maybe_unify` binds it only to
+  `TypList`/`TypVector`/`TypArray`/`'t [+]`/a plain free var/another
+  collection-var; everything else fails. Consequences:
+  - a free-typed `[]` fold accumulator can no longer be captured by an
+    unrelated generic parameter: at `rev_more_ops + prog` (FromOnnx.fx:1012)
+    the scalar-left `+('t, 't complex)` **dies at the viability trial**
+    (`'t := [...]`, then `'t complex` vs `nnop_t list` fails), so only
+    list-concat remains and the under-constrained fallback picks correctly.
+  - the scalar-left variants `op (a: 't, b: 't complex)` are **UNFENCED** in
+    `lib/Complex.fx` (with the latent sign bug in `-` fixed on the way:
+    `s - c` now negates `im`), `examples/fst.fx` exercises `1.f - *c` in the
+    corpus, and the self-contained S3 test in `test/test_resolve.fx` is
+    unfenced and passing (`fb007.s3_free_accumulator`).
+  - `val n: int = []` is now a TYPE CHECKER error (used to pass `-no-c` and
+    only die at K-normalization's "[] is misused"); new negative golden
+    `test/negative/215_empty_collection_scalar.fx`. An unresolvable `[]`
+    still errors at K-normalization, with a clearer message.
+  - `typ2str` renders the new var-form as `[...]`; `typ_has_free_vars` counts
+    it as free (so `[]`-sites remain "under-constrained" for the tie policy);
+    `freeze_varform_typs` freezes it to an opaque constant.
+  Remaining FB-007 tail: **S1 only** (mixed-type arithmetic like `int + 't`
+  inside generic bodies pinned at declaration check — session-2 deferral).
+  The `++`/`.`-concatenation idea (§4 of language_changes_brief.md) is now a
+  pure language-design question, no longer needed for correctness (Vadim
+  demoted it to "maybe not" in ficus_todo_2026.md).
+- **Imaginary-literal follow-up (same day)**: `N.fi`/`N.i`/`N.hi` never
+  actually worked — the lexer desugared them into `complex(0, N)` with an
+  **int** zero (`LitInt(0)`), so the real demo `1 + 1.fi` typed as
+  `complex(int, float)` and no constructor matched (part of the S1 symptom
+  as originally recorded above). Fixed in `Lexer.fx`: the zero real part is
+  a float literal of the same width as the imaginary part. The fst.fx demo
+  is live as `val c = ref (1.f + 1.fi); *c *= 2.f`. Mixed-type variants:
+  `*` and `/` are mixed (`'t1 op 't2`, return type INFERRED — both result
+  components go through a mixed primitive op, so builtin numeric coercion
+  resolves at instantiation; doubles as the widening-cast idiom
+  `1.0 * fcomplex`, and `v *= 2` works with an int scalar). `+`/`-` must
+  stay homogeneous until S1 deferral: one component passes through unchanged
+  (`b.im`), and a mixed variant would build a record with differently-typed
+  fields (`1.f + 1.fi`, not `1 + 1.fi`).
 
 ## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
 - symptom (Vadim, seen several times over development, not a bit-flip): the
@@ -526,6 +629,20 @@ is the whole point of the ladder.
   disagreements over 344 viable>1 sites; all 227 disagreements are `<none>` ties
   from under-constrained arguments) -- so this bites user code like the above, not
   the bootstrap.
+- **FIXED** (2026-07-08, branch `resolve-1`, phase 2): `lookup_id_opt` is now
+  collect -> rank -> commit: all candidates are tried side-effect-free
+  (`update_refs=false`), the viable set is ranked by `compare_fun_generality`
+  (unique least-generic wins), and only the winner commits. `f(5)` returns 6
+  (the concrete `f(int)`) regardless of declaration order; the fenced
+  `test/test_resolve.fx` case flipped and is locked as
+  `FB016_fixed.concrete_beats_generic`; the `test/ir/overload_resolve` goldens
+  now show the concrete instances selected. Tie policy (amends proposal §4,
+  per `docs/resolve1_surgery_brief.md`): fully-determined tie -> ambiguity
+  error (negative goldens 012-014); under-constrained tie -> env-order
+  fallback until session-2 deferral. Corpus-invariance proof: bootstrap
+  regeneration through the new resolver changed ONLY the edited
+  `Ast_typecheck.c`; `-pr-resolve` over `compiler/fx.fx`: 350 ranking sites =
+  343 ranked + 7 under-constrained fallbacks + 0 ambiguity errors.
 
 ## FB-017  generality comparator can't order `{...}` (TypVarRecord) auto-generics vs a concrete record
 - discovered: 2026-07-08, WP-E D1/E1. Limitation of the NEW (unwired)
@@ -563,3 +680,13 @@ is the whole point of the ladder.
   package (D1 scope is `df_templ_args` + keyword `TypRecord` + constructor return
   type); documented in `docs/wpe_tests_report.md` and noted in `test/test_gencmp.fx`.
 - status: not fenced (unwired code); tracked here + in the E1 census + the report.
+- **FIXED** (2026-07-08, branch `resolve-1`, phase 1): `compare_typ_generality`
+  now freezes the var-form family on the RIGID side of each trial via the new
+  `freeze_varform_typs` (non-destructive walk): `{...}` -> a record with a
+  unique `__skolem_rec__` field, `(...)` -> a tuple of two distinct opaque
+  constants (so `('t ...)` does not cover it), `('t ...)` -> a 1-tuple of the
+  frozen payload, `'t [+]` -> `TypArray(-1, frozen 't)`. `maybe_unify` itself
+  untouched. +14 verdicts in `test/test_gencmp.fx` (all pre-existing verdicts
+  unchanged). E1 census re-run (`docs/wpe_experiments/e1_census_post_fb017.md`):
+  344/117/227/0 -> 342/341/1/0 (sites/agree/none/concrete-flips); the one
+  remaining `<none>` is the known under-constrained 21-viable `__cmp__` site.

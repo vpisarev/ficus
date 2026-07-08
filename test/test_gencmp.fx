@@ -76,6 +76,36 @@ val recAB_clsd = recf([:: (get_id("a"), TypInt), (get_id("b"), TypInt)], true)
 check("kw_open_a_vs_closed_ab",   compare_typ_generality(recA_open, [], recAB_clsd, []), IncompGeneric) // FIXME(WP-E Q2)
 check("kw_closed_a_vs_closed_ab", compare_typ_generality(recA_clsd, [], recAB_clsd, []), IncompGeneric) // FIXME(WP-E Q2)
 
+// ---- var-form generics: {...} / (...) / ('t ...) / 't [+]  (FB-017 fix) ------
+// The rigid side of a trial freezes var-forms into opaque sentinels
+// (freeze_varform_typs), so a concrete type now ranks strictly more specific
+// than a var-form generic, while identical var-forms stay mutually applicable.
+fun vrec(): typ_t = TypVar(ref Some(TypVarRecord))                // {...}
+fun vtup(p: typ_t?): typ_t = TypVar(ref Some(TypVarTuple(p)))     // (...) / (p ...)
+fun varr(et: typ_t): typ_t = TypVar(ref Some(TypVarArray(et)))    // et [+]
+
+check("rec_vs_varrec", compare_typ_generality(recA_clsd, [], vrec(), []), LessGeneric)
+check("varrec_vs_rec", compare_typ_generality(vrec(), [], recA_clsd, []), MoreGeneric)
+check("varrec_vs_varrec", compare_typ_generality(vrec(), [], vrec(), []), EqGeneric)
+// {...} accepts only records, plain 't accepts everything
+check("varrec_vs_t", compare_typ_generality(vrec(), [], skT, [:: t_id]), LessGeneric)
+check("t_vs_varrec", compare_typ_generality(skT, [:: t_id], vrec(), []), MoreGeneric)
+
+val tup_ii = TypTuple([:: TypInt, TypInt])
+check("tup_vs_vartup", compare_typ_generality(tup_ii, [], vtup(None), []), LessGeneric)
+check("vartup_vs_vartup", compare_typ_generality(vtup(None), [], vtup(None), []), EqGeneric)
+// ('t ...) (all elements equal) is strictly less generic than (...)
+check("ttup_vs_vartup", compare_typ_generality(vtup(Some(skT)), [:: t_id], vtup(None), []), LessGeneric)
+check("vartup_vs_ttup", compare_typ_generality(vtup(None), [], vtup(Some(skT)), [:: t_id]), MoreGeneric)
+check("inttup_vs_ttup", compare_typ_generality(vtup(Some(TypInt)), [],
+                                               vtup(Some(skT)), [:: t_id]), LessGeneric)
+
+val arr1_int = TypArray(1, TypInt)
+check("intarr_vs_tvararr", compare_typ_generality(arr1_int, [], varr(skT), [:: t_id]), LessGeneric)
+check("tvararr_vs_intarr", compare_typ_generality(varr(skT), [:: t_id], arr1_int, []), MoreGeneric)
+check("vararr_vs_vararr", compare_typ_generality(varr(skT), [:: t_id], varr(skU), [:: u_id]), EqGeneric)
+check("intvararr_vs_tvararr", compare_typ_generality(varr(TypInt), [], varr(skT), [:: t_id]), LessGeneric)
+
 // ---- interface direction: FENCED --------------------------------------------
 // §3 wants "concrete class less generic than its interface" and "child iface
 // less generic than parent". That needs UPCAST-AWARE unification (same_or_parent

@@ -2715,21 +2715,21 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
          _fx_free_Nt6option1N10Ast__typ_t(&(*dst)->u.TypVarTuple); break;
       case 3:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypVarArray); break;
-      case 14:
-         _fx_free_T2LN10Ast__typ_tN10Ast__typ_t(&(*dst)->u.TypFun); break;
       case 15:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
+         _fx_free_T2LN10Ast__typ_tN10Ast__typ_t(&(*dst)->u.TypFun); break;
       case 16:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
       case 18:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRef); break;
+         _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
-         _fx_free_T2iN10Ast__typ_t(&(*dst)->u.TypArray); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRef); break;
       case 20:
+         _fx_free_T2iN10Ast__typ_t(&(*dst)->u.TypArray); break;
+      case 21:
          _fx_free_rT2LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_tB(&(*dst)->u.TypRecord); break;
-      case 24:
+      case 25:
          _fx_free_T2LN10Ast__typ_tR9Ast__id_t(&(*dst)->u.TypApp); break;
       default:
          ;
@@ -5752,21 +5752,21 @@ _fx_Nt6option1N10Ast__typ_t _fx_g14Parser__None3_ = 0;
 _fx_N10Ast__lit_t _fx_g16Parser__LitEmpty = { 8 };
 static _fx_N10Ast__typ_t_data_t TypVarRecord_data_0 = { 1, 4 };
 _fx_N10Ast__typ_t _fx_g20Parser__TypVarRecord = &TypVarRecord_data_0;
-static _fx_N10Ast__typ_t_data_t TypInt_data_1 = { 1, 5 };
+static _fx_N10Ast__typ_t_data_t TypInt_data_1 = { 1, 6 };
 _fx_N10Ast__typ_t _fx_g14Parser__TypInt = &TypInt_data_1;
-static _fx_N10Ast__typ_t_data_t TypLong_data_0 = { 1, 8 };
+static _fx_N10Ast__typ_t_data_t TypLong_data_0 = { 1, 9 };
 _fx_N10Ast__typ_t _fx_g15Parser__TypLong = &TypLong_data_0;
-static _fx_N10Ast__typ_t_data_t TypString_data_1 = { 1, 10 };
+static _fx_N10Ast__typ_t_data_t TypString_data_1 = { 1, 11 };
 _fx_N10Ast__typ_t _fx_g17Parser__TypString = &TypString_data_1;
-static _fx_N10Ast__typ_t_data_t TypChar_data_1 = { 1, 11 };
+static _fx_N10Ast__typ_t_data_t TypChar_data_1 = { 1, 12 };
 _fx_N10Ast__typ_t _fx_g15Parser__TypChar = &TypChar_data_1;
-static _fx_N10Ast__typ_t_data_t TypBool_data_1 = { 1, 12 };
+static _fx_N10Ast__typ_t_data_t TypBool_data_1 = { 1, 13 };
 _fx_N10Ast__typ_t _fx_g15Parser__TypBool = &TypBool_data_1;
-static _fx_N10Ast__typ_t_data_t TypVoid_data_1 = { 1, 13 };
+static _fx_N10Ast__typ_t_data_t TypVoid_data_1 = { 1, 14 };
 _fx_N10Ast__typ_t _fx_g15Parser__TypVoid = &TypVoid_data_1;
-static _fx_N10Ast__typ_t_data_t TypExn_data_0 = { 1, 21 };
+static _fx_N10Ast__typ_t_data_t TypExn_data_0 = { 1, 22 };
 _fx_N10Ast__typ_t _fx_g14Parser__TypExn = &TypExn_data_0;
-static _fx_N10Ast__typ_t_data_t TypCPointer_data_1 = { 1, 23 };
+static _fx_N10Ast__typ_t_data_t TypCPointer_data_1 = { 1, 24 };
 _fx_N10Ast__typ_t _fx_g19Parser__TypCPointer = &TypCPointer_data_1;
 _fx_N15Ast__op_assoc_t _fx_g17Parser__AssocLeft = { 1 };
 _fx_N15Ast__op_assoc_t _fx_g18Parser__AssocRight = { 2 };
@@ -22481,10 +22481,10 @@ FX_EXTERN_C int
                }
                _fx_LN10Ast__typ_t v_2 = 0;
                int tag_0 = FX_REC_VARIANT_TAG(result_3);
-               if (tag_0 == 17) {
+               if (tag_0 == 18) {
                   FX_COPY_PTR(result_3->u.TypTuple, &v_2);
                }
-               else if (tag_0 != 13) {
+               else if (tag_0 != 14) {
                   FX_CALL(_fx_cons_LN10Ast__typ_t(result_3, 0, true, &v_2), _fx_catch_2);  _fx_catch_2: ;
                }
                FX_CHECK_EXN(_fx_catch_3);
@@ -23196,10 +23196,10 @@ FX_EXTERN_C int
             FX_COPY_PTR(v_30.t0, &ts_5);
             FX_COPY_PTR(v_30.t1, &rt_0);
             int tag_0 = FX_REC_VARIANT_TAG(t_3);
-            if (tag_0 == 17) {
+            if (tag_0 == 18) {
                FX_COPY_PTR(t_3->u.TypTuple, &v_31);
             }
-            else if (tag_0 != 13) {
+            else if (tag_0 != 14) {
                FX_CALL(_fx_cons_LN10Ast__typ_t(t_3, 0, true, &v_31), _fx_catch_17);  _fx_catch_17: ;
             }
             FX_CHECK_EXN(_fx_catch_18);
@@ -23329,10 +23329,10 @@ FX_EXTERN_C int
          FX_COPY_PTR(v_1.t0, &ts_2);
          FX_COPY_PTR(v_1.t1, &rt_0);
          int tag_0 = FX_REC_VARIANT_TAG(t_0);
-         if (tag_0 == 17) {
+         if (tag_0 == 18) {
             FX_COPY_PTR(t_0->u.TypTuple, &v_2);
          }
-         else if (tag_0 != 13) {
+         else if (tag_0 != 14) {
             FX_CALL(_fx_cons_LN10Ast__typ_t(t_0, 0, true, &v_2), _fx_catch_0);  _fx_catch_0: ;
          }
          FX_CHECK_EXN(_fx_catch_1);
@@ -24570,7 +24570,7 @@ _fx_endmatch_4: ;
             _fx_T2R9Ast__id_tN10Ast__typ_t* __pat___0 = &lst_1->hd;
             _fx_N10Ast__typ_t v_24 = __pat___0->t1;
             bool v_25;
-            if (FX_REC_VARIANT_TAG(v_24) == 20) {
+            if (FX_REC_VARIANT_TAG(v_24) == 21) {
                _fx_T2LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_tB v_26 = {0};
                _fx_LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_t relems_0 = 0;
                _fx_copy_T2LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_tB(&v_24->u.TypRecord->data, &v_26);
@@ -24726,7 +24726,7 @@ _fx_endmatch_5: ;
          _fx_T2R9Ast__id_tN10Ast__typ_t* __pat___2 = &lst_3->hd;
          _fx_N10Ast__typ_t v_38 = __pat___2->t1;
          bool v_39;
-         if (FX_REC_VARIANT_TAG(v_38) == 20) {
+         if (FX_REC_VARIANT_TAG(v_38) == 21) {
             _fx_T2LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_tB v_40 = {0};
             _fx_LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_t relems_1 = 0;
             _fx_copy_T2LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_tB(&v_38->u.TypRecord->data, &v_40);

@@ -1,13 +1,16 @@
 207_add_int_string.fx:2:11: error: the appropriate match for '__add__' of type '((int, string) -> <unknown>)' is not found.
 Candidates:
- '__add__: ((string, string) -> string)' defined at Builtins.fx:L:C,
- '__add__: ((string, char) -> string)' defined at Builtins.fx:L:C,
- '__add__: ((char, string) -> string)' defined at Builtins.fx:L:C,
- '__add__: ((char, char) -> string)' defined at Builtins.fx:L:C,
- '__add__: (('t list, 't list) -> <unknown>)' defined at Builtins.fx:L:C,
- '__add__: ((long, long) -> long)' defined at Builtins.fx:L:C,
- '__add__: (((...), (...)) -> <unknown>)' defined at Builtins.fx:L:C,
- '__add__: (('ta [+], 'tb [+]) -> <unknown>)' defined at Array.fx:L:C
+ __add__(string, string) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'string',
+ __add__(string, char) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'string',
+ __add__(char, string) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'char',
+ __add__(char, char) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'char',
+ __add__('t list, 't list) -> <unknown> [generic: 't] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match ''t list',
+ __add__(long, long) -> long @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'long',
+ __add__(('t1 ...), ('t2 ...)) -> <unknown> [generic: 't1, 't2, __var_tuple__] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match '('t1 ...)',
+ __add__('t, 't Complex.complex@3) -> 't Complex.complex@3 [generic: 't] @ Complex.fx:L:C -- argument 2 of type 'string' does not match ''t Complex.complex@3',
+ __add__('t Complex.complex@3, 't) -> 't Complex.complex@3 [generic: 't] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t Complex.complex@3',
+ __add__('t Complex.complex@3, 't Complex.complex@3) -> <unknown> [generic: 't] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t Complex.complex@3',
+ __add__('ta [+], 'tb [+]) -> <unknown> [generic: 'ta, 'tb, __var_array__] @ Array.fx:L:C -- argument 1 of type 'int' does not match ''ta [+]'
 
 
 1 errors occured during type checking.

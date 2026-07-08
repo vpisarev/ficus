@@ -3188,21 +3188,21 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
          _fx_free_Nt6option1N10Ast__typ_t(&(*dst)->u.TypVarTuple); break;
       case 3:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypVarArray); break;
-      case 14:
-         _fx_free_T2LN10Ast__typ_tN10Ast__typ_t(&(*dst)->u.TypFun); break;
       case 15:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
+         _fx_free_T2LN10Ast__typ_tN10Ast__typ_t(&(*dst)->u.TypFun); break;
       case 16:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
       case 18:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRef); break;
+         _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
-         _fx_free_T2iN10Ast__typ_t(&(*dst)->u.TypArray); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRef); break;
       case 20:
+         _fx_free_T2iN10Ast__typ_t(&(*dst)->u.TypArray); break;
+      case 21:
          _fx_free_rT2LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_tB(&(*dst)->u.TypRecord); break;
-      case 24:
+      case 25:
          _fx_free_T2LN10Ast__typ_tR9Ast__id_t(&(*dst)->u.TypApp); break;
       default:
          ;

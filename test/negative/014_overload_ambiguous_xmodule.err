@@ -1,0 +1,6 @@
+014_overload_ambiguous_xmodule.fx:13:9: error: ambiguous call of overloaded 'length': the candidates are equally applicable. Candidates:
+ length(string) -> int @ 014_overload_ambiguous_xmodule.fx:12:1
+ length(string) -> int @ Builtins.fx:L:C
+use a module-qualified call (e.g. Module.length(...)) to select one
+
+1 errors occured during type checking.

@@ -66,7 +66,7 @@ fun get_typ_pr(t: typ_t): typ_pr_t
         TypPrBase
     | TypApp([], _) => TypPrBase
     | TypTuple _ | TypVarTuple _ => TypPrBase
-    | TypRecord _ | TypVarRecord => TypPrBase
+    | TypRecord _ | TypVarRecord | TypVarCollection => TypPrBase
     | TypList _ | TypVector _ | TypRef _ | TypArray(_, _) | TypVarArray _ | TypApp(_, _) => TypPrComplex
     | TypFun(_, _) => TypPrFun
 }
@@ -118,6 +118,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
             pptypsuf(t1, f"[{shape}]")
         | TypVarArray(t1) => pptypsuf(t1, "[+]")
         | TypVarRecord => pp.str("{...}")
+        | TypVarCollection => pp.str("[...]")
         | TypApp([], n) => ppid(pp, n)
         | TypApp([:: t1], n) => pptypsuf(t1, ppid2str(n))
         | TypApp(tl, n) => pptypsuf(TypTuple(tl), ppid2str(n))

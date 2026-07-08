@@ -111,6 +111,15 @@ Mechanical, automigrator-friendly.
   type positions; matters for function types).
 - **f-strings — CANDIDATE (parser fix)**: allow string literals inside `{}`
   interpolations (`f"{find(\"x\")}"`).
+- **Concatenation operator — CANDIDATE, urgency REMOVED by resolve-2 (Vadim:
+  "maybe not")**: stop spelling list/string concatenation as arithmetic `+`
+  (drop `.{...}` and reuse `.`, or introduce `++`). The original correctness
+  motivation — `+('t list, 't list)` competing with every user-defined `+` at
+  under-constrained call sites (a free-typed `[]` fold accumulator being
+  concatenated, the FromOnnx.fx:1012 / FB-007 S3 shape) — was resolved at the
+  root by `TypVarCollection` (resolve-2): `[]` is now "some collection" and
+  cannot be captured by a non-collection candidate, so the scalar-left complex
+  operators are unfenced. What remains is a pure taste/readability question.
 
 ## 5. Modules
 
@@ -121,15 +130,47 @@ Mechanical, automigrator-friendly.
   tree from a mere directory of files. Interacts with the case-insensitive
   stdlib-shadowing trap (test-file naming caveat in CLAUDE.md).
 
-## 6. Overload resolution (FB-007) — OPEN, gated on its design session
+## 6. Overload resolution (FB-007) — SESSION 1 LANDED (`resolve-1`); deferral pending
 
-Specificity ordering (non-generic > generic; partial order à la C++ partial
-ordering), `int + 't` inside generic bodies, cross-module candidate
-visibility; diagnostic half (edit-distance "did you mean") separately.
-Design against the 3.1 model (type+constructors one entity). Implementation
-split: corpus-invariant hardening (bitwise-identical K-form on everything that
-compiles today, Complex operators unlocked) may land pre-reform; anything that
-changes candidate choice in currently-compiling code rides the reform epoch.
+Session 1 (branch `resolve-1`, 2026-07-08) DECIDED & implemented: resolution
+is collect -> rank -> commit; the **least-generic viable candidate wins**
+(C++-style partial ordering via two one-way skolemized unification trials,
+`compare_fun_generality`); at a **fully-determined** call an unresolvable tie
+is an **ambiguity error** (two flavors: equally-applicable -> qualify the
+call; overlapping-but-unordered -> also possible to add a more specific
+overload); at an **under-constrained** call (free type vars among the args)
+a tie falls back to env-order first-match — today's semantics, kept until
+deferral. Q2 resolved by **keyword normalization** (not a tie-break ladder):
+when exactly one candidate has keyword params, the keywordless one is
+compared with the same implicit empty keyword record the caller gets, so an
+exact keywordless match ranks more specific than a candidate viable only via
+all-defaulted keywords (`string(tensor)` picks `string(nntensor_t, ~kw..)`
+over the record-generic; `sqrt(81.0)` picks `Math.sqrt(double)` over a local
+`sqrt('t, ~n=2)`). No scope-proximity
+ranking (§6 of the proposal). Escape hatch: module-qualified mangled-operator
+call `Module.__op__(a, b)`; a prettier `Module.(op)` spelling is a Brief #3
+grammar item. Not-found diagnostics list each candidate with a one-line
+rejection reason.
+
+`lib/Complex.fx` operators + the `examples/fst.fx` demo are UNLOCKED in a
+homogeneous form (all bodies `'t op 't` — sidesteps S1).
+
+**resolve-2 (2026-07-08, same day): `TypVarCollection`** — the empty-collection
+literal `[]` is typed as a new var-form "some list/vector/array" instead of a
+fully free type var. It unifies only with a collection type (or a free var),
+so a `[]`-initialized fold accumulator can no longer be captured by an
+unrelated generic candidate: the FB-007/S3 collision class
+(`FromOnnx.fx:1012`) is gone at the root, the scalar-on-the-left complex
+variants are UNFENCED, and `val n: int = []` became a typecheck-time error
+(negative golden 215). DECIDED for the epoch; a possible follow-up
+(post-reform): `[]` = empty *list* only + a dedicated empty-array spelling
+(e.g. `[.]`).
+
+Session 2 (OPEN): deferral — `int + 't` inside generic bodies (S1, for
+mixed-type operator variants) and under-constrained calls in general (the
+commit-half: ranking at sites whose arg types are still free, beyond the
+collection case); error recovery (TypErr poisoning, multiple errors per
+run); edit-distance "did you mean".
 
 ## 7. Deferred / additive (post-reform; decide direction only)
 

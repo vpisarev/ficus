@@ -1,0 +1,2071 @@
+-pr-resolve: 'repr' @ /home/vpisarev/work/ficus/lib/Builtins.fx:388:47: 2 viable for (char -> <unknown>)
+    candidate: repr(char) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:267:7
+    candidate: repr('t) -> string [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:264:1
+    env-order  winner: repr(char) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:267:7
+    generality winner: repr(char) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:267:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/Builtins.fx:488:48: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/Builtins.fx:488:41: 2 viable for ((string, format_t@14) -> <unknown>)
+    candidate: string(string, format_t@14) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:436:7
+    candidate: string('t, format_t@14) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:407:1
+    env-order  winner: string(string, format_t@14) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:436:7
+    generality winner: string(string, format_t@14) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:436:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/Builtins.fx:490:52: 2 viable for (char vector -> <unknown>)
+    candidate: string(char vector) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:351:7
+    candidate: string('t vector) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:349:1
+    env-order  winner: string(char vector) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:351:7
+    generality winner: string(char vector) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:351:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/Builtins.fx:490:45: 2 viable for ((string, format_t@14) -> <unknown>)
+    candidate: string(string, format_t@14) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:436:7
+    candidate: string('t, format_t@14) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:407:1
+    env-order  winner: string(string, format_t@14) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:436:7
+    generality winner: string(string, format_t@14) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:436:7
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1041:29: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1041:42: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1041:52: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1042:27: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1042:49: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1117:25: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'float' @ /home/vpisarev/work/ficus/lib/Math.fx:243:5: 2 viable for (Math.RNG@2 -> <unknown>)
+    candidate: float(Math.RNG@2) -> float @ /home/vpisarev/work/ficus/lib/Math.fx:218:1
+    candidate: float('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:783:1
+    env-order  winner: float(Math.RNG@2) -> float @ /home/vpisarev/work/ficus/lib/Math.fx:218:1
+    generality winner: float(Math.RNG@2) -> float @ /home/vpisarev/work/ficus/lib/Math.fx:218:1
+    winners agree: true
+-pr-resolve: 'double' @ /home/vpisarev/work/ficus/lib/Math.fx:246:5: 2 viable for (Math.RNG@2 -> <unknown>)
+    candidate: double(Math.RNG@2) -> double @ /home/vpisarev/work/ficus/lib/Math.fx:217:1
+    candidate: double('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:784:1
+    env-order  winner: double(Math.RNG@2) -> double @ /home/vpisarev/work/ficus/lib/Math.fx:217:1
+    generality winner: double(Math.RNG@2) -> double @ /home/vpisarev/work/ficus/lib/Math.fx:217:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Filename.fx:51:66: 2 viable for ((int, int) -> int)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Filename.fx:100:66: 2 viable for ((int, int) -> int)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__cmp__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:128:38: 21 viable for ((<unknown>, <unknown>) -> <unknown>)
+    candidate: __cmp__(string, string) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:732:16
+    candidate: __cmp__('t option@12, 't option@12) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:719:1
+    candidate: __cmp__(long, long) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:598:16
+    candidate: __cmp__(bool, bool) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:597:1
+    candidate: __cmp__(char, char) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:596:1
+    candidate: __cmp__(double, double) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:595:1
+    candidate: __cmp__(float, float) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:594:1
+    candidate: __cmp__(uint64, uint64) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:593:1
+    candidate: __cmp__(int64, int64) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:592:1
+    candidate: __cmp__(uint32, uint32) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:591:1
+    candidate: __cmp__(int32, int32) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:590:1
+    candidate: __cmp__(uint16, uint16) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:589:1
+    candidate: __cmp__(int16, int16) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:588:1
+    candidate: __cmp__(uint8, uint8) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:587:1
+    candidate: __cmp__(int8, int8) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:586:1
+    candidate: __cmp__(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:585:1
+    candidate: __cmp__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:582:1
+    candidate: __cmp__((...), (...)) -> <unknown> [generic: __var_tuple__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:578:1
+    candidate: __cmp__('t [], 't []) -> int [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:558:1
+    candidate: __cmp__('t vector, 't vector) -> int [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:542:1
+    candidate: __cmp__('t list, 't list) -> int [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:526:1
+    env-order  winner: __cmp__(string, string) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:732:16
+    generality winner: <none: tied or unordered>
+    winners agree: false
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/File.fx:163:5: 2 viable for ((File.t@9, string) -> void)
+    candidate: print(File.t@9, string) -> void @ /home/vpisarev/work/ficus/lib/File.fx:124:1
+    candidate: print(File.t@9, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/File.fx:122:1
+    env-order  winner: print(File.t@9, string) -> void @ /home/vpisarev/work/ficus/lib/File.fx:124:1
+    generality winner: print(File.t@9, string) -> void @ /home/vpisarev/work/ficus/lib/File.fx:124:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Sys.fx:99:28: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Sys.fx:105:51: 2 viable for ((double, double) -> <unknown>)
+    candidate: max(double, double) -> double @ /home/vpisarev/work/ficus/lib/Builtins.fx:970:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(double, double) -> double @ /home/vpisarev/work/ficus/lib/Builtins.fx:970:9
+    generality winner: max(double, double) -> double @ /home/vpisarev/work/ficus/lib/Builtins.fx:970:9
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/lib/Sys.fx:106:47: 2 viable for ((double, double) -> double)
+    candidate: min(double, double) -> double @ /home/vpisarev/work/ficus/lib/Builtins.fx:969:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(double, double) -> double @ /home/vpisarev/work/ficus/lib/Builtins.fx:969:9
+    generality winner: min(double, double) -> double @ /home/vpisarev/work/ficus/lib/Builtins.fx:969:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1118:22: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/Builtins.fx:1118:32: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'repr' @ /home/vpisarev/work/ficus/lib/Builtins.fx:343:68: 2 viable for (string -> <unknown>)
+    candidate: repr(string) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:266:1
+    candidate: repr('t) -> string [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:264:1
+    env-order  winner: repr(string) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:266:1
+    generality winner: repr(string) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:266:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Options.fx:281:23: 2 viable for ((int, int) -> int)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/compiler/Ast.fx:85:23: 2 viable for ((int, int) -> <unknown>)
+    candidate: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    generality winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/compiler/Ast.fx:86:22: 2 viable for ((int, int) -> <unknown>)
+    candidate: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    generality winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast.fx:87:23: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast.fx:88:22: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashset.fx:175:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashset.fx:175:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Dynvec.fx:29:18: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast.fx:513:10: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast.fx:521:10: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:537:21: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:546:21: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast.fx:567:9: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Dynvec.fx:29:18: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:747:27: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:748:29: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:749:33: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:1212:35: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:1225:20: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:1226:21: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast.fx:1295:26: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:127:40: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast.fx:1619:14: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast.fx:1621:20: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/PP.fx:64:11: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/PP.fx:95:21: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/PP.fx:95:21: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/PP.fx:95:21: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/PP.fx:101:33: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/PP.fx:101:33: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/PP.fx:101:33: 2 viable for (char [] -> <unknown>)
+    candidate: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    candidate: string('t []) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:315:1
+    env-order  winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    generality winner: string(char []) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:345:7
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/lib/PP.fx:109:30: 2 viable for ((File.t@9, string) -> <unknown>)
+    candidate: print(File.t@9, string) -> void @ /home/vpisarev/work/ficus/lib/File.fx:124:1
+    candidate: print(File.t@9, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/File.fx:122:1
+    env-order  winner: print(File.t@9, string) -> void @ /home/vpisarev/work/ficus/lib/File.fx:124:1
+    generality winner: print(File.t@9, string) -> void @ /home/vpisarev/work/ficus/lib/File.fx:124:1
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/lib/PP.fx:326:30: 2 viable for ((int, int) -> <unknown>)
+    candidate: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    generality winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/PP.fx:326:26: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/lib/PP.fx:346:27: 2 viable for ((int, int) -> int)
+    candidate: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    generality winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/PP.fx:348:27: 2 viable for ((int, int) -> int)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/PP.fx:359:23: 2 viable for ((int, int) -> int)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_pp.fx:18:10: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_pp.fx:221:21: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_pp.fx:314:34: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_pp.fx:314:34: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_pp.fx:394:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_pp.fx:739:58: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Lexer.fx:275:42: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/compiler/Lexer.fx:517:19: 2 viable for ((int, int) -> int)
+    candidate: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    generality winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Parser.fx:41:54: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashset.fx:175:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashset.fx:175:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Parser.fx:244:49: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Parser.fx:1235:22: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Parser.fx:1909:36: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Parser.fx:2079:50: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Parser.fx:2446:25: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Parser.fx:2465:47: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Parser.fx:2506:21: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Parser.fx:2509:17: 2 viable for (string -> void)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:55:19: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:58:17: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:76:33: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:76:21: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:80:28: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:58:17: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:76:33: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:76:21: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:80:28: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:230:32: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:237:36: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:242:36: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:520:21: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:523:21: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:558:73: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:558:69: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:559:59: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:560:62: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:561:62: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:562:59: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:563:62: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:564:62: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:606:57: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:609:56: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:619:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:659:40: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:668:28: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:669:40: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:846:37: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:846:77: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:851:39: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:858:39: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:889:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:894:36: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1022:47: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1022:13: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1023:31: 2 viable for (string -> void)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1024:13: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1026:26: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1027:20: 2 viable for (string -> void)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1029:13: 2 viable for (string -> void)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1091:63: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1142:17: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1166:70: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1174:72: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1187:76: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1203:190: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1373:45: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1484:73: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1551:47: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1566:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1579:51: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1588:61: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1593:71: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:1593:71: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2028:41: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2028:63: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2132:28: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2600:75: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2600:75: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2655:33: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2955:39: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:2955:39: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3174:28: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3234:21: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3248:51: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3400:36: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3420:68: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3436:46: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3436:46: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3436:46: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3494:65: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3514:26: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3535:51: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3623:30: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3631:55: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3631:63: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3662:23: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3753:13: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3853:25: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3854:25: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3854:38: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3863:47: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3863:79: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3894:36: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3939:44: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/Ast_typecheck.fx:3983:89: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Dynvec.fx:29:18: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:398:39: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:422:19: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:427:32: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:511:32: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:522:39: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:765:24: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:781:24: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:809:26: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:823:24: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:841:24: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:858:25: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1244:22: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1249:43: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1252:35: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1269:39: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'repr' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1451:22: 2 viable for (char -> string)
+    candidate: repr(char) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:267:7
+    candidate: repr('t) -> string [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:264:1
+    env-order  winner: repr(char) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:267:7
+    generality winner: repr(char) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:267:7
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1483:5: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1485:5: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1489:5: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/K_form.fx:1491:5: 2 viable for (string -> <unknown>)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:67:48: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:237:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:243:19: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:355:59: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:368:17: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:376:71: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:534:28: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:537:40: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:557:22: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:565:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:582:20: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:669:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:786:41: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:786:81: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:795:39: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:809:36: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:827:41: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:833:124: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:935:10: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:988:25: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1087:17: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1147:43: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1194:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1249:83: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1266:31: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1363:61: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1363:61: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1377:41: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1406:21: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1427:56: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1427:79: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1475:17: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1475:35: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1489:26: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1506:25: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1522:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1564:41: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1564:65: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1571:25: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_normalize.fx:1571:46: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_annotate.fx:52:20: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:577:45: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_mangle.fx:412:29: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_remove_unused.fx:59:46: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_remove_unused.fx:201:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_remove_unused.fx:267:78: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_remove_unused.fx:292:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_remove_unused.fx:293:55: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'min' @ /home/vpisarev/work/ficus/lib/Hashset.fx:300:21: 2 viable for ((int, int) -> <unknown>)
+    candidate: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    candidate: min('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:963:1
+    env-order  winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    generality winner: min(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:965:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_lift_simple.fx:86:21: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/K_lift_simple.fx:86:21: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_tailrec.fx:30:15: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_tailrec.fx:131:26: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_tailrec.fx:157:22: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_tailrec.fx:182:22: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_inline.fx:177:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_inline.fx:269:62: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_inline.fx:281:56: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/compiler/K_inline.fx:478:32: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:261:23: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:344:40: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:344:58: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:344:75: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:348:43: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:352:40: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:352:57: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:353:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:369:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:473:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:482:26: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:487:60: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fast_idx.fx:585:26: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_fuse_loops.fx:151:58: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_nothrow_wrappers.fx:43:31: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:263:28: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:411:39: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:469:30: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:516:30: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:566:53: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:629:18: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/K_lift.fx:634:34: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Dynvec.fx:29:18: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/C_form.fx:415:32: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/C_form.fx:424:9: 2 viable for (Ast.id_t@29 -> <unknown>)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:155:33: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:158:33: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:180:15: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:180:33: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:198:15: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:198:33: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:217:16: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:573:31: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_types.fx:630:27: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_fdecls.fx:79:37: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:177:24: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: 'max' @ /home/vpisarev/work/ficus/lib/Hashmap.fx:176:19: 2 viable for ((int, int) -> <unknown>)
+    candidate: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    candidate: max('t, 't) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:964:1
+    env-order  winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    generality winner: max(int, int) -> int @ /home/vpisarev/work/ficus/lib/Builtins.fx:966:9
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:714:31: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:577:45: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/lib/Builtins.fx:750:68: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:592:41: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:1378:57: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'repr' @ /home/vpisarev/work/ficus/lib/Builtins.fx:311:66: 2 viable for (string -> <unknown>)
+    candidate: repr(string) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:266:1
+    candidate: repr('t) -> string [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:264:1
+    env-order  winner: repr(string) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:266:1
+    generality winner: repr(string) -> string @ /home/vpisarev/work/ficus/lib/Builtins.fx:266:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/lib/Builtins.fx:264:27: 2 viable for (Ast.id_t@29 -> string)
+    candidate: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    generality winner: string(Ast.id_t@29) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:533:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:1946:31: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:2028:34: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:2043:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:2973:46: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3042:42: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3247:69: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3322:46: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3331:34: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3343:32: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3358:80: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: '__eq__' @ /home/vpisarev/work/ficus/compiler/C_gen_code.fx:3441:38: 2 viable for ((Ast.id_t@29, Ast.id_t@29) -> bool)
+    candidate: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    candidate: __eq__({...}, {...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:580:1
+    env-order  winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    generality winner: __eq__(Ast.id_t@29, Ast.id_t@29) -> bool @ /home/vpisarev/work/ficus/compiler/Ast.fx:48:1
+    winners agree: true
+-pr-resolve: 'string' @ /home/vpisarev/work/ficus/compiler/Compiler.fx:220:25: 2 viable for (Ast.loc_t@31 -> <unknown>)
+    candidate: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    candidate: string({...}) -> <unknown> [generic: __var_record__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:312:1
+    env-order  winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    generality winner: string(Ast.loc_t@31) -> string @ /home/vpisarev/work/ficus/compiler/Ast.fx:494:1
+    winners agree: true
+-pr-resolve: 'print' @ /home/vpisarev/work/ficus/compiler/Compiler.fx:600:44: 2 viable for (string -> void)
+    candidate: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    candidate: print('t) -> <unknown> [generic: 't] @ /home/vpisarev/work/ficus/lib/Builtins.fx:984:1
+    env-order  winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    generality winner: print(string) -> void @ /home/vpisarev/work/ficus/lib/Builtins.fx:1039:9
+    winners agree: true

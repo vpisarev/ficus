@@ -99,6 +99,22 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
 - **Shift count must be `int`**: `uint64 >> int64` does **not** typecheck
   (`__shr__ (uint64,int64)` not found); write `x >> int(n)`. Runtime uint64 `>>`
   is a correct logical shift — only the *constant folder* got it wrong (FB-002).
+- **Overload resolution (resolve-1): the least-generic viable candidate wins**,
+  independent of declaration/import order (concrete beats generic, `int complex`
+  beats `'t complex`). If no candidate is strictly most specific at a call whose
+  argument types are fully known, it's an **ambiguity error** — disambiguate
+  with a module-qualified call; for operators use the mangled name:
+  `Module.__mul__(a, b)` (`Module.(*)` does not parse). Two identical-signature
+  overloads only error at a call that sees both. When argument types still
+  contain free type vars, ties silently fall back to first-match (deferral is
+  pending) — don't rely on it in new code. A candidate viable only via
+  all-defaulted keyword args loses to an exact keywordless match
+  (`sqrt(81.0)` → `Math.sqrt(double)`, not a local `sqrt('t, ~n=2)`).
+- **`[]` is typed "some collection" (resolve-2, `TypVarCollection`)**: it
+  unifies only with a list/vector/array (or a free type var), so
+  `val n: int = []` is a typecheck error and a `[]`-initialized fold
+  accumulator can't be captured by a non-collection overload. If the
+  collection kind is never pinned, K-normalization asks for an annotation.
 
 ### Build/run & measurement traps (Brief #2)
 
