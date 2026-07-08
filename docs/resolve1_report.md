@@ -1,8 +1,9 @@
 # resolve-1 — overload-resolver surgery, session 1: report
 
-Branch `resolve-1` (4 commits off master `36002f3`), per
+Branch `resolve-1` (off master `36002f3`), per
 `docs/resolve1_surgery_brief.md` (which amends proposal §4's tie policy).
-Not pushed; diffs left for review.
+Pushed; merged to master via the joint resolve-2 PR (see
+`docs/resolve2_report.md` for the follow-up branch).
 
 **Headline: greedy first-match is gone.** Overload resolution is now
 collect → rank → commit: every candidate is tried side-effect-free, the
