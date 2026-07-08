@@ -1,7 +1,7 @@
 011_overload_not_found_candidates.fx:6:9: error: the appropriate match for 'oo' of type '(string -> <unknown>)' is not found.
 Candidates:
- 'oo: (int -> int)' defined at 011_overload_not_found_candidates.fx:4:1,
- 'oo: (float -> int)' defined at 011_overload_not_found_candidates.fx:5:1
+ oo(int) -> int @ 011_overload_not_found_candidates.fx:4:1 -- argument 1 of type 'string' does not match 'int',
+ oo(float) -> int @ 011_overload_not_found_candidates.fx:5:1 -- argument 1 of type 'string' does not match 'float'
 
 
 1 errors occured during type checking.

@@ -1,7 +1,7 @@
 212_negate_string.fx:2:9: error: the appropriate match for '__negate__' of type '(string -> <unknown>)' is not found.
 Candidates:
- '__negate__: (long -> long)' defined at Builtins.fx:L:C,
- '__negate__: ('t [+] -> <unknown>)' defined at Array.fx:L:C
+ __negate__(long) -> long @ Builtins.fx:L:C -- argument 1 of type 'string' does not match 'long',
+ __negate__('t [+]) -> <unknown> [generic: 't, __var_array__] @ Array.fx:L:C -- argument 1 of type 'string' does not match ''t [+]'
 
 
 1 errors occured during type checking.

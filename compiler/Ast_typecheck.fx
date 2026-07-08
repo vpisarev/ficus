@@ -905,8 +905,69 @@ fun is_real_typ(t: typ_t) {
 fun report_not_found(n: id_t, loc: loc_t) =
     compile_err(loc, f"the appropriate match for '{pp(n)}' is not found")
 
-fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list, loc: loc_t) {
+/* one-line explanation of why a function candidate does not accept the call:
+   arity, keyword acceptance, or the first mismatching argument (tested with
+   side-effect-free trials on a fresh copy of the signature; the *displayed*
+   parameter type comes from the raw signature so template parameters keep
+   their 't names). */
+fun fun_mismatch_reason(df: deffun_t ref, call_argtyps: typ_t list,
+                        sc: scope_t list, loc: loc_t): string
+{
+    val {df_templ_args, df_typ, df_flags, df_env} = *df
+    val have_kw = df_flags.fun_flag_have_keywords
+    val caller_has_kwrec = match call_argtyps {
+        | _ :: _ => (match deref_typ(call_argtyps.last()) {
+                     | TypRecord (ref (_, false)) => true | _ => false })
+        | _ => false
+        }
+    if !have_kw && caller_has_kwrec { return "does not accept keyword arguments" }
+    val call_argtyps = if have_kw && !caller_has_kwrec {
+            call_argtyps + [:: TypRecord(ref ([], false))]
+        } else { call_argtyps }
+    val ftyp = if df_templ_args == [] { dup_typ(df_typ) }
+               else { preprocess_templ_typ(df_templ_args, df_typ, df_env, sc, loc).0 }
+    val ptyps_disp = match deref_typ(df_typ) { | TypFun(ptyps, _) => ptyps | _ => [] }
+    match deref_typ(ftyp) {
+    | TypFun(ptyps, _) =>
+        val np = ptyps.length(), nc = call_argtyps.length()
+        if np != nc {
+            val kw_extra = if have_kw {1} else {0}
+            val pos_s = if have_kw {"positional "} else {""}
+            f"takes {np - kw_extra} {pos_s}argument(s), but {nc - kw_extra} given"
+        } else {
+            fun first_mismatch_(ptl: typ_t list, ctl: typ_t list, k: int): (int, typ_t, typ_t)? =
+                match (ptl, ctl) {
+                | (pt :: ptl_rest, ct :: ctl_rest) =>
+                    if !maybe_unify(pt, dup_typ(ct), loc, false) { Some((k, pt, ct)) }
+                    else { first_mismatch_(ptl_rest, ctl_rest, k+1) }
+                | _ => None
+                }
+            val mism = first_mismatch_(ptyps, call_argtyps, 0)
+            match mism {
+            | Some((k, pt, ct)) =>
+                val pt_disp = match ptyps_disp {
+                    | _ :: _ when ptyps_disp.length() == np => ptyps_disp.nth(k)
+                    | _ => pt
+                    }
+                if have_kw && k == np - 1 {
+                    f"keyword arguments '{typ2str(ct)}' do not match the accepted '{typ2str(pt_disp)}'"
+                } else {
+                    f"argument {k + 1} of type '{typ2str(ct)}' does not match '{typ2str(pt_disp)}'"
+                }
+            | _ => "the return type or the signature as a whole does not match"
+            }
+        }
+    | _ => "is not a function"
+    }
+}
+
+fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list,
+                           sc: scope_t list, loc: loc_t) {
     val nstr = pp(n)
+    val call_argtyps_opt = match deref_typ(t) {
+        | TypFun(argtyps, _) => Some(argtyps)
+        | _ => None
+        }
     val strs = [:: for e <- possible_matches {
             val n = match e {
                 | EnvId(n) => n
@@ -915,9 +976,14 @@ fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list
             if n == noid { continue }
             val info = id_info(n, loc)
             if (match info {|IdNone _ => true | _ => false}) { continue }
-            val tj = get_idinfo_typ(info, loc)
-            val locj = get_idinfo_loc(info)
-            f"'{nstr}: {typ2str(tj)}' defined at {locj}"
+            match (info, call_argtyps_opt) {
+            | (IdFun(df), Some(call_argtyps)) =>
+                f"{Ast_pp.fun2sigstr(df)} -- {fun_mismatch_reason(df, call_argtyps, sc, loc)}"
+            | _ =>
+                val tj = get_idinfo_typ(info, loc)
+                val locj = get_idinfo_loc(info)
+                f"'{nstr}: {typ2str(tj)}' defined at {locj}"
+            }
         } ]
     val candidates_msg =
         if strs == [] { "" }
@@ -1142,9 +1208,18 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): 
             | _ =>
                 if fully_determined {
                     val cand_lines = "\n    ".join([:: for (_, c) <- viable {Ast_pp.fun2sigstr(c)}])
+                    // EqGeneric everywhere = identical applicability (qualify the call);
+                    // any IncompGeneric = overlapping but unordered (a more specific
+                    // overload can also break the tie)
+                    val all_eq = all(for (_, c) <- viable {
+                        all(for d <- cands { c == d || compare_fun_generality(c, d) == EqGeneric }) })
+                    val why = if all_eq { "the candidates are equally applicable" }
+                              else { "the candidates overlap, but none is the most specific" }
+                    val hint = if all_eq { f"use a module-qualified call (e.g. Module.{pp(n)}(...)) to select one" }
+                               else { f"define/import a more specific overload, or use a \
+                                        module-qualified call (e.g. Module.{pp(n)}(...)) to disambiguate" }
                     throw compile_err(loc, f"ambiguous call of overloaded '{pp(n)}': \
-                        no candidate is more specific than the others. Candidates:\n    {cand_lines}\n\
-                        consider a module-qualified call (e.g. Module.{pp(n)}(...)) to disambiguate")
+                        {why}. Candidates:\n    {cand_lines}\n{hint}")
                 } else {
                     // under-constrained tie: keep today's env-order first-match
                     // semantics until deferral lands (session 2)
@@ -1242,7 +1317,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
     | None =>
         match try_autogen_symbols(n, t, env, sc, loc) {
         | Some(nt1) => nt1
-        | _ => throw report_not_found_typed(n, t, possible_matches, loc)
+        | _ => throw report_not_found_typed(n, t, possible_matches, sc, loc)
         }
     }
 }
@@ -1697,7 +1772,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | Some((f, t, _)) =>
                 ExpMem(new_e1, ExpIdent(f, (t, eloc)), ctx)
             | _ =>
-                throw report_not_found_typed(n2, etyp, candidates, eloc)
+                throw report_not_found_typed(n2, etyp, candidates, sc, eloc)
             }
         | (TypExn, _, ExpIdent(n2, (etyp2, eloc2))) when n2 == std__tag__ =>
             unify(etyp, TypInt, eloc, "variant tag is integer, but the other type is expected")

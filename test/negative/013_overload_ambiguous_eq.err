@@ -1,0 +1,6 @@
+013_overload_ambiguous_eq.fx:7:9: error: ambiguous call of overloaded 'g': the candidates are equally applicable. Candidates:
+ g('u) -> <unknown> [generic: 'u] @ 013_overload_ambiguous_eq.fx:6:1
+ g('t) -> <unknown> [generic: 't] @ 013_overload_ambiguous_eq.fx:5:1
+use a module-qualified call (e.g. Module.g(...)) to select one
+
+1 errors occured during type checking.

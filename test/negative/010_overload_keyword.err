@@ -1,6 +1,6 @@
 010_overload_keyword.fx:4:9: error: the appropriate match for 'kk' of type '({z: int} -> <unknown>)' is not found.
 Candidates:
- 'kk: ({a: int} -> int)' defined at 010_overload_keyword.fx:3:1
+ kk({a: int}) -> int @ 010_overload_keyword.fx:3:1 -- keyword arguments '{z: int}' do not match the accepted '{a: int}'
 
 
 1 errors occured during type checking.

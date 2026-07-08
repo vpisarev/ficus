@@ -1,0 +1,6 @@
+012_overload_ambiguous_incomp.fx:7:9: error: ambiguous call of overloaded 'amb': the candidates overlap, but none is the most specific. Candidates:
+ amb(int, 't) -> <unknown> [generic: 't] @ 012_overload_ambiguous_incomp.fx:6:1
+ amb('t, int) -> <unknown> [generic: 't] @ 012_overload_ambiguous_incomp.fx:5:1
+define/import a more specific overload, or use a module-qualified call (e.g. Module.amb(...)) to disambiguate
+
+1 errors occured during type checking.
