@@ -1,0 +1,30 @@
+fun overload_resolve.pick@g0(x@g1: int): int { x@g1 + 1 }
+
+fun overload_resolve.pick@g2(x@g3: float): int { 2 }
+
+@instance fun overload_resolve.pick@g4(x@g5: int list): int { 0 }
+
+@instance fun overload_resolve.pick@g6(x@g7: string): int { 0 }
+
+@instance fun overload_resolve.pick@g8(x@g9: float): int { 0 }
+
+@instance fun overload_resolve.pick@g10(x@g11: int): int { 0 }
+
+@global val overload_resolve.a@g12: int = overload_resolve.pick@g10(5)
+@global val overload_resolve.b@g13: int = overload_resolve.pick@g8(3.0f)
+@global val overload_resolve.c@g14: int = overload_resolve.pick@g6("hi")
+@temp val z@g15: int list = null
+@temp val v@g16: int list = 2 :: z@g15
+@temp val v@g17: int list = 1 :: v@g16
+@global val overload_resolve.d@g18: int = overload_resolve.pick@g4(v@g17)
+@temp val v@g19: string = string@g20(overload_resolve.a@g12)
+@temp val v@g21: string = __intrin_str_concat__(v@g19, " ")
+@temp val v@g22: string = string@g20(overload_resolve.b@g13)
+@temp val v@g23: string = __intrin_str_concat__(v@g21, v@g22)
+@temp val v@g24: string = __intrin_str_concat__(v@g23, " ")
+@temp val v@g25: string = string@g20(overload_resolve.c@g14)
+@temp val v@g26: string = __intrin_str_concat__(v@g24, v@g25)
+@temp val v@g27: string = __intrin_str_concat__(v@g26, " ")
+@temp val v@g28: string = string@g20(overload_resolve.d@g18)
+@temp val v@g29: string = __intrin_str_concat__(v@g27, v@g28)
+println@g30(v@g29)

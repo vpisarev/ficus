@@ -721,6 +721,24 @@ fun pprint_top_x(top: exp_t list)
     File.stdout.flush()
 }
 
+/* WP-E §8: the canonical one-line rendering of a function candidate, used by the
+   -pr-resolve trace (D2 / E1) and slated for reuse by the improved not-found /
+   ambiguity diagnostics of the resolver surgery. Shape:
+       Module.name(arg1, arg2) -> rt [generic: 't, 'u] @ file:line
+   The "[generic: ...]" clause is omitted for non-generic functions. */
+fun fun2sigstr(df: deffun_t ref): string
+{
+    val {df_name, df_typ, df_templ_args, df_loc} = *df
+    val (argtyps, rt) = match deref_typ(df_typ) {
+        | TypFun(atyps, rt) => (atyps, rt)
+        | t => ([], t)
+        }
+    val args_s = ", ".join([:: for a <- argtyps { typ2str(a) }])
+    val gen_s = if df_templ_args == [] { "" }
+                else { " [generic: " + ", ".join([:: for a <- df_templ_args { pp(a) }]) + "]" }
+    f"{pp(df_name)}({args_s}) -> {typ2str(rt)}{gen_s} @ {string(df_loc)}"
+}
+
 fun pprint_typ_x(t: typ_t, loc: loc_t): void {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)

@@ -329,6 +329,130 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
     ok
 }
 
+/* ---------------------------------------------------------------------------
+   Generality comparator (WP-E / D1). PURE and UNWIRED: nothing in resolution
+   calls these yet. Consumed by the -pr-resolve trace (D2), the E1/E4 census and
+   the test/test_gencmp.fx unit tests. They implement §3 of
+   docs/overload_resolution_proposal_v2.md: C++ partial-ordering transplanted
+   into unification.
+
+   "Skolem mode" (Q1) is realized purely by REPRESENTATION, not by a flag on the
+   hot unifier: a template parameter frozen to an opaque constant TypApp([], id)
+   unifies only with an identical constant (maybe_unify's TypApp id-equality
+   rule) or is captured by a free TypVar on the other side. So maybe_unify is
+   left byte-for-byte untouched and the determinism leg proves neutrality. The
+   trade-off vs. a maybe_unify flag: we build two small type trees per
+   comparison (skolemized + free) instead of threading a bool through the
+   unifier; comparisons only happen at viable-set>1 sites, so this is off the
+   hot path anyway.
+*/
+type gen_cmp_t = MoreGeneric | LessGeneric | EqGeneric | IncompGeneric
+
+/* Replace each opaque skolem constant TypApp([], n) (n in `skolems`) with a
+   fresh free TypVar, CONSISTENTLY (same skolem id -> same fresh var), building a
+   NEW type tree (non-destructive) so the rigid original is preserved. This turns
+   a skolemized ("frozen") signature back into a maximally-general one for the
+   opposite-direction unification trial.
+
+   Reuses the Ast.fx walk_typ traversal, so new typ_t constructors are handled
+   automatically. The only arms we spell out are the skolem interception and the
+   two cases where dup_typ_ recurses into itself rather than through the callback
+   (TypVar(ref Some ..) and TypRecord) -- a skolem sits behind a frozen
+   TypVar(ref Some(TypApp([],nt))), so the callback must reach inside those. */
+fun unskolemize_typ(t: typ_t, skolems: id_t list): typ_t {
+    if skolems == [] { return t }
+    var subst: (id_t, typ_t) list = []
+    fun unskolem_(t: typ_t, callb: ast_callb_t): typ_t =
+        match t {
+        | TypApp([], n) when skolems.mem(n) =>
+            match subst.assoc_opt(n) {
+            | Some(v) => v
+            | _ => val v = make_new_typ(); subst = (n, v) :: subst; v
+            }
+        | TypVar (ref Some(t1)) => TypVar(ref Some(unskolem_(t1, callb)))
+        | TypVar _ => TypVar(ref None)
+        | TypRecord(r) =>
+            val (relems, ordered) = *r
+            TypRecord(ref ([:: for (fl, n, t, v) <- relems {(fl, n, unskolem_(t, callb), v)}], ordered))
+        | _ => walk_typ(t, callb)
+        }
+    val callb = ast_callb_t {ast_cb_typ=Some(unskolem_), ast_cb_exp=None, ast_cb_pat=None}
+    unskolem_(t, callb)
+}
+
+/* Core of §3: is t1 more/less/equally/in-comparably general than t2, where
+   skolems1/skolems2 identify the (already frozen) template parameters embedded
+   in t1/t2 as opaque TypApp([], id) constants.
+
+   Two one-way maybe_unify(update_refs=false) trials -- neither commits anything:
+     covers1_2 : does t1-made-free match t2-rigid?  (t1 can specialize onto t2)
+     covers2_1 : does t2-made-free match t1-rigid?  (t2 can specialize onto t1)
+   Classification (result describes t1 relative to t2):
+     both    -> EqGeneric      (mutually applicable: same generality)
+     1 only  -> MoreGeneric    (t1 covers t2 but not vice versa)
+     2 only  -> LessGeneric    (t1 is the more specific / less general one)
+     neither -> IncompGeneric  (overlapping-but-unordered, e.g. f('t,int) vs f(int,'t)) */
+fun compare_typ_generality(t1: typ_t, skolems1: id_t list,
+                           t2: typ_t, skolems2: id_t list): gen_cmp_t
+{
+    val free1 = unskolemize_typ(t1, skolems1)
+    val free2 = unskolemize_typ(t2, skolems2)
+    val covers1_2 = maybe_unify(free1, t2, noloc, false)
+    val covers2_1 = maybe_unify(free2, t1, noloc, false)
+    match (covers1_2, covers2_1) {
+    | (true, true) => EqGeneric
+    | (true, false) => MoreGeneric
+    | (false, true) => LessGeneric
+    | (false, false) => IncompGeneric
+    }
+}
+
+/* Prepare a function's signature for generality comparison: resolve its template
+   parameters to fresh type variables (exactly as preprocess_templ_typ does for
+   real resolution), then FREEZE each to an opaque constant TypApp([], targ_id)
+   -- a skolem. targ_id is the template parameter's own gensym'd id, unique
+   across declarations, so two functions never share a skolem. Returns the
+   signature type used for ranking + the skolem id list (== df_templ_args).
+
+   Ranking compares the PARAMETER tuple. Keyword arguments ride along for free:
+   df_typ already carries the implicit trailing keyword TypRecord as its last
+   parameter (lookup_id_opt adds it only to the *caller* side), so record
+   unification by field name distinguishes keyword-differing overloads with no
+   special case. Constructors additionally let the RETURN type participate (§3),
+   so for them we compare the whole TypFun. */
+fun skolemize_fun_sig(df: deffun_t ref): (typ_t, id_t list)
+{
+    val {df_typ, df_templ_args, df_env, df_scope, df_loc, df_flags} = *df
+    val (ftyp, skolems) =
+        if df_templ_args == [] { (df_typ, []) }
+        else {
+            val (ftyp, env1) = preprocess_templ_typ(df_templ_args, df_typ, df_env, df_scope, df_loc)
+            for nt <- df_templ_args {
+                match find_all(nt, env1) {
+                | EnvTyp(TypVar(r)) :: _ => *r = Some(TypApp([], nt))
+                | _ => {}
+                }
+            }
+            (ftyp, df_templ_args)
+        }
+    // extract the comparison type: param tuple for ordinary funcs, whole TypFun
+    // (params -> return) for constructors so the return type participates.
+    val cmp_typ = match (deref_typ(ftyp), is_constructor(df_flags)) {
+        | (TypFun(argtyps, _), false) => TypTuple(argtyps)
+        | (ftyp_d, _) => ftyp_d
+        }
+    (cmp_typ, skolems)
+}
+
+/* §3 function-level wrapper: the ranking winner is the LEAST generic viable
+   candidate. Result describes df1 relative to df2. */
+fun compare_fun_generality(df1: deffun_t ref, df2: deffun_t ref): gen_cmp_t
+{
+    val (t1, sk1) = skolemize_fun_sig(df1)
+    val (t2, sk2) = skolemize_fun_sig(df2)
+    compare_typ_generality(t1, sk1, t2, sk2)
+}
+
 /* this is another flavor of type unification function;
    it throws an exception in the case of failure */
 fun unify(t1: typ_t, t2: typ_t, loc: loc_t, msg: string): void =
@@ -784,7 +908,80 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list,
     }
 }
 
+/* WP-E / D2: the -pr-resolve trace -- the E1 instrument, side-effect-free.
+   fun_matches_trial mirrors lookup_id_opt's IdFun viability test but with
+   update_refs=false and against a throwaway copy of the expected type, so it
+   never commits: whether a candidate is viable is decided without touching the
+   real inference state. */
+fun fun_matches_trial(df: deffun_t ref, t: typ_t, sc: scope_t list, loc: loc_t): bool
+{
+    val {df_templ_args, df_typ, df_flags, df_env} = *df
+    // replicate lookup_id_opt's implicit trailing keyword-record on the caller type
+    val t = match (df_flags.fun_flag_have_keywords, deref_typ(t)) {
+        | (true, TypFun(argtyps, rt)) =>
+            val argtyps = match argtyps {
+                | _ :: _ when (match deref_typ(argtyps.last()) {
+                    | TypRecord (ref (_, false)) => true | _ => false }) => argtyps
+                | _ => argtyps + [:: TypRecord(ref ([], false))]
+                }
+            TypFun(argtyps, rt)
+        | _ => t
+        }
+    if df_templ_args == [] {
+        maybe_unify(df_typ, t, loc, false)
+    } else {
+        val (ftyp, _) = preprocess_templ_typ(df_templ_args, df_typ, df_env, sc, loc)
+        maybe_unify(ftyp, t, loc, false)
+    }
+}
+
+/* For every lookup whose viable FUNCTION set has >1 entry, print the candidates,
+   the env-order winner (the first viable -- exactly what find_first commits to
+   today) and the generality winner (the unique least-generic candidate per
+   compare_fun_generality, or "<none>" when tied/unordered). Building the viable
+   set uses update_refs=false trials on fresh copies of `t`, so it does not alter
+   what the normal resolution below then does. With -pr-resolve off this returns
+   at the guard -> zero effect, and the generated .c is byte-identical (the
+   determinism leg is the proof). */
+fun trace_resolve(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): void
+{
+    // Only trace genuine call-position resolution: the expected type must be a
+    // function type. A bare identifier used as a value (e.g. `array(size, 0)`,
+    // where `size` is an int parameter that merely shares its name with the
+    // container `size` functions) is looked up with a non-function `t`, and is
+    // correctly skipped here.
+    if Options.opt.print_resolve && (match deref_typ(t) { | TypFun _ => true | _ => false }) {
+        var acc: deffun_t ref list = []
+        for e <- find_all(n, env) {
+            match e {
+            | EnvId(i) =>
+                match id_info(i, loc) {
+                | IdFun(df) => if fun_matches_trial(df, dup_typ(t), sc, loc) { acc = df :: acc }
+                | _ => {}
+                }
+            | _ => {}
+            }
+        }
+        val viable = acc.rev()
+        if viable.length() > 1 {
+            val envwin = viable.hd()
+            val genwin = find_opt(for c <- viable {
+                all(for d <- viable { c == d || compare_fun_generality(c, d) == LessGeneric }) })
+            val agree = match genwin { | Some(g) => g == envwin | _ => false }
+            print(f"-pr-resolve: '{pp(n)}' @ {string(loc)}: {viable.length()} viable for {typ2str(t)}\n")
+            for c <- viable { print(f"    candidate: {Ast_pp.fun2sigstr(c)}\n") }
+            print(f"    env-order  winner: {Ast_pp.fun2sigstr(envwin)}\n")
+            match genwin {
+            | Some(g) => print(f"    generality winner: {Ast_pp.fun2sigstr(g)}\n")
+            | _ => print("    generality winner: <none: tied or unordered>\n")
+            }
+            print(f"    winners agree: {agree}\n")
+        }
+    }
+}
+
 fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): ((id_t, typ_t)?, env_entry_t list) {
+    trace_resolve(n, t, env, sc, loc)
     var possible_matches = []
     val nt_opt = find_first(n, env, env, sc, loc, fun (e: env_entry_t): (id_t, typ_t)? {
         | EnvId({m=0}) => None
