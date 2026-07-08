@@ -178,7 +178,7 @@ operator + (a: char, b: char): string
     return fx_make_str(cc, 2, fx_result);
 }
 
-operator + (l1: 't list, l2: 't list)
+operator + (l1: 't list, l2: 't list): 't list
 {
     @nothrow fun link2(l1: 't list, l2: 't list): 't list = @ccode { fx_link_lists(l1, l2, fx_result) }
     match (l1, l2) {
@@ -510,8 +510,8 @@ fun string(v: char vector, fmt: format_t) = string(string(v), fmt)
     return fx_status;
 }
 
-operator * (n: int, c: char) = c * n
-operator * (n: int, s: string) = s * n
+operator * (n: int, c: char): string = c * n
+operator * (n: int, s: string): string = s * n
 
 operator == (a: 't list, b: 't list): bool
 {
@@ -573,13 +573,13 @@ fun size(_: ('t*3)) = 3
 fun size(_: ('t*4)) = 4
 fun size(_: ('t*5)) = 5
 
-operator == (a: (...), b: (...)) =
+operator == (a: (...), b: (...)): bool =
     fold f=true for aj <- a, bj <- b {if aj == bj {f} else {false}}
-operator <=> (a: (...), b: (...)) =
+operator <=> (a: (...), b: (...)): int =
     fold d=0 for aj <- a, bj <- b {if d != 0 {d} else {aj <=> bj}}
-operator == (a: {...}, b: {...}) =
+operator == (a: {...}, b: {...}): bool =
     fold f=true for (_, aj) <- a, (_, bj) <- b {if aj == bj {f} else {false}}
-operator <=> (a: {...}, b: {...}) =
+operator <=> (a: {...}, b: {...}): int =
     fold d=0 for (_, aj) <- a, (_, bj) <- b {if d != 0 {d} else {aj <=> bj}}
 
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
@@ -633,32 +633,32 @@ fun abs(a: long): long
 // (uniform-x-uniform is covered by uniform-x-anything, not conversely), so on
 // a (tuple, tuple) call the element-wise form wins by specificity, and on a
 // (tuple, scalar) call only the broadcast form is viable.
-operator .* (a: ('t...), b: 'ts) = (for aj <- a {aj * b})
-operator ./ (a: ('t...), b: 'ts) = (for aj <- a {aj / b})
-operator .* (a: 'ts, b: ('t...)) = (for bj <- b {a * bj})
-operator ./ (a: 'ts, b: ('t...)) = (for bj <- b {a / bj})
-operator + (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj + bj})
-operator - (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj - bj})
-operator .+ (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj + bj})
-operator .- (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj - bj})
-operator .* (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj * bj})
-operator ./ (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj / bj})
+operator .* (a: ('t...), b: 'ts): ('t3 ...) = (for aj <- a {aj * b})
+operator ./ (a: ('t...), b: 'ts): ('t3 ...) = (for aj <- a {aj / b})
+operator .* (a: 'ts, b: ('t...)): ('t3 ...) = (for bj <- b {a * bj})
+operator ./ (a: 'ts, b: ('t...)): ('t3 ...) = (for bj <- b {a / bj})
+operator + (a: ('t1...), b: ('t2...)): ('t3 ...) = (for aj <- a, bj <- b {aj + bj})
+operator - (a: ('t1...), b: ('t2...)): ('t3 ...) = (for aj <- a, bj <- b {aj - bj})
+operator .+ (a: ('t1...), b: ('t2...)): ('t3 ...) = (for aj <- a, bj <- b {aj + bj})
+operator .- (a: ('t1...), b: ('t2...)): ('t3 ...) = (for aj <- a, bj <- b {aj - bj})
+operator .* (a: ('t1...), b: ('t2...)): ('t3 ...) = (for aj <- a, bj <- b {aj * bj})
+operator ./ (a: ('t1...), b: ('t2...)): ('t3 ...) = (for aj <- a, bj <- b {aj / bj})
 operator | (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj | bj})
 operator & (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj & bj})
 operator ^ (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj ^ bj})
 
 // complex multiplication
-operator * (a: ('t*2), b: ('t*2)) =
+operator * (a: ('t*2), b: ('t*2)): ('t*2) =
     (a.0*b.0 - a.1*b.1, a.0*b.1 + a.1*b.0)
 // and division
-operator / (a: ('t*2), b: ('t*2))
+operator / (a: ('t*2), b: ('t*2)): ('t*2)
 {
     val q = b.0*b.0 + b.1*b.1
     ((a.0*b.0 + a.1*b.1)/q, (a.1*b.0 - a.0*b.1)/q)
 }
 
 // quaternion product
-operator * (a: ('t*4), b: ('t*4)) =
+operator * (a: ('t*4), b: ('t*4)): ('t*4) =
     (a.0*b.0 - a.1*b.1 - a.2*b.2 - a.3*b.3,
     a.0*b.1 + a.1*b.0 + a.2*b.3 - a.3*b.2,
     a.0*b.2 - a.1*b.3 + a.2*b.0 + a.3*b.1,
@@ -720,13 +720,13 @@ operator .<= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj <= 
 operator .> (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj > bj})
 operator .>= (a: ('t...), b: ('t...)): (bool...) = (for aj <- a, bj <- b {aj >= bj})
 
-operator == (a: 't?, b: 't?) {
+operator == (a: 't?, b: 't?): bool {
     | (Some(a), Some(b)) => a == b
     | (None, None) => true
     | _ => false
 }
 
-operator <=> (a: 't?, b: 't?) {
+operator <=> (a: 't?, b: 't?): int {
     | (Some(a), Some(b)) => a <=> b
     | (None, Some _) => -1
     | (Some _, None) => 1
@@ -775,7 +775,7 @@ operator === (a: (...), b: (...)): bool =
     fold f=true for aj<-a, bj<-b {f & (aj === bj)}
 operator === (a: {...}, b: {...}): bool =
     fold f=true for (_, aj)<-a, (_, bj)<-b {f & (aj === bj)}
-operator === (a: 't?, b: 't?) {
+operator === (a: 't?, b: 't?): bool {
     | (Some(a), Some(b)) => a === b
     | (None, None) => true
     | _ => false

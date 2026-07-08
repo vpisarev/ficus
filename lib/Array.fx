@@ -82,88 +82,88 @@ fun sat_int8(a: 't [+]) = [for x <- a {sat_int8(x)}]
 fun sat_uint16(a: 't [+]) = [for x <- a {sat_uint16(x)}]
 fun sat_int16(a: 't [+]) = [for x <- a {sat_int16(x)}]
 
-operator .+ (a: 'ta [+], b: 'tb) =
+operator .+ (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x .+ b}]
-operator .- (a: 'ta [+], b: 'tb) =
+operator .- (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x .- b}]
-operator .* (a: 'ta [+], b: 'tb) =
+operator .* (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x .* b}]
-operator ./ (a: 'ta [+], b: 'tb) =
+operator ./ (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x ./ b}]
-operator .% (a: 'ta [+], b: 'tb) =
+operator .% (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x .% b}]
-operator .** (a: 'ta [+], b: 'tb) =
+operator .** (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x .** b}]
 
-operator .+ (a: 'ta, b: 'tb [+]) =
+operator .+ (a: 'ta, b: 'tb [+]): 't3 [+] =
     [for y <- b {a .+ y}]
-operator .- (a: 'ta, b: 'tb [+]) =
+operator .- (a: 'ta, b: 'tb [+]): 't3 [+] =
     [for y <- b {a .- y}]
-operator .* (a: 'ta, b: 'tb [+]) =
+operator .* (a: 'ta, b: 'tb [+]): 't3 [+] =
     [for y <- b {a .* y}]
-operator ./ (a: 'ta, b: 'tb [+]) =
+operator ./ (a: 'ta, b: 'tb [+]): 't3 [+] =
     [for y <- b {a ./ y}]
-operator .% (a: 'ta, b: 'tb [+]) =
+operator .% (a: 'ta, b: 'tb [+]): 't3 [+] =
     [for y <- b {a .% y}]
-operator .** (a: 'ta, b: 'tb [+]) =
+operator .** (a: 'ta, b: 'tb [+]): 't3 [+] =
     [for y <- b {a .** y}]
 
-operator + (a: 'ta [+], b: 'tb [+]) =
+operator + (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x + y}]
-operator - (a: 'ta [+], b: 'tb [+]) =
+operator - (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x - y}]
-operator .+ (a: 'ta [+], b: 'tb [+]) =
+operator .+ (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x + y}]
-operator .- (a: 'ta [+], b: 'tb [+]) =
+operator .- (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x - y}]
-operator .* (a: 'ta [+], b: 'tb [+]) =
+operator .* (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x .* y}]
-operator ./ (a: 'ta [+], b: 'tb [+]) =
+operator ./ (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x ./ y}]
-operator .% (a: 'ta [+], b: 'tb [+]) =
+operator .% (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x .% y}]
-operator .** (a: 'ta [+], b: 'tb [+]) =
+operator .** (a: 'ta [+], b: 'tb [+]): 't3 [+] =
     [for x <- a, y <- b {x .** y}]
 
-operator += (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x + b} }
-operator -= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x - b} }
-operator .*= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x * b} }
-operator ./= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x / b} }
-operator .%= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x % b} }
+operator += (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x + b} }
+operator -= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x - b} }
+operator .*= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x * b} }
+operator ./= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x / b} }
+operator .%= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x % b} }
 
-operator += (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x + y} }
-operator -= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x - y} }
-operator .*= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x * y} }
-operator ./= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x / y} }
-operator .%= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x % y} }
+operator += (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x + y} }
+operator -= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x - y} }
+operator .*= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x * y} }
+operator ./= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x / y} }
+operator .%= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x % y} }
 
-operator & (a: 't, b: 't [+]) =
+operator & (a: 't, b: 't [+]): 't [+] =
     [for y <- b {a & y}]
-operator | (a: 't, b: 't [+]) =
+operator | (a: 't, b: 't [+]): 't [+] =
     [for y <- b {a | y}]
-operator ^ (a: 't, b: 't [+]) =
+operator ^ (a: 't, b: 't [+]): 't [+] =
     [for y <- b {a ^ y}]
-operator & (a: 't [+], b: 't) =
+operator & (a: 't [+], b: 't): 't [+] =
     [for x <- a {x & b}]
-operator | (a: 't [+], b: 't) =
+operator | (a: 't [+], b: 't): 't [+] =
     [for x <- a {x | b}]
-operator ^ (a: 't [+], b: 't) =
+operator ^ (a: 't [+], b: 't): 't [+] =
     [for x <- a {x ^ b}]
 
-operator & (a: 't [+], b: 't [+]) =
+operator & (a: 't [+], b: 't [+]): 't [+] =
     [for x <- a, y <- b {x & y}]
-operator | (a: 't [+], b: 't [+]) =
+operator | (a: 't [+], b: 't [+]): 't [+] =
     [for x <- a, y <- b {x | y}]
-operator ^ (a: 't [+], b: 't [+]) =
+operator ^ (a: 't [+], b: 't [+]): 't [+] =
     [for x <- a, y <- b {x ^ y}]
 
-operator &= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x & b} }
-operator |= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x | b} }
-operator ^= (a: 'ta [+], b: 'tb) { for x@idx <- a { a[idx] = x ^ b} }
+operator &= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x & b} }
+operator |= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x | b} }
+operator ^= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x ^ b} }
 
-operator &= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x & y} }
-operator |= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x | y} }
-operator ^= (a: 'ta [+], b: 'tb [+]) { for x@idx <- a, y <- b { a[idx] = x ^ y} }
+operator &= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x & y} }
+operator |= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x | y} }
+operator ^= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x ^ y} }
 
 operator .<=> (a: 't [+], b: 't [+]): int [+] =
     [for x <- a, y <- b {x <=> y}]
@@ -171,7 +171,7 @@ operator .== (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {x == y}]
 operator .!= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(x == y)}]
-operator .< (a: 't [+], b: 't [+]) =
+operator .< (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {x < y}]
 operator .<= (a: 't [+], b: 't [+]): bool [+] =
     [for x <- a, y <- b {!(y < x)}]
@@ -186,7 +186,7 @@ operator .== (x: 't, b: 't [+]): bool [+] =
     [for y <- b {x == y}]
 operator .!= (x: 't, b: 't [+]): bool [+] =
     [for y <- b {!(x == y)}]
-operator .< (x: 't, b: 't [+]) =
+operator .< (x: 't, b: 't [+]): bool [+] =
     [for y <- b {x < y}]
 operator .<= (x: 't, b: 't [+]): bool [+] =
     [for y <- b {!(y < x)}]
@@ -201,7 +201,7 @@ operator .== (a: 't [+], y: 't): bool [+] =
     [for x <- a {x == y}]
 operator .!= (a: 't [+], y: 't): bool [+] =
     [for x <- a {!(x == y)}]
-operator .< (a: 't [+], y: 't) =
+operator .< (a: 't [+], y: 't): bool [+] =
     [for x <- a {x < y}]
 operator .<= (a: 't [+], y: 't): bool [+] =
     [for x <- a {!(y < x)}]
@@ -281,20 +281,20 @@ fun maxindex(a: 't []): ('t, int) =
         }
     }
 
-operator ' (a: 't [,])
+operator ' (a: 't [,]): 't [,]
 {
     val (m, n) = size(a)
     [for j <- 0:n for i <- 0:m {a[i, j]}]
 }
 
-operator ' (a: 't [])
+operator ' (a: 't []): 't [,]
 {
     val n = size(a)
     [for j <- 0:n for i <- 0:1 {a[j]}]
 }
 
 // matrix product: not very efficient and is put here for now just as a placeholder
-operator * (a: 't [,], b: 't [,])
+operator * (a: 't [,], b: 't [,]): 't [,]
 {
     val (ma, na) = size(a), (mb, nb) = size(b)
     assert(na == mb)
@@ -321,10 +321,10 @@ operator * (a: 't [,], b: 't [,])
     c
 }
 
-operator * (a: float [,], b: float [,]) = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
-operator * (a: double [,], b: double [,]) = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
+operator * (a: float [,], b: float [,]): 't3 [,] = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
+operator * (a: double [,], b: double [,]): 't3 [,] = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
 
-operator *= (a: 't [,], b: 't [,]) {
+operator *= (a: 't [,], b: 't [,]): void {
     val temp = a*b
     a[:,:] = temp
 }
@@ -335,11 +335,11 @@ fun row2matrix(a: 't [])
     [for i <- 0:1 for j <- 0:n {a[j]}]
 }
 
-operator * (a: 't [], b: 't [,]) = row2matrix(a)*b
-operator * (a: 't [,], b: 't []) = a*row2matrix(b)
+operator * (a: 't [], b: 't [,]): 't [,] = row2matrix(a)*b
+operator * (a: 't [,], b: 't []): 't [,] = a*row2matrix(b)
 
-operator * (a: 't [+], alpha: 't) = [for x <- a {x*alpha}]
-operator * (alpha: 't, a: 't [+]) = [for x <- a {x*alpha}]
+operator * (a: 't [+], alpha: 't): 't [+] = [for x <- a {x*alpha}]
+operator * (alpha: 't, a: 't [+]): 't [+] = [for x <- a {x*alpha}]
 
 fun diag(d: 't[])
 {

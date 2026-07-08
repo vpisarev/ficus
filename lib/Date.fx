@@ -130,13 +130,13 @@ val weekday_short_names_eng = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", 
 val weekday_names = [for i <- 0:8 {weekday_name_(i, false)}]
 val weekday_short_names = [for i <- 0:8 {weekday_name_(i, true)}]
 
-operator + (date: t, delta: int) = date.{jdn = date.jdn + delta}
-operator + (delta: int, date: t) = date.{jdn = date.jdn + delta}
-operator - (date: t, delta: int) = date.{jdn = date.jdn - delta}
-operator - (date1: t, date2: t) = date1.jdn - date2.jdn
+operator + (date: t, delta: int): t = date.{jdn = date.jdn + delta}
+operator + (delta: int, date: t): t = date.{jdn = date.jdn + delta}
+operator - (date: t, delta: int): t = date.{jdn = date.jdn - delta}
+operator - (date1: t, date2: t): int = date1.jdn - date2.jdn
 
-operator == (date1: t, date2: t) = date1.jdn == date2.jdn
-operator <=> (date1: t, date2: t) = date1.jdn <=> date2.jdn
+operator == (date1: t, date2: t): bool = date1.jdn == date2.jdn
+operator <=> (date1: t, date2: t): int = date1.jdn <=> date2.jdn
 
 fun is_leap_year(year: int, ~calendar: calendar_t=Calendar_Auto): bool
 {
