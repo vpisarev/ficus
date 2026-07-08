@@ -155,6 +155,22 @@ fires on the real path wherever ranking actually happens, so it sees more
 than the old TypFun-gated instrument. All 7 are ties among trivially-viable
 candidates at free-var sites; none changes a winner (bootstrap proof).
 
+## Addendum (`487d30d`) — tuple arithmetic on uniform tuples only
+
+Vadim's review of the phase-2 Builtins change led to the better design, now
+landed: tuple ARITHMETIC (`+ - .+ .- .* ./`) is defined on **uniform tuples
+only** (tuples-as-short-numeric-vectors, the `std::array<T,n>` role) —
+tuple×tuple forms are `('t1 ...) op ('t2 ...)` (operands uniform, element
+types may differ), and the scalar-broadcast forms returned to the original
+`('t ...) op 'ts`. Uniform×uniform is covered by uniform×anything (not
+conversely), so the set is strictly ranked and `tup op tup` picks the
+element-wise form by specificity — the phase-2 `(...)`-broadcast workaround
+is superseded. Structural generics (`==`, `<=>` lexicographic, `===`,
+`string`, `print`, `hash`) keep `(...)` and still accept mixed tuples.
+Mixed-tuple arithmetic is now a clean not-found error (one corpus site
+existed: the `basic.overloaded` showcase, updated). This retires open item 4
+below.
+
 ## Open items for session 2
 
 1. **Deferral** (proposal §5 + under-constrained calls): S1 (`int + 't` in

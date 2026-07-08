@@ -623,24 +623,26 @@ fun abs(a: long): long
 @pure @nothrow fun sign(a: long): int
 @ccode { return fx_long_sign(a, fx_result) }
 
-// resolve-1: the scalar-broadcast forms take `(...)` (element-wise independent
-// tuple), not `('t...)` (uniform tuple). With `('t...)` they were semantically
-// INCOMPARABLE with the tuple-x-tuple `(...) op (...)` forms below, and only
-// the declaration order made `t1 .* t2` pick the element-wise version; under
-// least-generic overload ranking that was an ambiguity error. With `(...)`
-// the tuple-x-tuple form is strictly more specific, so ranking selects it on
-// (tuple, tuple) calls with no ordering dependence -- and mixed tuples now
-// broadcast too ((1, 2.) .* 3 works).
-operator .* (a: (...), b: 'ts) = (for aj <- a {aj * b})
-operator ./ (a: (...), b: 'ts) = (for aj <- a {aj / b})
-operator .* (a: 'ts, b: (...)) = (for bj <- b {a * bj})
-operator ./ (a: 'ts, b: (...)) = (for bj <- b {a / bj})
-operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})
-operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj - bj})
-operator .+ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})
-operator .- (a: (...), b: (...)) = (for aj <- a, bj <- b {aj - bj})
-operator .* (a: (...), b: (...)) = (for aj <- a, bj <- b {aj * bj})
-operator ./ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj / bj})
+// resolve-1: tuple ARITHMETIC is deliberately defined on UNIFORM tuples only
+// (tuples-as-short-numeric-vectors, the std::array<T,n> role); the structural
+// operations (== / <=> / string / hash / ...) stay on `(...)`. The two operands
+// may have different element types ('t1 vs 't2: int-tuple .+ double-tuple is
+// fine), but each operand must be uniform. This also makes the overload set
+// cleanly rankable with no declaration-order dependence:
+//   ('t1...) op ('t2...)  <  ('t...) op 'ts  /  'ts op ('t...)
+// (uniform-x-uniform is covered by uniform-x-anything, not conversely), so on
+// a (tuple, tuple) call the element-wise form wins by specificity, and on a
+// (tuple, scalar) call only the broadcast form is viable.
+operator .* (a: ('t...), b: 'ts) = (for aj <- a {aj * b})
+operator ./ (a: ('t...), b: 'ts) = (for aj <- a {aj / b})
+operator .* (a: 'ts, b: ('t...)) = (for bj <- b {a * bj})
+operator ./ (a: 'ts, b: ('t...)) = (for bj <- b {a / bj})
+operator + (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj + bj})
+operator - (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj - bj})
+operator .+ (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj + bj})
+operator .- (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj - bj})
+operator .* (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj * bj})
+operator ./ (a: ('t1...), b: ('t2...)) = (for aj <- a, bj <- b {aj / bj})
 operator | (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj | bj})
 operator & (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj & bj})
 operator ^ (a: ('t...), b: ('t...)): ('t...) = (for aj <- a, bj <- b {aj ^ bj})

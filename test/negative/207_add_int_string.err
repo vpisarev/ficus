@@ -6,7 +6,7 @@ Candidates:
  __add__(char, char) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'char',
  __add__('t list, 't list) -> <unknown> [generic: 't] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match ''t list',
  __add__(long, long) -> long @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'long',
- __add__((...), (...)) -> <unknown> [generic: __var_tuple__] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match '(...)',
+ __add__(('t1 ...), ('t2 ...)) -> <unknown> [generic: 't1, 't2, __var_tuple__] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match '('t1 ...)',
  __add__('ta [+], 'tb [+]) -> <unknown> [generic: 'ta, 'tb, __var_array__] @ Array.fx:L:C -- argument 1 of type 'int' does not match ''ta [+]'
 
 

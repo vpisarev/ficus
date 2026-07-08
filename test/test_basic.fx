@@ -707,8 +707,11 @@ TEST("basic.loop.squares", fun()
 
 TEST("basic.overloaded", fun()
 {
-    val t = (1, "abc") + (0.125, "def")
-    EXPECT_EQ(t, (1.125, "abcdef"))
+    // resolve-1: tuple arithmetic is defined on UNIFORM tuples only
+    // (tuples-as-short-vectors); the operands may still have different
+    // element types. Mixed tuples like (1, "abc") no longer support `+`.
+    val t = (1, 2) + (0.125, 0.25)
+    EXPECT_EQ(t, (1.125, 2.25))
     type 't point_t = {x: 't; y: 't}
 
     operator + (p1: 't point_t, p2: 't point_t) =
