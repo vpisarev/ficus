@@ -136,7 +136,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         | TypApp(tl2, _) => occurs(r1, tl2)
         | TypInt | TypLong | TypSInt _ | TypUInt _ | TypFloat _ | TypString
         | TypChar | TypBool | TypVoid | TypExn | TypErr
-        | TypCPointer | TypDecl | TypModule | TypVarRecord =>
+        | TypCPointer | TypDecl | TypModule | TypVarRecord | TypVarCollection =>
             false
         }
     fun occurs(r1: typ_t? ref, tl: typ_t list): bool =
@@ -219,6 +219,33 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
             | _ => false
             }
         | (_, TypVar (ref Some(TypVarRecord))) => maybe_unify_(t2, t1, loc)
+        /* TypVarCollection ("some collection", the type of a []-literal):
+           binds only to a list, vector or array (or to an array-var 't [+],
+           or is captured by a plain free var / merged with another
+           collection-var). Everything else is a unification failure -- this
+           is the whole point: [] no longer poses as "anything". */
+        | (TypVar((ref Some(TypVarCollection)) as r1), t2) =>
+            val t2 = deref_typ(t2)
+            match t2 {
+            | TypVar((ref Some(TypVarCollection)) as r2) =>
+                if r1 != r2 {
+                    undo_stack = (r2, *r2) :: undo_stack
+                    *r2 = Some(t1)
+                }
+                true
+            | TypVar((ref None) as r2) =>
+                undo_stack = (r2, *r2) :: undo_stack
+                *r2 = Some(t1)
+                true
+            | TypList _ | TypVector _ | TypArray(_, _)
+            | TypVar(ref Some(TypVarArray _)) =>
+                undo_stack = (r1, *r1) :: undo_stack
+                *r1 = Some(t2)
+                true
+            | TypErr => true
+            | _ => false
+            }
+        | (_, TypVar (ref Some(TypVarCollection))) => maybe_unify_(t2, t1, loc)
         | (TypRef(drt1), TypRef(drt2)) => maybe_unify_(drt1, drt2, loc)
         | (TypRecord(r1), TypRecord(r2)) when r1 == r2 => true
         | (TypRecord (ref (_, false)), TypRecord (ref (_, true))) => maybe_unify_(t2, t1, loc)
@@ -416,6 +443,12 @@ fun freeze_varform_typs(t: typ_t): typ_t {
                                TypApp([], get_id("__skolem2__"))])
             }
         | TypVar (ref Some(TypVarArray(et))) => TypArray(-1, freeze_(et, callb))
+        /* [] / TypVarCollection: freeze to an opaque constant -- "some
+           specific collection, could be list OR vector OR array", so neither
+           't list, 't [], 't vector nor 't [+] covers it; only a plain free
+           't does. (Signatures written in source can't contain it; this arm
+           matters only if a collection-var flows in via inference.) */
+        | TypVar (ref Some(TypVarCollection)) => TypApp([], get_id("__skolem_coll__"))
         | TypVar (ref Some(t1)) => TypVar(ref Some(freeze_(t1, callb)))
         | TypVar _ => t
         | TypRecord(r) =>
@@ -545,6 +578,7 @@ fun typ_has_free_vars(t: typ_t): bool {
             | TypVar (ref Some(TypVarRecord)) => has_free = true; t
             | TypVar (ref Some(TypVarTuple _)) => has_free = true; t
             | TypVar (ref Some(TypVarArray _)) => has_free = true; t
+            | TypVar (ref Some(TypVarCollection)) => has_free = true; t
             | t1 => walk_typ(t1, callb)
             }
         }

@@ -121,6 +121,13 @@ type typ_t =
     | TypVarTuple: typ_t?
     | TypVarArray: typ_t
     | TypVarRecord
+    /* "some collection" (list, vector or array), element type yet unknown.
+       This is the type of the empty-collection literal []: unlike a plain
+       free TypVar it refuses to unify with scalars, records, functions etc.,
+       so `val n: int = []` or `[] + 3.14` fail in the type checker, and an
+       overload trial cannot bind a free-typed [] accumulator to an unrelated
+       generic parameter (the FB-007/S3 collision shape). */
+    | TypVarCollection
     | TypInt
     | TypSInt: int
     | TypUInt: int
@@ -853,7 +860,7 @@ fun get_lit_typ(l: lit_t) {
     | LitString _ => TypString
     | LitChar _ => TypChar
     | LitBool _ => TypBool
-    | LitEmpty => make_new_typ()
+    | LitEmpty => TypVar(ref Some(TypVarCollection))
     | LitNull => TypCPointer
 }
 
@@ -870,6 +877,7 @@ fun deref_typ(t: typ_t): typ_t {
             | TypVar (ref Some(TypVarArray _)) => t
             | TypVar (ref Some(TypVarTuple _)) => t
             | TypVar (ref Some(TypVarRecord)) => t
+            | TypVar (ref Some(TypVarCollection)) => t
             | TypVar (ref Some(t2)) => find_root(t2)
             | _ => t
         }
@@ -1261,6 +1269,7 @@ fun typ2str(t: typ_t): string {
     | TypVarTuple _ => "(...)"
     | TypVarArray(t) => f"{typ2str(t)} [+]"
     | TypVarRecord => "{...}"
+    | TypVarCollection => "[...]"
     | TypVar ((ref Some(t)) as r) => f"{typ2str(t)}"
     | TypVar (r) => "<unknown>"
     | TypApp([], i) => id2str_m(i)
@@ -1384,6 +1393,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypArray(d, et) => TypArray(d, check_n_walk_typ(et, callb))
     | TypVarArray(et) => TypVarArray(check_n_walk_typ(et, callb))
     | TypVarRecord => t
+    | TypVarCollection => t
     | TypRecord((ref (relems, ordered)) as r) =>
         val new_relems = [:: for (flags, n, t, v) <- relems {
             (flags, n, check_n_walk_typ(t, callb), check_n_walk_exp(v, callb))} ]

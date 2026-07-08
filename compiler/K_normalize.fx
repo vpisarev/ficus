@@ -51,6 +51,9 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
             "variable array type cannot be inferenced; please, use explicit type annotation")
         | TypVarRecord => throw compile_err(loc,
             "variable record type cannot be inferenced; please, use explicit type annotation")
+        | TypVarCollection => throw compile_err(loc,
+            "[] denotes an empty collection (list, vector or array), but which one cannot be " +
+            "inferenced here; please, use explicit type annotation")
         | TypFun(args, rt) => KTypFun([::for t <- args {typ2ktyp_(t)} ], typ2ktyp_(rt))
         | TypRecord (ref (relems, true)) =>
             KTypRecord(noid, [:: for (_, ni, ti, _) <- relems { (ni, typ2ktyp_(ti)) } ])
