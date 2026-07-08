@@ -76,8 +76,7 @@ migrated code.
 
 ### 3.1 Bracketed generic types — DECIDED direction, CONFIRM spelling
 `list[t]`-style application replaces `'t list`. Design log (06–07.07.2026)
-fixed **square brackets** `list[t]`; todo-2026 has an older `list<t>` spelling —
-confirm `[t]` and retire `<t>`. Disambiguation vs indexing is semantic
+fixed **square brackets** `list[t]`. Disambiguation vs indexing is semantic
 (Go/Nim precedent), or v1 without explicit instantiation in expression
 position. Type and its auto-generated constructor functions are one entity in
 resolution (feeds the FB-007 design). Multi-parameter types (`result[a, b]`)
