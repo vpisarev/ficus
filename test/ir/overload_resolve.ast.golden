@@ -16,17 +16,13 @@ template<'t> fun overload_resolve.pick@g4(x: 't): ('t -> int) = { 0 }
 
    @instance fun overload_resolve.pick@g7(overload_resolve.x@g8: string): (string -> int) = { 0 }
 
-   @instance fun overload_resolve.pick@g9(overload_resolve.x@g10: float): (float -> int) = { 0 }
-
-   @instance fun overload_resolve.pick@g11(overload_resolve.x@g12: int): (int -> int) = { 0 }
-
    ]]
-val overload_resolve.a@g13: int = <(int -> int)>overload_resolve.pick@g11(5)
-val overload_resolve.b@g14: int = <(float -> int)>overload_resolve.pick@g9(3.0f)
-val overload_resolve.c@g15: int = <(string -> int)>overload_resolve.pick@g7("hi")
-val overload_resolve.d@g16: int = <(int list -> int)>overload_resolve.pick@g5((1 :: 2 :: []))
+val overload_resolve.a@g9: int = <(int -> int)>overload_resolve.pick@g0(5)
+val overload_resolve.b@g10: int = <(float -> int)>overload_resolve.pick@g2(3.0f)
+val overload_resolve.c@g11: int = <(string -> int)>overload_resolve.pick@g7("hi")
+val overload_resolve.d@g12: int = <(int list -> int)>overload_resolve.pick@g5((1 :: 2 :: []))
 <(string ->
-    void)>Builtins.println@g17(((((((<(int -> string)>Builtins.string@g18(<int>overload_resolve.a@g13) + " ") +
-                                      <(int -> string)>Builtins.string@g18(<int>overload_resolve.b@g14)) + " ") +
-                                    <(int -> string)>Builtins.string@g18(<int>overload_resolve.c@g15)) + " ") +
-                                  <(int -> string)>Builtins.string@g18(<int>overload_resolve.d@g16)))
+    void)>Builtins.println@g13(((((((<(int -> string)>Builtins.string@g14(<int>overload_resolve.a@g9) + " ") +
+                                      <(int -> string)>Builtins.string@g14(<int>overload_resolve.b@g10)) + " ") +
+                                    <(int -> string)>Builtins.string@g14(<int>overload_resolve.c@g11)) + " ") +
+                                  <(int -> string)>Builtins.string@g14(<int>overload_resolve.d@g12)))

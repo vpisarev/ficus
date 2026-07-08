@@ -623,10 +623,18 @@ fun abs(a: long): long
 @pure @nothrow fun sign(a: long): int
 @ccode { return fx_long_sign(a, fx_result) }
 
-operator .* (a: ('t...), b: 'ts) = (for aj <- a {aj * b})
-operator ./ (a: ('t...), b: 'ts) = (for aj <- a {aj / b})
-operator .* (a: 'ts, b: ('t...)) = (for bj <- b {a * bj})
-operator ./ (a: 'ts, b: ('t...)) = (for bj <- b {a / bj})
+// resolve-1: the scalar-broadcast forms take `(...)` (element-wise independent
+// tuple), not `('t...)` (uniform tuple). With `('t...)` they were semantically
+// INCOMPARABLE with the tuple-x-tuple `(...) op (...)` forms below, and only
+// the declaration order made `t1 .* t2` pick the element-wise version; under
+// least-generic overload ranking that was an ambiguity error. With `(...)`
+// the tuple-x-tuple form is strictly more specific, so ranking selects it on
+// (tuple, tuple) calls with no ordering dependence -- and mixed tuples now
+// broadcast too ((1, 2.) .* 3 works).
+operator .* (a: (...), b: 'ts) = (for aj <- a {aj * b})
+operator ./ (a: (...), b: 'ts) = (for aj <- a {aj / b})
+operator .* (a: 'ts, b: (...)) = (for bj <- b {a * bj})
+operator ./ (a: 'ts, b: (...)) = (for bj <- b {a / bj})
 operator + (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})
 operator - (a: (...), b: (...)) = (for aj <- a, bj <- b {aj - bj})
 operator .+ (a: (...), b: (...)) = (for aj <- a, bj <- b {aj + bj})

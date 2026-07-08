@@ -801,7 +801,11 @@ TEST("basic.keyword_args", fun()
         }
     }
 
-    EXPECT_NEAR(`sqrt(81.0)`, 9.0, 1e-10)
+    // resolve-1: `sqrt(81.0)` (all keywords defaulted) ties with the concrete
+    // Math.sqrt(double) under least-generic ranking -> ambiguity error, per the
+    // decided policy (proposal §4/§10.Q2: no "fewer defaults" tie-break).
+    // Passing a keyword makes the intent explicit and only the local sqrt viable.
+    EXPECT_NEAR(`sqrt(81.0, n=2)`, 9.0, 1e-10)
     EXPECT_NEAR(`sqrt(-81.0, use_abs=true, n=4)`, 3.0, 1e-10)
     EXPECT_NEAR(`sqrt(-27.f, n=3)`, -3.f, 1e-6f)
 })

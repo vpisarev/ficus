@@ -330,11 +330,12 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
 }
 
 /* ---------------------------------------------------------------------------
-   Generality comparator (WP-E / D1). PURE and UNWIRED: nothing in resolution
-   calls these yet. Consumed by the -pr-resolve trace (D2), the E1/E4 census and
-   the test/test_gencmp.fx unit tests. They implement §3 of
-   docs/overload_resolution_proposal_v2.md: C++ partial-ordering transplanted
-   into unification.
+   Generality comparator (WP-E / D1, wired into resolution by resolve-1):
+   lookup_id_opt ranks the viable overload set with compare_fun_generality --
+   the unique LEAST generic viable candidate wins. Also consumed by the
+   -pr-resolve trace, the E1/E4 census and the test/test_gencmp.fx unit tests.
+   Implements §3 of docs/overload_resolution_proposal_v2.md: C++
+   partial-ordering transplanted into unification.
 
    "Skolem mode" (Q1) is realized purely by REPRESENTATION, not by a flag on the
    hot unifier: a template parameter frozen to an opaque constant TypApp([], id)
@@ -502,6 +503,31 @@ fun compare_fun_generality(df1: deffun_t ref, df2: deffun_t ref): gen_cmp_t
     val (t1, sk1) = skolemize_fun_sig(df1)
     val (t2, sk2) = skolemize_fun_sig(df2)
     compare_typ_generality(t1, sk1, t2, sk2)
+}
+
+/* Does the type still contain free type variables (including the still-unbound
+   var-form generics {...} / (...) / 't [+])? Used by the overload-resolution
+   tie policy: a call is "fully determined" iff none of its argument types has
+   free vars -- only then is an unresolvable tie a hard ambiguity error;
+   otherwise resolution falls back to env-order first-match (today's semantics)
+   until under-constrained calls get proper deferral (session 2).
+   A more conservative flavor of Ast.is_fixed_typ: var-forms count as free. */
+fun typ_has_free_vars(t: typ_t): bool {
+    var has_free = false
+    fun check_(t: typ_t, callb: ast_callb_t): typ_t =
+        if has_free { t }
+        else {
+            match deref_typ(t) {
+            | TypVar (ref None) => has_free = true; t
+            | TypVar (ref Some(TypVarRecord)) => has_free = true; t
+            | TypVar (ref Some(TypVarTuple _)) => has_free = true; t
+            | TypVar (ref Some(TypVarArray _)) => has_free = true; t
+            | t1 => walk_typ(t1, callb)
+            }
+        }
+    val callb = ast_callb_t {ast_cb_typ=Some(check_), ast_cb_exp=None, ast_cb_pat=None}
+    val _ = check_(t, callb)
+    has_free
 }
 
 /* this is another flavor of type unification function;
@@ -959,11 +985,12 @@ fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list,
     }
 }
 
-/* WP-E / D2: the -pr-resolve trace -- the E1 instrument, side-effect-free.
-   fun_matches_trial mirrors lookup_id_opt's IdFun viability test but with
-   update_refs=false and against a throwaway copy of the expected type, so it
-   never commits: whether a candidate is viable is decided without touching the
-   real inference state. */
+/* The side-effect-free viability trial of the collect phase (resolve-1):
+   mirrors commit_fun's unification (including the implicit trailing keyword
+   record) but with update_refs=false, so whether a candidate is viable is
+   decided without touching the real inference state. The constructor
+   return-type check and the instance-cache scan are commit-only concerns:
+   viability does not depend on them. */
 fun fun_matches_trial(df: deffun_t ref, t: typ_t, sc: scope_t list, loc: loc_t): bool
 {
     val {df_templ_args, df_typ, df_flags, df_env} = *df
@@ -986,137 +1013,224 @@ fun fun_matches_trial(df: deffun_t ref, t: typ_t, sc: scope_t list, loc: loc_t):
     }
 }
 
-/* For every lookup whose viable FUNCTION set has >1 entry, print the candidates,
-   the env-order winner (the first viable -- exactly what find_first commits to
-   today) and the generality winner (the unique least-generic candidate per
-   compare_fun_generality, or "<none>" when tied/unordered). Building the viable
-   set uses update_refs=false trials on fresh copies of `t`, so it does not alter
-   what the normal resolution below then does. With -pr-resolve off this returns
-   at the guard -> zero effect, and the generated .c is byte-identical (the
-   determinism leg is the proof). */
-fun trace_resolve(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): void
-{
-    // Only trace genuine call-position resolution: the expected type must be a
-    // function type. A bare identifier used as a value (e.g. `array(size, 0)`,
-    // where `size` is an int parameter that merely shares its name with the
-    // container `size` functions) is looked up with a non-function `t`, and is
-    // correctly skipped here.
-    if Options.opt.print_resolve && (match deref_typ(t) { | TypFun _ => true | _ => false }) {
-        var acc: deffun_t ref list = []
-        for e <- find_all(n, env) {
-            match e {
-            | EnvId(i) =>
-                match id_info(i, loc) {
-                | IdFun(df) => if fun_matches_trial(df, dup_typ(t), sc, loc) { acc = df :: acc }
-                | _ => {}
+/* resolve-1 (WP-E §2): overload resolution is collect -> rank -> commit.
+
+   For each environment level (the direct hit for `n`, or the module found by
+   the dotted-path search), ALL candidate entries are scanned:
+     - every IdFun is TRIED side-effect-free (fun_matches_trial,
+       update_refs=false) and collected into the viable set; nothing binds;
+     - a non-function entry (value/module/exception) keeps its first-match
+       semantics: it wins immediately if no viable function precedes it
+       (exactly today's behavior), and is skipped otherwise.
+   The viable set is then RANKED by compare_fun_generality: the unique
+   least-generic candidate wins. On a tie (EqGeneric/IncompGeneric at the top):
+     - fully-determined call (no free type vars among the expected argument
+       types) -> ambiguity error listing the tied candidates;
+     - under-constrained call -> fall back to env-order first-match, i.e.
+       today's semantics, until deferral of such calls lands (session 2).
+   The winner is COMMITTED by re-running the pre-resolve-1 success path
+   (unify with update_refs=true + constructor return check + instance cache
+   scan + instantiation) exactly once, for the right candidate.
+
+   With -pr-resolve on, every viable>1 ranking prints the candidates, the
+   env-order winner, the generality winner and the outcome -- this IS the
+   decision path, not a parallel reconstruction. */
+fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): ((id_t, typ_t)?, env_entry_t list) {
+    val curr_m_idx = curr_module(sc)
+    var possible_matches: env_entry_t list = []
+
+    // today's success path, executed once for the winner
+    fun commit_fun(i: id_t, df: deffun_t ref): (id_t, typ_t)? {
+        val {df_name, df_templ_args, df_typ, df_flags, df_templ_inst, df_env} = *df
+        // if the function has keyword parameters, we implicitly add a dummy record argument
+        // to the end of arguments' type list of t
+        val t = match (df_flags.fun_flag_have_keywords, deref_typ(t)) {
+            | (true, TypFun(argtyps, rt)) =>
+                val argtyps = match argtyps {
+                    | _ :: _ when (match deref_typ(argtyps.last()) {
+                        | TypRecord (ref (_, false)) => true
+                        | _ => false }) =>
+                        argtyps
+                    | _ => argtyps + [:: TypRecord(ref ([], false))]
+                    }
+                TypFun(argtyps, rt)
+            | _ => t
+            }
+        if df_templ_args == [] {
+            if maybe_unify(df_typ, t, loc, true) { Some((i, t)) }
+            else { throw compile_err(loc, f"internal error: the winning overload of \
+                   '{pp(n)}' failed to re-unify at commit") }
+        } else {
+            val (ftyp, env1) = preprocess_templ_typ(df_templ_args, df_typ, df_env, sc, loc)
+            if !maybe_unify(ftyp, t, loc, true) {
+                throw compile_err(loc, f"internal error: the winning overload of \
+                    '{pp(n)}' failed to re-unify at commit")
+            }
+            /* a necessary extra step to do before function instantiation;
+                if it's a constructor, we first need to check the return type.
+                this check may implicitly instantiate generic variant type, and so
+                the df_templ_inst list of this constructor will be expanded with new instance.
+                In theory, with such an extra step we should never enter
+                'instantiate_fun' for constructors, because they all will be
+                instantiated from check_typ => instantiate_variant => register_typ_constructor. */
+            val return_orig =
+                if !is_constructor(df_flags) {false}
+                else {
+                    match ftyp {
+                    | TypFun(_, rt) =>
+                        val _ = check_typ(rt, env1, sc, loc); false
+                    | _ => !is_fixed_typ(t)
+                    }
                 }
-            | _ => {}
+            if return_orig { Some((df_name, t)) }
+            else {
+                val inst_name_opt = find_opt(for inst <- *df_templ_inst {
+                    match id_info(inst, loc) {
+                    | IdFun (ref {df_typ=inst_typ}) =>
+                        maybe_unify(inst_typ, t, loc, true)
+                    | _ => throw compile_err(loc, f"invalid (non-function) instance \
+                                             {inst} of template function {pp(df_name)}")
+                    }})
+                match inst_name_opt {
+                | Some(inst_name) => Some((inst_name, t))
+                | _ =>
+                    /* the generic function matches the requested type,
+                        but there is no appropriate instance;
+                        let's create a new one */
+                    val inst_env = inst_merge_env(env, env1)
+                    val { df_name=inst_name, df_typ=inst_typ } =
+                        *instantiate_fun(df, ftyp, inst_env, loc, true)
+                    unify(inst_typ, t, loc, "inconsistent type of the instantiated function")
+                    Some((inst_name, t))
+                }
             }
-        }
-        val viable = acc.rev()
-        if viable.length() > 1 {
-            val envwin = viable.hd()
-            val genwin = find_opt(for c <- viable {
-                all(for d <- viable { c == d || compare_fun_generality(c, d) == LessGeneric }) })
-            val agree = match genwin { | Some(g) => g == envwin | _ => false }
-            print(f"-pr-resolve: '{pp(n)}' @ {string(loc)}: {viable.length()} viable for {typ2str(t)}\n")
-            for c <- viable { print(f"    candidate: {Ast_pp.fun2sigstr(c)}\n") }
-            print(f"    env-order  winner: {Ast_pp.fun2sigstr(envwin)}\n")
-            match genwin {
-            | Some(g) => print(f"    generality winner: {Ast_pp.fun2sigstr(g)}\n")
-            | _ => print("    generality winner: <none: tied or unordered>\n")
-            }
-            print(f"    winners agree: {agree}\n")
         }
     }
-}
 
-fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): ((id_t, typ_t)?, env_entry_t list) {
-    trace_resolve(n, t, env, sc, loc)
-    var possible_matches = []
-    val nt_opt = find_first(n, env, env, sc, loc, fun (e: env_entry_t): (id_t, typ_t)? {
-        | EnvId({m=0}) => None
-        | EnvId(i) =>
-            possible_matches = e :: possible_matches
-            match id_info(i, loc) {
-            | IdDVal ({dv_typ}) =>
-                unify(dv_typ, t, loc, f"incorrect type of value '{pp(n)}': \
-                      expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
-                Some((i, t))
-            | IdFun(df) =>
-                val {df_name, df_templ_args, df_typ, df_flags, df_templ_inst, df_env} = *df
-                // if the function has keyword parameters, we implicitly add a dummy record argument
-                // to the end of arguments' type list of t
-                val t = match (df_flags.fun_flag_have_keywords, deref_typ(t)) {
-                    | (true, TypFun(argtyps, rt)) =>
-                        val argtyps = match argtyps {
-                            | _ :: _ when (match deref_typ(argtyps.last()) {
-                                | TypRecord (ref (_, false)) => true
-                                | _ => false }) =>
-                                argtyps
-                            | _ => argtyps + [:: TypRecord(ref ([], false))]
-                            }
-                        TypFun(argtyps, rt)
-                    | _ => t
-                    }
-                if df_templ_args == [] {
-                    if maybe_unify(df_typ, t, loc, true) { Some((i, t)) } else { None }
-                } else {
-                    val (ftyp, env1) = preprocess_templ_typ(df_templ_args, df_typ, df_env, sc, loc)
-                    // first try to unify the type with the generic template type
-                    if !maybe_unify(ftyp, t, loc, true) { None }
-                    else {
-                        /* a necessary extra step to do before function instantiation;
-                            if it's a constructor, we first need to check the return type.
-                            this check may implicitly instantiate generic variant type, and so
-                            the df_templ_inst list of this constructor will be expanded with new instance.
-                            In theory, with such an extra step we should never enter
-                            'instantiate_fun' for constructors, because they all will be
-                            instantiated from check_typ => instantiate_variant => register_typ_constructor. */
-                        val return_orig =
-                            if !is_constructor(df_flags) {false}
-                            else {
-                                match ftyp {
-                                | TypFun(_, rt) =>
-                                    val _ = check_typ(rt, env1, sc, loc); false
-                                | _ => !is_fixed_typ(t)
-                                }
-                            }
-                        if return_orig { Some((df_name, t)) }
-                        else {
-                            val inst_name_opt = find_opt(for inst <- *df_templ_inst {
-                                match id_info(inst, loc) {
-                                | IdFun (ref {df_typ=inst_typ}) =>
-                                    maybe_unify(inst_typ, t, loc, true)
-                                | _ => throw compile_err(loc, f"invalid (non-function) instance \
-                                                         {inst} of template function {pp(df_name)}")
-                                }})
-                            match inst_name_opt {
-                            | Some(inst_name) => Some((inst_name, t))
-                            | _ =>
-                                /* the generic function matches the requested type,
-                                    but there is no appropriate instance;
-                                    let's create a new one */
-                                val inst_env = inst_merge_env(env, env1)
-                                val { df_name=inst_name, df_typ=inst_typ } =
-                                    *instantiate_fun(df, ftyp, inst_env, loc, true)
-                                unify(inst_typ, t, loc, "inconsistent type of the instantiated function")
-                                Some((inst_name, t))
-                            }
-                        }
-                    }
+    fun rank_and_commit(viable: (id_t, deffun_t ref) list): (id_t, typ_t)? =
+        match viable {
+        | [] => None
+        | [:: (i, df)] => commit_fun(i, df)
+        | _ =>
+            val cands = [:: for (_, df) <- viable {df}]
+            val genwin_opt = find_opt(for (i, c) <- viable {
+                all(for d <- cands { c == d || compare_fun_generality(c, d) == LessGeneric }) })
+            val fully_determined = match deref_typ(t) {
+                | TypFun(argtyps, _) => argtyps.all(fun (at: typ_t) { !typ_has_free_vars(at) })
+                | _ => false
                 }
-            | IdModule _ =>
-                unify(TypModule, t, loc, "unexpected module name")
-                Some((i, t))
-            | IdExn (ref {dexn_typ, dexn_loc }) =>
-                val ctyp = typ2constr(dexn_typ, TypExn, dexn_loc)
-                unify(ctyp, t, loc, "uncorrect type of exception constructor and/or its arguments")
-                Some((i, t))
-            | IdNone | IdTyp _ | IdVariant _ | IdInterface _ => None
+            if Options.opt.print_resolve {
+                val (envwin_i, envwin) = viable.hd()
+                val agree = match genwin_opt { | Some((gi, _)) => gi == envwin_i | _ => false }
+                print(f"-pr-resolve: '{pp(n)}' @ {string(loc)}: {viable.length()} viable for {typ2str(t)}\n")
+                for (_, c) <- viable { print(f"    candidate: {Ast_pp.fun2sigstr(c)}\n") }
+                print(f"    env-order  winner: {Ast_pp.fun2sigstr(envwin)}\n")
+                match genwin_opt {
+                | Some((_, g)) => print(f"    generality winner: {Ast_pp.fun2sigstr(g)}\n")
+                | _ => print("    generality winner: <none: tied or unordered>\n")
+                }
+                print(f"    winners agree: {agree}\n")
+                val outcome = match genwin_opt {
+                    | Some _ => "ranked"
+                    | _ => if fully_determined {"ambiguity error"}
+                           else {"env-order fallback (under-constrained tie)"}
+                    }
+                print(f"    outcome: {outcome}\n")
             }
-        | EnvTyp _ => None
-        })
+            match genwin_opt {
+            | Some((i, df)) => commit_fun(i, df)
+            | _ =>
+                if fully_determined {
+                    val cand_lines = "\n    ".join([:: for (_, c) <- viable {Ast_pp.fun2sigstr(c)}])
+                    throw compile_err(loc, f"ambiguous call of overloaded '{pp(n)}': \
+                        no candidate is more specific than the others. Candidates:\n    {cand_lines}\n\
+                        consider a module-qualified call (e.g. Module.{pp(n)}(...)) to disambiguate")
+                } else {
+                    // under-constrained tie: keep today's env-order first-match
+                    // semantics until deferral lands (session 2)
+                    val (i, df) = viable.hd()
+                    commit_fun(i, df)
+                }
+            }
+        }
+
+    /* scan one env level's entries in order: trial functions (collecting the
+       viable ones), let a non-function entry win immediately when no viable
+       function precedes it -- both exactly mirroring the pre-resolve-1
+       find_first semantics. */
+    fun scan_(elist: env_entry_t list, viable: (id_t, deffun_t ref) list): (id_t, typ_t)? =
+        match elist {
+        | e :: rest =>
+            match e {
+            | EnvId({m=0}) => scan_(rest, viable)
+            | EnvId(i) =>
+                possible_matches = e :: possible_matches
+                match id_info(i, loc) {
+                | IdFun(df) =>
+                    val viable = if fun_matches_trial(df, t, sc, loc) {(i, df) :: viable}
+                                 else {viable}
+                    scan_(rest, viable)
+                | IdDVal ({dv_typ}) =>
+                    match viable {
+                    | [] =>
+                        unify(dv_typ, t, loc, f"incorrect type of value '{pp(n)}': \
+                              expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
+                        Some((i, t))
+                    | _ => scan_(rest, viable)  // a viable function shadows it, as today
+                    }
+                | IdModule _ =>
+                    match viable {
+                    | [] =>
+                        unify(TypModule, t, loc, "unexpected module name")
+                        Some((i, t))
+                    | _ => scan_(rest, viable)
+                    }
+                | IdExn (ref {dexn_typ, dexn_loc }) =>
+                    match viable {
+                    | [] =>
+                        val ctyp = typ2constr(dexn_typ, TypExn, dexn_loc)
+                        unify(ctyp, t, loc, "uncorrect type of exception constructor and/or its arguments")
+                        Some((i, t))
+                    | _ => scan_(rest, viable)
+                    }
+                | IdNone | IdTyp _ | IdVariant _ | IdInterface _ => scan_(rest, viable)
+                }
+            | EnvTyp _ => scan_(rest, viable)
+            }
+        | _ => rank_and_commit(viable.rev())
+        }
+
+    /* one lookup level: direct entries if any, otherwise the dotted-path
+       module search (same logic and comments as find_first's search_path) */
+    fun lookup_(n2: id_t, env2: env_t): (id_t, typ_t)? {
+        fun search_path_(n_path: string, dot_pos: int): (id_t, typ_t)? {
+            val dot_pos = n_path.rfind('.', dot_pos)
+            if dot_pos < 0 {None}
+            else {
+                match find_all(get_id(n_path[:dot_pos]), env2) {
+                | EnvId m :: _ =>
+                    match id_info(m, loc) {
+                    | IdModule m_idx =>
+                        val env3 = if m_idx == curr_m_idx {env} else {get_module_env(m_idx)}
+                        lookup_(get_id(n_path[dot_pos+1:]), env3)
+                    | _ => None
+                    }
+                | _ =>
+                    search_path_(n_path, dot_pos-1)
+                }
+            }
+        }
+        val e_all = find_all(n2, env2)
+        val e_all = if e_all == [] && is_unique_id(n2) { [:: EnvId(n2)] } else { e_all }
+        match e_all {
+        | [] =>
+            val n_path = pp(n2)
+            search_path_(n_path, n_path.length()-1)
+        | _ => scan_(e_all, [])
+        }
+    }
+
+    val nt_opt = lookup_(n, env)
     (nt_opt, possible_matches)
 }
 

@@ -1,17 +1,21 @@
 /*
-    WP-E / D3 — T-res positive suite. Locks CURRENT overload-resolution behavior
-    so the later resolver surgery flips each change deliberately (a failing
-    assertion here == a reviewed decision, not an accident).
+    WP-E / D3 — T-res positive suite. Locks overload-resolution behavior so any
+    change flips a case deliberately (a failing assertion here == a reviewed
+    decision, not an accident).
 
     Self-asserting program (no UTest, no compiler-internal imports): it prints
     each check and throws on the first wrong value, so the fxtest O0/O3
     differential doubles as an assertion at both opt levels.
 
-    Cases marked FIXME(FB-016)/FIXME(FB-007) lock behavior that is WRONG today and
-    is expected to change when tranche A of the resolver surgery lands; when it
-    does, the corresponding assertion fails loudly and is updated in review.
+    resolve-1 status: resolution is collect->rank->commit (least-generic viable
+    candidate wins; ties error at fully-determined sites and fall back to
+    env-order at under-constrained ones). FB-016 is fixed and locked below;
+    FB-007's S2 shape is fixed and locked below (mini-cplx, CplxHelper.fx);
+    FB-007's S3 shape (under-constrained commit) stays FENCED until session 2's
+    deferral.
 
-    See docs/overload_resolution_proposal_v2.md and docs/wpe_tests_report.md.
+    See docs/overload_resolution_proposal_v2.md, docs/resolve1_surgery_brief.md
+    and docs/wpe_tests_report.md.
 */
 import ResHelper
 from ResHelper import *
@@ -62,31 +66,50 @@ check("xmodule.instance_sees_local_eq",
 // FENCED — behavior that is WRONG today; flips when the surgery lands
 // ---------------------------------------------------------------------------
 
-// FIXME(FB-016): greedy first-match. A concrete overload declared BEFORE a
-// generic one LOSES to the generic (env-list is most-recent-first). So bad(5)
-// calls the generic identity and yields 5; a specificity resolver yields 6.
-// When tranche A lands, this assertion fails -> change 5 to 6 and drop the fence.
+// FB-016 FIXED by resolve-1: least-generic ranking picks the concrete overload
+// regardless of declaration order. Before the surgery the generic identity won
+// here (env-list is most-recent-first) and this yielded 5.
 fun bad(x: int) = x + 1
 fun bad(x: 't) = x
-check("FIXME_FB016.generic_beats_concrete", bad(5), 5)   // want-after-fix: 6
+check("FB016_fixed.concrete_beats_generic", bad(5), 6)
+
+// ---------------------------------------------------------------------------
+// FB-007 shapes via the mini-cplx module (CplxHelper.fx mirrors the fenced
+// lib/Complex.fx:15-44 operator shapes; its operators are ninja names, so the
+// plain `import CplxHelper` above... see below -- imported here explicitly)
+// ---------------------------------------------------------------------------
+import CplxHelper
+from CplxHelper import *
+
+// S2-shape (FB-007): `'t cplx * int` on a fully-determined receiver must pick
+// CplxHelper's `*('t cplx, int)`, not the array `__mul__` broadcast. resolve-1
+// ranks the viable set, so this holds regardless of import/declaration order.
+val c = ref (cplx(1, 1))
+*c *= 2
+check("fb007.s2_cplx_times_int", c->re + c->im, 4)
 
 /*
-   FIXME(FB-007): the three generic-`complex` resolution symptoms are NOT
-   reproducible in a self-contained mini-class — they require the real
-   lib/Complex.fx operators (uncommented) plus the `N.fi` imaginary literal and
-   the NN library's generic `+` on `nnop_t list`. Ground-truthed in this WP-E
-   (see docs/found_bugs.md FB-007 and docs/wpe_tests_report.md):
+   FIXME(FB-007, S3-shape) -- STILL FENCED after resolve-1 (session 2 flips it).
+   The commit-half of S3 is an under-constrained call: below, at
+   `[:: x*x] + prog` the fold accumulator `prog` still has a fully free type,
+   so BOTH the list-concat `+('t list, 't list)` (Builtins) and the
+   over-general `+('t, 't cplx)` (CplxHelper, mimicking lib/Complex.fx:17) are
+   viable, and the two are genuinely incomparable. Ranking cannot help; the
+   env-order fallback picks the most recently imported candidate = the cplx
+   one, inferring `prog: int list cplx`, and `.rev()` then fails to match --
+   the exact FromOnnx.fx:1012 / vision_classify.fx failure in miniature.
+   Session 2 (deferral of under-constrained calls) resolves the `+` once
+   `prog`'s type is pinned by the fold result; then this un-fences:
 
-   - S2 (operator mis-resolution): with Complex.fx ops uncommented,
-       val c = ref (1 + 1.fi); *c *= 2
-     resolves `__mul__` to the ARRAY multiply
-     (lib/Array.fx:341: "unsupported iteration domain").
-   - S3 (inference pollution): compiling examples/vision_classify.fx with those
-     ops on infers `nnop_t list Complex.complex` for a plain `nnop_t list`
-     (lib/Complex.fx:17), cascading to NN/FromOnnx.fx:1018.
+   fun build(l: int list) {
+       val fold prog = [] for x <- l { [:: x*x] + prog }
+       prog.rev()
+   }
+   check("fb007.s3_free_accumulator", build([:: 1, 2, 3]).hd(), 1)
 
-   These flip to pass when tranche A lands; they are fenced by keeping
-   lib/Complex.fx:15-44 and examples/fst.fx:125-127 commented in-tree.
+   The real-library reproductions (lib/Complex.fx:15-44 uncommented + the
+   `N.fi` literal in examples/fst.fx:125-127 / examples/vision_classify.fx)
+   stay fenced in-tree for the same reason; see docs/found_bugs.md FB-007.
 */
 
 println(f"\ntest_resolve: {fails} failure(s)")
