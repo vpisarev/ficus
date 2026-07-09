@@ -76,20 +76,25 @@
           print("\n")
       }
       ```
-- [ ] remove restriction for modules to start with a capital letter; in fact, it's not a mandatory thing already,
-      see `examples/fst.fx` that imports `testmod.fx`. But this rule should probably be propagated to std lib
+- [ ] remove restriction for modules to start with a capital letter; in fact,
+      it's not a mandatory thing already, see `examples/fst.fx` that imports `testmod.fx`.
+      But this rule should probably be propagated to std lib
 - [ ] require that complex modules included `__init__.fx` in the root and any subdirectories,
       just like Python. otherwise it's impossible to differentiate between just a tree of
       files and complex hierarchical modules.
 - [ ] support more than 5-dimensional arrays. Maybe 7-dimensional arrays?
 - [ ] shall we add a syntax for saturating +,-,*,/ (including floating-point types)?
-- [ ] syntax like `@parallel_if(condition) for {...}` to run loop as sequential if the problem is small enough.
-      Compilers cannot always figure the bounary properly.
-- [ ] implement `einsum` and support it at compiler level. Probably, it should be done in a generic way.
-      there must be a certain class of special functions that compute all elements of the output array independently from each other.
-      the functions should expose certain API. Then we can fuse those functions with subsequent element-wise operations (array comprehensions,
-      where inputs array(s) are outputs of those special functions).
-- [ ] support numpy-style broadcasting, e.g. [@broadcast for a <- A, b <- B {a*b}].
+- [ ] syntax like `@parallel_if(condition) for {...}` to run loop as sequential
+      if the problem is small enough. Compilers cannot always figure the bounary
+      properly.
+- [ ] implement `einsum` and support it at compiler level. Probably, it should
+      be done in a generic way.
+      there must be a certain class of special functions that compute all elements of
+      the output array independently from each other. The functions should expose certain API.
+      Then we can fuse those functions with subsequent element-wise operations
+      (array comprehensions, where inputs array(s) are outputs of those special functions).
+- [ ] support numpy-style broadcasting, e.g.
+      `[@broadcast for a <- A, b <- B {a*b}]`.
       It makes sense to explicitly specify that we need broadcasting, because in certain scenarios
       size mismatch is undesirable and is an error that must be reported (via exception).
 - [ ] it would be nice to have automatically generated functions to serialize/deserialize
@@ -104,46 +109,55 @@
 - [ ] try to accept `(op)` everywhere where `__opname__` is accepted, e.g. `Complex.(*)(a, b)`
 - [ ] (maybe not) introduce infix `++` as concatenation operator. This should solve several problems with incorrect typing.
 - [ ] revise uniform containers and their names. We now have:
-      * arrays (`'t [,,]` => `t [,,]`; `t`, if not a concrete type, will be specified separately as a template parameter).
-      * lists (`'t list` => `list[t]`)
-      * rrb vectors (`'t vector` => `vector[t]`)
-      * experimental half-baked 'dynamic vectors', `Dynvec.t`, which are similar to `std::vector<t>` or Python lists.
-        See `lib/Dynvec.fx`.
+    * arrays (`'t [,,]` => `t [,,]`; `t`, if not a concrete type, will be specified separately as a template parameter).
+    * lists (`'t list` => `list[t]`)
+    * rrb vectors (`'t vector` => `vector[t]`)
+    * experimental half-baked 'dynamic vectors', `Dynvec.t`, which are similar
+      to `std::vector<t>` or Python lists. See `lib/Dynvec.fx`.
 
-      Now let's see if we need to do any changes:
-      * arrays are definitely useful, they are one of the reason to create Ficus.
-        So they will stay. Probably, a black-box `tensor` will be added
-      * lists are not very efficient from performance point of view, they use memory heap quite actively.
-        But they are one of the most useful concept in functional programming, dated back to Lisp.
-        They are very conveniently handled by pattern matching and recursive functions.
-        With 'list writers', see above, they will become very efficient in `fold` as well
-        (now the common technique is to construct a list inside `fold` in the reverse order with `::` and then reverse it).
-        They are actively used in the compiler and they will be gladly accepted by all Lisp, Haskell, ML users.
-      * Now to rrb vectors. They are much more efficient than lists in terms of memory usage,
-        they are much faster to access in random order and even sequential order, they are immutable,
-        so very safe in parallel workloads. But currently they are not used much.
-        Actually, they are not used at all, they are just tested in test_all.
-        It's also not very clear how to extend pattern matching to handle rrb vectors.
-        Even introduced in the library Map.t (balanced tree) can be processed with pattern matching,
-        because it's built on top of algebraic types. Because of missing pattern matching support,
-        vectors are difficult to use in parsers or other 1D streams analyzers.
-        Pattern matching for vectors should take start_index from where we start matching,
-        arms/cases should lists some matched/captured elements and then we should be able to
-        advance start_index to move to the next portion. Maybe the whole rrb vector should be a pair
-        `(rrbcontainer_vec, start_index_and_iterator)`, maybe the position to the block where
-        start_index resides should be cached so that we can access `rrbvector[start_index]`
-        and its next neighbors instantly? With all those changes maybe rrbvector can become a very
-        efficient functional-programming-friendly alternative to `list[t]`?
-      * `Dynvec.t`, even though it's of very limited functionality, and even without pattern matching,
-        vectors are really useful, Python and C++ users confirm it.
+    Now let's see if we need to do any changes:
+    * arrays are definitely useful, they are one of the main reasons to create
+      Ficus. So they will stay. Probably, a black-box `tensor` will be added
+    * lists are not very efficient from performance point of view, they use
+      memory heap quite actively. But they are one of the most useful concepts in
+      functional programming, dated back to Lisp. They are very conveniently
+      handled by pattern matching and recursive functions. With 'list writers',
+      see above, they will become very efficient in `fold` as well
+      (now the common technique is to construct a list inside `fold` in the
+      reverse order with `::` and then reverse it). They are actively used in
+      the compiler and they will be gladly accepted by all Lisp, Haskell, ML users.
+    * Now to rrb vectors. They are much more efficient than lists in terms of
+      memory usage, they are much faster to access in random order and even
+      sequential order (cache locality), they are immutable, so very safe in
+      parallel workloads.
+      But currently they are not used much. Actually, they are not used at all,
+      they are just tested in test_all. It's not very clear how to extend
+      pattern matching to handle rrb vectors. Even introduced in the library
+      Map.t (balanced tree) can be processed with pattern matching, because it's
+      built on top of algebraic types. Because of missing pattern matching
+      support, vectors are difficult to use in parsers or other 1D streams
+      analyzers. Pattern matching for vectors should take start_index from where
+      we start matching, arms/cases' patterns should list some matched/captured
+      elements and then we should be able to advance start_index to move to the
+      next portion. Maybe the whole rrb vector should become a pair
+      `(rrbcontainer_vec, start_index_and_iterator)`, maybe the position to the
+      block where start_index resides should be cached so that we can access
+      `rrbvector[start_index]` and its next neighbors instantly? With all those
+      changes maybe rrbvector can become a very efficient
+      functional-programming-friendly alternative to `list[t]`?
+    * `Dynvec.t`, even though it's of very limited functionality, and even
+      without pattern matching, it's really useful, Python and C++ users
+      confirm it. Compiler uses it actively too.
 
-      It's suggested to:
-      * rename `vector` to `rrbvector` or `rrbvec` and make it a very good alternative to `list[t]`. Think of:
+    It's suggested to:
+    * rename `vector` to `rrbvec` and make it a very good
+      alternative to `list[t]`. Think of:
         * adding pattern matching support, because it's one of the keys.
         * instant access to the `rrbvec` starting from certain location
           (basically, add iterator together with explicit start index to rrbvec).
         * efficient writer (already implemented) usable in `fold` as well.
-      * rename `Dynvec.t` to `vector` and make it a first-class container in Ficus (slicing, comprehensions etc.)
+    * rename `Dynvec.t` to `vector` and make it a first-class container in Ficus
+      (slicing, comprehensions, 'vector writer' etc.)
 
 # Code generation, runtime
 - [x] (we now put compiler modification date, its binary size and the compiler flags as the 'signature')

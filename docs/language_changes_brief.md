@@ -153,6 +153,30 @@ resolve now.)
 `half` → `fp16` (`half` is too generic a name), add `bf16`. Mechanical,
 automigrator-friendly.
 
+### 3.5 Containers — DECIDED direction (2026-07-09)
+Four sequence containers, renamed to match the target persona's intuition
+(C++/Python: "vector" = growable mutable array):
+- **`vector`** = today's `Dynvec.t`, promoted to first-class (literals?,
+  comprehensions, slicing — settle slice semantics consistently with arrays);
+  natural pymodule mapping to Python list. Lands in/adjacent to the epoch.
+- **`rrbvec`** = today's `vector` (immutable RRB). Rename in the epoch
+  (zero current users → free); the upgrade program (pattern matching over
+  sequences, cursor = (container, start_index with cached block leaf) — a
+  zipper/finger over RRB) is post-reform, gated on a real consumer; the
+  natural first consumer is LSP incremental document snapshots.
+- `list`, `array` unchanged in role.
+- **TypVarCollection covers all four** (`[]` unifies with any of them).
+- **Typed-empty syntax — DECIDED direction**: the converting-constructor
+  family `list(...)/vector(...)/rrbvec(...)/array(...)` already exists
+  stdlib-wide; `ctor([])` is its currently-missing empty case — the
+  constructor's expected type pins the argument's TypVarCollection (a small
+  LitEmpty case in the constructor branch, where return-type participation
+  already lives). Post-reform also `list[t]([])`; `([] : list[t])` remains.
+- **fold writer accumulators (§2) are designed container-generically**:
+  `acc += x` appends uniformly for list/vector/rrbvec — this is what makes
+  rrbvec "the efficient FP-friendly alternative to list" without a separate
+  campaign.
+
 ## 4. Operators & expressions
 
 - **`.op` elementwise family — OPEN**: keep Matlab-style `.op`, or drop and

@@ -7,225 +7,145 @@ bootstraps itself.
 ## Build & run
 
 ```sh
-make -j8                                  # builds bin/ficus (ficus0 from
-                                          # pre-gen C, then ficus from sources)
+make -j8                                  # builds bin/ficus
 bin/ficus -run file.fx -- arg1 arg2       # compile + run
 bin/ficus -run -O0 -no-openmp -B DIR f.fx # opt level, no OpenMP, build root
 bin/ficus -no-c file.fx                   # parse + typecheck only (fast)
+bin/ficus -o name file.fx                 # binary at ./name (rm it after),
+                                          # intermediates in __fxbuild__/name/
 ```
 
-- `bin/ficus` finds the stdlib on its own (no `FICUS_PATH` needed in-repo).
-- **`-B <dir>` must already exist** — `mkdir -p` it first, or you get the
-  misleading `error: failed to write some k-forms`.
-- Compiler **diagnostics go to stdout** (not stderr), exit code 1.
-- IR dumps: `-pr-ast` (typechecked AST), `-pr-k0` (K-form), `-pr-k` (optimized,
-  use with `-O3`). All work with `-no-c`. The dump contains **every** imported
-  module; the file-under-test is the **last** section. Gensyms look like
-  `name@1234`.
-- ficus compiles the generated C/C++ with `$CC` / `$CXX` (default `cc`) — set
-  these to pick gcc vs clang. macOS OpenMP is bundled at
-  `runtime/lib/macos_arm64/libomp.a` (no install needed).
-- to build the same program, including compiler, several times
-  (after modifying code or compiler) and compare generated code,
-  pass `-o output_name`. ficus will put app `output_name` and all
-  intermediate files (.c; (.k, .ast) if requested) to
-  `<ficus_root>/__fxbuild__/output_name`.
-- **Regenerating the bootstrap** — required after editing any `compiler/*.fx`
-  **or any stdlib module the compiler pulls in** (`compiler/bootstrap/` has 54
-  modules incl. `Builtins.c`, `Complex.c`, `String.c`, ... — `ls` it when in
-  doubt): run `python3 tools/update_compiler.py`. It rebuilds the compiler,
-  regenerates the pre-gen C in `compiler/bootstrap/*.c`, copies over only the
-  changed modules, and asserts the self-hosting **fixpoint** — the
-  freshly-built compiler must regenerate its own bootstrap byte-for-byte, else
-  it's a determinism regression (`fxtest.py determinism`). `--check` is a
-  CI-friendly dry run (exit 1 if the bootstrap is stale); `--no-make` skips
-  the initial build. **CI runs `--check` on every push that touches
-  compiler/lib/runtime** — a lib-only commit with a stale bootstrap is a red
-  master (learned 2026-07-08: lib/Complex.fx edit, forgotten regen). The regen
-  doubles as the ONLY routine self-build of the compiler, so it also catches
-  stdlib changes that break compiling the compiler itself — `fxtest all` does
-  NOT rebuild the compiler and cannot catch that class.
+- `bin/ficus` finds the stdlib on its own; `-B <dir>` must already exist
+  (`mkdir -p` first, or you get a misleading "failed to write some k-forms").
+- Diagnostics go to **stdout**, exit code 1. `-run` hides a runtime SIGSEGV as
+  exit 1 — to see a real crash, build with `-o` and run the binary directly.
+- IR dumps (all work with `-no-c`): `-pr-ast`, `-pr-k0`, `-pr-k` (with `-O3`),
+  `-pr-resolve` (overload-resolution trace). Dumps contain every imported
+  module; the file under test is the **last** section. Gensyms: `name@1234`.
+- `$CC`/`$CXX` pick the C compiler (default `cc`). macOS OpenMP is bundled at
+  `runtime/lib/macos_arm64/libomp.a`.
+- Build dirs self-invalidate (`.fxstamp`: compiler identity + codegen options),
+  and fxtest wipes `build/fxtest` when `bin/ficus` changes — no manual `rm -rf`
+  between measurements is ever needed.
 
-## Testing — the fxtest ladder (see tools/fxtest/README.md)
+**Bootstrap regen** — after editing any `compiler/*.fx` OR any of the 54
+bootstrap stdlib modules (`ls compiler/bootstrap/` when in doubt): run
+`python3 tools/update_compiler.py`. It regenerates `compiler/bootstrap/*.c`,
+copies only changed modules, and asserts the self-hosting **fixpoint**
+(non-zero exit = determinism regression). `--check` = CI dry run (runs on
+every push touching compiler/lib/runtime — a stale bootstrap is a red master).
+This is the only routine self-build of the compiler, so it also catches stdlib
+changes that break compiling the compiler; `fxtest all` cannot.
+
+## Testing — the fxtest ladder (tools/fxtest/README.md)
 
 ```sh
-python3 tools/fxtest/fxtest.py all        # unit + negative + ir + corpus(O0/O3)
+python3 tools/fxtest/fxtest.py all        # unit + negative + ir + cfold + corpus(O0/O3)
 bin/ficus -run test/test_all.fx           # the UTest suite directly
 ```
 
-Layers: **T2** corpus differential (every runnable `.fx` at `-O0` vs `-O3`),
-**T3** golden diagnostics (`test/negative/`), **T4** IR snapshots (`test/ir/`),
-**T5** randomized suites (`test/rand/`, wired into `test_all.fx`). Harness is
-Python 3 stdlib-only (must not depend on the compiler it tests). Discovered
-compiler bugs are recorded and fenced (not fixed) in `docs/found_bugs.md`.
+Layers: T2 corpus differential (O0 vs O3), T3 golden diagnostics
+(`test/negative/`), T4 IR snapshots (`test/ir/`), T5 randomized suites
+(`test/rand/`). Plus `fxtest.py determinism` and `sanitize` (ASan+UBSan).
+Harness is Python-3-stdlib-only. Compiler bugs found while on another task are
+recorded and fenced (not fixed) in `docs/found_bugs.md`.
 
-## Writing Ficus (.fx) — hard-won gotchas
+## Writing Ficus (.fx) — gotchas
 
-Ficus is underrepresented in training data; **do not improvise from OCaml/Rust
-intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
-`test/test_array.fx`, `lib/UTest.fx`) for the constructs you need. Verified traps:
+Ficus is underrepresented in training data; don't improvise from OCaml/Rust
+intuition — read `doc/ficustut.md` and existing code. Verified traps:
 
-- **Reserved words can't be identifiers**: `ref`, `nan`, `nanf`, `null` (plus
-  the obvious `fun`/`val`/`var`/`type`/`match`/...). Naming a variable `ref` or
-  `nan` gives a confusing "pattern is expected" / "not an l-value" error.
-- **Casts must be parenthesized *with* the operand**: write `(x :> uint8)`, not
-  `(x) :> uint8`. Even a bare `x :> T` in some positions (e.g. a `match` arm
-  body) fails — wrap it: `(x :> T)`. Chained: `((x :> uint32) :> int32)`.
-  For simple types a functional notation, e.g. `uint32(x)`, works too.
-- **`println` takes ONE argument.** For several values use an f-string or a
-  tuple: `println(f"{a} {b}")` / `println((a, b))`.
-- **f-string `{}` interpolation: write nested string literals UNESCAPED** —
-  `f"{find("x")}"` works (inside `{}` the lexer is in normal token mode; even
-  `"}"` and nested f-strings are fine). The C/Python-style escaped spelling
-  `f"{find(\"x\")}"` is what fails, with a misleading "braces are not closed".
-- **Record *type* fields are separated by `;`** (`{x: int; y: int}`), but record
-  *construction* uses `,` (`pt_t {x=1, y=2}`).
-- **Small unsigned types promote to `int` for arithmetic** — `200u8 + 100u8`
-  is `300`, not `44`. To wrap, cast explicitly: `((a + b) :> uint8)`. `uint64`
-  is full-width and wraps natively.
-- Integer `/` truncates toward zero; `%` takes the **sign of the dividend**
-  (`-17 % 5 == -2`). `int(x)` truncates toward zero. **`floor`/`ceil`/`trunc`/
-  `round` currently return `int`, NOT float/double** (the scalar defs at
-  `lib/Math.fx:45-50` are explicitly `: int`; array forms give `int [+]`) —
-  verified 2026-07-09. This contradicted an earlier note here; whether it's
-  intended (round-to-int) or a lossy bug is open — see FB-019.
-- **Border access is `arr.MODE[i]`** (mode before the bracket): `a.clip[i]`,
-  `a.wrap[i]`, `a.zero[i]`. Works on `Vector`, strings and arrays.
-- Comprehensions: 1D `[for i <- 0:n {..}]`; **2D is nested** `[for i <- 0:m for
-  j <- 0:n {..}]`; **zip is comma** `for x <- a, y <- b {..}`; index binding
-  `for x@i <- a` (1D) / `for x@(i,j) <- m` (2D); fold `fold acc=init for x <- a
-  {..}`. Lists: `[:: 1, 2, 3]`, cons `::`, list-comp `[:: for x <- l {..}]`.
-- **Strings are UTF-32** (char sequences): `s.length()` counts characters,
-  `s[i]` is a `char`, `s[i:j]` a substring; build from chars via
-  `string([for c <- cs {c}])`. `split(s, sep, ~allow_empty=true)` returns a
-  `string list`.
-- **Use `String.fx` / `Re.fx` — don't hand-roll string processing.** `String`
-  has `find`/`replace`/`split`/`join`/`lstrip`/`rstrip`/`strip`/`startswith`/
-  `endswith`/`to_int`/…; `Re` is a tiny wrapper over the runtime regex
-  (`Re.compile(pat)` then `Re.replace`/`find`/`findall`/`fullmatch`/…). Reach
-  for these instead of writing a char-by-char loop or fold — e.g. strip a
-  pattern with `Re.replace(Re.compile("@[0-9]+"), s, "")`, not a manual scan.
-  Both are cheap to `import` (even the compiler now imports `Re`).
-- `array(n, init)` / `array((m, n), init)` allocate mutable arrays. Ranges
-  `a:b`, `a:b:step`; slices `a[i:j]`, `a[i:j:step]`, `a[:]`, `a[::-1]`.
-- `Sys.getenv(name, defval)`; `s.to_int(): int?`; `s.to_int_or(defval)`.
-- **A `match` arm body may be a block**: `| pat => val r = ...; expr` is fine
-  (the arm extends to the next `|`); no extra `{ }` needed.
-- **`continue`/`break` can't be a `match`-arm / `if`-branch *value*, and a bare
-  `return` (no value) doesn't parse** — both give a misleading `unexpected token
-  '}'` (FB-015). Run the `match` as a statement that `continue`s and yield
-  separately (or accumulate into a `var`); invert a void early-`return` guard
-  into a wrapping `if`. `return <expr>` is fine.
-- **Shift count must be `int`**: `uint64 >> int64` does **not** typecheck
-  (`__shr__ (uint64,int64)` not found); write `x >> int(n)`. Runtime uint64 `>>`
-  is a correct logical shift — only the *constant folder* got it wrong (FB-002).
-- **Overload resolution (resolve-1): the least-generic viable candidate wins**,
-  independent of declaration/import order (concrete beats generic, `int complex`
-  beats `'t complex`). If no candidate is strictly most specific at a call whose
-  argument types are fully known, it's an **ambiguity error** — disambiguate
-  with a module-qualified call; for operators use the mangled name:
-  `Module.__mul__(a, b)` (`Module.(*)` does not parse). Two identical-signature
-  overloads only error at a call that sees both. When argument types still
-  contain free type vars, ties silently fall back to first-match (deferral is
-  pending) — don't rely on it in new code. A candidate viable only via
-  all-defaulted keyword args loses to an exact keywordless match
-  (`sqrt(81.0)` → `Math.sqrt(double)`, not a local `sqrt('t, ~n=2)`).
-- **`[]` is typed "some collection" (resolve-2, `TypVarCollection`)**: it
-  unifies only with a list/vector/array (or a free type var), so
-  `val n: int = []` is a typecheck error and a `[]`-initialized fold
-  accumulator can't be captured by a non-collection overload. If the
-  collection kind is never pinned, K-normalization asks for an annotation.
-- **Return-type annotations on generic operators are viability filters, not
-  decoration.** A generic `operator` whose return type is left to inference
-  returns a free var that unifies with ANY expected type, so the candidate
-  stays viable at under-constrained call sites (free fold/recursion
-  accumulators) and can steal them via the env-order fallback — dropping
-  `: 't complex` from Complex's mixed operators broke the compiler's own
-  build (C_gen_code.fx:1328). Annotate with a FRESH var (`: 't3 complex`,
-  `: 't3 [+]`, `: ('t3 ...)` — "returns SOME complex/array/tuple") to reject
-  foreign contexts while keeping mixed-type widening. **Enforced by
-  `python3 tools/lint_op_returns.py lib` (CI, gcc leg)**.
-- **`-Wimplicit-rettype` / `-Wimplicit-rettype=all` / `-Wall` / `-Werror` exist
-  (annotate-2).** The warning flags every **module-level** function whose return
-  type is left to inference (nested funcs, lambdas, `@ccode`, auto-generated
-  constructors are exempt). **Scope: default = all USER modules** (everything
-  whose path is NOT under `<ficus_root>/lib` — the whole project transitively,
-  not just the file on the command line); **`=all` also includes stdlib** (used
-  to gate stdlib itself, since a stdlib file is otherwise skipped even as root).
-  `-Werror` promotes ALL warnings (incl. the pre-existing unused-value ones) to
-  a nonzero exit. The annotated stdlib — all of `lib/` **except** NN/, Onnx/,
-  Protobuf/, `OpenCV.fx` — is gated by `tools/rettype_gate.sh`
-  (`-Wimplicit-rettype=all -Werror`, CI gcc leg); keep it clean when adding
-  stdlib functions. Return annotations **erase in K-form**, so adding them
-  yields byte-identical generated C (bootstrap regen touches no stdlib module).
-  The compiler sources are NOT gated yet (annotate-3; ~340 to go).
-- **Return-type annotation spellings** (from the sweep): a nullary function type
-  is `(void -> T)`, **not** `(() -> T)` (the latter errors "empty tuple"). A
-  module's own type parses as a return both qualified (`Date.t`) and bare (`t`)
-  inside that module. A uniform tuple return is `(int...)`; an any-dims array is
-  `T [+]`. When the body widens via `*0.f` and the result type varies with the
-  input (`Builtins.normL1(('t...))`: int→float, double→double), a **fresh scalar
-  var `: 't3`** is the honest annotation — safe because the argument is already
-  pinned (not a free-return hazard).
-- **Comparing `-pr-resolve` censuses: normalize locations first.** Any unrelated
-  compiler edit shifts call-site `line:col`, so a raw-text diff is pure noise.
-  Gate on the (name | winner | outcome) multiset (strip `@NNN` gensyms and
-  `@ path:line:col`); the *expected-arg-type* of a site legitimately sharpens
-  from `<unknown>` to a concrete type as callers get annotated — that is not a
-  resolution change.
+- Reserved words can't be identifiers: `ref`, `nan`, `nanf`, `null` (+ the
+  obvious keywords). Misuse gives a confusing "pattern is expected" error.
+- Casts parenthesize *with* the operand: `(x :> uint8)`, chained
+  `((x :> uint32) :> int32)`. Simple types also work functionally: `uint32(x)`.
+- `println` takes ONE argument: `println(f"{a} {b}")` / `println((a, b))`.
+- f-string `{}` interpolation: write nested string literals UNESCAPED —
+  `f"{find("x")}"` works; the escaped `f"{find(\"x\")}"` fails with a
+  misleading "braces are not closed".
+- Record *type* fields use `;` (`{x: int; y: int}`); *construction* uses `,`
+  (`pt_t {x=1, y=2}`).
+- Small unsigned ints promote to `int` for arithmetic (`200u8 + 100u8 == 300`);
+  wrap explicitly: `((a + b) :> uint8)`. `uint64` wraps natively.
+- Integer `/` truncates toward zero; `%` takes the sign of the dividend
+  (`-17 % 5 == -2`). `int(x)` truncates. `floor`/`ceil`/`trunc`/`round`
+  return `int` **by design** (array forms: `int [+]`).
+- Border access: mode before the bracket — `a.clip[i]`, `a.wrap[i]`,
+  `a.zero[i]` (arrays, Vector, strings).
+- Comprehensions: 1D `[for i <- 0:n {..}]`; 2D `[for i <- 0:m for j <- 0:n
+  {..}]`; zip is comma `for x <- a, y <- b`; index binding `for x@i <- a` /
+  `for x@(i,j) <- m`; fold `fold acc=init for x <- a {..}`. Lists:
+  `[:: 1, 2, 3]`, cons `::`, list-comp `[:: for x <- l {..}]`.
+- Strings are UTF-32: `s.length()` counts chars, `s[i]` is a `char`,
+  `s[i:j]` a substring; `string([for c <- cs {c}])` builds from chars.
+- Use `String.fx` / `Re.fx` instead of hand-rolling string processing
+  (`find/replace/split/join/strip/...`; `Re.compile` + `replace/findall/...`).
+- `array(n, init)` / `array((m, n), init)`; ranges `a:b`, `a:b:step`; slices
+  `a[i:j]`, `a[::-1]`. `Sys.getenv(name, defval)`; `s.to_int(): int?`.
+- A `match` arm body may be a block: `| pat => val r = ...; expr`.
+- `continue`/`break` can't be a `match`-arm / `if`-branch *value*, and a bare
+  `return` doesn't parse — both misreport as `unexpected token '}'` (FB-015).
+  Use a statement `match` + separate yield, or invert the guard;
+  `return <expr>` is fine.
+- Shift count must be `int`: write `x >> int(n)` for a non-int count.
+- **Overload resolution: the least-generic viable candidate wins**, regardless
+  of declaration/import order. No unique winner at a fully-determined call =
+  ambiguity error; disambiguate with a qualified call (`Module.__mul__(a, b)`;
+  `Module.(*)` does not parse yet). With free type vars in the argument
+  types, ties fall back to first-match — don't rely on that in new code.
+  Exact keywordless match beats a candidate viable only via defaulted
+  keyword args.
+- `[]` is typed "some collection" (list/vector/array): `val n: int = []` is a
+  typecheck error; if the kind is never pinned, K-normalization asks for an
+  annotation.
+- **Return annotations on generic operators/functions are viability filters,
+  not decoration**: a free (inferred) return type unifies with any expected
+  type and can steal under-constrained call sites. Annotate operators with a
+  FRESH var (`: 't3 complex`, `: 't3 [+]`, `: ('t3 ...)` — "returns SOME
+  such") to keep mixed-type widening while rejecting foreign contexts.
+  Enforced: `tools/lint_op_returns.py lib` (CI).
+- `-Wimplicit-rettype` warns on module-level functions with inferred returns
+  (nested/lambdas/@ccode/auto-generated exempt). Scope: all USER modules;
+  `=all` includes stdlib (self-gate: `tools/rettype_gate.sh`, CI; keep clean
+  when adding stdlib functions — scope excludes NN/Onnx/Protobuf/OpenCV).
+  `-Wall` = umbrella; `-Werror` promotes all warnings to a nonzero exit.
+  Return annotations erase in K-form (byte-identical generated C). The
+  compiler sources are not gated yet (annotate-3, ~340 functions).
+- Annotation spellings: nullary function type is `(void -> T)`, not
+  `(() -> T)`; a module's own type parses bare (`t`) or qualified (`Date.t`);
+  uniform tuple return `(int...)`; any-dims array `T [+]`; when the result
+  scalar type varies with input (widening via `*0.f`), a fresh `: 't3` is the
+  honest annotation (safe when the arguments are already pinned).
+- Comparing `-pr-resolve` censuses: normalize first — gate on the
+  (name | winner | outcome) multiset, not raw text (line:col shifts and
+  expected-type sharpening are noise).
 
-### Build/run & measurement traps (Brief #2)
+## Measurement traps
 
-- **`-o name` drops the executable at the repo ROOT** (`./name`), with all
-  intermediates under `__fxbuild__/name/`. `rm -f name` after, or it litters.
-- **`-run` hides a runtime SIGSEGV as exit 1** (no output). To see a real crash,
-  build a binary (`-o`) and run it directly — you'll get exit 139 and the trace.
-- **Build dirs self-invalidate via a `.fxstamp`** (WP-H1): a `-o`/`-B` dir
-  caches each module's `.c`/`.o` and reuses them across runs (it skips a module
-  whose K-form dump is unchanged), but the compiler now stamps the dir with its
-  own binary identity (size+mtime) + the codegen-affecting options (opt level,
-  OpenMP, C/C++, `-debug`, inline threshold, cflags/defines). A changed compiler
-  or build mode auto-triggers a full rebuild — no `rm -rf` needed between
-  before/after diffs, and flipping `-no-openmp`↔OpenMP in one dir no longer
-  causes `omp_outlined` link errors. Full clean builds are deterministic;
-  incremental churn was FB-008.
-- **ASan+UBSan** via `bin/ficus -run -cflags "-fsanitize=address,undefined
-  -fno-omit-frame-pointer" -clibs "<same>"`. The runtime is clean post-Brief-2.
-- **Signed integer overflow wraps (2's complement)**: ficus builds generated C
-  (and itself) with `-fwrapv` — the constant folder wraps, and the runtime must
-  match. Do NOT rely on signed overflow being UB, and do NOT drop `-fwrapv`.
-- **UB signature at -O2/-O3**: if a value *prints* correctly but a branch/compare
-  on it goes the wrong way (e.g. `printf` shows `-4` yet `if (x != -4)` is taken),
-  that's the compiler exploiting UB (signed overflow, null-after-check, strict
-  aliasing) — the *predicate* is folded to a constant while the *value* is
-  materialized correctly. Repro in pure C; `-fwrapv`/`-fno-strict-*` confirm.
-- **fxtest wipes `build/fxtest` when `bin/ficus` changes** (WP-H1): the harness
-  stamps its cache with the md5 of the compiler and clears it on mismatch, so a
-  compiler fix is always picked up (was the FB-011 stale-`.o` trap). Two runs
-  with the same compiler reuse the cache — no `rm -rf build/fxtest` needed.
-- **IR/`-pr-ast` snapshots are extracted by the harness**, which strips the
-  per-module `<abs-path>.fx: <deps>` header. That header is width-wrapped, so a
-  long repo path (CI's `/home/runner/work/ficus/ficus/...`) can wrap a dep onto
-  its own line and confuse extraction — a golden that passes on a short dev path
-  can fail on CI without any compiler change (FB-013). Suspect the harness, not
-  the compiler, when only `:ast` differs while `:k0`/`:k` match.
+- Signed overflow **wraps** (built with `-fwrapv`, folder matches). Don't rely
+  on UB; don't drop the flag.
+- UB signature at -O2/-O3: a value *prints* right but a branch on it goes
+  wrong → the C compiler exploited UB (the predicate folded, the value
+  materialized). Repro in pure C; `-fwrapv`/`-fno-strict-*` to confirm.
+- ASan+UBSan: `-cflags "-fsanitize=address,undefined -fno-omit-frame-pointer"
+  -clibs "<same>"` (or `fxtest.py sanitize`). Note: over-reads into valid
+  adjacent heap may NOT trap — reference-checked suites are the complement.
+- IR snapshot fails on CI only, `:ast` differs but `:k0`/`:k` match → suspect
+  the harness's header extraction (path-length wrap, FB-013), not the
+  compiler.
 
-**Iterate tiny**: write 10-20 lines → `bin/ficus -run f.fx` → fix → extend.
-The compiler's error messages are ground truth. If it rejects something the
-tutorial says is legal, it may be a bug — minimal repro into `docs/found_bugs.md`
-and route around it (don't fix `compiler/` unless asked).
+**Iterate tiny**: 10–20 lines → `bin/ficus -run f.fx` → fix → extend. Compiler
+errors are ground truth; if it rejects something the tutorial calls legal,
+minimal repro into `docs/found_bugs.md` and route around (don't fix
+`compiler/` unless asked).
 
-### Test-file naming caveat
+Test-file naming: a test `.fx` must not collide case-insensitively with a
+stdlib module (`char.fx` shadows `Char`); numeric prefixes (`001_name.fx`)
+are safe. Subdir modules import as `Dir.Module`; same-dir siblings by bare
+name.
 
-A test `.fx` filename must not collide **case-insensitively** with a stdlib
-module name (`Char`, `List`, `String`, `Array`, `Math`, `Map`, ...): the input
-file's directory is searched first for the auto-imported preamble, so
-`char.fx` shadows the real `Char`. Numeric prefixes (`001_name.fx`) are safe.
-Subdir modules import as `Dir.Module` (`import NN.Ast as Ast`); siblings in the
-same dir import by bare name.
+## Environment notes
 
-## Environment notes (macos only)
-
-- on macos python is **3.9** (no `tomllib` — the harness ships a fallback parser).
-  On linux it's more fresh.
-- macOS `sed` is BSD (no `\b`); use `perl -pe` for word-boundary edits.
+- macOS python is 3.9 (no `tomllib` — the harness ships a fallback parser);
+  Linux is fresher.
+- macOS `sed` is BSD (no `\b`) — use `perl -pe` for word-boundary edits.
