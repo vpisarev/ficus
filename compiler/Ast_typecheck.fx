@@ -8,7 +8,7 @@
 from Ast import *
 import Ast_pp, Options
 
-import Filename, Map, Set, Hashset
+import Filename, Map, Set, Hashset, Re
 
 /*
 The type checker component performs semantical analysis and various
@@ -3632,9 +3632,15 @@ fun has_implicit_rettype(df: deffun_t ref): bool
     is_modlevel && in_scope && !is_exempt && rt_implicit
 }
 
+// drop the `@NN` gensym suffixes typ2str puts after module-qualified type
+// names, so the inferred type prints as valid source (copy-paste fix):
+// `(bool, test_oop.IClone@22)` -> `(bool, test_oop.IClone)`.
+val gensym_re = Re.compile("@[0-9]+")
+fun strip_type_gensyms(s: string): string = Re.replace(gensym_re, s, "")
+
 fun warn_implicit_rettype(df: deffun_t ref) {
     val {df_name, df_loc} = *df
-    val rt_str = typ2str(deref_typ(deffun_rettype(df)))
+    val rt_str = strip_type_gensyms(typ2str(deref_typ(deffun_rettype(df))))
     compile_warning(df_loc, f"implicit return type of module-level function \
         '{pp(df_name)}' (inferred: {rt_str})")
 }

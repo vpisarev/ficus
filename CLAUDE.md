@@ -99,6 +99,13 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `s[i]` is a `char`, `s[i:j]` a substring; build from chars via
   `string([for c <- cs {c}])`. `split(s, sep, ~allow_empty=true)` returns a
   `string list`.
+- **Use `String.fx` / `Re.fx` — don't hand-roll string processing.** `String`
+  has `find`/`replace`/`split`/`join`/`lstrip`/`rstrip`/`strip`/`startswith`/
+  `endswith`/`to_int`/…; `Re` is a tiny wrapper over the runtime regex
+  (`Re.compile(pat)` then `Re.replace`/`find`/`findall`/`fullmatch`/…). Reach
+  for these instead of writing a char-by-char loop or fold — e.g. strip a
+  pattern with `Re.replace(Re.compile("@[0-9]+"), s, "")`, not a manual scan.
+  Both are cheap to `import` (even the compiler now imports `Re`).
 - `array(n, init)` / `array((m, n), init)` allocate mutable arrays. Ranges
   `a:b`, `a:b:step`; slices `a[i:j]`, `a[i:j:step]`, `a[:]`, `a[::-1]`.
 - `Sys.getenv(name, defval)`; `s.to_int(): int?`; `s.to_int_or(defval)`.

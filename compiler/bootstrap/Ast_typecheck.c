@@ -1143,6 +1143,10 @@ typedef struct _fx_rB_data_t {
    bool data;
 } _fx_rB_data_t, *_fx_rB;
 
+typedef struct _fx_R5Re__t {
+   fx_cptr_t handle;
+} _fx_R5Re__t;
+
 typedef struct _fx_Nt6option1T3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t {
    int tag;
    union {
@@ -4445,6 +4449,21 @@ static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
    FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
+static void _fx_free_R5Re__t(struct _fx_R5Re__t* dst)
+{
+   fx_free_cptr(&dst->handle);
+}
+
+static void _fx_copy_R5Re__t(struct _fx_R5Re__t* src, struct _fx_R5Re__t* dst)
+{
+   fx_copy_cptr(src->handle, &dst->handle);
+}
+
+static void _fx_make_R5Re__t(fx_cptr_t r_handle, struct _fx_R5Re__t* fx_result)
+{
+   fx_copy_cptr(r_handle, &fx_result->handle);
+}
+
 static void _fx_free_Nt6option1T3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t(
    struct _fx_Nt6option1T3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t* dst)
 {
@@ -6298,6 +6317,7 @@ _fx_N24Ast_typecheck__gen_cmp_t _fx_g26Ast_typecheck__MoreGeneric = { 1 };
 _fx_N24Ast_typecheck__gen_cmp_t _fx_g26Ast_typecheck__LessGeneric = { 2 };
 _fx_N24Ast_typecheck__gen_cmp_t _fx_g24Ast_typecheck__EqGeneric = { 3 };
 _fx_N24Ast_typecheck__gen_cmp_t _fx_g28Ast_typecheck__IncompGeneric = { 4 };
+_fx_R5Re__t _fx_g24Ast_typecheck__gensym_re = {0};
 FX_EXTERN_C bool _fx_M13Ast_typecheckFM6__eq__B2rNt6option1N10Ast__typ_trNt6option1N10Ast__typ_t(
    struct _fx_rNt6option1N10Ast__typ_t_data_t*,
    struct _fx_rNt6option1N10Ast__typ_t_data_t*,
@@ -7404,6 +7424,10 @@ FX_EXTERN_C void _fx_M3AstFM5IdExnN14Ast__id_info_t1rRM8defexn_t(
 FX_EXTERN_C_VAL(struct _fx_Rt6Map__t2R9Ast__id_tR9Ast__id_t _fx_g23Ast__builtin_exceptions)
 FX_EXTERN_C_VAL(fx_str_t _fx_g19Ast__ficus_std_path)
 FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t*, fx_str_t*, void*);
+
+FX_EXTERN_C int _fx_M2ReFM7compileRM1t1S(fx_str_t*, struct _fx_R5Re__t*, void*);
+
+FX_EXTERN_C int _fx_M2ReFM7replaceS5RM1tSSBB(struct _fx_R5Re__t*, fx_str_t*, fx_str_t*, bool, bool, fx_str_t*, void*);
 
 FX_EXTERN_C int
    _fx_M13Ast_typecheckFM7make_fpFPN10Ast__typ_t2N10Ast__typ_tR16Ast__ast_callb_t6Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_tR10Ast__loc_tBrRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tNt6option1rRt6Set__t1R9Ast__id_tLN12Ast__scope_t(
@@ -33793,13 +33817,14 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM21warn_implicit_rettypev1rR13Ast__deffun_t
    _fx_N10Ast__typ_t v_1 = 0;
    _fx_N10Ast__typ_t v_2 = 0;
    _fx_N10Ast__typ_t v_3 = 0;
-   fx_str_t rt_str_0 = {0};
    fx_str_t v_4 = {0};
+   fx_str_t rt_str_0 = {0};
    fx_str_t v_5 = {0};
+   fx_str_t v_6 = {0};
    int fx_status = 0;
-   _fx_R13Ast__deffun_t* v_6 = &df_0->data;
-   _fx_R10Ast__loc_t df_loc_0 = v_6->df_loc;
-   _fx_R9Ast__id_t df_name_0 = v_6->df_name;
+   _fx_R13Ast__deffun_t* v_7 = &df_0->data;
+   _fx_R10Ast__loc_t df_loc_0 = v_7->df_loc;
+   _fx_R9Ast__id_t df_name_0 = v_7->df_name;
    FX_COPY_PTR(df_0->data.df_typ, &v_0);
    FX_CALL(_fx_M3AstFM9deref_typN10Ast__typ_t1N10Ast__typ_t(v_0, &v_1, 0), _fx_cleanup);
    if (FX_REC_VARIANT_TAG(v_1) == 15) {
@@ -33810,16 +33835,19 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM21warn_implicit_rettypev1rR13Ast__deffun_t
    }
    FX_CHECK_EXN(_fx_cleanup);
    FX_CALL(_fx_M3AstFM9deref_typN10Ast__typ_t1N10Ast__typ_t(v_2, &v_3, 0), _fx_cleanup);
-   FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(v_3, &rt_str_0, 0), _fx_cleanup);
-   FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&df_name_0, &v_4, 0), _fx_cleanup);
-   fx_str_t slit_0 = FX_MAKE_STR("implicit return type of module-level function \'");
-   fx_str_t slit_1 = FX_MAKE_STR("\' (inferred: ");
-   fx_str_t slit_2 = FX_MAKE_STR(")");
+   FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(v_3, &v_4, 0), _fx_cleanup);
+   fx_str_t slit_0 = FX_MAKE_STR("");
+   FX_CALL(_fx_M2ReFM7replaceS5RM1tSSBB(&_fx_g24Ast_typecheck__gensym_re, &v_4, &slit_0, false, false, &rt_str_0, 0),
+      _fx_cleanup);
+   FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&df_name_0, &v_5, 0), _fx_cleanup);
+   fx_str_t slit_1 = FX_MAKE_STR("implicit return type of module-level function \'");
+   fx_str_t slit_2 = FX_MAKE_STR("\' (inferred: ");
+   fx_str_t slit_3 = FX_MAKE_STR(")");
    {
-      const fx_str_t strs_0[] = { slit_0, v_4, slit_1, rt_str_0, slit_2 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_5), _fx_cleanup);
+      const fx_str_t strs_0[] = { slit_1, v_5, slit_2, rt_str_0, slit_3 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_6), _fx_cleanup);
    }
-   FX_CALL(_fx_M3AstFM15compile_warningv2RM5loc_tS(&df_loc_0, &v_5, 0), _fx_cleanup);
+   FX_CALL(_fx_M3AstFM15compile_warningv2RM5loc_tS(&df_loc_0, &v_6, 0), _fx_cleanup);
 
 _fx_cleanup: ;
    if (v_0) {
@@ -33834,9 +33862,10 @@ _fx_cleanup: ;
    if (v_3) {
       _fx_free_N10Ast__typ_t(&v_3);
    }
-   FX_FREE_STR(&rt_str_0);
    FX_FREE_STR(&v_4);
+   FX_FREE_STR(&rt_str_0);
    FX_FREE_STR(&v_5);
+   FX_FREE_STR(&v_6);
    return fx_status;
 }
 
@@ -38687,11 +38716,15 @@ FX_EXTERN_C int
 FX_EXTERN_C int fx_init_Ast_typecheck(void)
 {
    int fx_status = 0;
+   fx_str_t slit_0 = FX_MAKE_STR("@[0-9]+");
+   FX_CALL(_fx_M2ReFM7compileRM1t1S(&slit_0, &_fx_g24Ast_typecheck__gensym_re, 0), _fx_cleanup);
+
+_fx_cleanup: ;
    return fx_status;
 }
 
 FX_EXTERN_C void fx_deinit_Ast_typecheck(void)
 {
-
+   _fx_free_R5Re__t(&_fx_g24Ast_typecheck__gensym_re);
 }
 

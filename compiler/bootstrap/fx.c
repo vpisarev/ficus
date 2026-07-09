@@ -423,6 +423,8 @@ FX_EXTERN_C int fx_init_Lexer();
 FX_EXTERN_C void fx_deinit_Lexer();
 FX_EXTERN_C int fx_init_Parser();
 FX_EXTERN_C void fx_deinit_Parser();
+FX_EXTERN_C int fx_init_Re();
+FX_EXTERN_C void fx_deinit_Re();
 FX_EXTERN_C int fx_init_Ast_typecheck();
 FX_EXTERN_C void fx_deinit_Ast_typecheck();
 FX_EXTERN_C int fx_init_K_form();
@@ -511,6 +513,7 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_Ast_pp();
   if (fx_status >= 0) fx_status = fx_init_Lexer();
   if (fx_status >= 0) fx_status = fx_init_Parser();
+  if (fx_status >= 0) fx_status = fx_init_Re();
   if (fx_status >= 0) fx_status = fx_init_Ast_typecheck();
   if (fx_status >= 0) fx_status = fx_init_K_form();
   if (fx_status >= 0) fx_status = fx_init_K_pp();
@@ -574,6 +577,7 @@ int main(int argc, char** argv)
   fx_deinit_K_pp();
   fx_deinit_K_form();
   fx_deinit_Ast_typecheck();
+  fx_deinit_Re();
   fx_deinit_Parser();
   fx_deinit_Lexer();
   fx_deinit_Ast_pp();
