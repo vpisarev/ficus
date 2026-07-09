@@ -51,11 +51,11 @@ type scalar_t =
     | Type_I64 | Type_U64 | Type_F16 | Type_BF16
     | Type_F32 | Type_F64 | Type_Bool | Type_Char
 
-fun assert(f: bool) = if !f {throw AssertError}
+fun assert(f: bool): void = if !f {throw AssertError}
 // TODO: probably, we need AssertError to get a string argument or have alternative AssertErrorArg with such a argument
-fun assert((f, f_str, fname, lineno): (bool, string, string, int)) = if !f {throw Fail(f"{fname}:{lineno}: Assertion '{f_str}' failed")}
+fun assert((f, f_str, fname, lineno): (bool, string, string, int)): void = if !f {throw Fail(f"{fname}:{lineno}: Assertion '{f_str}' failed")}
 
-fun ignore(_: 't) {}
+fun ignore(_: 't): void {}
 @nothrow fun always_use(x: 't): void = @ccode {}
 
 // 't?, int? etc. can be used instead of 't option, int option ...
@@ -63,66 +63,66 @@ class 't option = None | Some: 't
 
 type byte = uint8
 
-fun value_or(x: 't?, defval: 't) = match x { | Some(x) => x | _ => defval }
-fun value(x: 't?) = match x { | Some(x) => x | _ => throw OptionError }
-fun isnone(x: 't?) { | Some _ => false | _ => true }
-fun issome(x: 't?) { | Some _ => true | _ => false }
+fun value_or(x: 't?, defval: 't): 't = match x { | Some(x) => x | _ => defval }
+fun value(x: 't?): 't = match x { | Some(x) => x | _ => throw OptionError }
+fun isnone(x: 't?): bool { | Some _ => false | _ => true }
+fun issome(x: 't?): bool { | Some _ => true | _ => false }
 
-fun __is_scalar__(x: 't) = false
-@inline fun __is_scalar__(x: int) = true
-@inline fun __is_scalar__(x: int8) = true
-@inline fun __is_scalar__(x: uint8) = true
-@inline fun __is_scalar__(x: int16) = true
-@inline fun __is_scalar__(x: uint16) = true
-@inline fun __is_scalar__(x: int32) = true
-@inline fun __is_scalar__(x: uint32) = true
-@inline fun __is_scalar__(x: int64) = true
-@inline fun __is_scalar__(x: uint64) = true
-@inline fun __is_scalar__(x: half) = true
-@inline fun __is_scalar__(x: float) = true
-@inline fun __is_scalar__(x: double) = true
-@inline fun __is_scalar__(x: bool) = true
-@inline fun __is_scalar__(x: char) = true
+fun __is_scalar__(x: 't): bool = false
+@inline fun __is_scalar__(x: int): bool = true
+@inline fun __is_scalar__(x: int8): bool = true
+@inline fun __is_scalar__(x: uint8): bool = true
+@inline fun __is_scalar__(x: int16): bool = true
+@inline fun __is_scalar__(x: uint16): bool = true
+@inline fun __is_scalar__(x: int32): bool = true
+@inline fun __is_scalar__(x: uint32): bool = true
+@inline fun __is_scalar__(x: int64): bool = true
+@inline fun __is_scalar__(x: uint64): bool = true
+@inline fun __is_scalar__(x: half): bool = true
+@inline fun __is_scalar__(x: float): bool = true
+@inline fun __is_scalar__(x: double): bool = true
+@inline fun __is_scalar__(x: bool): bool = true
+@inline fun __is_scalar__(x: char): bool = true
 
-@inline fun scalar_type(_: 't) = Notype
-@inline fun scalar_type(_: int) = Type_Int
-@inline fun scalar_type(_: int8) = Type_I8
-@inline fun scalar_type(_: uint8) = Type_U8
-@inline fun scalar_type(_: int16) = Type_I16
-@inline fun scalar_type(_: uint16) = Type_U16
-@inline fun scalar_type(_: int32) = Type_I32
-@inline fun scalar_type(_: uint32) = Type_U32
-@inline fun scalar_type(_: int64) = Type_I64
-@inline fun scalar_type(_: uint64) = Type_U64
-@inline fun scalar_type(_: half) = Type_F16
-@inline fun scalar_type(_: float) = Type_F32
-@inline fun scalar_type(_: double) = Type_F64
-@inline fun scalar_type(_: bool) = Type_Bool
-@inline fun scalar_type(_: char) = Type_Char
+@inline fun scalar_type(_: 't): scalar_t = Notype
+@inline fun scalar_type(_: int): scalar_t = Type_Int
+@inline fun scalar_type(_: int8): scalar_t = Type_I8
+@inline fun scalar_type(_: uint8): scalar_t = Type_U8
+@inline fun scalar_type(_: int16): scalar_t = Type_I16
+@inline fun scalar_type(_: uint16): scalar_t = Type_U16
+@inline fun scalar_type(_: int32): scalar_t = Type_I32
+@inline fun scalar_type(_: uint32): scalar_t = Type_U32
+@inline fun scalar_type(_: int64): scalar_t = Type_I64
+@inline fun scalar_type(_: uint64): scalar_t = Type_U64
+@inline fun scalar_type(_: half): scalar_t = Type_F16
+@inline fun scalar_type(_: float): scalar_t = Type_F32
+@inline fun scalar_type(_: double): scalar_t = Type_F64
+@inline fun scalar_type(_: bool): scalar_t = Type_Bool
+@inline fun scalar_type(_: char): scalar_t = Type_Char
 
 @pure @nothrow fun elemsize(t: scalar_t): int
 @ccode { return fx_elemsize(t->tag); }
 
-@inline fun __min__(x: int8) = -128i8
-@inline fun __max__(x: int8) = 127i8
-@inline fun __min__(x: uint8) = 0u8
-@inline fun __max__(x: uint8) = 255u8
-@inline fun __min__(x: int16) = -32768i16
-@inline fun __max__(x: int16) = 32767i16
-@inline fun __min__(x: uint16) = 0u16
-@inline fun __max__(x: uint16) = 65535u16
-@inline fun __min__(x: int32) = -2147483648i32
-@inline fun __max__(x: int32) = 2147483647i32
-@inline fun __min__(x: uint32) = 0u32
-@inline fun __max__(x: uint32) = 4294967295u32
-@inline fun __min__(x: int64) = -9223372036854775807i64 // -922....808 causes a warning
-@inline fun __max__(x: int64) = 9223372036854775807i64
-@inline fun __min__(x: uint64) = 0u64
-@inline fun __max__(x: uint64) = 18446744073709551615u64
-@inline fun __min__(x: float) = -3.402823466e+38f
-@inline fun __max__(x: float) = 3.402823466e+38f
-@inline fun __min__(x: double) = -1.797693134862315e+308
-@inline fun __max__(x: double) = 1.797693134862315e+308
+@inline fun __min__(x: int8): int8 = -128i8
+@inline fun __max__(x: int8): int8 = 127i8
+@inline fun __min__(x: uint8): uint8 = 0u8
+@inline fun __max__(x: uint8): uint8 = 255u8
+@inline fun __min__(x: int16): int16 = -32768i16
+@inline fun __max__(x: int16): int16 = 32767i16
+@inline fun __min__(x: uint16): uint16 = 0u16
+@inline fun __max__(x: uint16): uint16 = 65535u16
+@inline fun __min__(x: int32): int32 = -2147483648i32
+@inline fun __max__(x: int32): int32 = 2147483647i32
+@inline fun __min__(x: uint32): uint32 = 0u32
+@inline fun __max__(x: uint32): uint32 = 4294967295u32
+@inline fun __min__(x: int64): int64 = -9223372036854775807i64 // -922....808 causes a warning
+@inline fun __max__(x: int64): int64 = 9223372036854775807i64
+@inline fun __min__(x: uint64): uint64 = 0u64
+@inline fun __max__(x: uint64): uint64 = 18446744073709551615u64
+@inline fun __min__(x: float): float = -3.402823466e+38f
+@inline fun __max__(x: float): float = 3.402823466e+38f
+@inline fun __min__(x: double): double = -1.797693134862315e+308
+@inline fun __max__(x: double): double = 1.797693134862315e+308
 
 operator != (a: 't, b: 't): bool = !(a == b)
 operator < (a: 't, b: 't): bool = (a <=> b) < 0
@@ -130,7 +130,7 @@ operator > (a: 't, b: 't): bool = (a <=> b) > 0
 operator >= (a: 't, b: 't): bool = (a <=> b) >= 0
 operator <= (a: 't, b: 't): bool = (a <=> b) <= 0
 
-fun length(s: string) = __intrin_size__(s)
+fun length(s: string): int = __intrin_size__(s)
 @pure @nothrow fun length(l: 't list): int = @ccode { return fx_list_length(l) }
 
 @pure fun join(sep: string, strs:string []): string
@@ -148,10 +148,10 @@ fun length(s: string) = __intrin_size__(s)
 }
 
 fun join_embrace(begin: string, end: string,
-                 sep: string, strs: string list) =
+                 sep: string, strs: string list): string =
     join_embrace(begin, end, sep, array(strs))
 
-fun join(sep: string, strs: string list) =
+fun join(sep: string, strs: string list): string =
     join(sep, [for s <- strs {s}])
 
 operator + (a: string, b: string): string
@@ -198,7 +198,7 @@ operator + (l1: 't list, l2: 't list): 't list
         strcpy(buf, "cptr<null>");
     return fx_ascii2str(buf, -1, fx_result);
 }
-fun string(a: bool) = if a {"true"} else {"false"}
+fun string(a: bool): string = if a {"true"} else {"false"}
 @pure fun string(a: int): string = @ccode  { return fx_itoa(a, false, fx_result) }
 @pure fun string(a: long): string = @ccode  { return fx_ltoa(a, 'd', false, fx_result) }
 @pure fun string(a: uint8): string = @ccode { return fx_itoa(a, true, fx_result) }
@@ -246,24 +246,24 @@ fun string(a: bool) = if a {"true"} else {"false"}
 }
 @inline fun string(a: string): string = a
 
-fun string(a: 't?) {
+fun string(a: 't?): string {
     | Some(a) => "Some(" + repr(a) + ")"
     | _ => "None"
 }
 
-fun ord(c: char) = (c :> int)
-fun chr(i: int) = (i :> char)
+fun ord(c: char): int = (c :> int)
+fun chr(i: int): char = (i :> char)
 
-fun odd(i: 't) = i % 2 != 0
-fun odd(i: int64) = i % 2 != 0i64
-fun odd(i: uint64) = i % 2u64 != 0u64
-fun even(i: 't) = i % 2 == 0
-fun even(i: int64) = i % 2 == 0i64
-fun even(i: uint64) = i % 2u64 == 0u64
+fun odd(i: 't): bool = i % 2 != 0
+fun odd(i: int64): bool = i % 2 != 0i64
+fun odd(i: uint64): bool = i % 2u64 != 0u64
+fun even(i: 't): bool = i % 2 == 0
+fun even(i: int64): bool = i % 2 == 0i64
+fun even(i: uint64): bool = i % 2u64 == 0u64
 
 fun repr(a: 't): string = string(a)
 // [TODO]: move String.escaped() to runtime and call it here
-fun repr(a: string) = "\"" + a + "\""
+fun repr(a: string): string = "\"" + a + "\""
 @pure fun repr(a: char): string = @ccode {
     char_ buf[16] = {39, 92, 39};
     if (32 <= a && a != 39 && a != 34 && a != 92) {
@@ -308,16 +308,16 @@ fun repr(a: string) = "\"" + a + "\""
     }
 }
 
-fun string(t: (...)) = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
-fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
-fun string(a: 't ref) = "ref(" + repr(*a) + ")"
+fun string(t: (...)): string = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
+fun string(r: {...}): string = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
+fun string(a: 't ref): string = "ref(" + repr(*a) + ")"
 
-fun string(a: 't [])
+fun string(a: 't []): string
 {
     join_embrace("[", "]", ", ", [for x <- a {repr(x)}])
 }
 
-fun string(a: 't [,])
+fun string(a: 't [,]): string
 {
     val (m, n) = size(a)
     val rows = [for i <- 0:m {
@@ -327,7 +327,7 @@ fun string(a: 't [,])
     join_embrace("[", "]", ";\n", rows)
 }
 
-fun string(a: 't [,,])
+fun string(a: 't [,,]): string
 {
     val (d, m, n) = size(a)
     val planes = [for k <- 0:d {
@@ -340,13 +340,13 @@ fun string(a: 't [,,])
     join_embrace("[", "]", ";;\n\n", planes)
 }
 
-fun string(l: 't list) = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
+fun string(l: 't list): string = join_embrace("[", "]", ", ", [for x <- l {repr(x)}])
 
 @pure fun string(a: char []): string = @ccode {
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
-fun string(v: 't vector) = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+fun string(v: 't vector): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 @pure fun string(v: char vector): string
 @ccode {
@@ -364,7 +364,7 @@ fun string(v: 't vector) = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
     return fx_status;
 }
 
-fun string(typ: scalar_t)
+fun string(typ: scalar_t): string
 {
     | Notype => "Notype"
     | Type_Int => "Int"
@@ -384,7 +384,7 @@ fun string(typ: scalar_t)
     | Type_Char => "Char"
 }
 
-fun repr(v: char vector) =
+fun repr(v: char vector): string =
     join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 type format_t =
@@ -404,8 +404,8 @@ type format_t =
     FX_STATIC_ASSERT(sizeof(fx_result->t0) == sizeof(fx_format_t));
     return fx_parse_format(fmt, start, (fx_format_t*)&fx_result->t0, &fx_result->t1);
 }
-fun string(x: 't, fmt: format_t) = repr(x)
-fun string(x: 't, fmt: string) = string(x, parse_format(fmt).0)
+fun string(x: 't, fmt: format_t): string = repr(x)
+fun string(x: 't, fmt: string): string = string(x, parse_format(fmt).0)
 @pure fun format_(x: int64, u: bool, fmt: format_t): string
 @ccode {
     FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
@@ -416,18 +416,18 @@ fun string(x: 't, fmt: string) = string(x, parse_format(fmt).0)
     FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
     return fx_format_flt(x, precision0, (fx_format_t*)fmt, fx_result);
 }
-fun string(x: int, fmt: format_t) = format_(x :> int64, false, fmt)
-fun string(x: int8, fmt: format_t) = format_(x :> int64, false, fmt)
-fun string(x: uint8, fmt: format_t) = format_(x :> int64, true, fmt)
-fun string(x: int16, fmt: format_t) = format_(x :> int64, false, fmt)
-fun string(x: uint16, fmt: format_t) = format_(x :> int64, true, fmt)
-fun string(x: int32, fmt: format_t) = format_(x :> int64, false, fmt)
-fun string(x: uint32, fmt: format_t) = format_(x :> int64, true, fmt)
-fun string(x: int64, fmt: format_t) = format_(x, false, fmt)
-fun string(x: uint64, fmt: format_t) = format_(x :> int64, true, fmt)
-fun string(x: float, fmt: format_t) = format_(x :> double, 8, fmt)
-fun string(x: double, fmt: format_t) = format_(x, 16, fmt)
-fun string(x: half, fmt: format_t) = format_(x :> double, 4, fmt)
+fun string(x: int, fmt: format_t): string = format_(x :> int64, false, fmt)
+fun string(x: int8, fmt: format_t): string = format_(x :> int64, false, fmt)
+fun string(x: uint8, fmt: format_t): string = format_(x :> int64, true, fmt)
+fun string(x: int16, fmt: format_t): string = format_(x :> int64, false, fmt)
+fun string(x: uint16, fmt: format_t): string = format_(x :> int64, true, fmt)
+fun string(x: int32, fmt: format_t): string = format_(x :> int64, false, fmt)
+fun string(x: uint32, fmt: format_t): string = format_(x :> int64, true, fmt)
+fun string(x: int64, fmt: format_t): string = format_(x, false, fmt)
+fun string(x: uint64, fmt: format_t): string = format_(x :> int64, true, fmt)
+fun string(x: float, fmt: format_t): string = format_(x :> double, 8, fmt)
+fun string(x: double, fmt: format_t): string = format_(x, 16, fmt)
+fun string(x: half, fmt: format_t): string = format_(x :> double, 4, fmt)
 @pure fun string(x: long, fmt: format_t): string
 @ccode {
     FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
@@ -452,16 +452,16 @@ fun string(x: half, fmt: format_t) = format_(x :> double, 4, fmt)
     return fx_format_str(&x_str, (fx_format_t*)fmt, fx_result);
 }
 
-fun string(t: (...), fmt: format_t) = join_embrace("(", ")", ", ", [for x <- t {string(x, fmt)}])
-fun string(r: {...}, fmt: format_t) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+string(x, fmt)}])
-fun string(a: 't ref, fmt: format_t) = "ref(" + format(a, fmt) + ")"
+fun string(t: (...), fmt: format_t): string = join_embrace("(", ")", ", ", [for x <- t {string(x, fmt)}])
+fun string(r: {...}, fmt: format_t): string = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+string(x, fmt)}])
+fun string(a: 't ref, fmt: format_t): string = "ref(" + format(a, fmt) + ")"
 
-fun string(a: 't [], fmt: format_t)
+fun string(a: 't [], fmt: format_t): string
 {
     join_embrace("[", "]", ", ", [for x <- a {string(x, fmt)}])
 }
 
-fun string(a: 't [,], fmt: format_t)
+fun string(a: 't [,], fmt: format_t): string
 {
     val (m, n) = size(a)
     val rows = [for i <- 0:m {
@@ -471,7 +471,7 @@ fun string(a: 't [,], fmt: format_t)
     join_embrace("[", "]", ";\n", rows)
 }
 
-fun string(a: 't [,,], fmt: format_t)
+fun string(a: 't [,,], fmt: format_t): string
 {
     val (d, m, n) = size(a)
     val planes = [for k <- 0:d {
@@ -484,10 +484,10 @@ fun string(a: 't [,,], fmt: format_t)
     join_embrace("[", "]", ";;\n\n", planes)
 }
 
-fun string(l: 't list, fmt: format_t) = join_embrace("[", "]", ", ", [for x <- l {string(x, fmt)}])
-fun string(a: char [], fmt: format_t) = string(string(a), fmt)
-fun string(v: 't vector, fmt: format_t) = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
-fun string(v: char vector, fmt: format_t) = string(string(v), fmt)
+fun string(l: 't list, fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- l {string(x, fmt)}])
+fun string(a: char [], fmt: format_t): string = string(string(a), fmt)
+fun string(v: 't vector, fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
+fun string(v: char vector, fmt: format_t): string = string(string(v), fmt)
 
 @pure operator * (c: char, n: int): string
 @ccode {
@@ -568,10 +568,10 @@ operator <=> (a: 't [], b: 't []): int
 }
 
 // [TODO] add __intrin_tuple_size(x) that is expanded to a constant at compile time.
-fun size(_: ('t*2)) = 2
-fun size(_: ('t*3)) = 3
-fun size(_: ('t*4)) = 4
-fun size(_: ('t*5)) = 5
+fun size(_: ('t*2)): int = 2
+fun size(_: ('t*3)): int = 3
+fun size(_: ('t*4)): int = 4
+fun size(_: ('t*5)): int = 5
 
 operator == (a: (...), b: (...)): bool =
     fold f=true for aj <- a, bj <- b {if aj == bj {f} else {false}}
@@ -665,39 +665,39 @@ operator * (a: ('t*4), b: ('t*4)): ('t*4) =
     a.0*b.3 + a.1*b.2 - a.2*b.1 + a.3*b.0)
 
 // dot product
-fun dot(a: ('t...), b: ('t...)) =
+fun dot(a: ('t...), b: ('t...)): 't =
     fold s = a.0-a.0 for aj <- a, bj <- b {s + aj*bj}
 
 // cross product
-fun cross(a: ('t*2), b: ('t*2)) = a.0*b.1 - a.1*b.0
-fun cross(a: ('t*3), b: ('t*3)) =
+fun cross(a: ('t*2), b: ('t*2)): 't = a.0*b.1 - a.1*b.0
+fun cross(a: ('t*3), b: ('t*3)): ('t*3) =
     (a.1*b.2 - a.2*b.1, a.2*b.0 - a.0*b.2, a.0*b.1 - a.1*b.0)
 
-fun normInf(a: 't, b: 't) = abs(a - b)
-fun normInf(a: 't) = abs(a)
-fun normL1(a: 't, b: 't) = abs(a - b)
-fun normL1(a: 't) = abs(a)
-fun normL2sqr(a: 't, b: 't) { val t = abs(a - b); t*t }
-fun normL2sqr(a: 't) { val t = abs(a); t*t }
-fun normL2(a: 't) = abs(a)
+fun normInf(a: 't, b: 't): 't = abs(a - b)
+fun normInf(a: 't): 't = abs(a)
+fun normL1(a: 't, b: 't): 't = abs(a - b)
+fun normL1(a: 't): 't = abs(a)
+fun normL2sqr(a: 't, b: 't): 't { val t = abs(a - b); t*t }
+fun normL2sqr(a: 't): 't { val t = abs(a); t*t }
+fun normL2(a: 't): 't = abs(a)
 
-fun normInf(a: ('t...)) =
+fun normInf(a: ('t...)): 't =
     fold s = normInf(a.0) for aj <- a {max(s, normInf(aj))}
-fun normL1(a: ('t...)) =
+fun normL1(a: ('t...)): 't3 =
     fold s = normL1(a.0)*0.f for aj <- a {s + normL1(aj)}
-fun normL2sqr(a: ('t...)) =
+fun normL2sqr(a: ('t...)): 't3 =
     fold s = normL1(a.0)*0.f for aj <- a {s + normL2sqr(aj)}
-fun normL2(a: ('t...)) = __intrin_sqrt__(normL2sqr(a))
-fun normInf(a: ('t...), b: ('t...)) =
+fun normL2(a: ('t...)): 't3 = __intrin_sqrt__(normL2sqr(a))
+fun normInf(a: ('t...), b: ('t...)): 't =
     fold s = normInf(a.0, b.0) for aj <- a, bj <- b {max(s, normInf(aj, bj))}
-fun normL1(a: ('t...), b: ('t...)) =
+fun normL1(a: ('t...), b: ('t...)): 't3 =
     fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s + normL1(aj, bj)}
-fun normL2sqr(a: ('t...), b: ('t...)) =
+fun normL2sqr(a: ('t...), b: ('t...)): 't3 =
     fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s + normL2sqr(aj, bj)}
-fun normL2(a: ('t...), b: ('t...)) = __intrin_sqrt__(normL2sqr(a, b))
+fun normL2(a: ('t...), b: ('t...)): 't3 = __intrin_sqrt__(normL2sqr(a, b))
 
-fun norm(a: ('t...)) = normL2(a)
-fun norm(a: ('t...), b: ('t...)) = normL2(a, b)
+fun norm(a: ('t...)): 't3 = normL2(a)
+fun norm(a: ('t...), b: ('t...)): 't3 = normL2(a, b)
 
 operator .== (a: ('t...), b: 't): (bool...) = (for aj <- a {aj == b})
 operator .!= (a: ('t...), b: 't): (bool...) = (for aj <- a {aj != b})
@@ -733,8 +733,8 @@ operator <=> (a: 't?, b: 't?): int {
     | _ => 0
 }
 
-fun all(a: (bool...)) = fold f=true for x <- a {f & x}
-fun exists(a: (bool...)) = fold f=false for x <- a {f | x}
+fun all(a: (bool...)): bool = fold f=true for x <- a {f & x}
+fun exists(a: (bool...)): bool = fold f=false for x <- a {f | x}
 
 @pure @nothrow operator == (a: string, b: string): bool = @ccode { return fx_streq(a, b); }
 
@@ -781,18 +781,18 @@ operator === (a: 't?, b: 't?): bool {
     | _ => false
 }
 
-fun int(x: 't) = (x :> int)
-fun uint8(x: 't) = (x :> uint8)
-fun int8(x: 't) = (x :> int8)
-fun uint16(x: 't) = (x :> uint16)
-fun int16(x: 't) = (x :> int16)
-fun uint32(x: 't) = (x :> uint32)
-fun int32(x: 't) = (x :> int32)
-fun uint64(x: 't) = (x :> uint64)
-fun int64(x: 't) = (x :> int64)
-fun float(x: 't) = (x :> float)
-fun double(x: 't) = (x :> double)
-fun half(x: 't) = (x :> half)
+fun int(x: 't): int = (x :> int)
+fun uint8(x: 't): uint8 = (x :> uint8)
+fun int8(x: 't): int8 = (x :> int8)
+fun uint16(x: 't): uint16 = (x :> uint16)
+fun int16(x: 't): int16 = (x :> int16)
+fun uint32(x: 't): uint32 = (x :> uint32)
+fun int32(x: 't): int32 = (x :> int32)
+fun uint64(x: 't): uint64 = (x :> uint64)
+fun int64(x: 't): int64 = (x :> int64)
+fun float(x: 't): float = (x :> float)
+fun double(x: 't): double = (x :> double)
+fun half(x: 't): half = (x :> half)
 
 @pure fun int(x: long): int
 @ccode { return fx_ltoi(x, fx_result) }
@@ -801,42 +801,42 @@ fun half(x: 't) = (x :> half)
 @ccode { FX_MAKE_LONG(x, fx_result); }
 @pure @nothrow fun long(x: uint64): long
 @ccode { FX_MAKE_ULONG(x, fx_result); }
-fun long(x: int8) = long(x :> int64)
-fun long(x: uint8) = long(x :> int64)
-fun long(x: int16) = long(x :> int64)
-fun long(x: uint16) = long(x :> int64)
-fun long(x: int32) = long(x :> int64)
-fun long(x: uint32) = long(x :> int64)
-fun long(x: int) = long(x :> int64)
-fun long(x: bool) = long(x :> int64)
+fun long(x: int8): long = long(x :> int64)
+fun long(x: uint8): long = long(x :> int64)
+fun long(x: int16): long = long(x :> int64)
+fun long(x: uint16): long = long(x :> int64)
+fun long(x: int32): long = long(x :> int64)
+fun long(x: uint32): long = long(x :> int64)
+fun long(x: int): long = long(x :> int64)
+fun long(x: bool): long = long(x :> int64)
 fun long(x: string): long
 @ccode { return fx_atol(x, 0, fx_result) }
 
-fun int(x: ('t...)) = (for xj <- x {int(xj)})
-fun uint8(x: ('t...)) = (for xj <- x {uint8(xj)})
-fun int8(x: ('t...)) = (for xj <- x {int8(xj)})
-fun uint16(x: ('t...)) = (for xj <- x {uint16(xj)})
-fun int16(x: ('t...)) = (for xj <- x {int16(xj)})
-fun uint32(x: ('t...)) = (for xj <- x {uint32(xj)})
-fun int32(x: ('t...)) = (for xj <- x {int32(xj)})
-fun uint64(x: ('t...)) = (for xj <- x {uint64(xj)})
-fun int64(x: ('t...)) = (for xj <- x {int64(xj)})
-fun float(x: ('t...)) = (for xj <- x {float(xj)})
-fun double(x: ('t...)) = (for xj <- x {double(xj)})
-fun half(x: ('t...)) = (for xj <- x {half(xj)})
+fun int(x: ('t...)): (int...) = (for xj <- x {int(xj)})
+fun uint8(x: ('t...)): (uint8...) = (for xj <- x {uint8(xj)})
+fun int8(x: ('t...)): (int8...) = (for xj <- x {int8(xj)})
+fun uint16(x: ('t...)): (uint16...) = (for xj <- x {uint16(xj)})
+fun int16(x: ('t...)): (int16...) = (for xj <- x {int16(xj)})
+fun uint32(x: ('t...)): (uint32...) = (for xj <- x {uint32(xj)})
+fun int32(x: ('t...)): (int32...) = (for xj <- x {int32(xj)})
+fun uint64(x: ('t...)): (uint64...) = (for xj <- x {uint64(xj)})
+fun int64(x: ('t...)): (int64...) = (for xj <- x {int64(xj)})
+fun float(x: ('t...)): (float...) = (for xj <- x {float(xj)})
+fun double(x: ('t...)): (double...) = (for xj <- x {double(xj)})
+fun half(x: ('t...)): (half...) = (for xj <- x {half(xj)})
 
-fun int(x: 't [+]) = [for xj <- x {int(xj)}]
-fun uint8(x: 't [+]) = [for xj <- x {uint8(xj)}]
-fun int8(x: 't [+]) = [for xj <- x {int8(xj)}]
-fun uint16(x: 't [+]) = [for xj <- x {uint16(xj)}]
-fun int16(x: 't [+]) = [for xj <- x {int16(xj)}]
-fun uint32(x: 't [+]) = [for xj <- x {uint32(xj)}]
-fun int32(x: 't [+]) = [for xj <- x {int32(xj)}]
-fun uint64(x: 't [+]) = [for xj <- x {uint64(xj)}]
-fun int64(x: 't [+]) = [for xj <- x {int64(xj)}]
-fun float(x: 't [+]) = [for xj <- x {float(xj)}]
-fun double(x: 't [+]) = [for xj <- x {double(xj)}]
-fun half(x: 't [+]) = [for xj <- x {half(xj)}]
+fun int(x: 't [+]): int [+] = [for xj <- x {int(xj)}]
+fun uint8(x: 't [+]): uint8 [+] = [for xj <- x {uint8(xj)}]
+fun int8(x: 't [+]): int8 [+] = [for xj <- x {int8(xj)}]
+fun uint16(x: 't [+]): uint16 [+] = [for xj <- x {uint16(xj)}]
+fun int16(x: 't [+]): int16 [+] = [for xj <- x {int16(xj)}]
+fun uint32(x: 't [+]): uint32 [+] = [for xj <- x {uint32(xj)}]
+fun int32(x: 't [+]): int32 [+] = [for xj <- x {int32(xj)}]
+fun uint64(x: 't [+]): uint64 [+] = [for xj <- x {uint64(xj)}]
+fun int64(x: 't [+]): int64 [+] = [for xj <- x {int64(xj)}]
+fun float(x: 't [+]): float [+] = [for xj <- x {float(xj)}]
+fun double(x: 't [+]): double [+] = [for xj <- x {double(xj)}]
+fun half(x: 't [+]): half [+] = [for xj <- x {half(xj)}]
 
 type uint8x3 = (uint8*3)
 type uint8x4 = (uint8*4)
@@ -943,10 +943,10 @@ type doublex6 = (double*6)
     return (short)(((i+32768) & ~65535) == 0 ? i : i < 0 ? -32768 : 32767);
 }
 
-fun sat_uint8(x: ('t...)) = (for xj <- x {sat_uint8(xj)})
-fun sat_int8(x: ('t...)) = (for xj <- x {sat_int8(xj)})
-fun sat_uint16(x: ('t...)) = (for xj <- x {sat_uint16(xj)})
-fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
+fun sat_uint8(x: ('t...)): (uint8...) = (for xj <- x {sat_uint8(xj)})
+fun sat_int8(x: ('t...)): (int8...) = (for xj <- x {sat_int8(xj)})
+fun sat_uint16(x: ('t...)): (uint16...) = (for xj <- x {sat_uint16(xj)})
+fun sat_int16(x: ('t...)): (int16...) = (for xj <- x {sat_int16(xj)})
 
 // do not use lrint(x), since it's slow. and (int)round(x) is even slower
 @pure @nothrow fun round(x: float): int = @ccode { return fx_roundf2I(x) }
@@ -968,30 +968,30 @@ fun sat_int16(x: ('t...)) = (for xj <- x {sat_int16(xj)})
     return fx_round2I(x*scale)/scale;
 }
 
-fun round(x: ('t...)) = (for xj <- x {round(xj)})
+fun round(x: ('t...)): (int...) = (for xj <- x {round(xj)})
 
-fun min(a: 't, b: 't) = if a <= b {a} else {b}
-fun max(a: 't, b: 't) = if a >= b {a} else {b}
-@inline fun min(a: int, b: int) = __intrin_min__(a, b)
-@inline fun max(a: int, b: int) = __intrin_max__(a, b)
-@inline fun min(a: float, b: float) = __intrin_min__(a, b)
-@inline fun max(a: float, b: float) = __intrin_max__(a, b)
-@inline fun min(a: double, b: double) = __intrin_min__(a, b)
-@inline fun max(a: double, b: double) = __intrin_max__(a, b)
-fun abs(a: 't) = if a >= (0 :> 't) {a} else {-a}
-@inline fun abs(a: uint8) = int(a)
-@inline fun abs(a: int8) = if a >= 0 {int(a)} else {-a}
-@inline fun abs(a: uint16) = int(a)
-@inline fun abs(a: int16) = if a >= 0 {int(a)} else {-a}
-@inline fun abs(a: uint32) = a
-@inline fun abs(a: int32) = if a >= 0 {int(a)} else {int(-a)}
-@inline fun abs(a: uint64) = a
-fun sign(a: 't) = int(a > (0 :> 't)) - int(a < (0 :> 't))
-fun clip(x: 't, a: 't, b: 't) = if a <= x <= b {x} else if x < a {a} else {b}
+fun min(a: 't, b: 't): 't = if a <= b {a} else {b}
+fun max(a: 't, b: 't): 't = if a >= b {a} else {b}
+@inline fun min(a: int, b: int): int = __intrin_min__(a, b)
+@inline fun max(a: int, b: int): int = __intrin_max__(a, b)
+@inline fun min(a: float, b: float): float = __intrin_min__(a, b)
+@inline fun max(a: float, b: float): float = __intrin_max__(a, b)
+@inline fun min(a: double, b: double): double = __intrin_min__(a, b)
+@inline fun max(a: double, b: double): double = __intrin_max__(a, b)
+fun abs(a: 't): 't = if a >= (0 :> 't) {a} else {-a}
+@inline fun abs(a: uint8): int = int(a)
+@inline fun abs(a: int8): int = if a >= 0 {int(a)} else {-a}
+@inline fun abs(a: uint16): int = int(a)
+@inline fun abs(a: int16): int = if a >= 0 {int(a)} else {-a}
+@inline fun abs(a: uint32): uint32 = a
+@inline fun abs(a: int32): int = if a >= 0 {int(a)} else {int(-a)}
+@inline fun abs(a: uint64): uint64 = a
+fun sign(a: 't): int = int(a > (0 :> 't)) - int(a < (0 :> 't))
+fun clip(x: 't, a: 't, b: 't): 't = if a <= x <= b {x} else if x < a {a} else {b}
 
 @nothrow fun print_string(a: string): void = @ccode { fx_fputs(stdout, a) }
 
-fun print(a: 't) = print_string(string(a))
+fun print(a: 't): void = print_string(string(a))
 @nothrow fun print(a: bool): void = @ccode { fputs(a ? "true" : "false", stdout) }
 @nothrow fun print(a: int): void = @ccode { printf("%zd", a) }
 @nothrow fun print(a: uint8): void = @ccode { printf("%d", (int)a) }
@@ -1046,11 +1046,11 @@ fun print(a: long): void = @ccode {
     else
         printf("cptr<null>");
 }
-@inline fun print(a: string) = print_string(a)
-fun print_repr(a: 't) = print(a)
-fun print_repr(a: string) { print("\""); print(a); print("\"") }
-fun print_repr(a: char) { print("'"); print(a); print("'") }
-fun print(a: 't [])
+@inline fun print(a: string): void = print_string(a)
+fun print_repr(a: 't): void = print(a)
+fun print_repr(a: string): void { print("\""); print(a); print("\"") }
+fun print_repr(a: char): void { print("'"); print(a); print("'") }
+fun print(a: 't []): void
 {
     print("[")
     for x@i <- a {
@@ -1065,7 +1065,7 @@ fun print(a: 't [])
     fx_fputs(stdout, &str)
 }
 
-fun print(a: 't [,])
+fun print(a: 't [,]): void
 {
     print("[")
     val (m, n) = size(a)
@@ -1079,7 +1079,7 @@ fun print(a: 't [,])
     print("]")
 }
 
-fun print(l: 't list)
+fun print(l: 't list): void
 {
     print("[")
     for x@i <- l {
@@ -1089,7 +1089,7 @@ fun print(l: 't list)
     print("]")
 }
 
-fun print(v: 't vector)
+fun print(v: 't vector): void
 {
     print("[")
     for x@i <- v {
@@ -1099,7 +1099,7 @@ fun print(v: 't vector)
     print("]")
 }
 
-fun print(t: (...))
+fun print(t: (...)): void
 {
     print("(");
     for x@i <- t {
@@ -1109,7 +1109,7 @@ fun print(t: (...))
     print(")")
 }
 
-fun print(r: {...})
+fun print(r: {...}): void
 {
     print("{")
     for (n, x)@i <- r {
@@ -1120,22 +1120,22 @@ fun print(r: {...})
     print("}")
 }
 
-fun print(a: 't ref) {
+fun print(a: 't ref): void {
     print("ref("); print_repr(*a); print(")")
 }
 
-@inline fun println() = print("\n")
-fun println(a: 't) { print(a); print("\n") }
+@inline fun println(): void = print("\n")
+fun println(a: 't): void { print(a); print("\n") }
 
 fun list(a: 't []): 't list = [:: for x <- a {x}]
 fun list(s: string): char list = [:: for x <- s {x}]
 fun list(v: 't vector): 't list = [:: for x <- v {x}]
 
 fun array(): 't [] = []
-fun array(n: int, x: 't) = [for i <- 0:n {x}]
-fun array((m: int, n: int), x: 't) = [for i <- 0:m for j <- 0:n {x}]
-fun array((m: int, n: int, n2: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
-fun array((m: int, n: int, n2: int, n3: int), x: 't) = [for i <- 0:m for j <- 0:n for k <- 0:n2 for l <- 0:n3 {x}]
+fun array(n: int, x: 't): 't [] = [for i <- 0:n {x}]
+fun array((m: int, n: int), x: 't): 't [,] = [for i <- 0:m for j <- 0:n {x}]
+fun array((m: int, n: int, n2: int), x: 't): 't [,,] = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
+fun array((m: int, n: int, n2: int, n3: int), x: 't): 't [,,,] = [for i <- 0:m for j <- 0:n for k <- 0:n2 for l <- 0:n3 {x}]
 fun array(l: 't list): 't [] = [for x <- l {x}]
 fun array(v: 't vector): 't [] = [for x <- v {x}]
 fun array(s: string): char [] = [for x <- s {x}]
@@ -1151,7 +1151,7 @@ fun vector(l: 't list): 't vector = vector(for x <- l {x})
 fun vector(a: 't [+]): 't vector = vector(for x <- a {x})
 fun vector(s: string): char vector = vector(for x <- s {x})
 
-fun size(a: 't vector) = __intrin_size__(a)
+fun size(a: 't vector): int = __intrin_size__(a)
 
 @ccode {
 
@@ -1177,16 +1177,16 @@ fun hash(x: {...}): hash_t =
         h * FNV_1A_PRIME
     }
 
-@inline fun hash(x: int) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: int32) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: uint32) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: int64) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: uint64) = x ^ FNV_1A_OFFSET
-@inline fun hash(x: int8) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: uint8) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: int16) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: uint16) = uint64(x) ^ FNV_1A_OFFSET
-@inline fun hash(x: bool) = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int32): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint32): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int64): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint64): uint64 = x ^ FNV_1A_OFFSET
+@inline fun hash(x: int8): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint8): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: int16): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: uint16): uint64 = uint64(x) ^ FNV_1A_OFFSET
+@inline fun hash(x: bool): uint64 = uint64(x) ^ FNV_1A_OFFSET
 @pure @nothrow fun hash(x: float): hash_t = @ccode {
     fx_bits32_t u; u.f = x; return u.u ^ 14695981039346656037ULL;
 }

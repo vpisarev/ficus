@@ -172,7 +172,7 @@ fun final_weekday(year: int): int
     p + int(p < 0)*7
 }
 
-fun number_of_weeks(year: int)
+fun number_of_weeks(year: int): int
 {
     if final_weekday(year) == 4 || final_weekday(year-1) == 3 {
         53
@@ -181,7 +181,7 @@ fun number_of_weeks(year: int)
     }
 }
 
-fun make(year: int, month: int, day: int, ~calendar: calendar_t=Calendar_Auto)
+fun make(year: int, month: int, day: int, ~calendar: calendar_t=Calendar_Auto): Date.t
 {
     if year < MIN_YEAR {
         throw DateError(f"year value is out of range [{MIN_YEAR}, inf)")
@@ -208,7 +208,7 @@ fun make(year: int, month: int, day: int, ~calendar: calendar_t=Calendar_Auto)
     }
 }
 
-fun make(jdn: int, ~calendar: calendar_t=Calendar_Auto) {
+fun make(jdn: int, ~calendar: calendar_t=Calendar_Auto): Date.t {
     val calendar =
         if calendar != Calendar_Auto {calendar}
         else if jdn >= 2299161 {Calendar_Gregorian}
@@ -216,7 +216,7 @@ fun make(jdn: int, ~calendar: calendar_t=Calendar_Auto) {
     t {jdn = jdn, calendar=calendar}
 }
 
-fun make((year, month, day): (int*3), ~calendar: calendar_t=Calendar_Auto) =
+fun make((year, month, day): (int*3), ~calendar: calendar_t=Calendar_Auto): Date.t =
     make(year, month, day, calendar=calendar)
 
 // returns (year, month, day)
@@ -249,7 +249,7 @@ fun rebase(date: t, calendar: calendar_t): t
     }
 }
 
-fun parse_month(s: string)
+fun parse_month(s: string): int
 {
     val mstr = s.toupper()
     match find_opt(for i <- 0:12 {
@@ -263,7 +263,7 @@ fun parse_month(s: string)
     }
 }
 
-fun parse(date: string, format: string, ~calendar: calendar_t=Calendar_Auto)
+fun parse(date: string, format: string, ~calendar: calendar_t=Calendar_Auto): Date.t
 {
     val fmt = format.toupper()
     val ((yidx, have_century), (midx, mfmt), didx, sep1, sep2) = match fmt {
@@ -333,7 +333,7 @@ fun parse(date: string, format: string, ~calendar: calendar_t=Calendar_Auto)
     make(year, month, day, calendar=calendar)
 }
 
-fun recognize_format(date: string)
+fun recognize_format(date: string): string
 {
     var pos1 = date.find('-', 1)
     if pos1 > 0 {
@@ -376,25 +376,25 @@ fun recognize_format(date: string)
     }
 }
 
-fun parse(date: string, ~calendar: calendar_t = Calendar_Auto) =
+fun parse(date: string, ~calendar: calendar_t = Calendar_Auto): Date.t =
     parse(date, recognize_format(date), calendar=calendar)
 
-fun gregorian(year: int, month: int, day: int) =
+fun gregorian(year: int, month: int, day: int): Date.t =
     make(year, month, day, calendar=Calendar_Gregorian)
 
-fun julian(year: int, month: int, day: int) =
+fun julian(year: int, month: int, day: int): Date.t =
     make(year, month, day, calendar=Calendar_Julian)
 
-fun gregorian(date: string, format: string) =
+fun gregorian(date: string, format: string): Date.t =
     parse(date, format, calendar=Calendar_Gregorian)
 
-fun julian(date: string, format: string) =
+fun julian(date: string, format: string): Date.t =
     parse(date, format, calendar=Calendar_Julian)
 
-fun gregorian(date: string) =
+fun gregorian(date: string): Date.t =
     parse(date, calendar=Calendar_Gregorian)
 
-fun julian(date: string) =
+fun julian(date: string): Date.t =
     parse(date, calendar=Calendar_Julian)
 
 @private @pure @nothrow fun today_ymd_(): (int*3)
@@ -409,36 +409,36 @@ fun julian(date: string) =
     fx_result->t2 = day;
 }
 
-fun today()
+fun today(): Date.t
 {
     val (y, m, d) = today_ymd_()
     make(y, m, d, calendar=Calendar_Auto)
 }
 
-fun weekday(date: t)
+fun weekday(date: t): int
 {
     val wday = date.jdn % 7
     wday + int(wday < 0)*7 + 1
 }
 
-fun weekday_name(date: t) = weekday_names[weekday(date)]
-fun weekday_short_name(date: t) = weekday_short_names[weekday(date)]
-fun weekday_english_name(date: t) = weekday_names_eng[weekday(date)]
-fun weekday_short_english_name(date: t) = weekday_short_names_eng[weekday(date)]
+fun weekday_name(date: t): string = weekday_names[weekday(date)]
+fun weekday_short_name(date: t): string = weekday_short_names[weekday(date)]
+fun weekday_english_name(date: t): string = weekday_names_eng[weekday(date)]
+fun weekday_short_english_name(date: t): string = weekday_short_names_eng[weekday(date)]
 
-fun month_name(month: int) = month_names[month-1]
-fun month_short_name(month: int) = month_short_names[month-1]
-fun month_english_name(month: int) = month_names_eng[month-1]
-fun month_short_english_name(month: int) = month_short_names_eng[month-1]
+fun month_name(month: int): string = month_names[month-1]
+fun month_short_name(month: int): string = month_short_names[month-1]
+fun month_english_name(month: int): string = month_names_eng[month-1]
+fun month_short_english_name(month: int): string = month_short_names_eng[month-1]
 
-fun month_name(date: t) = month_names[unpack(date).1-1]
-fun month_short_name(date: t) = month_short_names[unpack(date).1-1]
-fun month_english_name(date: t) = month_names_eng[unpack(date).1-1]
-fun month_short_english_name(date: t) = month_short_names_eng[unpack(date).1-1]
+fun month_name(date: t): string = month_names[unpack(date).1-1]
+fun month_short_name(date: t): string = month_short_names[unpack(date).1-1]
+fun month_english_name(date: t): string = month_names_eng[unpack(date).1-1]
+fun month_short_english_name(date: t): string = month_short_names_eng[unpack(date).1-1]
 
-@inline fun year(date: t) = unpack(date).0
-@inline fun month(date: t) = unpack(date).1
-@inline fun day(date: t) = unpack(date).2
+@inline fun year(date: t): int = unpack(date).0
+@inline fun month(date: t): int = unpack(date).1
+@inline fun day(date: t): int = unpack(date).2
 
 @private @pure @nothrow
 fun day_of_the_year_(leapyear: bool, month: int, day: int): int
@@ -450,7 +450,7 @@ fun day_of_the_year_(leapyear: bool, month: int, day: int): int
     return days[leapyear][month-1] + day;
 }
 
-fun day_of_the_year(date: t)
+fun day_of_the_year(date: t): int
 {
     val (year, month, day) = unpack(date)
     val leapyear = is_leap_year(year, calendar=date.calendar)
@@ -461,7 +461,7 @@ fun day_of_the_year(date: t)
     returns week number within [1, 53] range, according to ISO 8601
     https://en.wikipedia.org/wiki/ISO_week_date
 */
-fun weeknumber(date: t, ~weekstartsfrom: int=1)
+fun weeknumber(date: t, ~weekstartsfrom: int=1): int
 {
     var date_ = date
     var wday = weekday(date)
@@ -489,7 +489,7 @@ fun weeknumber(date: t, ~weekstartsfrom: int=1)
     }
 }
 
-fun string(date: t)
+fun string(date: t): string
 {
     val (y,m,d) = unpack(date)
     f"{y:04d}-{m:02d}-{d:02d}"

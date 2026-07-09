@@ -20,7 +20,7 @@ type t =
 type lloc_t = Lxu.lloc_t
 type stream_t = Lxu.stream_t
 
-fun parse_file(fname: string) = parse_string(fname, File.read_utf8(fname))
+fun parse_file(fname: string): Json.t = parse_string(fname, File.read_utf8(fname))
 fun parse_string(fname: string, s: string): t
 {
     val strm = Lxu.make_stream_from_string(fname, s)
@@ -164,7 +164,7 @@ fun scalar2string(js: t): (string, bool)
     | _ => ("", false)
 }
 
-@private fun print_(js: t, ofs: int, indent: string, printf: string -> void)
+@private fun print_(js: t, ofs: int, indent: string, printf: string -> void): int
 {
     val W0 = 80, W1 = 100
     fun all_scalars(l: t []) =
@@ -239,14 +239,14 @@ fun scalar2string(js: t): (string, bool)
     }
 }
 
-fun print_to_file(js: t, filename: string)
+fun print_to_file(js: t, filename: string): void
 {
     val f = File.open(filename, "wt")
     ignore(print_(js, 0, "", fun(s: string) {f.print(s)}))
     f.close()
 }
-fun print(js: t) = ignore(print_(js, 0, "", fun(s: string) {print(s)}))
-fun string(js: t) {
+fun print(js: t): void = ignore(print_(js, 0, "", fun(s: string) {print(s)}))
+fun string(js: t): string {
     var sl: string list = []
     val _ = print_(js, 0, "", fun(s: string) {sl = s :: sl})
     "".join(sl.rev())

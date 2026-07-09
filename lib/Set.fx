@@ -57,7 +57,7 @@ fun empty(s: 't Set.t): bool
     | _ => false
 }
 
-@private fun mem_(t: 't tree_t, x: 't, cmp: 't cmp_t) =
+@private fun mem_(t: 't tree_t, x: 't, cmp: 't cmp_t): bool =
 match t
 {
     | Node(_, l, y, r) =>
@@ -83,7 +83,7 @@ match t
 
 fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
 
-@private fun balance_left(l: 't tree_t, x: 't, r: 't tree_t)
+@private fun balance_left(l: 't tree_t, x: 't, r: 't tree_t): 't tree_t
 {
     | (Node(Red, Node(Red, a, x, b), y, c), z, d) =>
         Node(Red, Node(Black, a, x, b), y, Node(Black, c, z, d))
@@ -93,7 +93,7 @@ fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
         Node(Black, l, x, r)
 }
 
-@private fun balance_right(l: 't tree_t, x: 't, r: 't tree_t)
+@private fun balance_right(l: 't tree_t, x: 't, r: 't tree_t): 't tree_t
 {
     | (a, x, Node(Red, Node(Red, b, y, c), z, d)) =>
         Node(Red, Node(Black, a, x, b), y, Node(Black, c, z, d))
@@ -355,7 +355,7 @@ fun list(s: 't Set.t): 't list
     update_list_(s.root, [])
 }
 
-fun diff(xs: 't Set.t, ys: 't Set.t)
+fun diff(xs: 't Set.t, ys: 't Set.t): 't Set.t
 {
     fun update_(t: 't tree_t, cmp: 't cmp_t, res: 't tree_t, size: int): ('t tree_t, int) =
     match t
@@ -377,7 +377,7 @@ fun diff(xs: 't Set.t, ys: 't Set.t)
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun intersect(xs: 't Set.t, ys: 't Set.t)
+fun intersect(xs: 't Set.t, ys: 't Set.t): 't Set.t
 {
     fun update_(t: 't tree_t, cmp: 't cmp_t, xs: 't tree_t, res: 't tree_t, size: int): ('t tree_t, int) =
     match t
@@ -401,7 +401,7 @@ fun intersect(xs: 't Set.t, ys: 't Set.t)
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun union(xs: 't Set.t, ys: 't Set.t)
+fun union(xs: 't Set.t, ys: 't Set.t): 't Set.t
 {
     fun update_(t: 't tree_t, cmp: 't cmp_t, res: 't tree_t, size: int): ('t tree_t, int) =
     match t

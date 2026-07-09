@@ -28,7 +28,7 @@ class ('k, 'd) t
     var table: ('k, 'd) hashentry_t []
 }
 
-fun makeindex(size: int) = array(size, 0)
+fun makeindex(size: int): int [] = array(size, 0)
 
 fun empty(size0: int, k0: 'k, d0: 'd): ('k, 'd) Hashmap.t
 {
@@ -44,9 +44,9 @@ fun empty(size0: int, k0: 'k, d0: 'd): ('k, 'd) Hashmap.t
 }
 
 fun t.empty(): bool = self.nactive == 0
-fun t.size() = self.nactive
+fun t.size(): int = self.nactive
 
-fun t.clear() {
+fun t.clear(): void {
     val entry0 = self.default_entry
     val table = self.table
     for i <- 0:size(table) {
@@ -66,7 +66,7 @@ fun t.copy(): ('k, 'd) Hashmap.t =
 
 @private fun add_fast_(tabsz: int, ht_index: index_t,
                     ht_table: ('k, 'd) hashentry_t [],
-                    entry: ('k, 'd) hashentry_t)
+                    entry: ('k, 'd) hashentry_t): int
 {
     val idxsz = size(ht_index)
     val hv = entry.hv
@@ -131,7 +131,7 @@ fun t.copy(): ('k, 'd) Hashmap.t =
     (j, found)
 }
 
-fun t.find_idx(k: 'k) = self.find_idx_(k).1
+fun t.find_idx(k: 'k): int = self.find_idx_(k).1
 fun t.mem(k: 'k): bool = self.find_idx_(k).1 >= 0
 fun t.find_opt(k: 'k): 'd?
 {
@@ -139,7 +139,7 @@ fun t.find_opt(k: 'k): 'd?
     if j >= 0 { Some(self.table[j].data) } else { None }
 }
 
-fun t.check_free()
+fun t.check_free(): void
 {
     var free = self.free
     var count = 0
@@ -234,7 +234,7 @@ fun t.add(k: 'k, d: 'd): void
     self.table[idx].data = d
 }
 
-fun t.remove(k: 'k) {
+fun t.remove(k: 'k): void {
     val (j, tidx) = self.find_idx_(k)
     if tidx >= 0 {
         self.index[j] = HASH_DELETED
@@ -252,7 +252,7 @@ fun t.list(): ('k, 'd) list =
         (entry.key, entry.data)
     }]
 
-fun t.add_list(data: ('k, 'd) list)
+fun t.add_list(data: ('k, 'd) list): void
 {
     var datasz = self.nactive + data.length()
     var curr_size = size(self.table), new_size = curr_size
@@ -268,7 +268,7 @@ fun from_list(k0: 'k, d0: 'd, data: ('k, 'd) list): ('k, 'd) Hashmap.t
     ht
 }
 
-fun t.app(f: ('k, 'd)->void) {
+fun t.app(f: ('k, 'd)->void): void {
     val table = self.table
     for j <- 0:self.tabsz {
         if table[j].hv < HASH_SIGN_MASK {

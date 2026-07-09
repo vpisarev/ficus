@@ -31,14 +31,14 @@
     return fx_cstr2str(sep, -1, fx_result);
 }
 
-fun is_absolute(path: string) =
+fun is_absolute(path: string): bool =
     path.startswith(dir_sep()) ||
     path.startswith("/") ||
     path.find(":") >= 0
 
-fun is_relative(path: string) = !is_absolute(path)
+fun is_relative(path: string): bool = !is_absolute(path)
 
-fun split(path: string) {
+fun split(path: string): (string, string) {
     val sep = dir_sep()
     val sep0 = "/"
     assert(sep.length() == 1)
@@ -59,10 +59,10 @@ fun split(path: string) {
     }
 }
 
-fun dirname(path: string) = split(path).0
-fun basename(path: string) = split(path).1
+fun dirname(path: string): string = split(path).0
+fun basename(path: string): string = split(path).1
 
-fun concat(dir: string, fname: string) {
+fun concat(dir: string, fname: string): string {
     val sep = dir_sep()
     val sep0 = "/"
     if dir.endswith(sep) || dir.endswith(sep0) {
@@ -72,7 +72,7 @@ fun concat(dir: string, fname: string) {
     }
 }
 
-fun normalize(dir: string, fname: string)
+fun normalize(dir: string, fname: string): string
 {
     val sep = dir_sep()
     val sep0 = "/"
@@ -88,7 +88,7 @@ fun normalize(dir: string, fname: string)
     }
 }
 
-fun remove_extension(path: string) {
+fun remove_extension(path: string): string {
     val sep = dir_sep()
     val sep0 = "/"
     val dotpos = path.rfind(".")

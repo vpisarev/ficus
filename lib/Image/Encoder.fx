@@ -46,9 +46,9 @@
     return fx_status;
 }
 
-fun imwrite(filename: string, img: uint8 [,], ~jpeg_quality: int=90) =
+fun imwrite(filename: string, img: uint8 [,], ~jpeg_quality: int=90): void =
     imwrite_(filename, img, 8, 1, jpeg_quality)
-fun imwrite(filename: string, img: uint8x3 [,], ~jpeg_quality: int=90) =
+fun imwrite(filename: string, img: uint8x3 [,], ~jpeg_quality: int=90): void =
     imwrite_(filename, (reinterpret(img): uint8 [,]), 8, 3, jpeg_quality)
-fun imread_rgba(filename: string, img: uint8x4 [,], ~jpeg_quality: int=90) =
+fun imread_rgba(filename: string, img: uint8x4 [,], ~jpeg_quality: int=90): void =
     imwrite_(filename, (reinterpret(img): uint8 [,]), 8, 4, jpeg_quality)

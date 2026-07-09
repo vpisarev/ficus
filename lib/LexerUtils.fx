@@ -23,18 +23,18 @@ type stream_t =
                     // callback that reads the stream line by line.
 }
 
-fun make_stream(fname: string)
+fun make_stream(fname: string): LexerUtils.stream_t
 {
     val buf = File.read_utf8(fname)
     stream_t { fname=fname, lineno=1, bol=0, buf=buf }
 }
 
-fun make_stream_from_string(fname: string, buf: string)
+fun make_stream_from_string(fname: string, buf: string): LexerUtils.stream_t
 {
     stream_t { fname=fname, lineno=1, bol=0, buf=buf }
 }
 
-fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
+fun skip_spaces(s: stream_t, pos: int, allow_nested: bool): (char, int, bool)
 {
     val lineno0 = s.lineno
     var lineno = lineno0
@@ -263,7 +263,7 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool)
 
 fun getnumber(s: string, pos: int,
     ~just_int: bool, ~get_suffix: bool,
-    ~allow_complex: bool=false) =
+    ~allow_complex: bool=false): (int, int64, double, int, char) =
     getnumber_(s, pos, just_int, get_suffix, allow_complex)
 
 @ccode
@@ -426,7 +426,7 @@ fun getstring_(s: string, pos: int, term: char, raw: bool, fmt: bool):
     return fx_status;
 }
 
-fun getstring(s: string, pos: int, loc: lloc_t, term: char, raw: bool, fmt: bool) =
+fun getstring(s: string, pos: int, loc: lloc_t, term: char, raw: bool, fmt: bool): (int, string, int, bool) =
     try {
         getstring_(s, pos, term, raw, fmt)
     } catch {

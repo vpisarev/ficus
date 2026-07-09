@@ -6,11 +6,11 @@ class 't complex = {re: 't; im: 't}
 type fcomplex = float complex
 type dcomplex = double complex
 
-fun complex(r: float, i: float) = complex {re=r, im=i}
-fun complex(r: double, i: double) = complex {re=r, im=i}
-fun conj(a: 't complex) = complex {re=a.re, im=-a.im}
-fun abs(a: 't complex) = sqrt(a.re*a.re + a.im*a.im)
-fun phase(a: 't complex) = atan2(a.im, a.re)
+fun complex(r: float, i: float): float Complex.complex = complex {re=r, im=i}
+fun complex(r: double, i: double): double Complex.complex = complex {re=r, im=i}
+fun conj(a: 't complex): 't complex = complex {re=a.re, im=-a.im}
+fun abs(a: 't complex): 't = sqrt(a.re*a.re + a.im*a.im)
+fun phase(a: 't complex): 't = atan2(a.im, a.re)
 
 /* All operators are mixed-type ('t1 op 't2): the result type is inferred
    from the body, where builtin numeric coercion combines the two types at
@@ -65,25 +65,25 @@ operator / (a: 't1, b: 't2 complex): 't3 complex {
     complex(a*b.re/denom, -a*b.im/denom)
 }
 
-fun exp(a: 't complex) {
+fun exp(a: 't complex): 't complex {
     val er = exp(a.re)
     complex(er*cos(a.im), er*sin(a.im))
 }
 
 // log(a: 't complex) has multiple values:
 //    log(abs(a)) + i*phase(a) + i*2*M_PI*k, where k is arbitrary integer
-fun log(a: 't complex) = complex(log(abs(a)), phase(a))
-fun cos(a: 't complex) = complex(cos(a.re)*cosh(a.im), -sin(a.re)*sinh(a.im))
-fun sin(a: 't complex) = complex(sin(a.re)*cosh(a.im), cos(a.re)*sinh(a.im))
-fun cosh(a: 't complex) = complex(cosh(a.re)*cos(a.im), sinh(a.re)*sin(a.im))
-fun sinh(a: 't complex) = complex(sinh(a.re)*cos(a.im), cosh(a.re)*sin(a.im))
+fun log(a: 't complex): 't complex = complex(log(abs(a)), phase(a))
+fun cos(a: 't complex): 't complex = complex(cos(a.re)*cosh(a.im), -sin(a.re)*sinh(a.im))
+fun sin(a: 't complex): 't complex = complex(sin(a.re)*cosh(a.im), cos(a.re)*sinh(a.im))
+fun cosh(a: 't complex): 't complex = complex(cosh(a.re)*cos(a.im), sinh(a.re)*sin(a.im))
+fun sinh(a: 't complex): 't complex = complex(sinh(a.re)*cos(a.im), cosh(a.re)*sin(a.im))
 
-fun string(a: 't complex) {
+fun string(a: 't complex): string {
     val s = if a.im >= 0 {"+"} else {""}
     f"{a.re}{s}{a.im}i"
 }
 
-fun print(a: 't complex) {
+fun print(a: 't complex): void {
     print(a.re)
     if a.im >= 0 {print("+")}
     print(a.im)

@@ -79,8 +79,8 @@ val osname = osname_()
 
 @pure fun cc_version(): string = @ccode { return fx_cc_version(fx_result) }
 
-fun appname() = argv.hd()
-fun arguments() = argv.tl()
+fun appname(): string = argv.hd()
+fun arguments(): string list = argv.tl()
 
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
@@ -185,7 +185,7 @@ fun getenv(name: string): string = @ccode {
     return fx_status;
 }
 
-fun getenv(name: string, defval: string)
+fun getenv(name: string, defval: string): string
 {
     val s = getenv(name)
     if s != "" {s} else {defval}

@@ -16,8 +16,8 @@ fun empty(_: 't Deque.t): bool
 }
 
 fun empty(): 't Deque.t = t {head=[], tail=[]}
-fun length(d: 't Deque.t) = d.head.length() + d.tail.length()
-fun rev(d: 't Deque.t) = t {head=d.tail, tail=d.head}
+fun length(d: 't Deque.t): int = d.head.length() + d.tail.length()
+fun rev(d: 't Deque.t): 't Deque.t = t {head=d.tail, tail=d.head}
 
 // could improve performance in many cases but the worst one
 operator == (d1: 't Deque.t, d2: 't Deque.t): bool = list(d1) == list(d2)
@@ -88,8 +88,8 @@ fun foldr(d: 't Deque.t, f: ('t, 'acc) -> 'acc, res0: 'acc): 'acc
     fold res=res for x <- d.head.rev() {f(x, res)}
 }
 
-fun all(d: 't Deque.t, f: 't -> bool) = d.head.all(f) && d.tail.all(f)
-fun exists(d: 't Deque.t, f: 't -> bool) = d.head.exists(f) || d.tail.exists(f)
+fun all(d: 't Deque.t, f: 't -> bool): bool = d.head.all(f) && d.tail.all(f)
+fun exists(d: 't Deque.t, f: 't -> bool): bool = d.head.exists(f) || d.tail.exists(f)
 fun find(d: 't Deque.t, f: 't -> bool): 't =
     try {
         d.head.find(f)
@@ -115,7 +115,7 @@ fun rfind_opt(d: 't Deque.t, f: 't -> bool): 't =
         | NotFoundError => d.head.rev().find_opt(f)
     }
 
-fun string(d: 't Deque.t)
+fun string(d: 't Deque.t): string
 {
     val len = length(d)
     val elems = array(len, "")
@@ -124,7 +124,7 @@ fun string(d: 't Deque.t)
     join_embrace("[", "]", ", ", elems)
 }
 
-fun print(d: 't Deque.t)
+fun print(d: 't Deque.t): void
 {
     print("[")
     for x@i <- d.head {
