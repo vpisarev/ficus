@@ -121,6 +121,7 @@ typedef struct _fx_R18Options__options_t {
    bool verbose;
    bool W_unused;
    bool W_implicit_rettype;
+   bool W_implicit_rettype_all;
    bool Werror;
 } _fx_R18Options__options_t;
 
@@ -1649,6 +1650,7 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->verbose = src->verbose;
    dst->W_unused = src->W_unused;
    dst->W_implicit_rettype = src->W_implicit_rettype;
+   dst->W_implicit_rettype_all = src->W_implicit_rettype_all;
    dst->Werror = src->Werror;
 }
 
@@ -1685,6 +1687,7 @@ static void _fx_make_R18Options__options_t(
    bool r_verbose,
    bool r_W_unused,
    bool r_W_implicit_rettype,
+   bool r_W_implicit_rettype_all,
    bool r_Werror,
    struct _fx_R18Options__options_t* fx_result)
 {
@@ -1720,6 +1723,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
    fx_result->W_implicit_rettype = r_W_implicit_rettype;
+   fx_result->W_implicit_rettype_all = r_W_implicit_rettype_all;
    fx_result->Werror = r_Werror;
 }
 

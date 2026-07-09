@@ -687,6 +687,8 @@ Please, add the directory 'lib' containing Builtins.fx to
 and there are <ficus_root>/runtime and <ficus_root>/lib.
 2. or 'ficus' executable is in (/usr|/usr/local|/opt|...)/bin and
    there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
+        // classify stdlib vs user modules for -Wimplicit-rettype scoping
+        Ast.ficus_std_path = Filename.normalize(ficus_root, "lib")
         val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
         val graph = [:: for minfo <- Ast.all_modules {

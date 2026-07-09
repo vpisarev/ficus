@@ -19,11 +19,15 @@ FICUS="${1:-bin/ficus}"
 files=$(ls lib/*.fx | grep -v '/OpenCV\.fx$')
 files="$files lib/DSP/Fft.fx lib/Drawing/Shapes.fx lib/Image/Decoder.fx lib/Image/Encoder.fx"
 
+# -Wimplicit-rettype=all is REQUIRED here: the default scope deliberately skips
+# stdlib modules (a user should not see warnings about library code), so a
+# stdlib file compiled as root would be silent under the plain flag. '=all'
+# opts the stdlib itself back in -- exactly what a self-gate needs.
 fail=0
 for f in $files; do
-    if ! "$FICUS" -no-c -Wall -Werror "$f" >/dev/null 2>&1; then
+    if ! "$FICUS" -no-c -Wimplicit-rettype=all -Werror "$f" >/dev/null 2>&1; then
         echo "FAIL: unannotated module-level function(s) in $f"
-        "$FICUS" -no-c -Wall "$f" 2>&1 | grep "implicit return type" | head
+        "$FICUS" -no-c -Wimplicit-rettype=all "$f" 2>&1 | grep "implicit return type" | head
         fail=1
     fi
 done

@@ -138,16 +138,20 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `: 't3 [+]`, `: ('t3 ...)` — "returns SOME complex/array/tuple") to reject
   foreign contexts while keeping mixed-type widening. **Enforced by
   `python3 tools/lint_op_returns.py lib` (CI, gcc leg)**.
-- **`-Wimplicit-rettype` / `-Wall` / `-Werror` exist (annotate-2).** The warning
-  flags every **module-level** function (in the root modules named on the
-  command line) whose return type is left to inference; nested functions,
-  lambdas, `@ccode`, and auto-generated constructors are exempt. `-Werror`
-  promotes ALL warnings (incl. the pre-existing unused-value ones) to a nonzero
-  exit. The annotated stdlib — all of `lib/` **except** NN/, Onnx/, Protobuf/,
-  `OpenCV.fx` — is gated by `tools/rettype_gate.sh` (CI, gcc leg); keep it clean
-  when adding stdlib functions. Return annotations **erase in K-form**, so
-  adding them yields byte-identical generated C (the bootstrap regen touches no
-  stdlib module). The compiler sources are NOT gated yet (annotate-3; ~340 to go).
+- **`-Wimplicit-rettype` / `-Wimplicit-rettype=all` / `-Wall` / `-Werror` exist
+  (annotate-2).** The warning flags every **module-level** function whose return
+  type is left to inference (nested funcs, lambdas, `@ccode`, auto-generated
+  constructors are exempt). **Scope: default = all USER modules** (everything
+  whose path is NOT under `<ficus_root>/lib` — the whole project transitively,
+  not just the file on the command line); **`=all` also includes stdlib** (used
+  to gate stdlib itself, since a stdlib file is otherwise skipped even as root).
+  `-Werror` promotes ALL warnings (incl. the pre-existing unused-value ones) to
+  a nonzero exit. The annotated stdlib — all of `lib/` **except** NN/, Onnx/,
+  Protobuf/, `OpenCV.fx` — is gated by `tools/rettype_gate.sh`
+  (`-Wimplicit-rettype=all -Werror`, CI gcc leg); keep it clean when adding
+  stdlib functions. Return annotations **erase in K-form**, so adding them
+  yields byte-identical generated C (bootstrap regen touches no stdlib module).
+  The compiler sources are NOT gated yet (annotate-3; ~340 to go).
 - **Return-type annotation spellings** (from the sweep): a nullary function type
   is `(void -> T)`, **not** `(() -> T)` (the latter errors "empty tuple"). A
   module's own type parses as a return both qualified (`Date.t`) and bare (`t`)

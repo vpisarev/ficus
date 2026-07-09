@@ -497,6 +497,12 @@ var all_compile_errs: exn list = []
 var all_compile_warns: int = 0
 var all_compile_err_ctx: string list = []
 var all_func_ctx: (id_t, typ_t, loc_t) list = []
+// the stdlib lib/ directory (<ficus_root>/lib), set by Compiler.process_all.
+// Used to classify a module as stdlib vs user code for -Wimplicit-rettype:
+// by default the warning covers all USER modules but skips stdlib (the user
+// did not write it); the '=all' variant includes stdlib too (how the stdlib
+// self-gates in CI). Empty => treat nothing as stdlib.
+var ficus_std_path: string = ""
 var all_c_inc_dirs: string Hashset.t = Hashset.empty(256, "")
 
 fun string(loc: loc_t)
@@ -1676,4 +1682,5 @@ fun init_all(): void
     all_compile_errs = []
     all_compile_warns = 0
     all_compile_err_ctx = []
+    ficus_std_path = ""
 }

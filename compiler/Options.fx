@@ -40,6 +40,7 @@ type options_t =
     verbose: bool = false;
     W_unused: bool = true;
     W_implicit_rettype: bool = false;
+    W_implicit_rettype_all: bool = false;
     Werror: bool = false
 }
 
@@ -99,11 +100,15 @@ where options can be some of:
     -no-preamble    Do not auto-import 'Builtins', 'List', 'String' and
                     a few other standard modules into each compiled module.
     -Wno-unused     Do not report errors about unused values/functions
-    -Wimplicit-rettype  Warn about every module-level function (in the root
-                    modules named on the command line) whose return type is
-                    left to inference; the message prints the inferred type
-                    so the fix is copy-paste. Nested functions and lambdas
-                    are exempt.
+    -Wimplicit-rettype  Warn about every module-level function whose return
+                    type is left to inference; the message prints the inferred
+                    type so the fix is copy-paste. Nested functions and lambdas
+                    are exempt. By default covers all USER modules (everything
+                    outside the stdlib) so a multi-file project is fully
+                    checked, not just the file named on the command line.
+    -Wimplicit-rettype=all  As above, but ALSO check the stdlib modules
+                    (used to gate the stdlib itself; normally you do not want
+                    warnings about library code you did not write).
     -Wall           Enable all recommended warnings (currently just
                     -Wimplicit-rettype)
     -Werror         Treat all emitted warnings as errors: exit with a nonzero
@@ -209,6 +214,8 @@ fun parse_options(): bool {
                 opt.W_unused = false; next
             | "-Wimplicit-rettype" :: next =>
                 opt.W_implicit_rettype = true; next
+            | "-Wimplicit-rettype=all" :: next =>
+                opt.W_implicit_rettype = true; opt.W_implicit_rettype_all = true; next
             | "-Wall" :: next =>
                 opt.W_implicit_rettype = true; next
             | "-Werror" :: next =>

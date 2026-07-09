@@ -3617,15 +3617,19 @@ fun has_implicit_rettype(df: deffun_t ref): bool
 {
     val {df_name, df_flags, df_scope, df_loc} = *df
     val is_modlevel = match df_scope { | ScModule _ :: _ => true | _ => false }
-    val is_root = df_loc.m_idx >= 0 &&
-                  all_modules[df_loc.m_idx].dm_filename == Options.opt.filename
+    // scope: by default cover all USER modules (everything not under the stdlib
+    // lib/ dir), so a whole multi-file project is checked -- not just the file
+    // on the command line. '=all' also covers stdlib (the stdlib self-gate).
+    val is_std = ficus_std_path != "" && df_loc.m_idx >= 0 &&
+                 all_modules[df_loc.m_idx].dm_filename.startswith(ficus_std_path)
+    val in_scope = Options.opt.W_implicit_rettype_all || !is_std
     val is_exempt = is_constructor(df_flags) || df_flags.fun_flag_ccode ||
                     get_orig_id(df_name) == std__lambda__
     val rt_implicit = match deref_typ(deffun_rettype(df)) {
         | TypVar (ref None) => true
         | _ => false
         }
-    is_modlevel && is_root && !is_exempt && rt_implicit
+    is_modlevel && in_scope && !is_exempt && rt_implicit
 }
 
 fun warn_implicit_rettype(df: deffun_t ref) {

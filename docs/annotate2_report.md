@@ -40,12 +40,27 @@ Three layers, mirroring the error machinery:
   message prints the concrete inferred type for a copy-paste fix; for generics it
   is `<unknown>` (honest: the template return isn't inferred at the definition).
 
-**Scoping — root modules only.** Ficus typechecks every imported module from
-source, so an all-modules scope would bury the flag's user in warnings about
-stdlib they didn't write. The check compares the function's module filename to
-`Options.opt.filename` (the single root named on the command line). For the CI
-gate over the stdlib itself, we **loop each stdlib file as its own root** with
-`-no-c` (cheap) rather than adding an `=all` variant — simpler, no new flag.
+**Scoping — user code by default, `=all` for the stdlib self-gate.** Ficus
+typechecks every imported module from source, so warning about *stdlib* would
+bury the user in noise about library code they didn't write. The distinction
+that matters is **stdlib vs user code**, not root vs imported: a user wants
+every module of *their own* multi-file project checked, not just the file named
+on the command line. So the compiler tags each module stdlib-or-not by whether
+its path is under `<ficus_root>/lib` (`Ast.ficus_std_path`, set in
+`process_all`), and:
+
+- **`-Wimplicit-rettype`** (and `-Wall`) covers **all user modules** (everything
+  outside stdlib) — the whole project, transitively, not just the root.
+- **`-Wimplicit-rettype=all`** additionally covers stdlib — how the stdlib gates
+  *itself*. `tools/rettype_gate.sh` uses it (a stdlib file compiled as root is
+  silent under the plain flag, since it *is* stdlib).
+
+(Initial WP-1 was root-only; revised after Vadim's observation that, with stdlib
+now annotated, root-only under-warns — it misses the user's own non-root
+modules. Proven: with one stdlib annotation removed, plain `-Wimplicit-rettype`
+stays silent while `=all` flags it; and `test/test_all.fx` under the plain flag
+now surfaces its imported test modules `test_oop`/`myops`/… , not just
+`test_all.fx`.)
 
 **Exemptions:** nested functions and lambdas (not `ScModule` scope; `__lambda__`
 name), `@ccode` functions (must spell their type anyway), and auto-generated
