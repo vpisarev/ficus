@@ -3,7 +3,7 @@
 - [x] properly resolve instances of generic functions.
       Adjust the type checker not to stop at the first appropriate candidate.
 - [ ] new syntax for generic types and its instances: `t list => list[t]`
-  - [ ] Q: what would be a syntax for generic functions? `fun [u, v] add(a: u, b: v) {...}`?
+  - [ ] Q: what would be a syntax for generic functions? `fun add[u, v, r](a: u, b: v): r {...}`?
 - [ ] new syntax for fold: `fold acc = 0 for x <- arr {acc + x}` => `fold acc = 0 for x <- arr {acc += x}`
 - [ ] add syntax to append elements to lists, vectors during fold?
       We already have runtime support for vector writers for vector comprehensions,
@@ -26,18 +26,56 @@
         actually, we can simply write `pt.y += 5`. The syntax above might be useful for
         non-destructive record update (`pt.{y = pt.y + 5}`). But is it really useful in
         practice?
-  - [ ] when we have variant type with record options, there is no way to pack data
-        for the particular option: `type employee_t = Engineer: {age: int; computer: string; claude_subscr: string} | Manager: {age: int; tablet: string; team: list[employee_t]}`, how to we take and operate on all Engineer fields as a whole?
+  - [ ] when we have variant type with a record case, there is no way to pack data
+        for the particular case: `type employee_t = Engineer: {age: int; computer: string; claude_subscr: string} | Manager: {age: int; tablet: string; team: list[employee_t]}`, how do we operate on all Engineer fields as a whole?
         It's suggested to automatically introduce `Engineer.t` type. It should be possible to
         construct employee_t directly from Engineer.t: `val e = Engineer(data: Engineer.t)`
-- [ ] rename `half` to `fp16`, because half is quite generic name.
+- [ ] rename `half` to `fp16`, because `half` is quite generic name.
 - [ ] add `bf16`.
-- [ ] add more array reductions, e.g. `sum(0., for x <- arr {x**2})`.
+- [ ] add more array reductions, e.g. `sum(for x <- arr {x**2}, 0.)`.
       Shall we somehow infer automatically the initial value, not to pass explicit `0.` as initializer?
-- [ ] do we want a generic macro-like syntax to define, e.g., new specialized forms of array
-      comprehensions/reductions, e.g. `all(for x <- arr {predicate(x)})`?
+- [ ] Add hygienic macros? Unlike functions, macros don't compute anything (except for `@{...}` parts),
+      but rather their bodies are inserted as expressions into the program. In order to compute something
+      inside the macro immediately, i.e. during compilation, `@{...}` can be used.
+      ```
+      // @for is a representation of `for p1 <- e1, ..., pn <- en {body}` statement parameterized by the body type.
+      // It has .clauses (list of (pattern, expression) tuples) and .body (expression) members
+      // @gensym(prefix) generates unique symbol starting with the specified prefix
+      macro sum[t](for_: @for[t], ~init: t = t(0)):t {
+         fold @gensym(s) = init for for_.clauses {s += for_.body}
+      }
+
+      macro EXPECT_EQ[t](a: t, b: t): void = EXPECT_EQ_(a, b, @string(a), @string(b), @file, @line) 
+      ```
+- [ ] get rid of `` `...` `` notation. See macros above.
 - [ ] do we want a ternary selection operator? `(a ? b : c)` (we now use `if(a) {b} else {c}`)
-- [ ] support variadic functions, e.g. `println(a, b, c)`; `max(a, b, c, d)`
+- [ ] support variadic functions, e.g. `println(a, b, c)`; `max(a, b, c, d)`.
+      Almost the same syntax as with variadic tuples, just without `()` around `...` or `t ...`.
+      This variadic parameter should be the last non-keyword parameter.
+      Also, it would be nice to add `tup.n...` notation to skip the first n arguments
+      (here the new notation for generic types is used): 
+      ```
+      // we don't even need macros for that. variadic function max(args...) must be
+      // more generic than max() with a fixed number of arguments (2)
+      fun max[t](args: t ...): t {
+          fold r = args.0 for x <- args.1... {r = max(r, x)}  
+      }
+
+      // variadic function print(args ..., ...) should be 'more generic'
+      // than print(x) with a fixed number of arguments (1)
+      fun print(args: ..., ~sep: string=", "): void {
+          for x@i <- args {
+              if i > 0 {print(sep)}
+              print(x)
+          }
+      }
+
+      fun println(args: ..., ~sep: string=", "): void {
+          // pass all variadic args to another function
+          print(args, sep=sep)
+          print("\n")
+      }
+      ```
 - [ ] remove restriction for modules to start with a capital letter; in fact, it's not a mandatory thing already,
       see `examples/fst.fx` that imports `testmod.fx`. But this rule should probably be propagated to std lib
 - [ ] require that complex modules included `__init__.fx` in the root and any subdirectories,
@@ -95,7 +133,7 @@
 
 - [ ] instantiate (not necessarily generic) functions that take callbacks known at compile time.
       The most classic example is qsort — if we pass known comparison function to it,
-      we can create a copy of qsort with that function embedded.
+      we can create a copy of qsort with that function inlined.
 - [ ] compile ficus compiler itself and all programs by default with `-Ofast`.
       Currently, it's broken for some reason
 - [ ] extend constant folding to support math functions
