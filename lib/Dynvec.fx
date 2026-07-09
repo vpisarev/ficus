@@ -17,7 +17,7 @@ class 't t
 
 fun create(n0: int, v0: 't): 't Dynvec.t = t { count = n0, data = array(n0, v0), val0 = v0 }
 fun create(arr0: 't [], v0: 't): 't Dynvec.t = t { count = size(arr0), data = arr0, val0 = v0 }
-fun clear(v: 't Dynvec.t) { v.count = 0; v.data = [] }
+fun clear(v: 't Dynvec.t): void { v.count = 0; v.data = [] }
 fun empty(v: 't Dynvec.t): bool = v.count == 0
 fun size(v: 't Dynvec.t): int = v.count
 
@@ -37,7 +37,7 @@ fun push(v: 't Dynvec.t): int
     i
 }
 
-fun push(v: 't Dynvec.t, vv: 't [])
+fun push(v: 't Dynvec.t, vv: 't []): void
 {
     val dn = size(vv)
     val sz = size(v.data)
@@ -56,33 +56,33 @@ fun push(v: 't Dynvec.t, vv: 't [])
     for j <- 0:dn {data[i + j] = vv[j]}
 }
 
-fun push(v: 't Dynvec.t, x: 't)
+fun push(v: 't Dynvec.t, x: 't): int
 {
     val idx = push(v)
     v.data[idx] = x
     idx
 }
 
-fun do_push(v: 't Dynvec.t, x: 't)
+fun do_push(v: 't Dynvec.t, x: 't): void
 {
     val idx = push(v)
     v.data[idx] = x
 }
 
-fun top(v: 't Dynvec.t)
+fun top(v: 't Dynvec.t): 't
 {
     if v.count == 0 {throw EmptyDynVector}
     v.data[v.count-1]
 }
 
-fun pop(v: 't Dynvec.t)
+fun pop(v: 't Dynvec.t): 't
 {
     if v.count == 0 {throw EmptyDynVector}
     v.count -= 1
     v.data[v.count]
 }
 
-fun do_pop(v: 't Dynvec.t)
+fun do_pop(v: 't Dynvec.t): void
 {
     if v.count == 0 {throw EmptyDynVector}
     v.count -= 1

@@ -8,7 +8,7 @@
 from Ast import *
 import Ast_pp, Options
 
-import Filename, Map, Set, Hashset
+import Filename, Map, Set, Hashset, Re
 
 /*
 The type checker component performs semantical analysis and various
@@ -3129,6 +3129,10 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 if idx == nexps - 1 && !is_glob_scope {
                     throw compile_err( df->df_loc,
                     "function definition occurs in the end of block; put some expression after it" ) }
+                // -Wimplicit-rettype: capture the missing-annotation status
+                // BEFORE typechecking, since check_deffun resolves the fresh
+                // return var to a concrete type for non-template functions.
+                val warn_rettype = Options.opt.W_implicit_rettype && has_implicit_rettype(df)
                 val df =
                     if df->df_templ_args == [] { check_deffun(df, env) }
                     else {
@@ -3138,7 +3142,10 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                         *df = df->{df_env=env}
                         df
                     }
-                    (DefFun(df) :: eseq, env)
+                // warn on the checked df: non-templates now carry the concrete
+                // inferred type (copy-paste fix); templates keep the generic var.
+                if warn_rettype { warn_implicit_rettype(df) }
+                (DefFun(df) :: eseq, env)
             | _ =>
                 val e = match e {
                         | ExpReturn(Some(returned_e), _) =>
@@ -3586,6 +3593,56 @@ fun check_defexn(de: defexn_t ref, env: env_t, sc: scope_t list)
 fun check_deffun(df: deffun_t ref, env: env_t) {
     val {df_typ, df_loc} = *df
     instantiate_fun(df, df_typ, env, df_loc, false)
+}
+
+// -Wimplicit-rettype (WP-1). A function's return annotation is a load-bearing
+// viability filter in overload resolution (resolve-2 near-miss): a return
+// type left to inference is a free var that unifies with any expected type.
+// This warning nudges every *module-level* function toward a spelled-out
+// return type. Detection is signature-level (the parser leaves an unannotated
+// return as a fresh TypVar(ref None), see Parser.parse_fun_params), so it works
+// for generic template functions too -- which are never body-checked at their
+// definition site. Exempt: nested functions and lambdas (not module-level),
+// @ccode functions (must spell their type), and auto-generated constructors.
+// Scope is the ROOT module(s) named on the command line only -- Ficus checks
+// every imported module from source, so an all-modules scope would bury the
+// flag's user in warnings about stdlib they did not write.
+fun deffun_rettype(df: deffun_t ref): typ_t =
+    match deref_typ(df->df_typ) {
+    | TypFun(_, rt) => rt
+    | t => t
+    }
+
+fun has_implicit_rettype(df: deffun_t ref): bool
+{
+    val {df_name, df_flags, df_scope, df_loc} = *df
+    val is_modlevel = match df_scope { | ScModule _ :: _ => true | _ => false }
+    // scope: by default cover all USER modules (everything not under the stdlib
+    // lib/ dir), so a whole multi-file project is checked -- not just the file
+    // on the command line. '=all' also covers stdlib (the stdlib self-gate).
+    val is_std = ficus_std_path != "" && df_loc.m_idx >= 0 &&
+                 all_modules[df_loc.m_idx].dm_filename.startswith(ficus_std_path)
+    val in_scope = Options.opt.W_implicit_rettype_all || !is_std
+    val is_exempt = is_constructor(df_flags) || df_flags.fun_flag_ccode ||
+                    get_orig_id(df_name) == std__lambda__
+    val rt_implicit = match deref_typ(deffun_rettype(df)) {
+        | TypVar (ref None) => true
+        | _ => false
+        }
+    is_modlevel && in_scope && !is_exempt && rt_implicit
+}
+
+// drop the `@NN` gensym suffixes typ2str puts after module-qualified type
+// names, so the inferred type prints as valid source (copy-paste fix):
+// `(bool, test_oop.IClone@22)` -> `(bool, test_oop.IClone)`.
+val gensym_re = Re.compile("@[0-9]+")
+fun strip_type_gensyms(s: string): string = Re.replace(gensym_re, s, "")
+
+fun warn_implicit_rettype(df: deffun_t ref) {
+    val {df_name, df_loc} = *df
+    val rt_str = strip_type_gensyms(typ2str(deref_typ(deffun_rettype(df))))
+    compile_warning(df_loc, f"implicit return type of module-level function \
+        '{pp(df_name)}' (inferred: {rt_str})")
 }
 
 /*

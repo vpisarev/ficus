@@ -21,15 +21,15 @@ type pptok_t =
     | PPEof
 type ppelem_t = (pptok_t, int)
 
-fun string(s: ppstyle_t) { | Auto => "Auto" | Fits => "Fits" | _ => "Consistent" }
-fun string(t: pptok_t) {
+fun string(s: ppstyle_t): string { | Auto => "Auto" | Fits => "Fits" | _ => "Consistent" }
+fun string(t: pptok_t): string {
     | PPString (s) => f"String({s})"
     | PPBreak(s, o, c) => f"Break({s}, {o}, '{c}')"
     | PPBegin(o, s) => f"Begin({o}, {s})"
     | PPEnd => "End"
     | PPEof => "Eof"
 }
-fun string((t, l): ppelem_t) = f"({t}, {l})"
+fun string((t, l): ppelem_t): string = f"({t}, {l})"
 
 type state_t =
 {
@@ -132,10 +132,10 @@ fun flush(pp: PP.t): void
     }
 }
 
-fun begin(pp: PP.t) = begin(pp, pp.default_indent, Auto)
-fun begin(pp: PP.t, indent: int) = begin(pp, indent, Auto)
-fun beginv(pp: PP.t) = begin(pp, pp.default_indent, Consistent)
-fun beginv(pp: PP.t, indent: int) = begin(pp, indent, Consistent)
+fun begin(pp: PP.t): void = begin(pp, pp.default_indent, Auto)
+fun begin(pp: PP.t, indent: int): void = begin(pp, indent, Auto)
+fun beginv(pp: PP.t): void = begin(pp, pp.default_indent, Consistent)
+fun beginv(pp: PP.t, indent: int): void = begin(pp, indent, Consistent)
 
 fun begin(pp: PP.t, indent: int, style: ppstyle_t): void
 {
@@ -182,16 +182,16 @@ fun br(pp: PP.t, spaces: int, offset: int, ~sep: char='\0'): void
     pp.r->righttotal += spaces
 }
 
-fun cut(pp: PP.t) = br(pp, 0, 0)
-fun space(pp: PP.t) = br(pp, 1, 0)
-fun sep_space(pp: PP.t, c: char) = br(pp, 2, 0, sep=c)
-fun opt_semi(pp: PP.t) = br(pp, 2, 0, sep=';')
-fun break0(pp: PP.t) = br(pp, 1, 0)
-fun breaki(pp: PP.t) = br(pp, 1, pp.default_indent)
-fun breaku(pp: PP.t) = br(pp, 1, -pp.default_indent)
-fun newline(pp: PP.t) = br(pp, pp.margin, 0)
-fun newlinei(pp: PP.t) = br(pp, pp.margin, pp.default_indent)
-fun newlineu(pp: PP.t) = br(pp, pp.margin, -pp.default_indent)
+fun cut(pp: PP.t): void = br(pp, 0, 0)
+fun space(pp: PP.t): void = br(pp, 1, 0)
+fun sep_space(pp: PP.t, c: char): void = br(pp, 2, 0, sep=c)
+fun opt_semi(pp: PP.t): void = br(pp, 2, 0, sep=';')
+fun break0(pp: PP.t): void = br(pp, 1, 0)
+fun breaki(pp: PP.t): void = br(pp, 1, pp.default_indent)
+fun breaku(pp: PP.t): void = br(pp, 1, -pp.default_indent)
+fun newline(pp: PP.t): void = br(pp, pp.margin, 0)
+fun newlinei(pp: PP.t): void = br(pp, pp.margin, pp.default_indent)
+fun newlineu(pp: PP.t): void = br(pp, pp.margin, -pp.default_indent)
 
 fun str(pp: PP.t, s: string): void
 {
@@ -304,12 +304,12 @@ fun str(pp: PP.t, s: string): void
         }
     }
 
-@private fun pp_newline(pp: PP.t, n: int)
+@private fun pp_newline(pp: PP.t, n: int): void
 {
     pp.print_f("\n"); pp.print_f(' '*n)
 }
 
-@private fun pp_indent(pp: PP.t, n: int, c: char) =
+@private fun pp_indent(pp: PP.t, n: int, c: char): void =
     if c == '\0' {
         pp.print_f(' '*n)
     } else {

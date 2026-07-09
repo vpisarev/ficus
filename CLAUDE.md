@@ -84,8 +84,11 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   is `300`, not `44`. To wrap, cast explicitly: `((a + b) :> uint8)`. `uint64`
   is full-width and wraps natively.
 - Integer `/` truncates toward zero; `%` takes the **sign of the dividend**
-  (`-17 % 5 == -2`). `int(x)` truncates toward zero; `floor`/`ceil` return the
-  **float/double** type, not int (use `int(floor(x))`).
+  (`-17 % 5 == -2`). `int(x)` truncates toward zero. **`floor`/`ceil`/`trunc`/
+  `round` currently return `int`, NOT float/double** (the scalar defs at
+  `lib/Math.fx:45-50` are explicitly `: int`; array forms give `int [+]`) —
+  verified 2026-07-09. This contradicted an earlier note here; whether it's
+  intended (round-to-int) or a lossy bug is open — see FB-019.
 - **Border access is `arr.MODE[i]`** (mode before the bracket): `a.clip[i]`,
   `a.wrap[i]`, `a.zero[i]`. Works on `Vector`, strings and arrays.
 - Comprehensions: 1D `[for i <- 0:n {..}]`; **2D is nested** `[for i <- 0:m for
@@ -96,6 +99,13 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   `s[i]` is a `char`, `s[i:j]` a substring; build from chars via
   `string([for c <- cs {c}])`. `split(s, sep, ~allow_empty=true)` returns a
   `string list`.
+- **Use `String.fx` / `Re.fx` — don't hand-roll string processing.** `String`
+  has `find`/`replace`/`split`/`join`/`lstrip`/`rstrip`/`strip`/`startswith`/
+  `endswith`/`to_int`/…; `Re` is a tiny wrapper over the runtime regex
+  (`Re.compile(pat)` then `Re.replace`/`find`/`findall`/`fullmatch`/…). Reach
+  for these instead of writing a char-by-char loop or fold — e.g. strip a
+  pattern with `Re.replace(Re.compile("@[0-9]+"), s, "")`, not a manual scan.
+  Both are cheap to `import` (even the compiler now imports `Re`).
 - `array(n, init)` / `array((m, n), init)` allocate mutable arrays. Ranges
   `a:b`, `a:b:step`; slices `a[i:j]`, `a[i:j:step]`, `a[:]`, `a[::-1]`.
 - `Sys.getenv(name, defval)`; `s.to_int(): int?`; `s.to_int_or(defval)`.
@@ -134,8 +144,35 @@ intuition**. Read `doc/ficustut.md` and existing files (`test/test_basic.fx`,
   build (C_gen_code.fx:1328). Annotate with a FRESH var (`: 't3 complex`,
   `: 't3 [+]`, `: ('t3 ...)` — "returns SOME complex/array/tuple") to reject
   foreign contexts while keeping mixed-type widening. **Enforced by
-  `python3 tools/lint_op_returns.py lib` (CI, gcc leg)**; its `--funs` mode
-  is the (not yet clean) worklist for overloaded generic functions.
+  `python3 tools/lint_op_returns.py lib` (CI, gcc leg)**.
+- **`-Wimplicit-rettype` / `-Wimplicit-rettype=all` / `-Wall` / `-Werror` exist
+  (annotate-2).** The warning flags every **module-level** function whose return
+  type is left to inference (nested funcs, lambdas, `@ccode`, auto-generated
+  constructors are exempt). **Scope: default = all USER modules** (everything
+  whose path is NOT under `<ficus_root>/lib` — the whole project transitively,
+  not just the file on the command line); **`=all` also includes stdlib** (used
+  to gate stdlib itself, since a stdlib file is otherwise skipped even as root).
+  `-Werror` promotes ALL warnings (incl. the pre-existing unused-value ones) to
+  a nonzero exit. The annotated stdlib — all of `lib/` **except** NN/, Onnx/,
+  Protobuf/, `OpenCV.fx` — is gated by `tools/rettype_gate.sh`
+  (`-Wimplicit-rettype=all -Werror`, CI gcc leg); keep it clean when adding
+  stdlib functions. Return annotations **erase in K-form**, so adding them
+  yields byte-identical generated C (bootstrap regen touches no stdlib module).
+  The compiler sources are NOT gated yet (annotate-3; ~340 to go).
+- **Return-type annotation spellings** (from the sweep): a nullary function type
+  is `(void -> T)`, **not** `(() -> T)` (the latter errors "empty tuple"). A
+  module's own type parses as a return both qualified (`Date.t`) and bare (`t`)
+  inside that module. A uniform tuple return is `(int...)`; an any-dims array is
+  `T [+]`. When the body widens via `*0.f` and the result type varies with the
+  input (`Builtins.normL1(('t...))`: int→float, double→double), a **fresh scalar
+  var `: 't3`** is the honest annotation — safe because the argument is already
+  pinned (not a free-return hazard).
+- **Comparing `-pr-resolve` censuses: normalize locations first.** Any unrelated
+  compiler edit shifts call-site `line:col`, so a raw-text diff is pure noise.
+  Gate on the (name | winner | outcome) multiset (strip `@NNN` gensyms and
+  `@ path:line:col`); the *expected-arg-type* of a site legitimately sharpens
+  from `<unknown>` to a concrete type as callers get annotated — that is not a
+  resolution change.
 
 ### Build/run & measurement traps (Brief #2)
 

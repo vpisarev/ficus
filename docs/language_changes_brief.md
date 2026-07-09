@@ -73,7 +73,7 @@ spelling (`[.]`); TypVarCollection is forward-compatible (would just narrow).
 No source syntax for the var-form yet; add `'t [..]`-style only if generic
 signatures ever need it.
 
-### 1.7 Closed signatures / `-strict-fun` — DECIDED direction (annotate-2)
+### 1.7 Closed signatures / `-Wimplicit-rettype` — DECIDED direction (annotate-2)
 The resolve-2 near-miss established that a generic function's **return
 annotation is a load-bearing viability filter**: a free return type unifies
 with any expected type and lets the candidate invade foreign contexts at
@@ -82,9 +82,13 @@ overloaded generic operators MUST annotate returns (done, annotate-1: all 106,
 `tools/lint_op_returns.py` on CI; fresh-var forms `'t3 complex` / `'t3 [+]` /
 `('t3 ...)` express "returns SOME such thing" without foreclosing widening);
 overloaded generic functions SHOULD (annotate-2 sweep: 276); all module-level
-functions — opt-in via a new **`-strict-fun`** compiler flag (nested functions
-and lambdas exempt), intended as a permanent CI gate for stdlib/tests and,
-gradually, the compiler. Beyond resolution, declared signatures are the
+functions — opt-in via a new **`-Wimplicit-rettype` warning** (root modules
+only; nested functions and lambdas exempt; the message prints the inferred
+type for a copy-paste fix), with generic `-Werror` promotion and a `-Wall`
+umbrella; `-Wimplicit-rettype -Werror` is the permanent CI gate for
+stdlib/tests and, gradually (annotate-3), the compiler. The warning
+machinery itself (non-fatal diagnostics) is the deliberate seed of
+session-2's multiple-errors-per-run work. Beyond resolution, declared signatures are the
 firewall for type-error recovery (a broken body can be poisoned without
 losing the function's interface — session-2/LSP groundwork) and a future
 dividend for separate interface-only compilation. Not a language change for
@@ -131,7 +135,7 @@ resolve-1 machinery is ready for this). Multi-parameter types
 (expected ~0).
 - Generic *function* declaration syntax — CANDIDATE (todo-2026):
   `fun add[u, v, r](a: u, b: v): r {...}` — return type in the parameter
-  list rhymes with the `-strict-fun` world.
+  list rhymes with the closed-signature (§1.7) world.
 
 ### 3.2 Casts — CANDIDATE
 Drop `(x :> T)` in favor of constructor-call notation `T(x)` (enabled by 3.1;

@@ -52,10 +52,10 @@ val stderr = get_stdstream(2)
     return fx_status;
 }
 
-fun open(fname: string, mode: string) =
+fun open(fname: string, mode: string): File.t =
     t { handle=open_(fname, mode, false) }
 
-fun popen(cmdname: string, mode: string) =
+fun popen(cmdname: string, mode: string): File.t =
     t { handle=open_(cmdname, mode, true) }
 
 @nothrow fun close(f: File.t): void
@@ -119,7 +119,7 @@ fun flush(f: File.t): void
     return FX_OK;
 }
 
-fun print(f: File.t, x: 't) = print(f, string(x))
+fun print(f: File.t, x: 't): void = print(f, string(x))
 
 fun print(f: File.t, x: string): void
 @ccode {

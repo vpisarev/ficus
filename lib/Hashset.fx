@@ -28,7 +28,7 @@ class 'k t
     var table: 'k hashset_entry_t []
 }
 
-fun makeindex(size: int) = array(size, 0)
+fun makeindex(size: int): int [] = array(size, 0)
 
 fun empty(size0: int, k0: 'k): 'k Hashset.t
 {
@@ -44,9 +44,9 @@ fun empty(size0: int, k0: 'k): 'k Hashset.t
 }
 
 fun t.empty(): bool = self.nactive == 0
-fun t.size() = self.nactive
+fun t.size(): int = self.nactive
 
-fun t.clear() {
+fun t.clear(): void {
     val entry0 = self.default_entry
     val table = self.table
     for i <- 0:size(table) {
@@ -79,7 +79,7 @@ fun t.compress(): 'k Hashset.t
 
 @private fun add_fast_(tabsz: int, ht_index: index_t,
                     ht_table: 'k hashset_entry_t [],
-                    entry: 'k hashset_entry_t)
+                    entry: 'k hashset_entry_t): int
 {
     val idxsz = size(ht_index)
     val hv = entry.hv
@@ -143,7 +143,7 @@ fun t.compress(): 'k Hashset.t
     (j, found)
 }
 
-fun t.find_idx(k: 'k) = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK).1
+fun t.find_idx(k: 'k): int = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK).1
 fun t.mem(k: 'k): bool = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK).1 >= 0
 fun t.find_opt(k: 'k): 'd?
 {
@@ -151,7 +151,7 @@ fun t.find_opt(k: 'k): 'd?
     if j >= 0 { Some(self.table[j].data) } else { None }
 }
 
-fun t.check_free()
+fun t.check_free(): void
 {
     var free = self.free
     var count = 0
@@ -166,7 +166,7 @@ fun t.check_free()
     println(f"]\nfree list is ok, {count} elements")
 }
 
-@private fun t.add_(k: 'k, hv: hash_t)
+@private fun t.add_(k: 'k, hv: hash_t): void
 {
     var idxsz = size(self.index)
 
@@ -217,9 +217,9 @@ fun t.check_free()
     }
 }
 
-fun t.add(k: 'k) = self.add_(k, hash(k) & ~HASH_SIGN_MASK)
+fun t.add(k: 'k): void = self.add_(k, hash(k) & ~HASH_SIGN_MASK)
 
-fun t.remove(k: 'k) {
+fun t.remove(k: 'k): void {
     val (j, tidx) = self.find_idx_(k, hash(k) & ~HASH_SIGN_MASK)
     if tidx >= 0 {
         self.index[j] = HASH_DELETED
@@ -247,7 +247,7 @@ fun t.array(): 'k []
     result
 }
 
-fun t.add_list(data: 'k list)
+fun t.add_list(data: 'k list): void
 {
     var datasz = self.nactive + data.length()
     var curr_size = size(self.table), new_size = curr_size
@@ -263,7 +263,7 @@ fun from_list(k0: 'k, data: 'k list): 'k Hashset.t
     ht
 }
 
-fun t.app(f: 'k->void) {
+fun t.app(f: 'k->void): void {
     val table = self.table
     for j <- 0:self.tabsz {
         if table[j].hv < HASH_SIGN_MASK {

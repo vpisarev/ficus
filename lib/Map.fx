@@ -79,7 +79,7 @@ match find_opt(m, xk)
 
 fun mem(m: ('k, 'd) Map.t, x: 'k): bool
 {
-    fun mem_(t: ('k, 'd) tree_t, xk: 'k, cmp: 'k cmp_t) =
+    fun mem_(t: ('k, 'd) tree_t, xk: 'k, cmp: 'k cmp_t): bool =
     match t {
         | Node(_, l, yk, yd, r) =>
             val c = cmp(xk, yk)
@@ -91,7 +91,7 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
     mem_(m.root, x, m.cmp)
 }
 
-@private fun balance_left(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t)
+@private fun balance_left(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t): ('k, 'd) tree_t
 {
     | (Node(Red, Node(Red, a, xk, xd, b), yk, yd, c), zk, zd, d) =>
         Node(Red, Node(Black, a, xk, xd, b), yk, yd, Node(Black, c, zk, zd, d))
@@ -101,7 +101,7 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
         Node(Black, l, xk, xd, r)
 }
 
-@private fun balance_right(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t)
+@private fun balance_right(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t): ('k, 'd) tree_t
 {
     | (a, xk, xd, Node(Red, Node(Red, b, yk, yd, c), zk, zd, d)) =>
         Node(Red, Node(Black, a, xk, xd, b), yk, yd, Node(Black, c, zk, zd, d))
@@ -111,7 +111,7 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
         Node(Black, l, xk, xd, r)
 }
 
-@private fun blackify(t: ('k, 'd) tree_t)
+@private fun blackify(t: ('k, 'd) tree_t): (('k, 'd) tree_t, bool)
 {
     | Node(Red, l, xk, xd, r) => (Node(Black, l, xk, xd, r), false)
     | _ => (t, true)
@@ -266,13 +266,13 @@ match t
         (Empty, false)
 }
 
-fun remove(m: ('k, 'd) Map.t, xk: 'k)
+fun remove(m: ('k, 'd) Map.t, xk: 'k): ('k, 'd) Map.t
 {
     val (new_root, _) = remove_(m.root, xk, m.cmp)
     t { root=new_root, cmp=m.cmp }
 }
 
-fun foldl(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r)
+fun foldl(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r): 'r
 {
     fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
     match t {
@@ -329,7 +329,7 @@ fun filter(m: ('k, 'd) Map.t, f: ('k, 'd) -> bool): ('k, 'd) Map.t
     t {root=new_root, cmp=m.cmp}
 }
 
-fun add_list(m: ('k, 'd) Map.t, l: ('k, 'd) list)
+fun add_list(m: ('k, 'd) Map.t, l: ('k, 'd) list): ('k, 'd) Map.t
 {
     val cmp = m.cmp
     val fold new_root=m.root for (xk, xd) <- l {

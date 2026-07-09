@@ -5,18 +5,18 @@
 
 /* Operations on LISP-like lists */
 
-fun length(l: 't list) = Builtins.length(l)
-fun hd(_: 't list) { | a :: _ => a | _ => throw NullListError }
-fun tl(_: 't list) { | _ :: ll => ll | _ => throw NullListError }
-fun empty(_: 't list) { | [] => true | _ => false }
-fun last(_: 't list)
+fun length(l: 't list): int = Builtins.length(l)
+fun hd(_: 't list): 't { | a :: _ => a | _ => throw NullListError }
+fun tl(_: 't list): 't list { | _ :: ll => ll | _ => throw NullListError }
+fun empty(_: 't list): bool { | [] => true | _ => false }
+fun last(_: 't list): 't
 {
     | [:: a] => a
     | _ :: rest => last(rest)
     | _ => throw NullListError
 }
 
-fun nth(l: 't list, n: int) =
+fun nth(l: 't list, n: int): 't =
 match l
 {
     | a :: rest => if n == 0 {a} else {nth(rest, n-1)}

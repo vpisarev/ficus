@@ -115,6 +115,9 @@ typedef struct _fx_R18Options__options_t {
    bool run_app;
    bool verbose;
    bool W_unused;
+   bool W_implicit_rettype;
+   bool W_implicit_rettype_all;
+   bool Werror;
 } _fx_R18Options__options_t;
 
 typedef struct _fx_Ta2i {
@@ -1223,6 +1226,9 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->run_app = src->run_app;
    dst->verbose = src->verbose;
    dst->W_unused = src->W_unused;
+   dst->W_implicit_rettype = src->W_implicit_rettype;
+   dst->W_implicit_rettype_all = src->W_implicit_rettype_all;
+   dst->Werror = src->Werror;
 }
 
 static void _fx_make_R18Options__options_t(
@@ -1257,6 +1263,9 @@ static void _fx_make_R18Options__options_t(
    bool r_run_app,
    bool r_verbose,
    bool r_W_unused,
+   bool r_W_implicit_rettype,
+   bool r_W_implicit_rettype_all,
+   bool r_Werror,
    struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
@@ -1290,6 +1299,9 @@ static void _fx_make_R18Options__options_t(
    fx_result->run_app = r_run_app;
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
+   fx_result->W_implicit_rettype = r_W_implicit_rettype;
+   fx_result->W_implicit_rettype_all = r_W_implicit_rettype_all;
+   fx_result->Werror = r_Werror;
 }
 
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
@@ -3759,6 +3771,8 @@ FX_EXTERN_C int _fx_M6K_formFM7KExpNopN14K_form__kexp_t1R10Ast__loc_t(
 
 FX_EXTERN_C int _fx_M3AstFM15is_global_scopeB1LN12Ast__scope_t(struct _fx_LN12Ast__scope_t_data_t*, bool*, void*);
 
+FX_EXTERN_C int _fx_M3AstFM14is_constructorB1RM11fun_flags_t(struct _fx_R16Ast__fun_flags_t*, bool*, void*);
+
 FX_EXTERN_C int _fx_M6K_formFM10rcode2kexpN14K_form__kexp_t2LN14K_form__kexp_tR10Ast__loc_t(
    struct _fx_LN14K_form__kexp_t_data_t*,
    struct _fx_R10Ast__loc_t*,
@@ -6106,6 +6120,7 @@ static int _fx_M15K_remove_unusedFM19remove_unused_kexp_N14K_form__kexp_t2N14K_f
       _fx_R17K_form__kdeffun_t* v_17 = &kf_0->data;
       _fx_R10Ast__loc_t kf_loc_0 = v_17->kf_loc;
       FX_COPY_PTR(v_17->kf_scope, &kf_scope_0);
+      _fx_R16Ast__fun_flags_t kf_flags_0 = v_17->kf_flags;
       FX_COPY_PTR(v_17->kf_body, &kf_body_0);
       _fx_R9Ast__id_t kf_name_0 = v_17->kf_name;
       FX_CALL(_fx_M15K_remove_unusedFM11check_m_idxv3R9Ast__id_tR10Ast__loc_tri(&kf_name_0, &kf_loc_0, curr_m_idx_ref_0, 0),
@@ -6150,7 +6165,16 @@ static int _fx_M15K_remove_unusedFM19remove_unused_kexp_N14K_form__kexp_t2N14K_f
          else {
             t_5 = false;
          }
+         bool t_6;
          if (t_5) {
+            bool res_3;
+            FX_CALL(_fx_M3AstFM14is_constructorB1RM11fun_flags_t(&kf_flags_0, &res_3, 0), _fx_catch_3);
+            t_6 = !res_3;
+         }
+         else {
+            t_6 = false;
+         }
+         if (t_6) {
             FX_CALL(_fx_M3AstFM2ppS1RM4id_t(&kf_name_0, &v_15, 0), _fx_catch_3);
             fx_str_t slit_2 = FX_MAKE_STR("local function \'");
             fx_str_t slit_3 = FX_MAKE_STR("\' is declared but not used");
@@ -6192,14 +6216,14 @@ static int _fx_M15K_remove_unusedFM19remove_unused_kexp_N14K_form__kexp_t2N14K_f
       FX_CALL(
          _fx_M15K_remove_unusedFM9find_idx_Ta2i3Nt10Hashset__t1R9Ast__id_tR9Ast__id_tq(used_somewhere_0, &ke_name_0,
             __fold_result___2 & 9223372036854775807ULL, &v_22, 0), _fx_catch_4);
-      bool t_6;
+      bool t_7;
       if (v_22.t1 >= 0) {
-         t_6 = true;
+         t_7 = true;
       }
       else {
-         t_6 = !is_main_ref_0->data;
+         t_7 = !is_main_ref_0->data;
       }
-      if (t_6) {
+      if (t_7) {
          FX_COPY_PTR(e_0, fx_result);
       }
       else {
@@ -6315,9 +6339,9 @@ static int _fx_M15K_remove_unusedFM19remove_unused_kexp_N14K_form__kexp_t2N14K_f
                if (FX_REC_VARIANT_TAG(v_34) == 5) {
                   _fx_N14K_form__atom_t* v_35 = &v_34->u.KExpAtom.t0;
                   if (v_35->tag == 1) {
-                     bool res_3;
-                     FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&vcase_3->t0, &v_35->u.AtomId, &res_3, 0), _fx_catch_12);
-                     if (res_3) {
+                     bool res_4;
+                     FX_CALL(_fx_M3AstFM6__eq__B2RM4id_tRM4id_t(&vcase_3->t0, &v_35->u.AtomId, &res_4, 0), _fx_catch_12);
+                     if (res_4) {
                         _fx_LN14K_form__kexp_t v_36 = 0;
                         FX_CALL(_fx_cons_LN14K_form__kexp_t(vcase_3->t1, v_32->tl, true, &v_36), _fx_catch_10);
                         FX_CALL(

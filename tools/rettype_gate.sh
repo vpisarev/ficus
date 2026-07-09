@@ -1,0 +1,54 @@
+#!/bin/bash
+# annotate-2 WP-3 gate: every module-level function in the ANNOTATED stdlib
+# scope must carry an explicit return type. Enforced via -Wimplicit-rettype
+# promoted to an error with -Werror. Compiling each file with -no-c (parse +
+# typecheck only) is cheap (~a few seconds for the whole scope).
+#
+# Why a compiler-based gate (not tools/lint_op_returns.py --funs): the textual
+# linter cannot see function nesting, so it false-positives on nested generic
+# helpers (e.g. Map.mem_); -Wimplicit-rettype is the typechecker's own verdict
+# and is authoritative. The operator lint (lint_op_returns.py lib) stays as a
+# separate, faster guard for the 106 generic operators.
+#
+# Scope EXCLUDES the not-yet-annotated application libraries: NN/, Onnx/,
+# Protobuf/, and OpenCV.fx (see docs/annotate2_report.md). Everything else in
+# lib/ -- including the small DSP/Drawing/Image modules -- must stay clean.
+set -u
+FICUS="${1:-bin/ficus}"
+
+files=$(ls lib/*.fx | grep -v '/OpenCV\.fx$')
+files="$files lib/DSP/Fft.fx lib/Drawing/Shapes.fx lib/Image/Decoder.fx lib/Image/Encoder.fx"
+
+# -Wimplicit-rettype=all is REQUIRED here: the default scope deliberately skips
+# stdlib modules (a user should not see warnings about library code), so a
+# stdlib file compiled as root would be silent under the plain flag. '=all'
+# opts the stdlib itself back in -- exactly what a self-gate needs.
+fail=0
+for f in $files; do
+    if ! "$FICUS" -no-c -Wimplicit-rettype=all -Werror "$f" >/dev/null 2>&1; then
+        echo "FAIL: unannotated module-level function(s) in $f"
+        "$FICUS" -no-c -Wimplicit-rettype=all "$f" 2>&1 | grep "implicit return type" | head
+        fail=1
+    fi
+done
+
+# The runnable test suite (test/*.fx + test/rand/*.fx) must also be clean. The
+# DEFAULT scope covers the test modules (user code) and their imported user
+# helpers, while suppressing stdlib. We grep for the warning itself rather than
+# relying on -Werror's exit code: test files legitimately trip OTHER warnings
+# (an unused local) and a couple do not compile standalone (test_gencmp needs
+# -I compiler; test_re2 has an unrelated standalone error) -- none of which is a
+# missing return type. test/negative/ (intentional errors) and test/ir/
+# (snapshot inputs) are excluded.
+for f in test/*.fx test/rand/*.fx; do
+    if "$FICUS" -no-c -Wimplicit-rettype "$f" 2>&1 | grep -q "implicit return type"; then
+        echo "FAIL: implicit return type reachable from $f"
+        "$FICUS" -no-c -Wimplicit-rettype "$f" 2>&1 | grep "implicit return type" | head
+        fail=1
+    fi
+done
+
+if [ $fail -eq 0 ]; then
+    echo "rettype gate: clean (stdlib + test suite, -Wimplicit-rettype -Werror)"
+fi
+exit $fail

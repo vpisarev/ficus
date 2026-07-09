@@ -45,7 +45,7 @@
          fold @gensym(s) = init for for_.clauses {s += for_.body}
       }
 
-      macro EXPECT_EQ[t](a: t, b: t): void = EXPECT_EQ_(a, b, @string(a), @string(b), @file, @line) 
+      macro EXPECT_EQ[t](a: t, b: t): void = EXPECT_EQ_(a, b, @string(a), @string(b), @file, @line)
       ```
 - [ ] get rid of `` `...` `` notation. See macros above.
 - [ ] do we want a ternary selection operator? `(a ? b : c)` (we now use `if(a) {b} else {c}`)
@@ -53,12 +53,12 @@
       Almost the same syntax as with variadic tuples, just without `()` around `...` or `t ...`.
       This variadic parameter should be the last non-keyword parameter.
       Also, it would be nice to add `tup.n...` notation to skip the first n arguments
-      (here the new notation for generic types is used): 
+      (here the new notation for generic types is used):
       ```
       // we don't even need macros for that. variadic function max(args...) must be
       // more generic than max() with a fixed number of arguments (2)
       fun max[t](args: t ...): t {
-          fold r = args.0 for x <- args.1... {r = max(r, x)}  
+          fold r = args.0 for x <- args.1... {r = max(r, x)}
       }
 
       // variadic function print(args ..., ...) should be 'more generic'
@@ -103,6 +103,47 @@
       there is a set of operations on it (with fusion etc.)
 - [ ] try to accept `(op)` everywhere where `__opname__` is accepted, e.g. `Complex.(*)(a, b)`
 - [ ] (maybe not) introduce infix `++` as concatenation operator. This should solve several problems with incorrect typing.
+- [ ] revise uniform containers and their names. We now have:
+      * arrays (`'t [,,]` => `t [,,]`; `t`, if not a concrete type, will be specified separately as a template parameter).
+      * lists (`'t list` => `list[t]`)
+      * rrb vectors (`'t vector` => `vector[t]`)
+      * experimental half-baked 'dynamic vectors', `Dynvec.t`, which are similar to `std::vector<t>` or Python lists.
+        See `lib/Dynvec.fx`.
+
+      Now let's see if we need to do any changes:
+      * arrays are definitely useful, they are one of the reason to create Ficus.
+        So they will stay. Probably, a black-box `tensor` will be added
+      * lists are not very efficient from performance point of view, they use memory heap quite actively.
+        But they are one of the most useful concept in functional programming, dated back to Lisp.
+        They are very conveniently handled by pattern matching and recursive functions.
+        With 'list writers', see above, they will become very efficient in `fold` as well
+        (now the common technique is to construct a list inside `fold` in the reverse order with `::` and then reverse it).
+        They are actively used in the compiler and they will be gladly accepted by all Lisp, Haskell, ML users.
+      * Now to rrb vectors. They are much more efficient than lists in terms of memory usage,
+        they are much faster to access in random order and even sequential order, they are immutable,
+        so very safe in parallel workloads. But currently they are not used much.
+        Actually, they are not used at all, they are just tested in test_all.
+        It's also not very clear how to extend pattern matching to handle rrb vectors.
+        Even introduced in the library Map.t (balanced tree) can be processed with pattern matching,
+        because it's built on top of algebraic types. Because of missing pattern matching support,
+        vectors are difficult to use in parsers or other 1D streams analyzers.
+        Pattern matching for vectors should take start_index from where we start matching,
+        arms/cases should lists some matched/captured elements and then we should be able to
+        advance start_index to move to the next portion. Maybe the whole rrb vector should be a pair
+        `(rrbcontainer_vec, start_index_and_iterator)`, maybe the position to the block where
+        start_index resides should be cached so that we can access `rrbvector[start_index]`
+        and its next neighbors instantly? With all those changes maybe rrbvector can become a very
+        efficient functional-programming-friendly alternative to `list[t]`?
+      * `Dynvec.t`, even though it's of very limited functionality, and even without pattern matching,
+        vectors are really useful, Python and C++ users confirm it.
+
+      It's suggested to:
+      * rename `vector` to `rrbvector` or `rrbvec` and make it a very good alternative to `list[t]`. Think of:
+        * adding pattern matching support, because it's one of the keys.
+        * instant access to the `rrbvec` starting from certain location
+          (basically, add iterator together with explicit start index to rrbvec).
+        * efficient writer (already implemented) usable in `fold` as well.
+      * rename `Dynvec.t` to `vector` and make it a first-class container in Ficus (slicing, comprehensions etc.)
 
 # Code generation, runtime
 - [x] (we now put compiler modification date, its binary size and the compiler flags as the 'signature')

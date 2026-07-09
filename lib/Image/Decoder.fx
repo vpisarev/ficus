@@ -41,9 +41,9 @@
     return fx_status;
 }
 
-fun imread_gray(filename: string) =
+fun imread_gray(filename: string): uint8 [,] =
     (reinterpret(imread_(filename, 8, 1)) : uint8 [,])
-fun imread_rgb(filename: string) =
+fun imread_rgb(filename: string): (uint8, uint8, uint8) [,] =
     (reinterpret(imread_(filename, 8, 3)) : uint8x3 [,])
-fun imread_rgba(filename: string) =
+fun imread_rgba(filename: string): (uint8, uint8, uint8, uint8) [,] =
     (reinterpret(imread_(filename, 8, 4)) : uint8x4 [,])

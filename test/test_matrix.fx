@@ -7,7 +7,7 @@
 
 from UTest import *
 
-fun refmul(a: 't [,], b: 't [,]) {
+fun refmul(a: 't [,], b: 't [,]): 't [,] {
     val (ma, na) = size(a), (mb, nb) = size(b)
     assert(na == mb)
     val c = array((ma, nb), (0 :> 't))

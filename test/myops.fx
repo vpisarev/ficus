@@ -5,15 +5,15 @@
 
 // example of imported module with various tiny functions
 
-fun sqr(x:'t) = x * x
+fun sqr(x:'t): 't = x * x
 @pure fun mad(a: int, b: int, c: int): int
 @ccode {
     *fx_result = a*b + c;
     return FX_OK;
 }
-fun div3(x: 't) = x/(3.0 :> 't)
+fun div3(x: 't): 't = x/(3.0 :> 't)
 
-fun add_scaled(a: float [+], b: float [+], scale: float) =
+fun add_scaled(a: float [+], b: float [+], scale: float): float [+] =
     [for x <- a, y <- b {x + y*scale}]
 
-fun sum_arr(arr: 't [+]) = fold s=(0:>'t) for x <- arr {s+x}
+fun sum_arr(arr: 't [+]): 't = fold s=(0:>'t) for x <- arr {s+x}

@@ -20,7 +20,7 @@ val color_white = (1.f, 1.f, 1.f, 1.f)
 val color_red = (1.f, 0.f, 0.f, 1.f)
 val color_green = (0.f, 1.f, 0.f, 1.f)
 val color_blue = (0.f, 0.f, 1.f, 1.f)
-fun make_solid(c: color_t) = shape_colors_t {border_color=c, border_thickness=0.f, fill_color=c}
+fun make_solid(c: color_t): test_oop.shape_colors_t = shape_colors_t {border_color=c, border_thickness=0.f, fill_color=c}
 type bbox_t = {x: float; y: float; w: float; h: float}
 
 interface IBase
@@ -70,21 +70,21 @@ class Ellipse : IClone, IShape
     var sc: shape_colors_t
 }
 
-fun Rect.name() = "rectangle"
-fun Rect.area() = self.fx*self.fy
-fun Rect.get_scale() = (self.fx, self.fy)
-fun Rect.set_scale(fx: float, fy: float) { self.fx = fx; self.fy = fy }
-fun Rect.clone()
+fun Rect.name(): string = "rectangle"
+fun Rect.area(): float = self.fx*self.fy
+fun Rect.get_scale(): (float, float) = (self.fx, self.fy)
+fun Rect.set_scale(fx: float, fy: float): void { self.fx = fx; self.fy = fy }
+fun Rect.clone(): test_oop.IClone
 {
     val {cx, cy, fx, fy, angle, corner_r, sc} = self
     (Rect {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, corner_r=corner_r, sc=sc} :> IClone)
 }
 
-fun Ellipse.name() = "ellipse"
-fun Ellipse.area() = float(M_PI*self.fx*self.fy)
-fun Ellipse.get_scale() = (self.fx, self.fy)
-fun Ellipse.set_scale(fx: float, fy: float) { self.fx = fx; self.fy = fy }
-fun Ellipse.clone()
+fun Ellipse.name(): string = "ellipse"
+fun Ellipse.area(): float = float(M_PI*self.fx*self.fy)
+fun Ellipse.get_scale(): (float, float) = (self.fx, self.fy)
+fun Ellipse.set_scale(fx: float, fy: float): void { self.fx = fx; self.fy = fy }
+fun Ellipse.clone(): test_oop.IClone
 {
     val {cx, cy, fx, fy, angle, sc} = self
     (Ellipse {cx=cx, cy=cy, fx=fx, fy=fy, angle=angle, sc=sc} :> IClone)

@@ -4,24 +4,24 @@
 */
 
 // operations on arrays
-fun mkrange(n: int) = [for i <- 0:n {i}]
-fun mkrange(a: int, b: int) = [for i <- a:b {i}]
-fun mkrange(a: int, b: int, delta: int) = [for i <- a:b:delta {i}]
+fun mkrange(n: int): int [] = [for i <- 0:n {i}]
+fun mkrange(a: int, b: int): int [] = [for i <- a:b {i}]
+fun mkrange(a: int, b: int, delta: int): int [] = [for i <- a:b:delta {i}]
 
-fun channels(a: ('t*2) [+]) = 2
-fun channels(a: ('t*3) [+]) = 3
-fun channels(a: ('t*4) [+]) = 4
-fun channels(a: ('t*5) [+]) = 5
+fun channels(a: ('t*2) [+]): int = 2
+fun channels(a: ('t*3) [+]): int = 3
+fun channels(a: ('t*4) [+]): int = 4
+fun channels(a: ('t*5) [+]): int = 5
 
-fun length(a: 't []) = __intrin_size__(a)
-fun size(a: 't []) = __intrin_size__(a)
-fun size(a: 't [,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
-fun size(a: 't [,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
-fun size(a: 't [,,,]) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
+fun length(a: 't []): int = __intrin_size__(a)
+fun size(a: 't []): int = __intrin_size__(a)
+fun size(a: 't [,]): (int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
+fun size(a: 't [,,]): (int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
+fun size(a: 't [,,,]): (int, int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
                          __intrin_size__(a, 2), __intrin_size__(a, 3))
 
-fun total(a: 't [+]) = fold p = 1 for szj <- size(a) {p*szj}
-fun total(a: 't []) = size(a)
+fun total(a: 't [+]): int = fold p = 1 for szj <- size(a) {p*szj}
+fun total(a: 't []): int = size(a)
 
 @nothrow fun empty(a: 't [+]):bool
 @ccode {
@@ -32,25 +32,25 @@ fun total(a: 't []) = size(a)
     return false;
 }
 
-fun copy(a: 't [+]) = [for x <- a {x}]
+fun copy(a: 't [+]): 't [+] = [for x <- a {x}]
 
 fun reshape(a: 't [+], size: (int*2)): 't [,]
 @ccode {
     return fx_reshape_arr(a, 2, &size->t0, 1, 1, fx_result);
 }
-fun reshape(a: 't [+], s0: int, s1: int) = reshape(a, (s0, s1))
+fun reshape(a: 't [+], s0: int, s1: int): 't [,] = reshape(a, (s0, s1))
 
 fun reshape(a: 't [+], size: (int*3)): 't [,,]
 @ccode {
     return fx_reshape_arr(a, 3, &size->t0, 1, 1, fx_result);
 }
-fun reshape(a: 't [+], s0: int, s1: int, s2: int) = reshape(a, (s0, s1, s2))
+fun reshape(a: 't [+], s0: int, s1: int, s2: int): 't [,,] = reshape(a, (s0, s1, s2))
 
 fun reshape(a: 't [+], size: (int*4)): 't [,,,]
 @ccode {
     return fx_reshape_arr(a, 4, &size->t0, 1, 1, fx_result);
 }
-fun reshape(a: 't [+], s0: int, s1: int, s2: int, s3: int) = reshape(a, (s0, s1, s2, s3))
+fun reshape(a: 't [+], s0: int, s1: int, s2: int, s3: int): 't [,,,] = reshape(a, (s0, s1, s2, s3))
 
 fun reshape_multichan_(a: ('t ...)[+], nchannels: int, size: (int*4)): 't [,,,]
 @ccode {
@@ -61,11 +61,11 @@ fun reshape_multichan_c3(a: 't [+], size: (int*2)): ('t*3) [,]
 @ccode {
     return fx_reshape_arr(a, 2, &size->t0, 1, 3, fx_result);
 }
-fun reshape_multichan_c3(a: 't [+], s0: int, s1: int) = reshape_multichan_c3(a, (s0, s1))
+fun reshape_multichan_c3(a: 't [+], s0: int, s1: int): ('t*3) [,] = reshape_multichan_c3(a, (s0, s1))
 
-fun __negate__(a: 't [+]) = [for x <- a {-x}]
+fun __negate__(a: 't [+]): 't [+] = [for x <- a {-x}]
 
-fun map(arr: 'a [+], f: 'a -> 'b) = [for x <- arr {f(x)}]
+fun map(arr: 'a [+], f: 'a -> 'b): 'b [+] = [for x <- arr {f(x)}]
 fun assoc_opt(arr: ('a, 'b) [], key: 'a): 'b? =
     match find_opt(for (a, b) <- arr {a == key}) {
     | Some((a, b)) => Some(b)
@@ -77,10 +77,10 @@ fun assoc(arr: ('a, 'b) [], key: 'a): 'b =
     | _ => throw NotFoundError
     }
 
-fun sat_uint8(a: 't [+]) = [for x <- a {sat_uint8(x)}]
-fun sat_int8(a: 't [+]) = [for x <- a {sat_int8(x)}]
-fun sat_uint16(a: 't [+]) = [for x <- a {sat_uint16(x)}]
-fun sat_int16(a: 't [+]) = [for x <- a {sat_int16(x)}]
+fun sat_uint8(a: 't [+]): uint8 [+] = [for x <- a {sat_uint8(x)}]
+fun sat_int8(a: 't [+]): int8 [+] = [for x <- a {sat_int8(x)}]
+fun sat_uint16(a: 't [+]): uint16 [+] = [for x <- a {sat_uint16(x)}]
+fun sat_int16(a: 't [+]): int16 [+] = [for x <- a {sat_int16(x)}]
 
 operator .+ (a: 'ta [+], b: 'tb): 't3 [+] =
     [for x <- a {x .+ b}]
@@ -210,58 +210,58 @@ operator .> (a: 't [+], y: 't): bool [+] =
 operator .>= (a: 't [+], y: 't): bool [+] =
     [for x <- a {!(x < y)}]
 
-fun min(a: 't [+], b: 't [+]) =
+fun min(a: 't [+], b: 't [+]): 't [+] =
     [for x <- a, y <- b {min(x, y)}]
-fun max(a: 't [+], b: 't [+]) =
+fun max(a: 't [+], b: 't [+]): 't [+] =
     [for x <- a, y <- b {max(x, y)}]
 
-fun min(x: 't, b: 't [+]) =
+fun min(x: 't, b: 't [+]): 't [+] =
     [for y <- b {min(x, y)}]
-fun max(x: 't, b: 't [+]) =
+fun max(x: 't, b: 't [+]): 't [+] =
     [for y <- b {max(x, y)}]
 
-fun min(a: 't [+], y: 't) =
+fun min(a: 't [+], y: 't): 't [+] =
     [for x <- a {min(x, y)}]
-fun max(a: 't [+], y: 't) =
+fun max(a: 't [+], y: 't): 't [+] =
     [for x <- a {max(x, y)}]
 
-fun clip(a: 't [+], minv: 't, maxv: 't) =
+fun clip(a: 't [+], minv: 't, maxv: 't): 't [+] =
     [for x <- a {min(max(x, minv), maxv)}]
-fun clip(a: 't [+], minv_arr: 't [+], maxv_arr: 't [+]) =
+fun clip(a: 't [+], minv_arr: 't [+], maxv_arr: 't [+]): 't [+] =
     [for x <- a, minv <- minv_arr, maxv <- maxv_arr {min(max(x, minv), maxv)}]
 
-fun sum(a: 't [+]) =
+fun sum(a: 't [+]): double =
     fold s = ((0 :> 't) :> double) for aj <- a {s + aj}
 
-fun sum(a: 't [+], v0: 's) =
+fun sum(a: 't [+], v0: 's): 's =
     fold s = v0 for aj <- a {s + aj}
 
-fun product(a: 't [+], v0: 's) =
+fun product(a: 't [+], v0: 's): 's =
     fold p = v0 for aj <- a {p * aj}
 
-fun mean(a: 't [+]) = sum(a)/(max(total(a), 1) :> double)
+fun mean(a: 't [+]): double = sum(a)/(max(total(a), 1) :> double)
 
-fun normInf(a: 't [+]) =
+fun normInf(a: 't [+]): 't =
     fold s = normInf(0 :> 't) for aj <- a {max(s, normInf(aj))}
 
-fun normL1(a: 't [+]) =
+fun normL1(a: 't [+]): double =
     fold s = 0. for aj <- a {s + normL1(aj)}
 
-fun normL2sqr(a: 't [+]) =
+fun normL2sqr(a: 't [+]): double =
     fold s = 0. for aj <- a {s + normL2sqr(aj)}
 
-fun normL2(a: 't [+]) = sqrt(normL2sqr(a))
+fun normL2(a: 't [+]): double = sqrt(normL2sqr(a))
 
-fun normInf(a: 't [+], b: 't [+]) =
+fun normInf(a: 't [+], b: 't [+]): 't =
     fold s = normInf(0 :> 't) for aj <- a, bj <- b {max(s, normInf(aj, bj))}
 
-fun normL1(a: 't [+], b: 't [+]) =
+fun normL1(a: 't [+], b: 't [+]): double =
     fold s = 0. for aj <- a, bj <- b {s + normL1(aj, bj)}
 
-fun normL2sqr(a: 't [+], b: 't [+]) =
+fun normL2sqr(a: 't [+], b: 't [+]): double =
     fold s = 0. for aj <- a, bj <- b {s + normL2sqr(aj, bj)}
 
-fun normL2(a: 't [+], b: 't [+]) = sqrt(normL2sqr(a, b))
+fun normL2(a: 't [+], b: 't [+]): double = sqrt(normL2sqr(a, b))
 
 fun minindex(a: 't []): ('t, int) =
     if a == [] {
@@ -329,7 +329,7 @@ operator *= (a: 't [,], b: 't [,]): void {
     a[:,:] = temp
 }
 
-fun row2matrix(a: 't [])
+fun row2matrix(a: 't []): 't [,]
 {
     val n = size(a)
     [for i <- 0:1 for j <- 0:n {a[j]}]
@@ -341,7 +341,7 @@ operator * (a: 't [,], b: 't []): 't [,] = a*row2matrix(b)
 operator * (a: 't [+], alpha: 't): 't [+] = [for x <- a {x*alpha}]
 operator * (alpha: 't, a: 't [+]): 't [+] = [for x <- a {x*alpha}]
 
-fun diag(d: 't[])
+fun diag(d: 't[]): 't [,]
 {
     val n = size(a)
     val a = array((n, n), (0 :> 't))
@@ -349,7 +349,7 @@ fun diag(d: 't[])
     a
 }
 
-fun diag(n: int, d: 't)
+fun diag(n: int, d: 't): 't [,]
 {
     val a = array((n, n), (0 :> 't))
     if d != (0 :> 't) {
@@ -358,16 +358,16 @@ fun diag(n: int, d: 't)
     a
 }
 
-fun random(rng: RNG, size: int, a: 't, b: 't) =
+fun random(rng: RNG, size: int, a: 't, b: 't): 't [] =
     [for i <- 0:size {rng.uniform(a, b)}]
 
-fun random(rng: RNG, size: (int, int), a: 't, b: 't) =
+fun random(rng: RNG, size: (int, int), a: 't, b: 't): 't [,] =
     [for i <- 0:size.0 for j <- 0:size.1 {rng.uniform(a, b)}]
 
-fun random(rng: RNG, size: (int, int, int), a: 't, b: 't) =
+fun random(rng: RNG, size: (int, int, int), a: 't, b: 't): 't [,,] =
     [for i <- 0:size.0 for j <- 0:size.1 for k <- 0:size.2 {rng.uniform(a, b)}]
 
-fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't) =
+fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't): 't [,,,] =
     [for i <- 0:size.0 for j <- 0:size.1
        for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)}]
 
@@ -391,7 +391,7 @@ fun shuffle(arr: 't [], rng: RNG): void
     }
 }
 
-fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int)
+fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int): void
 {
     fun qsort_(lo: int, hi: int) {
         if lo+1 < hi {
@@ -447,7 +447,7 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int)
     qsort_(0, size(arr)-1)
 }
 
-fun sort(arr: 't [], lt: ('t, 't) -> bool) = sort(arr, lt, prefix=size(arr))
+fun sort(arr: 't [], lt: ('t, 't) -> bool): void = sort(arr, lt, prefix=size(arr))
 
 @ccode {
 /*

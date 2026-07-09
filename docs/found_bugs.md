@@ -56,7 +56,7 @@ is the whole point of the ladder.
   gain the (harmless-in-C) casts. Unfenced: `cpp_xfail` removed from
   `manifest.toml`; the `-c++` smoke on `test_all` (and the whole corpus) is green.
 
-## FB-002  uint64 `>>` is an arithmetic (sign-extending) shift, not logical
+## FB-002  uint64 `>>` is an arithmetic (sign-extending) shift, not logical        [FIXED]
 - symptom: right-shifting a `uint64` whose top bit is set fills with sign bits
   instead of zeros. `uint8`/`uint16`/`uint32` shift correctly (logical); only
   `uint64` is affected.
@@ -89,7 +89,7 @@ is the whole point of the ladder.
   runtime over 500 random expressions at -O0/-O3 (in `fxtest.py all`).
   Integer-semantics paragraph added to `doc/ficustut.md`.
 
-## FB-010  folded INT64_MIN (-2^63) emitted as a bare (unsigned) C literal
+## FB-010  folded INT64_MIN (-2^63) emitted as a bare (unsigned) C literal            [FIXED]
 - discovered: 2026-07-07 while building the FB-002 cfold oracle -- it emitted a
   `-9223372036854775808` operand and the runtime path disagreed with the fold.
 - detail: ficus's typechecker treats the 64-bit signed range as the symmetric
@@ -118,7 +118,7 @@ is the whole point of the ladder.
   bare -2^63 in source) is left as-is on purpose -- a language-design question
   parked in `docs/language_changes_brief.md`, out of scope here.
 
-## FB-003  border access `.clip/.wrap/.zero` on a plain 1D array emits broken C
+## FB-003  border access `.clip/.wrap/.zero` on a plain 1D array emits broken C       [FIXED]
 - symptom: `arr.clip[i]` (also `.wrap` / `.zero`) on a plain array `'t []`
   typechecks but generates C that does not compile:
   `use of undeclared identifier '__idx0__'; did you mean '__idx__'?` inside the
@@ -147,7 +147,7 @@ is the whole point of the ladder.
   `array.border_matrix` unit test covers {1D array, 2D array, Vector, string} x
   {clip, zero, wrap}.
 
-## FB-004  empty strided array slice produces a corrupt view -> SIGSEGV on use
+## FB-004  empty strided array slice produces a corrupt view -> SIGSEGV on use       [FIXED]
 - symptom: an *empty* strided slice `a[lo:lo:step]` with `step >= 2` yields a
   corrupt array view; consuming it (array `==`/`!=`, copy, iterate) segfaults.
   Non-empty strided slices, contiguous slices and `step == 1` are fine.
@@ -174,7 +174,7 @@ is the whole point of the ladder.
   new `array.empty_slice` unit test covers empty at start/middle/end, step>len,
   `lo==hi==n`, and empty negative-step.
 
-## FB-005  Vector `.wrap[-n]` reads one past the end (heap over-read)
+## FB-005  Vector `.wrap[-n]` reads one past the end (heap over-read)               [FIXED]
 - symptom: for a `Vector` of length n, `v.wrap[idx]` with `idx == -n` computes
   the wrapped index as `n` (off by one at the boundary) and reads `buf[n]` --
   one element past the end -- returning adjacent heap garbage instead of the
@@ -198,7 +198,7 @@ is the whole point of the ladder.
   `rand.array.border` suite now draws `idx` from `[-3n, 3n)` with the boundaries
   `-n, -2n, 2n` forced in, for both Vector and plain array.
 
-## FB-006  nested array comprehension (array-of-arrays) -> broken C on indexing
+## FB-006  nested array comprehension (array-of-arrays) -> broken C on indexing       [FIXED]
 - symptom: a nested comprehension whose body is itself a comprehension,
   `[for i {[for j {..}]}]`, has type `'t [] []` (array of arrays). Building it is
   fine, but **indexing the result** emits malformed C and fails to compile:
@@ -237,7 +237,7 @@ is the whole point of the ladder.
   literal vs list-comp agree), T5 `rand.array.nested_comp`, and a T4 IR snapshot
   `test/ir/nested_comprehension.fx`.
 
-## FB-007  generic `complex` operators break overload resolution / type inference
+## FB-007  generic `complex` operators break overload resolution / type inference      [FIXED]
 - summary: the `+ - * /` operators for the `complex` class in `lib/Complex.fx`
   (lines 15-44) are commented out — enabling them breaks the typechecker, so
   complex arithmetic is unavailable and the complex demo in `examples/fst.fx`
@@ -409,7 +409,7 @@ is the whole point of the ladder.
   proof: 861a988 OK (homogeneous), 4096963 OK (mixed `*`/`/` — no
   list-`*` competitor exists), 7e10f29 BREAKS (mixed `+`/`-`).
 
-## FB-008  [UNCONFIRMED] non-deterministic-looking `.c`: unstable under unrelated changes
+## FB-008  non-deterministic-looking `.c`: unstable under unrelated changes       [FIXED]
 - symptom (Vadim, seen several times over development, not a bit-flip): the
   compiler emits a **different `.c`** for a `.fx` module whose own source and
   dependencies did not change — variables renamed, declarations/functions
@@ -572,7 +572,7 @@ is the whole point of the ladder.
   `// FIXME` note points back here). This is the unit failure the PR #27 CI
   handoff saw (its log had truncated the test name); see FB-011 for the mixup.
 
-## (FIXED in PR #29) FB-014  bare positive literal 2^63 silently wrapped to INT64_MIN
+## (FIXED in PR #29) FB-014  bare positive literal 2^63 silently wrapped to INT64_MIN     [FIXED]
 - discovered: 2026-07-07 while widening the int64 literal range (housekeeping
   follow-up to FB-010).
 - detail: the lexer (`LexerUtils.getnumber_`) accumulates a decimal magnitude in
@@ -622,7 +622,7 @@ is the whole point of the ladder.
   for a later parser look (control-flow keywords as unit-typed expressions, and a
   clearer diagnostic than "unexpected token '}'"). Also noted in CLAUDE.md gotchas.
 
-## FB-016  overload resolution: greedy first-match ignores specificity (last-declared overload wins)
+## FB-016  overload resolution: greedy first-match ignores specificity (last-declared overload wins)    [FIXED]
 - discovered: 2026-07-08 during WP-E, via the new `-pr-resolve` trace / the D1
   generality comparator. This is the **minimal, self-contained** form of FB-007's
   symptom S2 (no `complex`/NN machinery needed).
@@ -713,3 +713,53 @@ is the whole point of the ladder.
   unchanged). E1 census re-run (`docs/wpe_experiments/e1_census_post_fb017.md`):
   344/117/227/0 -> 342/341/1/0 (sites/agree/none/concrete-flips); the one
   remaining `<none>` is the known under-constrained 21-viable `__cmp__` site.
+
+## FB-018  `Array.diag(d: 't[])` references `a` before it is defined (should be `size(d)`)
+- discovered: 2026-07-09, annotate-2 sweep (probing return types for the sweep).
+- detail: `lib/Array.fx:344-350`:
+  ```
+  fun diag(d: 't[]): 't [,]       // (annotation added by annotate-2)
+  {
+      val n = size(a)              // <-- 'a' used here, defined on the NEXT line
+      val a = array((n, n), (0 :> 't))
+      for i <- 0:n {a[i, i] = d[i]}
+      a
+  }
+  ```
+  `size(a)` should be `size(d)`. As written the function refers to `a` before its
+  binding, so any instantiation fails: `diag([1,2,3])` gives
+  `Array.fx:346: error: the appropriate match for 'a' of type '<unknown>' is not
+  found.` The sibling `diag(n: int, d: 't)` (line 352) is correct.
+- why it never surfaced: `diag(d: 't[])` is a generic template; its body is only
+  typechecked at instantiation, and nothing in the corpus/tests instantiates the
+  array form (the `(int, 't)` overload is the one used). annotate-2's warning +
+  the return-type probe are what exposed it.
+- fenced, NOT fixed (per ground rules -- not a compiler bug, a stdlib logic bug).
+  The annotate-2 return annotation `: 't [,]` is correct for the *intended*
+  behavior and is verified by the working `diag(n, d)` sibling; fixing the body
+  is a one-token change (`size(a)` -> `size(d)`) left for Vadim.
+
+## FB-019  `floor`/`ceil`/`trunc`/`round` return `int`, contradicting CLAUDE.md (design question)
+- discovered: 2026-07-09, annotate-2 sweep (annotating `Math` elementwise ops).
+- detail: the scalar reductions in `lib/Math.fx:45-50` are EXPLICITLY annotated
+  to return `int`:
+  ```
+  @inline fun floor(x: float): int = __intrin_floor__(x)
+  @inline fun floor(x: double): int = __intrin_floor__(x)
+  @inline fun ceil(x: double): int = __intrin_ceil__(x)
+  @pure @nothrow fun trunc(x: double): int = (x :> int)
+  ```
+  so `floor(1.5) : int`, and the array forms `floor(x: 't [+])` therefore return
+  `int [+]` (verified: `floor([1.5, 2.5])` -> `int []`). This directly
+  contradicts CLAUDE.md's "Writing Ficus" note: *"floor/ceil return the
+  float/double type, not int (use int(floor(x)))"*.
+- the discrepancy is real and pre-existing (these `: int` annotations predate
+  annotate-2). Either the DOC is stale, or the intent is C/NumPy-style
+  `floor: double -> double` and the `int` return is a lossy bug (an `int` cannot
+  hold `floor(1e20)`). This is a DESIGN/intent question, not something to "fix"
+  blindly -- flagged for Vadim.
+- annotate-2 impact: the array `floor/ceil/trunc/round(x: 't [+])` were annotated
+  `: int [+]` to match the current (int-returning) behavior EXACTLY; if Vadim
+  rules the scalars should widen to float/double, those four array annotations
+  (and the scalar ones) change together. Census/behavior are preserved either way
+  by the current choice.

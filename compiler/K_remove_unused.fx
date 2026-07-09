@@ -218,14 +218,19 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                 }
             }
         | KDefFun kf =>
-            val {kf_name, kf_body, kf_scope, kf_loc} = *kf
+            val {kf_name, kf_body, kf_flags, kf_scope, kf_loc} = *kf
             check_m_idx(kf_name, kf_loc)
             if used_somewhere.mem(kf_name) {
                 val new_body = remove_unused_kexp_(kf_body, callb)
                 *kf = kf->{kf_body=new_body}
                 e
             } else {
-                if initial && Options.opt.W_unused && !is_global_scope(kf_scope) {
+                // do not warn about an unused auto-generated constructor (e.g.
+                // a variant-case constructor of a locally-declared type): it is
+                // not a function the user wrote, so "declared but not used" is
+                // noise -- only warn about explicit local functions.
+                if initial && Options.opt.W_unused && !is_global_scope(kf_scope) &&
+                   !is_constructor(kf_flags) {
                     compile_warning(kf_loc, f"local function '{pp(kf_name)}' is declared but not used")
                 }
                 KExpNop(kf_loc)

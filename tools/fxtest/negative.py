@@ -30,6 +30,10 @@ import fxtest as F
 import normalize
 
 _EXPECT_RE = re.compile(r"\s*//\s*expect:\s*(.*)")
+# Optional per-case extra compiler flags, e.g. `// flags: -Wall -Werror` to
+# exercise a warning-as-error case (a warning alone exits 0; this harness
+# requires a nonzero exit). Scanned across the leading comment header.
+_FLAGS_RE = re.compile(r"\s*//\s*flags:\s*(.*)")
 
 
 def _discover(neg_dir):
@@ -45,6 +49,18 @@ def _expect_of(src):
     with open(src, "r") as f:
         m = _EXPECT_RE.match(f.readline())
     return m.group(1).strip() if m else None
+
+
+def _flags_of(src):
+    with open(src, "r") as f:
+        for _ in range(6):                          # scan the comment header
+            line = f.readline()
+            if not line:
+                break
+            m = _FLAGS_RE.match(line)
+            if m:
+                return m.group(1).split()
+    return []
 
 
 _POS_RE = re.compile(r"([\w./-]+\.fx):(\d+):(\d+)")
@@ -73,9 +89,9 @@ def _normalize_err(text, repo, keep_basename=None):
     return "\n".join(out)
 
 
-def _run_ficus_noc(ficus, src, builddir):
+def _run_ficus_noc(ficus, src, builddir, flags=()):
     os.makedirs(builddir, exist_ok=True)
-    cmd = [ficus, "-no-c", "-B", builddir, os.path.abspath(src)]
+    cmd = [ficus, "-no-c", "-B", builddir] + list(flags) + [os.path.abspath(src)]
     try:
         p = subprocess.run(cmd, capture_output=True, timeout=120)
         combined = p.stdout + p.stderr
@@ -95,7 +111,7 @@ def _run_one(repo, ficus, neg_dir, src, update):
     expect = _expect_of(src)
     golden = src[:-3] + ".err"
     builddir = os.path.join(F.BUILD, "negative", name.replace("/", "_"))
-    rc, raw = _run_ficus_noc(ficus, src, builddir)
+    rc, raw = _run_ficus_noc(ficus, src, builddir, _flags_of(src))
     norm = _normalize_err(raw, repo, keep_basename=os.path.basename(src))
 
     if update:

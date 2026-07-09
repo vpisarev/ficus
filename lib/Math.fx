@@ -19,33 +19,33 @@ val DBL_MAX = __max__(0.)
 val FLT_EPSILON: float = @ccode {FLT_EPSILON}
 val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 
-fun floor(x: 't [+]) = [for xi <- x {floor(xi)}]
-fun ceil(x: 't [+]) = [for xi <- x {ceil(xi)}]
-fun trunc(x: 't [+]) = [for xi <- x {trunc(xi)}]
-fun round(x: 't [+]) = [for xi <- x {round(xi)}]
+fun floor(x: 't [+]): int [+] = [for xi <- x {floor(xi)}]
+fun ceil(x: 't [+]): int [+] = [for xi <- x {ceil(xi)}]
+fun trunc(x: 't [+]): int [+] = [for xi <- x {trunc(xi)}]
+fun round(x: 't [+]): int [+] = [for xi <- x {round(xi)}]
 
-fun sqrt(x: 't [+]) = [for xi <- x {sqrt(xi)}]
-fun atan(x: 't [+]) = [for xi <- x {atan(xi)}]
-fun asin(x: 't [+]) = [for xi <- x {asin(xi)}]
-fun acos(x: 't [+]) = [for xi <- x {acos(xi)}]
-fun cos(x: 't [+]) = [for xi <- x {cos(xi)}]
-fun sin(x: 't [+]) = [for xi <- x {sin(xi)}]
-fun tan(x: 't [+]) = [for xi <- x {tan(xi)}]
+fun sqrt(x: 't [+]): 't [+] = [for xi <- x {sqrt(xi)}]
+fun atan(x: 't [+]): 't [+] = [for xi <- x {atan(xi)}]
+fun asin(x: 't [+]): 't [+] = [for xi <- x {asin(xi)}]
+fun acos(x: 't [+]): 't [+] = [for xi <- x {acos(xi)}]
+fun cos(x: 't [+]): 't [+] = [for xi <- x {cos(xi)}]
+fun sin(x: 't [+]): 't [+] = [for xi <- x {sin(xi)}]
+fun tan(x: 't [+]): 't [+] = [for xi <- x {tan(xi)}]
 
-fun log(x: 't [+]) = [for xi <- x {log(xi)}]
-fun exp(x: 't [+]) = [for xi <- x {exp(xi)}]
+fun log(x: 't [+]): 't [+] = [for xi <- x {log(xi)}]
+fun exp(x: 't [+]): 't [+] = [for xi <- x {exp(xi)}]
 
-fun atanh(x: 't [+]) = [for xi <- x {atanh(xi)}]
-fun asinh(x: 't [+]) = [for xi <- x {asinh(xi)}]
-fun acosh(x: 't [+]) = [for xi <- x {acosh(xi)}]
-fun cosh(x: 't [+]) = [for xi <- x {cosh(xi)}]
-fun sinh(x: 't [+]) = [for xi <- x {sinh(xi)}]
-fun tanh(x: 't [+]) = [for xi <- x {tanh(xi)}]
+fun atanh(x: 't [+]): 't [+] = [for xi <- x {atanh(xi)}]
+fun asinh(x: 't [+]): 't [+] = [for xi <- x {asinh(xi)}]
+fun acosh(x: 't [+]): 't [+] = [for xi <- x {acosh(xi)}]
+fun cosh(x: 't [+]): 't [+] = [for xi <- x {cosh(xi)}]
+fun sinh(x: 't [+]): 't [+] = [for xi <- x {sinh(xi)}]
+fun tanh(x: 't [+]): 't [+] = [for xi <- x {tanh(xi)}]
 
-@inline fun floor(x: float) = __intrin_floor__(x)
-@inline fun floor(x: double) = __intrin_floor__(x)
-@inline fun ceil(x: float) = __intrin_ceil__(x)
-@inline fun ceil(x: double) = __intrin_ceil__(x)
+@inline fun floor(x: float): int = __intrin_floor__(x)
+@inline fun floor(x: double): int = __intrin_floor__(x)
+@inline fun ceil(x: float): int = __intrin_ceil__(x)
+@inline fun ceil(x: double): int = __intrin_ceil__(x)
 @pure @nothrow fun trunc(x: float): int = (x :> int)
 @pure @nothrow fun trunc(x: double): int = (x :> int)
 
@@ -125,7 +125,7 @@ fun tanh(x: 't [+]) = [for xi <- x {tanh(xi)}]
     return (u.i & 0x7fffffffffffffffLL) == 0x7ff0000000000000LL;
 }
 
-fun hypot(a: 't, b: 't) {
+fun hypot(a: 't, b: 't): 't {
     val aa = abs(a)
     val ab = abs(b)
     if aa > ab {
@@ -139,7 +139,7 @@ fun hypot(a: 't, b: 't) {
     }
 }
 
-fun GCD(n: int, d: int)
+fun GCD(n: int, d: int): int
 {
     fun GCD_(n: int, d: int) =
         if d == 0 {n} else {GCD_(d, n % d)}
@@ -193,7 +193,7 @@ class RNG
     }
 }
 
-fun RNG(seed: uint64)
+fun RNG(seed: uint64): Math.RNG
 {
     // initialize the state using splitmix64 generator
     @pure @nothrow fun nextmix64(x: uint64): uint64 =
@@ -210,51 +210,51 @@ fun RNG(seed: uint64)
     RNG {state=(x, y, z, w)}
 }
 
-fun RNG(seed: int) = RNG(seed :> uint64)
+fun RNG(seed: int): Math.RNG = RNG(seed :> uint64)
 
 @pure @nothrow fun next(rng: RNG): uint64 = @ccode { return _fx_rng_next(&rng->u.RNG.t0); }
 
-fun double(rng: RNG) = next(rng)*5.42101086242752217003726400434970855712890625e-20
-fun float(rng: RNG) = float(next(rng)*5.42101086242752217003726400434970855712890625e-20)
-fun bool(rng: RNG) = int64(next(rng)) < 0i64
+fun double(rng: RNG): double = next(rng)*5.42101086242752217003726400434970855712890625e-20
+fun float(rng: RNG): float = float(next(rng)*5.42101086242752217003726400434970855712890625e-20)
+fun bool(rng: RNG): bool = int64(next(rng)) < 0i64
 
-fun uniform(rng: RNG, a: uint8, b: uint8) =
+fun uniform(rng: RNG, a: uint8, b: uint8): uint8 =
     uint8((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
-fun uniform(rng: RNG, a: int8, b: int8) =
+fun uniform(rng: RNG, a: int8, b: int8): int8 =
     int8((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
-fun uniform(rng: RNG, a: uint16, b: uint16) =
+fun uniform(rng: RNG, a: uint16, b: uint16): uint16 =
     uint16((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
-fun uniform(rng: RNG, a: int16, b: int16) =
+fun uniform(rng: RNG, a: int16, b: int16): int16 =
     int16((next(rng) % (b - a + 1 :> uint64) :> int) + a)
 
-fun uniform(rng: RNG, a: uint32, b: uint32) =
+fun uniform(rng: RNG, a: uint32, b: uint32): uint32 =
     uint32((next(rng) % (b - a + 1u32 :> uint64) :> uint32) + a)
 
-fun uniform(rng: RNG, a: int32, b: int32) =
+fun uniform(rng: RNG, a: int32, b: int32): int32 =
     int32((next(rng) % (b - a + 1u32 :> uint64) :> uint32) + a)
 
-fun uniform(rng: RNG, a: int, b: int) =
+fun uniform(rng: RNG, a: int, b: int): int =
     (next(rng) % (b - a + 1 :> uint64) :> int) + a
 
-fun uniform(rng: RNG, a: float, b: float) =
+fun uniform(rng: RNG, a: float, b: float): float =
     float(rng)*(b - a) + a
 
-fun uniform(rng: RNG, a: double, b: double) =
+fun uniform(rng: RNG, a: double, b: double): double =
     double(rng)*(b - a) + a
 
-fun uniform(rng: RNG, sz: int, a: 't, b: 't) =
+fun uniform(rng: RNG, sz: int, a: 't, b: 't): 't [] =
     [for i <- 0:sz {uniform(rng, a, b)}]
 
-fun uniform(rng: RNG, (sz0, sz1): (int*2), a: 't, b: 't) =
+fun uniform(rng: RNG, (sz0, sz1): (int*2), a: 't, b: 't): 't [,] =
     [for i <- 0:sz0 for j <- 0:sz1 {uniform(rng, a, b)}]
 
-fun uniform(rng: RNG, (sz0, sz1, sz2): (int*3), a: 't, b: 't) =
+fun uniform(rng: RNG, (sz0, sz1, sz2): (int*3), a: 't, b: 't): 't [,,] =
     [for i <- 0:sz0 for j <- 0:sz1 for k <- 0:sz2 {uniform(rng, a, b)}]
 
-fun uniform(rng: RNG, (sz0, sz1, sz2, sz3): (int*4), a: 't, b: 't) =
+fun uniform(rng: RNG, (sz0, sz1, sz2, sz3): (int*4), a: 't, b: 't): 't [,,,] =
     [for i <- 0:sz0 for j <- 0:sz1 for k <- 0:sz2 for l <- 0:sz3 {uniform(rng, a, b)}]
 
 fun jump(rng: RNG): RNG

@@ -12,10 +12,10 @@
 // object-type fallback to `String.length(s)`, so the names must exist in this
 // module. Inside this file, call the Builtins versions QUALIFIED to keep every
 // call site unambiguous under least-generic overload ranking (resolve-1).
-@inline fun length(s: string) = __intrin_size__(s)
-@inline fun join(sep: string, strs: string []) = Builtins.join(sep, strs)
-@inline fun join(sep: string, strs: string list) = Builtins.join(sep, strs)
-@inline fun cmp(s1: string, s2: string) = s1 <=> s2
+@inline fun length(s: string): int = __intrin_size__(s)
+@inline fun join(sep: string, strs: string []): string = Builtins.join(sep, strs)
+@inline fun join(sep: string, strs: string list): string = Builtins.join(sep, strs)
+@inline fun cmp(s1: string, s2: string): int = s1 <=> s2
 @pure fun copy(s: string): string = @ccode { return fx_make_str(s->data, s->length, fx_result) }
 
 @inline fun empty(s: string): bool = __intrin_size__(s) == 0
@@ -259,7 +259,7 @@
     return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
-fun tokens(s: string, f: char->bool)
+fun tokens(s: string, f: char->bool): string list
 {
     val fold (sl, start, sep) = ([], 0, true) for c@i <- s {
         if f(c) {
@@ -271,7 +271,7 @@ fun tokens(s: string, f: char->bool)
     (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
-fun split(s: string, c: char, ~allow_empty:bool)
+fun split(s: string, c: char, ~allow_empty:bool): string list
 {
     val fold (sl, start, sep) = ([], 0, true) for ci@i <- s {
         if ci == c {
@@ -305,7 +305,7 @@ fun split(s: string, c: char, ~allow_empty:bool)
     return ok ? result : defval;
 }
 
-@inline fun to_int_or(a: string, defval: int, ~base: int=0) =
+@inline fun to_int_or(a: string, defval: int, ~base: int=0): int =
     to_int_or_(a, defval, base)
 
 @pure @nothrow fun to_double_or(a: string, defval: double): int
@@ -315,7 +315,7 @@ fun split(s: string, c: char, ~allow_empty:bool)
     return ok ? result : defval;
 }
 
-fun num_suffix(n: int) =
+fun num_suffix(n: int): string =
     match n % 10 {
     | 1 => "st"
     | 2 => "nd"
@@ -323,7 +323,7 @@ fun num_suffix(n: int) =
     | _ => "th"
     }
 
-fun escaped(s: string, ~quotes: bool=true)
+fun escaped(s: string, ~quotes: bool=true): string
 {
     val sn = "\\n", sr = "\\r", st = "\\t",
         ssq = "\\\'", sdq = "\\\"", ss = "\\\\", sz = "\\0"
