@@ -1,4 +1,4 @@
-# Handoff: annotate-2 — return-type sweep + `-strict-fun` (Opus)
+# Handoff: annotate-2 — return-type sweep + `-Wimplicit-rettype` (Opus)
 
 **You are Claude Code (Opus) working in the Ficus repo.** Branch `annotate-2`
 off master. Context: the resolve-2 near-miss (see
@@ -28,35 +28,46 @@ flag. Design rationale: `docs/language_changes_brief.md` §1.7.
 - Judgment cases are COLLECTED, not guessed (see WP-2 conventions).
 - New bugs → `docs/found_bugs.md`, fence, don't chase. Do not push.
 
-## WP-1 — the `-strict-fun` flag
+## WP-1 — `-Wimplicit-rettype` + the warning subsystem seed
 
-New boolean option in `compiler/Options.fx` (follow an existing flag's
-pattern end-to-end; note the wpe_tests_report lesson: adding an
-`options_t` field propagates struct layout into ~10 bootstrap modules —
-expected and benign).
+Design (settled with Vadim): this is a **warning**, not an error — and it
+deliberately bootstraps the compiler's warning subsystem (non-fatal
+diagnostics), which session-2 (multiple errors per run) will build on.
 
-Semantics (checked in `Ast_typecheck.fx` at function-definition check):
+Mechanics, three small layers:
 
-- Under `-strict-fun`, every **module-level** function definition must carry
-  an explicit return type annotation. Exempt: nested functions, lambdas,
-  `@ccode` functions whose type is already fully spelled, auto-generated
-  functions (constructors, record/variant `__eq__`/`string`/... — anything
-  not written by a user), and `main`-style entry code if any.
-- The error message must include the **inferred** return type so the fix is
-  copy-paste: `error: -strict-fun: function 'norm' lacks an explicit return
-  type (inferred: double)`. Emit AFTER the body typechecks, so the inferred
-  type is available; one error per function.
-- Plain `-strict-fun` on a file whose imports are unannotated stdlib must
-  NOT error on the imports — the requirement applies to modules being
-  compiled from source in the current invocation... which in Ficus is all
-  of them. Therefore scope the check to the **root module set** requested on
-  the command line OR add `-strict-fun=all|root` (default `root`). Pick the
-  simpler implementation, document the choice in the report; the CI gate
-  (WP-3) uses whichever form lets stdlib/tests be checked deliberately.
+1. **Warning infrastructure** (minimal, in `Ast.fx`/`Ast_typecheck.fx` next
+   to the error machinery): a `warning(msg, loc)` emission that prints in
+   the same format as errors but with `warning:` severity, does NOT stop
+   compilation, and is counted; at the end of a run with warnings, a one-line
+   summary (`N warning(s) generated`). Exit code stays 0 unless `-Werror`.
+2. **Flags** in `compiler/Options.fx` (note the `options_t` struct-layout
+   propagation lesson): `-Wimplicit-rettype` (this warning), `-Werror`
+   (generic: promote ALL warnings to errors, nonzero exit), `-Wall`
+   (umbrella: enables all recommended warnings — currently just this one;
+   future warnings land together with their corpus cleanup, so `-Wall
+   -Werror` on CI stays green by construction).
+3. **The check** (at function-definition check, AFTER the body typechecks so
+   the inferred type is available): under the flag, every **module-level**
+   function lacking an explicit return annotation warns once:
+   `warning: implicit return type of module-level function 'norm'
+   (inferred: double)` — the inferred type makes the fix copy-paste. Exempt:
+   nested functions, lambdas, `@ccode` functions with fully spelled types,
+   auto-generated functions (constructors, record/variant
+   `__eq__`/`string`/...), and anything not written by a user.
 
-Tests: positive (annotated file passes under the flag), negative golden
-(`test/negative/2xx_strict_fun*`) locking the message format incl. the
-inferred type; flag off = zero behavior change (determinism leg).
+**Scope = root modules only** (the modules named on the command line), NOT
+transitively imported ones: Ficus typechecks everything from source, so an
+"all-modules" scope would bury any user of the flag in warnings about the
+(not yet fully annotated) stdlib they didn't write and can't fix. For the CI
+gate over stdlib itself, either loop over stdlib files as roots (`-no-c`,
+cheap) or add an `=all` variant for a driver file — pick the simpler,
+document the choice.
+
+Tests: positive (annotated file is silent under `-Wall`), warning-format
+golden (`test/negative/2xx_implicit_rettype*` — if the T3 harness assumes
+nonzero exit, run this golden with `-Werror`, which also locks the promotion
+path), flag off = zero behavior change (determinism leg).
 
 ## WP-2 — the 276-function sweep
 
@@ -94,7 +105,7 @@ clean subset CI-enforced.
 
 ## WP-3 — CI gate
 
-Once stdlib + `test/` are clean: add `-strict-fun` compilation of the stdlib
+Once stdlib + `test/` are clean: add `-Wimplicit-rettype -Werror` compilation of the stdlib
 and the test suite as a CI leg (cheap: it is a `-no-c` pass), alongside the
 existing `lint_op_returns.py` check. The compiler sources themselves are NOT
 gated yet (that is annotate-3, gradual, per Vadim) — but report how many
@@ -106,7 +117,7 @@ compiler functions currently violate, for planning.
 Vadim (type-level helpers + anything that didn't fit the conventions),
 before/after census verdicts per commit, WP-1 design choices
 (root-vs-all scoping), the compiler-violation count for annotate-3
-planning, CLAUDE.md lessons (e.g. add "-strict-fun exists; stdlib/tests are
+planning, CLAUDE.md lessons (e.g. add "-Wall/-Werror/-Wimplicit-rettype exist; stdlib/tests are
 gated" to the writing-Ficus section when WP-3 lands). Closing checklist:
 full ladder + determinism + sanitize + bootstrap fixpoint + census
 unchanged-or-reviewed.
