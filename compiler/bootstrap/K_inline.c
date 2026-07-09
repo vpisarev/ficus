@@ -121,6 +121,8 @@ typedef struct _fx_R18Options__options_t {
    bool run_app;
    bool verbose;
    bool W_unused;
+   bool W_implicit_rettype;
+   bool Werror;
 } _fx_R18Options__options_t;
 
 typedef struct _fx_Ta2i {
@@ -1264,6 +1266,8 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->run_app = src->run_app;
    dst->verbose = src->verbose;
    dst->W_unused = src->W_unused;
+   dst->W_implicit_rettype = src->W_implicit_rettype;
+   dst->Werror = src->Werror;
 }
 
 static void _fx_make_R18Options__options_t(
@@ -1298,6 +1302,8 @@ static void _fx_make_R18Options__options_t(
    bool r_run_app,
    bool r_verbose,
    bool r_W_unused,
+   bool r_W_implicit_rettype,
+   bool r_Werror,
    struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
@@ -1331,6 +1337,8 @@ static void _fx_make_R18Options__options_t(
    fx_result->run_app = r_run_app;
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
+   fx_result->W_implicit_rettype = r_W_implicit_rettype;
+   fx_result->Werror = r_Werror;
 }
 
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)

@@ -160,6 +160,8 @@ typedef struct _fx_R18Options__options_t {
    bool run_app;
    bool verbose;
    bool W_unused;
+   bool W_implicit_rettype;
+   bool Werror;
 } _fx_R18Options__options_t;
 
 typedef struct _fx_Ta2i {
@@ -1487,6 +1489,8 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->run_app = src->run_app;
    dst->verbose = src->verbose;
    dst->W_unused = src->W_unused;
+   dst->W_implicit_rettype = src->W_implicit_rettype;
+   dst->Werror = src->Werror;
 }
 
 static void _fx_make_R18Options__options_t(
@@ -1521,6 +1525,8 @@ static void _fx_make_R18Options__options_t(
    bool r_run_app,
    bool r_verbose,
    bool r_W_unused,
+   bool r_W_implicit_rettype,
+   bool r_Werror,
    struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
@@ -1554,6 +1560,8 @@ static void _fx_make_R18Options__options_t(
    fx_result->run_app = r_run_app;
    fx_result->verbose = r_verbose;
    fx_result->W_unused = r_W_unused;
+   fx_result->W_implicit_rettype = r_W_implicit_rettype;
+   fx_result->Werror = r_Werror;
 }
 
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
@@ -4671,6 +4679,7 @@ fx_arr_t _fx_g16Ast__all_modules = {0};
 _fx_Li _fx_g23Ast__all_modules_sorted = 0;
 _fx_Rt6Map__t2R9Ast__id_tR9Ast__id_t _fx_g23Ast__builtin_exceptions = {0};
 _fx_LE _fx_g21Ast__all_compile_errs = 0;
+int_ _fx_g22Ast__all_compile_warns = 0;
 _fx_LS _fx_g24Ast__all_compile_err_ctx = 0;
 _fx_LT3R9Ast__id_tN10Ast__typ_tR10Ast__loc_t _fx_g17Ast__all_func_ctx = 0;
 _fx_Nt10Hashset__t1S _fx_g19Ast__all_c_inc_dirs = 0;
@@ -8378,6 +8387,7 @@ FX_EXTERN_C int _fx_M3AstFM15compile_warningv2RM5loc_tS(struct _fx_R10Ast__loc_t
    _fx_F12print_stringv1S(&whole_msg_0, 0);
    fx_str_t slit_4 = FX_MAKE_STR("\n");
    _fx_F12print_stringv1S(&slit_4, 0);
+   _fx_g22Ast__all_compile_warns = _fx_g22Ast__all_compile_warns + 1;
 
 _fx_cleanup: ;
    FX_FREE_STR(&fname_0);
@@ -26380,6 +26390,7 @@ FX_EXTERN_C int _fx_M3AstFM8init_allv0(void* fx_fv)
    _fx_copy_Rt6Map__t2R9Ast__id_tR9Ast__id_t(&v_5, &_fx_g23Ast__builtin_exceptions);
    _fx_free_LE(&_fx_g21Ast__all_compile_errs);
    _fx_g21Ast__all_compile_errs = 0;
+   _fx_g22Ast__all_compile_warns = 0;
    _fx_free_LS(&_fx_g24Ast__all_compile_err_ctx);
    _fx_g24Ast__all_compile_err_ctx = 0;
 

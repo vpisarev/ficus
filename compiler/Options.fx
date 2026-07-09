@@ -38,7 +38,9 @@ type options_t =
     print_resolve: bool = false;
     run_app: bool = false;
     verbose: bool = false;
-    W_unused: bool = true
+    W_unused: bool = true;
+    W_implicit_rettype: bool = false;
+    Werror: bool = false
 }
 
 fun default_options() = options_t {}
@@ -97,6 +99,15 @@ where options can be some of:
     -no-preamble    Do not auto-import 'Builtins', 'List', 'String' and
                     a few other standard modules into each compiled module.
     -Wno-unused     Do not report errors about unused values/functions
+    -Wimplicit-rettype  Warn about every module-level function (in the root
+                    modules named on the command line) whose return type is
+                    left to inference; the message prints the inferred type
+                    so the fix is copy-paste. Nested functions and lambdas
+                    are exempt.
+    -Wall           Enable all recommended warnings (currently just
+                    -Wimplicit-rettype)
+    -Werror         Treat all emitted warnings as errors: exit with a nonzero
+                    status if any warning was generated
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -D symbol       Define 'symbol=true' for preprocessor
@@ -196,6 +207,12 @@ fun parse_options(): bool {
                 opt.relax = true; next
             | "-Wno-unused" :: next =>
                 opt.W_unused = false; next
+            | "-Wimplicit-rettype" :: next =>
+                opt.W_implicit_rettype = true; next
+            | "-Wall" :: next =>
+                opt.W_implicit_rettype = true; next
+            | "-Werror" :: next =>
+                opt.Werror = true; next
             | "-verbose" :: next =>
                 opt.verbose = true; next
             | "-o" :: oname :: next =>

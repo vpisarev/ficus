@@ -1,0 +1,3 @@
+220_implicit_rettype.fx:7:1: warning: implicit return type of module-level function 'norm' (inferred: double)
+
+1 warning generated (treated as errors due to -Werror).

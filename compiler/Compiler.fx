@@ -660,6 +660,21 @@ fun print_all_compile_errs()
     }
 }
 
+// one-line end-of-run summary for the (non-fatal) warning subsystem; under
+// -Werror a nonzero warning count also fails the build (see process_all).
+fun print_all_compile_warns()
+{
+    val nwarns = Ast.all_compile_warns
+    if nwarns != 0 {
+        val plural = if nwarns == 1 {"warning"} else {"warnings"}
+        if Options.opt.Werror {
+            println(f"\n{nwarns} {plural} generated (treated as errors due to -Werror).")
+        } else {
+            println(f"\n{nwarns} {plural} generated.")
+        }
+    }
+}
+
 fun process_all(fname0: string): bool {
     Ast.init_all()
     try {
@@ -720,7 +735,8 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
             ok
         }
         if !ok { print_all_compile_errs() }
-        ok
+        print_all_compile_warns()
+        ok && !(Options.opt.Werror && Ast.all_compile_warns > 0)
     } catch {
     | e =>
         print_all_compile_errs()

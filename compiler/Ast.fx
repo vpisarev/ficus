@@ -494,6 +494,7 @@ var all_modules: defmodule_t [] = []
 var all_modules_sorted: int list = []
 var builtin_exceptions = empty_idmap
 var all_compile_errs: exn list = []
+var all_compile_warns: int = 0
 var all_compile_err_ctx: string list = []
 var all_func_ctx: (id_t, typ_t, loc_t) list = []
 var all_c_inc_dirs: string Hashset.t = Hashset.empty(256, "")
@@ -549,9 +550,14 @@ fun compile_err(loc: loc_t, msg: string) {
     CompileError(loc, whole_msg)
 }
 
+// non-fatal diagnostic: prints in the same format as an error but with
+// 'warning:' severity, does not stop compilation, and is counted. The
+// end-of-run summary and -Werror promotion are handled by the driver
+// (Compiler.print_all_compile_warns / process_all), which can see Options.
 fun compile_warning(loc: loc_t, msg: string) {
     val whole_msg = f"{loc}: warning: {msg}"
     println(whole_msg)
+    all_compile_warns = all_compile_warns + 1
 }
 
 fun push_compile_err(err: exn) { all_compile_errs = err :: all_compile_errs }
@@ -1668,5 +1674,6 @@ fun init_all(): void
     all_modules_sorted = []
     builtin_exceptions = Map.empty(cmp_id)
     all_compile_errs = []
+    all_compile_warns = 0
     all_compile_err_ctx = []
 }
