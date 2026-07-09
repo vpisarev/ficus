@@ -27,17 +27,27 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lint_op_returns import strip_comments_keep_positions, scan_decls, FUN_RE
+from lint_op_returns import strip_comments_keep_positions, scan_decls
+
+# Broader than lint's FUN_RE: also matches METHODS (`fun Rect.name(`) and
+# OPERATORS (`operator + (`). Must expose a capture GROUP so scan_decls lands
+# on the parameter '(' (it does `find("(", m.end()-1)` only when there is a
+# group); we ignore the captured text and match warnings to decls by LINE.
+DECL_RE = re.compile(
+    r"^[ \t]*(?:@\w+[ \t]+)*(?:fun[ \t]+([\w.]+)|operator[ \t]*\S+)[ \t]*\(", re.M)
 
 ROOT = Path(__file__).resolve().parent.parent
 FICUS = ROOT / "bin" / "ficus"
 WARN_RE = re.compile(
-    r":(\d+):(\d+): warning: implicit return type of module-level function "
-    r"'([^']+)' \(inferred: (.*)\)$"
+    r"(\S+\.fx):(\d+):(\d+): warning: implicit return type of module-level "
+    r"function '([^']+)' \(inferred: (.*)\)$"
 )
 
 
 def get_warnings(fx):
+    # -Wimplicit-rettype (default scope) now covers all USER modules, so
+    # compiling `fx` also emits warnings for its imported user modules -- keep
+    # only the ones whose file IS `fx`.
     out = subprocess.run(
         [str(FICUS), "-no-c", "-Wall", str(fx)],
         capture_output=True, text=True,
@@ -45,8 +55,8 @@ def get_warnings(fx):
     res = []
     for line in out.splitlines():
         m = WARN_RE.search(line)
-        if m:
-            res.append((int(m.group(1)), m.group(3), m.group(4)))
+        if m and Path(m.group(1)).name == fx.name:
+            res.append((int(m.group(2)), m.group(4), m.group(5)))
     return res
 
 
@@ -89,7 +99,7 @@ def main():
     raw = fx.read_text(encoding="utf-8")
     text = strip_comments_keep_positions(raw)
     by_line = {}
-    for start, name, j, annotated, params in scan_decls(text, FUN_RE):
+    for start, name, j, annotated, params in scan_decls(text, DECL_RE):
         lineno = text.count("\n", 0, start) + 1
         by_line.setdefault(lineno, []).append((name, j, annotated))
 
@@ -97,9 +107,11 @@ def main():
     skipped = []          # (line, name, type, reason)
     for line, name, typ in get_warnings(fx):
         match = None
+        # match by LINE (DECL_RE has no name group); one decl per line in
+        # practice, so take the first unannotated decl on the warning's line.
         for dl in (line, line - 1, line + 1, line - 2, line + 2):
             for (dname, j, annotated) in by_line.get(dl, []):
-                if dname == name and not annotated:
+                if not annotated:
                     match = j
                     break
             if match is not None:

@@ -167,10 +167,15 @@ linter cannot see function **nesting**, so it false-positives on nested generic
 helpers (`Map.mem_`) that `-Wimplicit-rettype` correctly exempts. No
 "parked-by-decision" allowlist was needed (nothing was parked), so the planned
 `--funs` allowlist extension is moot; `lint_op_returns.py lib` (operators) stays
-as the faster separate guard. The **test suite** is NOT gated yet: test files mix
-interface methods, operator overloads, and deliberate resolution-edge-case
-helpers (`test_resolve.fx`, `myops.fx`) whose annotation needs care not to
-perturb what they test — a scoped follow-up.
+as the faster separate guard. The **test suite is also cleaned and gated**
+(`test/*.fx` + `test/rand/*.fx`, ~30 functions incl. interface methods
+`fun Rect.name(): string`, operator overloads, and the resolution-edge-case
+helpers `CplxHelper`/`myops`/`test_resolve` — the last verified to still pass
+with 0 failures, so annotation did not perturb what they test). The test part
+of `rettype_gate.sh` greps for the warning rather than using `-Werror`, since
+test files legitimately trip an unused-local warning and a couple do not
+compile standalone (`test_gencmp` needs `-I compiler`; `test_re2` has an
+unrelated pre-existing standalone error).
 
 ### annotate-3 planning data
 

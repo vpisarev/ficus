@@ -21,7 +21,7 @@ import ResHelper
 from ResHelper import *
 
 var fails = 0
-fun check(name: string, got: int, want: int) {
+fun check(name: string, got: int, want: int): void {
     if got == want { println(f"ok    {name} = {got}") }
     else { fails += 1; println(f"FAIL  {name}: got {got}, want {want}") }
 }
@@ -31,8 +31,8 @@ fun check(name: string, got: int, want: int) {
 // ---------------------------------------------------------------------------
 
 // (1) Overloads differing only in keyword arguments are distinguished.
-fun kw(~a: int) = a * 10
-fun kw(~a: int, ~b: int) = a + b
+fun kw(~a: int): int = a * 10
+fun kw(~a: int, ~b: int): int = a + b
 check("kw.one_key", kw(a=5), 50)
 check("kw.two_keys", kw(a=5, b=3), 8)
 
@@ -43,8 +43,8 @@ check("ctor.under_expected", (match boxed { | Full(v) => v | Empty => -1 }), 7)
 
 // (3) A concrete overload declared AFTER a generic one wins (env order happens
 //     to agree with specificity here). Locks the common good case.
-fun good(x: 't) = 0
-fun good(x: int) = 1
+fun good(x: 't): int = 0
+fun good(x: int): int = 1
 check("concrete_last_wins", good(5), 1)
 
 // (4) Cross-module: module-qualified operator call via the mangled name is the
@@ -69,8 +69,8 @@ check("xmodule.instance_sees_local_eq",
 // FB-016 FIXED by resolve-1: least-generic ranking picks the concrete overload
 // regardless of declaration order. Before the surgery the generic identity won
 // here (env-list is most-recent-first) and this yielded 5.
-fun bad(x: int) = x + 1
-fun bad(x: 't) = x
+fun bad(x: int): int = x + 1
+fun bad(x: 't): 't = x
 check("FB016_fixed.concrete_beats_generic", bad(5), 6)
 
 // ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ check("fb007.s2_cplx_times_int", c->re + c->im, 4)
 // and `.rev()` failed -- the FromOnnx.fx:1012 / vision_classify.fx failure
 // in miniature.) The true deferral of under-constrained calls is still
 // session-2 scope; TypVarCollection removes this particular collision class.
-fun build(l: int list) {
+fun build(l: int list): int list {
     val fold prog = [] for x <- l { [:: x*x] + prog }
     prog.rev()
 }

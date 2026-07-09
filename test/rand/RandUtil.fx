@@ -25,7 +25,7 @@ fun splitmix64(x: uint64): uint64
 
 type rndstate_t = { s: uint64 ref }
 
-fun mk_rng(seed: uint64) = rndstate_t { s = ref(seed) }
+fun mk_rng(seed: uint64): RandUtil.rndstate_t = rndstate_t { s = ref(seed) }
 
 // splitmix64 stream: advance the state by the golden-ratio increment, then mix.
 fun next_u64(rng: rndstate_t): uint64
@@ -96,4 +96,4 @@ fun str_hash(s: string): uint64
 fun case_seed(name: string, idx: int): uint64 =
     splitmix64(base_seed() ^ str_hash(name) ^ (idx :> uint64))
 
-fun mk_case_rng(name: string, idx: int) = mk_rng(case_seed(name, idx))
+fun mk_case_rng(name: string, idx: int): RandUtil.rndstate_t = mk_rng(case_seed(name, idx))

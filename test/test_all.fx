@@ -36,7 +36,7 @@ import rand.test_rand_arith
 import rand.test_rand_array
 import rand.test_rand_str
 
-fun print_hdr()
+fun print_hdr(): void
 {
     val (Color, Normal) = if Sys.colorterm() {("\33[35;1m", "\33[0m")} else {("", "")}
     println(f"{Color}Ficus version:{Normal} {__ficus_version_str__} (git commit: {__ficus_git_commit__})")

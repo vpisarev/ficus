@@ -32,7 +32,23 @@ for f in $files; do
     fi
 done
 
+# The runnable test suite (test/*.fx + test/rand/*.fx) must also be clean. The
+# DEFAULT scope covers the test modules (user code) and their imported user
+# helpers, while suppressing stdlib. We grep for the warning itself rather than
+# relying on -Werror's exit code: test files legitimately trip OTHER warnings
+# (an unused local) and a couple do not compile standalone (test_gencmp needs
+# -I compiler; test_re2 has an unrelated standalone error) -- none of which is a
+# missing return type. test/negative/ (intentional errors) and test/ir/
+# (snapshot inputs) are excluded.
+for f in test/*.fx test/rand/*.fx; do
+    if "$FICUS" -no-c -Wimplicit-rettype "$f" 2>&1 | grep -q "implicit return type"; then
+        echo "FAIL: implicit return type reachable from $f"
+        "$FICUS" -no-c -Wimplicit-rettype "$f" 2>&1 | grep "implicit return type" | head
+        fail=1
+    fi
+done
+
 if [ $fail -eq 0 ]; then
-    echo "rettype gate: clean (annotated stdlib scope, -Wimplicit-rettype -Werror)"
+    echo "rettype gate: clean (stdlib + test suite, -Wimplicit-rettype -Werror)"
 fi
 exit $fail
