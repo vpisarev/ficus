@@ -138,6 +138,7 @@ typedef struct _fx_R18Options__options_t {
    bool W_implicit_rettype;
    bool W_implicit_rettype_all;
    bool Werror;
+   int_ max_errors;
 } _fx_R18Options__options_t;
 
 typedef struct _fx_Ta2i {
@@ -1814,6 +1815,7 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->W_implicit_rettype = src->W_implicit_rettype;
    dst->W_implicit_rettype_all = src->W_implicit_rettype_all;
    dst->Werror = src->Werror;
+   dst->max_errors = src->max_errors;
 }
 
 static void _fx_make_R18Options__options_t(
@@ -1851,6 +1853,7 @@ static void _fx_make_R18Options__options_t(
    bool r_W_implicit_rettype,
    bool r_W_implicit_rettype_all,
    bool r_Werror,
+   int_ r_max_errors,
    struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
@@ -1887,6 +1890,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->W_implicit_rettype = r_W_implicit_rettype;
    fx_result->W_implicit_rettype_all = r_W_implicit_rettype_all;
    fx_result->Werror = r_Werror;
+   fx_result->max_errors = r_max_errors;
 }
 
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)

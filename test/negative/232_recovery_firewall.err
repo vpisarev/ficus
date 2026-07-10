@@ -1,0 +1,7 @@
+232_recovery_firewall.fx:6:22: error: the appropriate match for 'undefined_thing' of type '<unknown>' is not found.
+232_recovery_firewall.fx:8:19: error: the appropriate match for 'f' of type '(int -> string)' is not found.
+Candidates:
+ f(int) -> int @ 232_recovery_firewall.fx:6:1 -- the return type or the signature as a whole does not match
+
+
+2 errors occured during type checking.

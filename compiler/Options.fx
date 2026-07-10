@@ -41,7 +41,12 @@ type options_t =
     W_unused: bool = true;
     W_implicit_rettype: bool = false;
     W_implicit_rettype_all: bool = false;
-    Werror: bool = false
+    Werror: bool = false;
+    // diag-1: cap the number of distinct diagnostics printed per run (gcc-style
+    // -fmax-errors); the report ends with a "further diagnostics suppressed"
+    // line when the cap binds. Structural cascade suppression should keep runs
+    // well under this; the cap is a backstop for pathological inputs.
+    max_errors: int = 100
 }
 
 fun default_options() = options_t {}
@@ -113,6 +118,10 @@ where options can be some of:
                     -Wimplicit-rettype)
     -Werror         Treat all emitted warnings as errors: exit with a nonzero
                     status if any warning was generated
+    -fmax-errors=N  Print at most N distinct type diagnostics per run (default
+                    100); the rest are summarized as 'further diagnostics
+                    suppressed'. The type checker recovers from an error and
+                    keeps going, so one run reports many independent problems.
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -D symbol       Define 'symbol=true' for preprocessor
@@ -220,6 +229,13 @@ fun parse_options(): bool {
                 opt.W_implicit_rettype = true; next
             | "-Werror" :: next =>
                 opt.Werror = true; next
+            | opt_str :: next when opt_str.startswith("-fmax-errors=") =>
+                val vstr = opt_str["-fmax-errors=".length():]
+                match vstr.to_int() {
+                | Some(n) when n > 0 => opt.max_errors = n
+                | _ => println(f"invalid -fmax-errors value '{vstr}' (expected a positive integer)"); ok = false
+                }
+                next
             | "-verbose" :: next =>
                 opt.verbose = true; next
             | "-o" :: oname :: next =>

@@ -1,0 +1,5 @@
+230_recovery_independent.fx:4:16: error: the appropriate match for 'undef_a' of type '<unknown>' is not found.
+230_recovery_independent.fx:5:16: error: the appropriate match for 'undef_b' of type '<unknown>' is not found.
+230_recovery_independent.fx:6:16: error: the appropriate match for 'undef_c' of type '<unknown>' is not found.
+
+3 errors occured during type checking.
