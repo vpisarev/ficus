@@ -189,11 +189,11 @@ int fx_cc_version(struct fx_str_t* ver)
     int major = fullver / 10000000;
     int minor = (fullver % 10000000) / 100000;
     int build = fullver % 100000;
-    sprintf(cver, "Microsoft MSVC %d.%02d.%05d.%d", major, minor, build, revision);
+    snprintf(cver, sizeof(cver), "Microsoft MSVC %d.%02d.%05d.%d", major, minor, build, revision);
 #elif defined __STDC_VERSION__
     char cver[128];
     int stdc_ver = (int)__STDC_VERSION__;
-    sprintf(cver, "ISO %d.%d-complaint C compiler", (int)stdc_ver/100, (int)stdc_ver%100);
+    snprintf(cver, sizeof(cver), "ISO %d.%d-complaint C compiler", (int)stdc_ver/100, (int)stdc_ver%100);
 #else
     char cver[] = "Unknown C compiler"
 #endif
