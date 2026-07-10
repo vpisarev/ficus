@@ -217,7 +217,10 @@ fun parse_all(fname0: string, ficus_path: string list): bool
             | Lxu.LexerError((l, c), msg) =>
                 println(f"{mfname}:{l}:{c}: error: {msg}\n"); ok = false
             | Parser.ParseError(loc, msg) =>
-                println(f"{loc}: error: {msg}\n"); ok = false
+                // parse errors are frontend, so a caret excerpt is honest and
+                // helpful (esp. import not-found: the underline lands on the
+                // module name). reform-prep-1.
+                println(f"{loc}: error: {msg}{Ast.loc_excerpt(loc)}\n"); ok = false
             | e => println(f"{mfname}: exception {e} occured"); ok = false
             }
         }

@@ -1,0 +1,3 @@
+237_import_not_found.fx:4:8: error: module Foo.Bar.Baz is not found
+ 4 | import Foo.Bar.Baz
+   |        ^~~~~~~~~~~

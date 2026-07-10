@@ -1,1 +1,3 @@
 110_extra_comma.fx:2:16: error: extra ','?
+ 2 | val a = [1, 2, , 3]
+   |                ^

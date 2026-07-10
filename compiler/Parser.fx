@@ -860,13 +860,18 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
                 | (IDENT(_, _), loc_i) :: _ =>
                     if expect_comma { (ts, result.rev()) }
                     else {
-                        val (ts, i) = parse_dot_ident(ts, false, "")
+                        val (ts1, i) = parse_dot_ident(ts, false, "")
+                        // span the WHOLE (possibly dotted) module name, not just
+                        // its first token: import errors -- misspelled or
+                        // off-path module -- are common and should underline the
+                        // full name. reform-prep-1.
+                        val name_loc = loclist2loc([:: loc_i, consumed_loc(ts, ts1)], loc_i)
                         val i = get_id(i)
-                        val (ts, j) = match ts {
+                        val (ts, j) = match ts1 {
                             | (AS, _) :: (IDENT(_, j), _) :: rest => (rest, get_id(j))
-                            | _ => (ts, i)
+                            | _ => (ts1, i)
                             }
-                        val i_ = add_to_imported_modules(i, loc_i)
+                        val i_ = add_to_imported_modules(i, name_loc)
                         parse_imported_(ts, true, (i_, j) :: result)
                     }
                 | _ =>
@@ -878,8 +883,11 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
         | (FROM, l1) :: rest =>
             if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
             val (ts, m_) = parse_dot_ident(rest, false, "")
+            // point a 'from <module> import ...' not-found error at the module
+            // name, not at the 'from' keyword (reform-prep-1).
+            val name_loc = match rest { | (_, l0) :: _ => loclist2loc([:: l0, consumed_loc(rest, ts)], l0) | _ => l1 }
             val m = get_id(m_)
-            val m_ = add_to_imported_modules(m, l1)
+            val m_ = add_to_imported_modules(m, name_loc)
             match ts {
             | (IMPORT _, _) :: (STAR _, _) :: rest =>
                 extend_expseq_(rest, DirImportFrom(m_, [], l1) :: result)

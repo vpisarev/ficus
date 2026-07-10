@@ -1,1 +1,3 @@
 105_arrow_instead_of_fatarrow.fx:2:23: error: unexpected '->', did you mean '=>'?
+ 2 | val x = match 1 { | 1 -> 10 | _ -> 0 }
+   |                       ^~

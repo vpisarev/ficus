@@ -1,1 +1,3 @@
 502_assign_to_literal.fx:2:3: error: left-hand-side of the assignment is not an l-value
+ 2 | 1 = 2
+   |   ^
