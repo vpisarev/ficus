@@ -196,6 +196,43 @@ Vadim (2026-07-09): intentional (OpenCV `cvFloor`/`cvRound` semantics —
 CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
 `int [+]` array annotations stand.
 
+## FB-020  types (`typ_t`) carry no source location  [OPEN — reform blocker]
+- repro: `val x: undefined_type = 5` — the "type is not found" caret lands on
+  the `:` / the val, NOT on `undefined_type`; `fun f(y: nosuchtype)` points at
+  the `:` before `y`, not the type name. Confirmed on plain names, generic-sig
+  names, and compound types (`nosuch list`).
+- cause: `typ_t` is structural and stores no `loc_t`; the diagnostic falls back
+  to the enclosing binding's loc. `parse_typespec` returns no loc either.
+- impact: the `'t → [t]` reform and the type-name renames (`half → fp16`,
+  `vector`, `Dynvec.t`) cannot locate type occurrences via AST spans, and type
+  diagnostics point at the wrong column. A span-based migrator would need
+  token-level scanning for types, or `typ_t` must gain source locations (a real
+  change). Documented in `docs/problematic_spans_log.txt`. Deferred (reform-prep-1
+  fixed token spans + the function-name/import/cast node spans; types are the
+  remaining hard case).
+
+## FB-021  `.op` (elementwise) error surfaces inside the library  [OPEN — diag quality]
+- repro: `[1.0,2.0] .* "str"` reports at `lib/Array.fx:90` (inside the generic
+  `__dot_mul__` body, caret on the library's `.*`), with a
+  "when instantiating ... at <user>:2:11" note pointing back — the primary
+  location is library code, not the user's `.*`.
+- cause: `.op` desugars to a generic operator call; the mismatch is caught at
+  the instantiation site inside the operator body, whose loc wins.
+- impact: confusing diagnostics for a common numeric-code mistake. Relevant to
+  the `.op → plain op / @ matmul` reform (which removes `.op`) and to a future
+  "report at the call site, not the instantiation site" diagnostic pass.
+
+## FB-022  a failed `fold`-valued `val` cascades ("<name> not found")  [OPEN — recovery gap]
+- repro: `val s = fold acc = 0 for x <- [1,2,3] {acc + undefined}` reports the
+  body error AND a spurious `s is not found` at a later use of `s`.
+- cause: `fold` desugars during parsing into a block (`__fold_result__` etc.),
+  so the DefVal that binds `s` no longer has a simple RHS; the diag-1 recovery
+  that poisons a failed `val`'s pattern to `TypErr` does not fire on this
+  desugared shape, leaving `s` unbound → cascade.
+- impact: minor extra diagnostic; the root error is still correct. A diag-1
+  follow-up would extend the DefVal recovery to poison the pattern regardless of
+  RHS shape.
+
 ## (non-compiler) NN.Quantized.dequantizeLinear  [FENCED — DL-engine bug]
 `lib/NN/OpQuantized.run_dequantize` int8 scalar path yields 0 on Linux/x86.
 Known DL-engine defect, unrelated to the compiler; fenced by commenting the
