@@ -237,6 +237,15 @@ fun expseq2exp(eseq: exp_t list, loc: loc_t) =
         ExpSeq(eseq, (make_new_typ(), loc))
     }
 
+// loc of the last token consumed between `before` and `after` (a suffix of
+// `before`); noloc if nothing was consumed. Lets a node fold its span out to
+// the end of a sub-construct parsed by a helper that returns no loc of its own
+// (e.g. parse_typespec — types carry no source location). reform-prep-1.
+fun consumed_loc(before: tklist_t, after: tklist_t): loc_t {
+    val n = before.length() - after.length()
+    if n <= 0 { noloc } else { before.nth(n-1).1 }
+}
+
 fun match_paren((ts: tklist_t, e: exp_t), ct: token_t, ol: loc_t): (tklist_t, exp_t)
 {
     match ts {
@@ -1330,10 +1339,12 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     match ts {
     | (COLON, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
-        (ts, ExpTyped(e, t, make_new_ctx(get_exp_loc(e))))
+        val loc = loclist2loc([:: get_exp_loc(e), consumed_loc(rest, ts)], get_exp_loc(e))
+        (ts, ExpTyped(e, t, make_new_ctx(loc)))
     | (CAST, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
-        (ts, ExpCast(e, t, (make_new_typ(), get_exp_loc(e))))
+        val loc = loclist2loc([:: get_exp_loc(e), consumed_loc(rest, ts)], get_exp_loc(e))
+        (ts, ExpCast(e, t, (make_new_typ(), loc)))
     | _ => (ts, e)
     }
 }
