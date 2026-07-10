@@ -205,11 +205,15 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
   to the enclosing binding's loc. `parse_typespec` returns no loc either.
 - impact: the `'t → [t]` reform and the type-name renames (`half → fp16`,
   `vector`, `Dynvec.t`) cannot locate type occurrences via AST spans, and type
-  diagnostics point at the wrong column. A span-based migrator would need
-  token-level scanning for types, or `typ_t` must gain source locations (a real
-  change). Documented in `docs/problematic_spans_log.txt`. Deferred (reform-prep-1
-  fixed token spans + the function-name/import/cast node spans; types are the
-  remaining hard case).
+  diagnostics point at the wrong column. Documented in
+  `docs/problematic_spans_log.txt`.
+- direction (Vadim): do NOT add a loc to `typ_t` — too fundamental (threads
+  through typecheck/K-form/C-gen). Instead, later introduce a wrapper
+  `typespec_t { typ: typ_t; loc: loc_t }` and switch `typ_t → typespec_t` ONLY
+  where a source position is needed (parser output / type annotations), leaving
+  the core structural type untouched. Deferred (reform-prep-1 fixed token spans +
+  the function-name/import/cast node spans; types are the remaining hard case,
+  resolved by this wrapper when the reform lands).
 
 ## FB-021  `.op` (elementwise) error surfaces inside the library  [OPEN — diag quality]
 - repro: `[1.0,2.0] .* "str"` reports at `lib/Array.fx:90` (inside the generic
