@@ -343,7 +343,7 @@ operator * (alpha: 't, a: 't [+]): 't [+] = [for x <- a {x*alpha}]
 
 fun diag(d: 't[]): 't [,]
 {
-    val n = size(a)
+    val n = size(d)
     val a = array((n, n), (0 :> 't))
     for i <- 0:n {a[i, i] = d[i]}
     a

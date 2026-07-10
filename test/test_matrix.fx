@@ -6,6 +6,7 @@
 // Correctness tests for matrix operations
 
 from UTest import *
+import Array
 
 fun refmul(a: 't [,], b: 't [,]): 't [,] {
     val (ma, na) = size(a), (mb, nb) = size(b)
@@ -139,4 +140,16 @@ TEST("matrix.mul_sparsed_ranges", fun() {
             }
         }
 
+})
+
+// FB-018 (fixed, ctrlflow-1 ride-along): Array.diag(d) built its size from the
+// not-yet-defined result `a` instead of the input `d`, so the one-argument
+// diag was unusable. Lock it: diag([d0,d1,d2]) is the 3x3 matrix with that
+// diagonal and zeros elsewhere.
+TEST("matrix.diag_from_vector", fun() {
+    val m = Array.diag([1, 2, 3])
+    val (r, c) = size(m)
+    EXPECT_EQ(r, 3); EXPECT_EQ(c, 3)
+    val ref_ = [1, 0, 0; 0, 2, 0; 0, 0, 3]
+    for i <- 0:3 for j <- 0:3 { EXPECT_EQ(m[i, j], ref_[i, j]) }
 })
