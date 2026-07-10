@@ -1,5 +1,11 @@
 230_recovery_independent.fx:4:16: error: the appropriate match for 'undef_a' of type '<unknown>' is not found.
+ 4 | fun a(): int { undef_a + 1 }
+   |                ^
 230_recovery_independent.fx:5:16: error: the appropriate match for 'undef_b' of type '<unknown>' is not found.
+ 5 | fun b(): int { undef_b + 2 }
+   |                ^
 230_recovery_independent.fx:6:16: error: the appropriate match for 'undef_c' of type '<unknown>' is not found.
+ 6 | fun c(): int { undef_c + 3 }
+   |                ^
 
 3 errors occured during type checking.

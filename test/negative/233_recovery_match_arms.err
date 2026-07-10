@@ -1,4 +1,8 @@
 233_recovery_match_arms.fx:6:12: error: the appropriate match for 'undef_a' of type 'int' is not found.
+ 6 |     | 0 => undef_a
+   |            ^
 233_recovery_match_arms.fx:7:12: error: the appropriate match for 'undef_b' of type 'int' is not found.
+ 7 |     | 1 => undef_b
+   |            ^
 
 2 errors occured during type checking.

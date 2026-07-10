@@ -80,13 +80,24 @@ def _normalize_err(text, repo, keep_basename=None):
         return f"{m.group(1)}:L:C"
     text = _POS_RE.sub(_pos, text)
 
+    # diag-1 caret excerpts (gutter line "  N | <source>" and caret line
+    # "    | ^~~~") carry meaning in their exact spacing, so they are preserved
+    # verbatim; every other line has runs of whitespace collapsed as before (so
+    # candidate-listing indentation etc. stays robust).
     out = []
     for ln in text.split("\n"):
-        ln = re.sub(r"[ \t]+", " ", ln).rstrip()   # collapse repeated whitespace
-        out.append(ln)
+        if _EXCERPT_RE.match(ln):
+            out.append(ln.rstrip())
+        else:
+            out.append(re.sub(r"[ \t]+", " ", ln).rstrip())
     while out and out[-1] == "":
         out.pop()
     return "\n".join(out)
+
+
+# A diagnostic source-excerpt line: optional leading spaces, an optional line
+# number, then the "|" gutter separator.
+_EXCERPT_RE = re.compile(r"^ *\d* *\|")
 
 
 def _run_ficus_noc(ficus, src, builddir, flags=()):

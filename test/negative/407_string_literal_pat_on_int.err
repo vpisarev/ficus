@@ -1,3 +1,5 @@
 407_string_literal_pat_on_int.fx:2:21: error: the literal of unexpected type
+ 2 | val x = match 5 { | "s" => 1 | _ => 0 }
+   |                     ^
 
 1 errors occured during type checking.

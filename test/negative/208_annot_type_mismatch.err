@@ -1,3 +1,5 @@
 208_annot_type_mismatch.fx:2:6: error: explicit type specification of the defined value does not match the assigned expression type
+ 2 | val a: int = "hello"
+   |      ^
 
 1 errors occured during type checking.

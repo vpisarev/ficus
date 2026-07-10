@@ -1,1 +1,3 @@
 401_nonexhaustive_match.fx:3:19: error: the cases ['Green', 'Blue'] are not covered; add '| _ => ...' clause to suppress this error
+ 3 | fun f(c: rgb_t) = match c { | Red => 1 }
+   |                   ^

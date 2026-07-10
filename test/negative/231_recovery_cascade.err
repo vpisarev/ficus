@@ -1,3 +1,5 @@
 231_recovery_cascade.fx:4:9: error: the appropriate match for 'undefined_root' of type '<unknown>' is not found.
+ 4 | val x = undefined_root
+   |         ^
 
 1 errors occured during type checking.

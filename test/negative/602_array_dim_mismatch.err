@@ -1,3 +1,5 @@
 602_array_dim_mismatch.fx:2:13: error: the array literal should produce an array
+ 2 | val a = [1, [2, 3], 4]
+   |             ^
 
 1 errors occured during type checking.

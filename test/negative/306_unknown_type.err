@@ -1,3 +1,5 @@
 306_unknown_type.fx:2:6: error: the appropriate match for 'nosuch_t' is not found
+ 2 | val x: nosuch_t = 0
+   |      ^
 
 1 errors occured during type checking.

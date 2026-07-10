@@ -726,6 +726,10 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
    there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
         // classify stdlib vs user modules for -Wimplicit-rettype scoping
         Ast.ficus_std_path = Filename.normalize(ficus_root, "lib")
+        // Frontend spans parsing, type checking and K-normalization -- all
+        // consume the AST and carry exact source locations, so diagnostics
+        // there get a caret excerpt (diag-1). See Ast.compiler_stage.
+        Ast.compiler_stage = Ast.CompilerFrontend
         val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
         val graph = [:: for minfo <- Ast.all_modules {
@@ -756,6 +760,10 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
             pr_verbose(clrmsg(MsgBlue, "K-normalization complete"))
             if Options.opt.print_k0 { K_pp.pp_kmods(kmods) }
         }
+        // Past K-normalization: the middle end (inlining, fusion, ...) rewrites
+        // the IR and source locations start to drift, so diagnostics from here
+        // on drop the caret (they keep the plain file:line form).
+        Ast.compiler_stage = Ast.CompilerMiddle
         val (kmods, ok) = if ok {
             pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
             k_optimize_all(kmods)
@@ -764,6 +772,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
             pr_verbose(clrmsg(MsgBlue, "K-form optimization complete"))
             if Options.opt.print_k { K_pp.pp_kmods(kmods) }
         }
+        Ast.compiler_stage = Ast.CompilerBackend
         val ok = if !Options.opt.gen_c { ok } else {
             val (cmods, ok) = if ok { k2c_all(kmods) } else { ([], false) }
             val ok =

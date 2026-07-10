@@ -1,3 +1,5 @@
 404_dup_pattern_ident.fx:2:9: error: duplicate identifier 'a' in the pattern
+ 2 | val (a, a) = (1, 2)
+   |         ^
 
 1 errors occured during type checking.

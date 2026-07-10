@@ -1,3 +1,5 @@
 402_unknown_constructor.fx:3:30: error: the appropriate match for 'C' of type '402_unknown_constructor.ab_t@9' is not found; did you mean 'A' or 'B'?
+ 3 | val x = match A { | A => 0 | C => 1 }
+   |                              ^
 
 1 errors occured during type checking.

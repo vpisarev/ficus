@@ -8219,16 +8219,16 @@ return fx_list_length(l);
 
 }
 
-FX_EXTERN_C int_ _fx_M13Ast_typecheckFM6lengthi1LS(struct _fx_LS_data_t* l, void* fx_fv)
+FX_EXTERN_C int_ _fx_M13Ast_typecheckFM6lengthi1LT3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t(
+   struct _fx_LT3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t_data_t* l,
+   void* fx_fv)
 {
    
 return fx_list_length(l);
 
 }
 
-FX_EXTERN_C int_ _fx_M13Ast_typecheckFM6lengthi1LT3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t(
-   struct _fx_LT3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t_data_t* l,
-   void* fx_fv)
+FX_EXTERN_C int_ _fx_M13Ast_typecheckFM6lengthi1LS(struct _fx_LS_data_t* l, void* fx_fv)
 {
    
 return fx_list_length(l);

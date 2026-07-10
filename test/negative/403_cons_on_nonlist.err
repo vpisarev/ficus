@@ -1,3 +1,5 @@
 403_cons_on_nonlist.fx:2:23: error: '::' pattern is used with non-list type
+ 2 | val x = match 5 { | a :: rest => 1 | _ => 0 }
+   |                       ^
 
 1 errors occured during type checking.

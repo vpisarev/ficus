@@ -1,3 +1,5 @@
 603_tuple_index_oor.fx:3:11: error: the tuple index is out of range
+ 3 | println(t.5)
+   |           ^
 
 1 errors occured during type checking.

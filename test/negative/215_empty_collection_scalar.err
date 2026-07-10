@@ -1,3 +1,5 @@
 215_empty_collection_scalar.fx:7:6: error: explicit type specification of the defined value does not match the assigned expression type
+ 7 | val n: int = []
+   |      ^
 
 1 errors occured during type checking.

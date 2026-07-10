@@ -10458,49 +10458,6 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M10C_gen_codeFM3nthS2LSi(struct _fx_LS_data_t* l_0, int_ n_0, fx_str_t* fx_result, void* fx_fv)
-{
-   fx_str_t result_0 = {0};
-   _fx_LS l_1 = 0;
-   int fx_status = 0;
-   FX_COPY_PTR(l_0, &l_1);
-   int_ n_1 = n_0;
-   for (;;) {
-      _fx_LS l_2 = 0;
-      FX_COPY_PTR(l_1, &l_2);
-      int_ n_2 = n_1;
-      if (l_2 != 0) {
-         if (n_2 == 0) {
-            fx_str_t* a_0 = &l_2->hd; FX_FREE_STR(&result_0); fx_copy_str(a_0, &result_0); FX_BREAK(_fx_catch_0);
-         }
-         else {
-            _fx_LS* rest_0 = &l_2->tl; _fx_free_LS(&l_1); FX_COPY_PTR(*rest_0, &l_1); n_1 = n_2 - 1;
-         }
-
-      _fx_catch_0: ;
-      }
-      else {
-         FX_FAST_THROW(FX_EXN_OutOfRangeError, _fx_catch_1);
-      }
-      FX_CHECK_EXN(_fx_catch_1);
-
-   _fx_catch_1: ;
-      if (l_2) {
-         _fx_free_LS(&l_2);
-      }
-      FX_CHECK_BREAK();
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   fx_copy_str(&result_0, fx_result);
-
-_fx_cleanup: ;
-   FX_FREE_STR(&result_0);
-   if (l_1) {
-      _fx_free_LS(&l_1);
-   }
-   return fx_status;
-}
-
 FX_EXTERN_C int _fx_M10C_gen_codeFM3nthR9Ast__id_t2LR9Ast__id_ti(
    struct _fx_LR9Ast__id_t_data_t* l_0,
    int_ n_0,
@@ -10592,6 +10549,49 @@ _fx_cleanup: ;
    _fx_free_T2R9Ast__id_tN14K_form__ktyp_t(&result_0);
    if (l_1) {
       _fx_free_LT2R9Ast__id_tN14K_form__ktyp_t(&l_1);
+   }
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M10C_gen_codeFM3nthS2LSi(struct _fx_LS_data_t* l_0, int_ n_0, fx_str_t* fx_result, void* fx_fv)
+{
+   fx_str_t result_0 = {0};
+   _fx_LS l_1 = 0;
+   int fx_status = 0;
+   FX_COPY_PTR(l_0, &l_1);
+   int_ n_1 = n_0;
+   for (;;) {
+      _fx_LS l_2 = 0;
+      FX_COPY_PTR(l_1, &l_2);
+      int_ n_2 = n_1;
+      if (l_2 != 0) {
+         if (n_2 == 0) {
+            fx_str_t* a_0 = &l_2->hd; FX_FREE_STR(&result_0); fx_copy_str(a_0, &result_0); FX_BREAK(_fx_catch_0);
+         }
+         else {
+            _fx_LS* rest_0 = &l_2->tl; _fx_free_LS(&l_1); FX_COPY_PTR(*rest_0, &l_1); n_1 = n_2 - 1;
+         }
+
+      _fx_catch_0: ;
+      }
+      else {
+         FX_FAST_THROW(FX_EXN_OutOfRangeError, _fx_catch_1);
+      }
+      FX_CHECK_EXN(_fx_catch_1);
+
+   _fx_catch_1: ;
+      if (l_2) {
+         _fx_free_LS(&l_2);
+      }
+      FX_CHECK_BREAK();
+      FX_CHECK_EXN(_fx_cleanup);
+   }
+   fx_copy_str(&result_0, fx_result);
+
+_fx_cleanup: ;
+   FX_FREE_STR(&result_0);
+   if (l_1) {
+      _fx_free_LS(&l_1);
    }
    return fx_status;
 }

@@ -1,3 +1,5 @@
 213_bool_annot_mismatch.fx:2:6: error: explicit type specification of the defined value does not match the assigned expression type
+ 2 | val a: bool = 1
+   |      ^
 
 1 errors occured during type checking.

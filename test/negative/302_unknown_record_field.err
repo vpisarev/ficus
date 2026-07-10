@@ -1,3 +1,5 @@
 302_unknown_record_field.fx:4:9: error: the record element z is not found
+ 4 | println(p.z)
+   |         ^
 
 1 errors occured during type checking.

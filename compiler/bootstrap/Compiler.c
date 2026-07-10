@@ -1359,6 +1359,10 @@ typedef struct _fx_N16Ast__defmodule_t_data_t {
    } u;
 } _fx_N16Ast__defmodule_t_data_t, *_fx_N16Ast__defmodule_t;
 
+typedef struct _fx_N21Ast__compiler_stage_t {
+   int tag;
+} _fx_N21Ast__compiler_stage_t;
+
 typedef struct _fx_LE_data_t {
    int_ rc;
    struct _fx_LE_data_t* tl;
@@ -8349,6 +8353,9 @@ static void _fx_make_T2LR17C_form__cmodule_tB(
    fx_result->t1 = t1;
 }
 
+_fx_N21Ast__compiler_stage_t _fx_g26Compiler__CompilerFrontend = { 2 };
+_fx_N21Ast__compiler_stage_t _fx_g24Compiler__CompilerMiddle = { 3 };
+_fx_N21Ast__compiler_stage_t _fx_g25Compiler__CompilerBackend = { 4 };
 _fx_N14Lexer__token_t _fx_g14Compiler__FROM = { 20 };
 _fx_N14Lexer__token_t _fx_g19Compiler__SEMICOLON = { 53 };
 _fx_N14Lexer__token_t _fx_g19Compiler__PP_DEFINE = { 101 };
@@ -8608,6 +8615,7 @@ FX_EXTERN_C int _fx_M3AstFM17print_compile_errv1E(fx_exn_t*, void*);
 FX_EXTERN_C int _fx_M3AstFM8init_allv0(void*);
 
 FX_EXTERN_C_VAL(fx_str_t _fx_g19Ast__ficus_std_path)
+FX_EXTERN_C_VAL(struct _fx_N21Ast__compiler_stage_t _fx_g19Ast__compiler_stage)
 FX_EXTERN_C_VAL(fx_exn_t _fx_E30Compiler__CumulativeParseErrorv)
 FX_EXTERN_C_VAL(struct _fx_Li_data_t* _fx_g23Ast__all_modules_sorted)
 FX_EXTERN_C int _fx_M6Ast_ppFM10pprint_modv1N16Ast__defmodule_t(struct _fx_N16Ast__defmodule_t_data_t*, void*);
@@ -12714,6 +12722,7 @@ FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_re
    FX_CALL(_fx_M8FilenameFM9normalizeS2SS(&ficus_root_0, &slit_3, &v_5, 0), _fx_catch_6);
    FX_FREE_STR(&_fx_g19Ast__ficus_std_path);
    fx_copy_str(&v_5, &_fx_g19Ast__ficus_std_path);
+   _fx_g19Ast__compiler_stage = _fx_g26Compiler__CompilerFrontend;
    bool ok_0;
    FX_CALL(_fx_M8CompilerFM9parse_allB2SLS(fname0_0, ficus_path_0, &ok_0, 0), _fx_catch_6);
    if (!ok_0) {
@@ -12863,6 +12872,7 @@ FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_re
          FX_CALL(_fx_M4K_ppFM8pp_kmodsv1LR17K_form__kmodule_t(kmods_1, 0), _fx_catch_6);
       }
    }
+   _fx_g19Ast__compiler_stage = _fx_g24Compiler__CompilerMiddle;
    if (ok_2) {
       if (_fx_g21Compiler__iscolorterm) {
          fx_str_t slit_12 = FX_MAKE_STR("[34;1mK-form optimization started[0m"); fx_copy_str(&slit_12, &v_15);
@@ -12890,6 +12900,7 @@ FX_EXTERN_C int _fx_M8CompilerFM11process_allB1S(fx_str_t* fname0_0, bool* fx_re
          FX_CALL(_fx_M4K_ppFM8pp_kmodsv1LR17K_form__kmodule_t(kmods_2, 0), _fx_catch_6);
       }
    }
+   _fx_g19Ast__compiler_stage = _fx_g25Compiler__CompilerBackend;
    bool ok_4;
    if (!_fx_g12Options__opt.gen_c) {
       ok_4 = ok_3;

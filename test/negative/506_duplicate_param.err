@@ -1,3 +1,5 @@
 506_duplicate_param.fx:2:15: error: duplicate identifier 'a' in the pattern
+ 2 | fun f(a: int, a: int) = a
+   |               ^
 
 1 errors occured during type checking.

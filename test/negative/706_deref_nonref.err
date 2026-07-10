@@ -1,3 +1,5 @@
 706_deref_nonref.fx:3:10: error: incorrect type of value 'x': expected='<unknown> ref', actual='int'
+ 3 | val y = *x
+   |          ^
 
 1 errors occured during type checking.

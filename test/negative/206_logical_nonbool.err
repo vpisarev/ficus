@@ -1,3 +1,5 @@
 206_logical_nonbool.fx:2:9: error: arguments of logical operation must be boolean
+ 2 | val b = 3 && true
+   |         ^
 
 1 errors occured during type checking.
