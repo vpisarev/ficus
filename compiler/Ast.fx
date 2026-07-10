@@ -49,7 +49,7 @@ operator == (a: id_t, b: id_t) = (a.m == b.m) & (a.i == b.i) && ((a.m == 0) | (a
 
 type scope_t =
     | ScBlock: int
-    | ScLoop: (bool, int)
+    | ScLoop: (bool, bool, int)   // (nested, parallel, block_idx)
     | ScFold: int
     | ScArrMap: int
     | ScMap: int
@@ -818,7 +818,7 @@ fun new_block_idx(m_idx: int)
 }
 
 fun new_block_scope(m_idx: int) = ScBlock(new_block_idx(m_idx))
-fun new_loop_scope(m_idx: int, nested: bool) = ScLoop(nested, new_block_idx(m_idx))
+fun new_loop_scope(m_idx: int, nested: bool, parallel: bool) = ScLoop(nested, parallel, new_block_idx(m_idx))
 fun new_map_scope(m_idx: int) = ScMap(new_block_idx(m_idx))
 fun new_arr_map_scope(m_idx: int) = ScArrMap(new_block_idx(m_idx))
 fun new_fold_scope(m_idx: int) = ScFold(new_block_idx(m_idx))
@@ -828,9 +828,10 @@ fun scope2str(sc: scope_t list): string {
     | scj :: rest =>
         val prefix = match scj {
             | ScBlock(b) => f"block({b})"
-            | ScLoop(f, b) =>
+            | ScLoop(f, par, b) =>
                 val nested = if f {"nested_"} else {""}
-                f"{nested}loop_block({b})"
+                val par_s = if par {"parallel_"} else {""}
+                f"{par_s}{nested}loop_block({b})"
             | ScArrMap(b) => f"arr_map_block({b})"
             | ScMap(b) => f"map_block({b})"
             | ScFold(b) => f"fold_block({b})"

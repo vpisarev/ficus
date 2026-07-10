@@ -50,6 +50,24 @@ Layers: T2 corpus differential (O0 vs O3), T3 golden diagnostics
 Harness is Python-3-stdlib-only. Compiler bugs found while on another task are
 recorded and fenced (not fixed) in `docs/found_bugs.md`.
 
+**Diagnostics (diag-1).** The type checker RECOVERS: one run reports many
+independent errors, not just the first. A failed definition/arm/branch is
+reported and its symbol is poisoned with `TypErr` (declared type when
+annotated — the annotation firewall); `typ_has_typerr` then suppresses
+cascades structurally (a `TypErr` operand makes the whole expression `TypErr`
+silently), so `val x = undef; x+1; f(x)` = ONE diagnostic. Reporting: sorted by
+`(module,line,col)`, exact-duplicate primary lines deduped (a generic-body
+error hit from N call sites → once), capped by `-fmax-errors=N` (default 100).
+A not-found name close (Levenshtein) to a visible one gets `did you mean 'x'?`.
+Frontend diagnostics (lexer/parser/typecheck **and K-normalization** — gated by
+`Ast.compiler_stage`, NOT `freeze_ids`) carry a gcc-style caret excerpt; middle/
+backend ones don't (locations drift). The excerpt is built at RAISE time in
+`compile_err`/`compile_warning`. So **every `test/negative/` golden now includes
+the source line + `^`**; the T3 harness compares excerpt lines (`N | src` /
+`  | ^`) verbatim (exact spacing) and collapses whitespace elsewhere — when
+adding a negative case, `--update-golden` captures the caret. New legality
+checks belong in typecheck (caret + `-no-c`-visible), not C-gen.
+
 ## Writing Ficus (.fx) — gotchas
 
 Ficus is underrepresented in training data; don't improvise from OCaml/Rust

@@ -1787,10 +1787,17 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 check_inside_(outer_sc)
             | ScFun _ :: _ | ScModule _ :: _ | ScClass _ :: _ | ScInterface _ :: _ | [] =>
                 throw compile_err(eloc, f"cannot use '{kw}' outside of loop")
-            | ScLoop(nested, _) :: _ =>
+            | ScLoop(nested, parallel, _) :: _ =>
                 if !any_for {
                     if expect_fold_loop {
                         throw compile_err(eloc, f"'{kw}' can only be used inside 'fold' loop")
+                    } else if parallel {
+                        // diag-1: lifted from C-gen (finalize_loop_body). Whether
+                        // a loop is @parallel is a pure nesting fact known at
+                        // typecheck, so reporting it here gives an exact caret and
+                        // a -no-c-visible, golden-able diagnostic instead of a
+                        // late backend error with no excerpt.
+                        throw compile_err(eloc, f"cannot use '{kw}' inside a '@parallel' loop")
                     } else if isbr && nested {
                         throw compile_err(eloc,
                             "'break' cannot be used inside nested for-loop because of ambiguity. \
@@ -2680,7 +2687,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         unify(ctyp, TypBool, cloc, "while() loop condition should have 'bool' type")
         unify(btyp, TypVoid, bloc, "while() loop body should have 'void' type")
         val new_c = check_exp(c, env, sc)
-        val loop_sc = new_loop_scope(curr_m_idx, false) :: sc
+        val loop_sc = new_loop_scope(curr_m_idx, false, false) :: sc
         val new_body = check_exp(body, env, loop_sc)
         ExpWhile(new_c, new_body, eloc)
     | ExpDoWhile(body, c, _) =>
@@ -2689,7 +2696,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         unify(ctyp, TypBool, cloc, "do-while() loop condition should have 'bool' type")
         unify(btyp, TypVoid, bloc, "do-while() loop body should have 'void' type")
         val new_c = check_exp(c, env, sc)
-        val loop_sc = new_loop_scope(curr_m_idx, false) :: sc
+        val loop_sc = new_loop_scope(curr_m_idx, false, false) :: sc
         val new_body = check_exp(body, env, loop_sc)
         ExpDoWhile(new_body, new_c, eloc)
     | ExpFor(for_clauses, idx_pat, body, flags, _) =>
@@ -2699,7 +2706,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             throw compile_err(eloc, "@unzip for does not make sense outside of comprehensions")
         }
         val for_sc = (if is_fold {new_fold_scope(curr_m_idx)}
-                      else {new_loop_scope(curr_m_idx, is_nested)}) :: sc
+                      else {new_loop_scope(curr_m_idx, is_nested, flags.for_flag_parallel)}) :: sc
         val (trsz, pre_code, for_clauses, idx_pat, _, env, _) =
             check_for_clauses(for_clauses, idx_pat, env, empty_idset, flags, for_sc)
         if trsz > 0 {

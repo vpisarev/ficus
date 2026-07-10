@@ -198,8 +198,8 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
             ScModule(km_idx) :: subst_scope(rest, loc)
         | ScBlock(_) :: rest =>
             new_block_scope(km_idx) :: subst_scope(rest, loc)
-        | ScLoop(nested, _) :: rest =>
-            new_loop_scope(km_idx, nested) :: subst_scope(rest, loc)
+        | ScLoop(nested, parallel, _) :: rest =>
+            new_loop_scope(km_idx, nested, parallel) :: subst_scope(rest, loc)
         | ScMap(_) :: rest =>
             new_map_scope(km_idx) :: subst_scope(rest, loc)
         | ScArrMap(_) :: rest =>

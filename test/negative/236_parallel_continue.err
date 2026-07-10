@@ -1,0 +1,5 @@
+236_parallel_continue.fx:6:43: error: cannot use 'continue' inside a '@parallel' loop
+ 6 | @parallel for i <- 0:10 { if i % 2 == 0 { continue } else {}; a[i] = i }
+   |                                           ^
+
+1 errors occured during type checking.

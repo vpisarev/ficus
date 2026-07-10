@@ -199,16 +199,17 @@ typedef struct _fx_T2R9Ast__id_ti {
    int_ t1;
 } _fx_T2R9Ast__id_ti;
 
-typedef struct _fx_T2Bi {
+typedef struct _fx_T3BBi {
    bool t0;
-   int_ t1;
-} _fx_T2Bi;
+   bool t1;
+   int_ t2;
+} _fx_T3BBi;
 
 typedef struct _fx_N12Ast__scope_t {
    int tag;
    union {
       int_ ScBlock;
-      struct _fx_T2Bi ScLoop;
+      struct _fx_T3BBi ScLoop;
       int_ ScFold;
       int_ ScArrMap;
       int_ ScMap;
@@ -6983,11 +6984,12 @@ FX_EXTERN_C void _fx_M3AstFM7ScBlockN12Ast__scope_t1i(int_ arg0, struct _fx_N12A
    fx_result->u.ScBlock = arg0;
 }
 
-FX_EXTERN_C void _fx_M3AstFM6ScLoopN12Ast__scope_t2Bi(bool arg0, int_ arg1, struct _fx_N12Ast__scope_t* fx_result)
+FX_EXTERN_C void _fx_M3AstFM6ScLoopN12Ast__scope_t3BBi(bool arg0, bool arg1, int_ arg2, struct _fx_N12Ast__scope_t* fx_result)
 {
    fx_result->tag = 2;
    fx_result->u.ScLoop.t0 = arg0;
    fx_result->u.ScLoop.t1 = arg1;
+   fx_result->u.ScLoop.t2 = arg2;
 }
 
 FX_EXTERN_C void _fx_M3AstFM6ScFoldN12Ast__scope_t1i(int_ arg0, struct _fx_N12Ast__scope_t* fx_result)
@@ -10712,9 +10714,10 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(
+FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(
    int_ m_idx_0,
    bool nested_0,
+   bool parallel_0,
    struct _fx_N12Ast__scope_t* fx_result,
    void* fx_fv)
 {
@@ -10723,7 +10726,7 @@ FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(
    int_ new_block_idx_0 = (*FX_PTR_1D(_fx_N16Ast__defmodule_t, _fx_g16Ast__all_modules, m_idx_0))->u.defmodule_t.t8 + 1;
    FX_CHKIDX(FX_CHKIDX1(_fx_g16Ast__all_modules, 0, m_idx_0), _fx_cleanup);
    (*FX_PTR_1D(_fx_N16Ast__defmodule_t, _fx_g16Ast__all_modules, m_idx_0))->u.defmodule_t.t8 = new_block_idx_0;
-   _fx_M3AstFM6ScLoopN12Ast__scope_t2Bi(nested_0, new_block_idx_0, fx_result);
+   _fx_M3AstFM6ScLoopN12Ast__scope_t3BBi(nested_0, parallel_0, new_block_idx_0, fx_result);
 
 _fx_cleanup: ;
    return fx_status;

@@ -151,16 +151,17 @@ typedef struct _fx_R10Ast__loc_t {
    int_ col1;
 } _fx_R10Ast__loc_t;
 
-typedef struct _fx_T2Bi {
+typedef struct _fx_T3BBi {
    bool t0;
-   int_ t1;
-} _fx_T2Bi;
+   bool t1;
+   int_ t2;
+} _fx_T3BBi;
 
 typedef struct _fx_N12Ast__scope_t {
    int tag;
    union {
       int_ ScBlock;
-      struct _fx_T2Bi ScLoop;
+      struct _fx_T3BBi ScLoop;
       int_ ScFold;
       int_ ScArrMap;
       int_ ScMap;
@@ -3977,7 +3978,7 @@ FX_EXTERN_C void _fx_M3AstFM8ScModuleN12Ast__scope_t1i(int_, struct _fx_N12Ast__
 
 FX_EXTERN_C int _fx_M3AstFM15new_block_scopeN12Ast__scope_t1i(int_, struct _fx_N12Ast__scope_t*, void*);
 
-FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(int_, bool, struct _fx_N12Ast__scope_t*, void*);
+FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(int_, bool, bool, struct _fx_N12Ast__scope_t*, void*);
 
 FX_EXTERN_C int _fx_M3AstFM13new_map_scopeN12Ast__scope_t1i(int_, struct _fx_N12Ast__scope_t*, void*);
 
@@ -6971,8 +6972,9 @@ static int
       _fx_N12Ast__scope_t* v_14 = &sc_0->hd;
       if (v_14->tag == 2) {
          _fx_LN12Ast__scope_t v_15 = 0;
+         _fx_T3BBi* vcase_0 = &v_14->u.ScLoop;
          _fx_N12Ast__scope_t v_16;
-         FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(km_idx_0, v_14->u.ScLoop.t0, &v_16, 0), _fx_catch_4);
+         FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(km_idx_0, vcase_0->t0, vcase_0->t1, &v_16, 0), _fx_catch_4);
          FX_CALL(
             _fx_M8K_inlineFM11subst_scopeLN12Ast__scope_t4LN12Ast__scope_tR10Ast__loc_tirNt10Hashmap__t2R9Ast__id_tN14K_form__atom_t(
                sc_0->tl, loc_0, km_idx_0, subst_map_ref_0, &v_15, 0), _fx_catch_4);

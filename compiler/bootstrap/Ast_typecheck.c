@@ -170,16 +170,17 @@ typedef struct _fx_T2R9Ast__id_ti {
    int_ t1;
 } _fx_T2R9Ast__id_ti;
 
-typedef struct _fx_T2Bi {
+typedef struct _fx_T3BBi {
    bool t0;
-   int_ t1;
-} _fx_T2Bi;
+   bool t1;
+   int_ t2;
+} _fx_T3BBi;
 
 typedef struct _fx_N12Ast__scope_t {
    int tag;
    union {
       int_ ScBlock;
-      struct _fx_T2Bi ScLoop;
+      struct _fx_T3BBi ScLoop;
       int_ ScFold;
       int_ ScArrMap;
       int_ ScMap;
@@ -1478,6 +1479,11 @@ typedef struct _fx_T4LN10Ast__exp_tiii {
    int_ t2;
    int_ t3;
 } _fx_T4LN10Ast__exp_tiii;
+
+typedef struct _fx_T2Bi {
+   bool t0;
+   int_ t1;
+} _fx_T2Bi;
 
 typedef struct _fx_T7iLN10Ast__exp_tLT2N10Ast__pat_tN10Ast__exp_tN10Ast__pat_tiRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tRt6Set__t1R9Ast__id_t {
    int_ t0;
@@ -7094,7 +7100,7 @@ FX_EXTERN_C int _fx_M3AstFM5ExpIfN10Ast__exp_t4N10Ast__exp_tN10Ast__exp_tN10Ast_
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t*,
    struct _fx_N10Ast__exp_t_data_t**);
 
-FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(int_, bool, struct _fx_N12Ast__scope_t*, void*);
+FX_EXTERN_C int _fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(int_, bool, bool, struct _fx_N12Ast__scope_t*, void*);
 
 FX_EXTERN_C int _fx_M3AstFM8ExpWhileN10Ast__exp_t3N10Ast__exp_tN10Ast__exp_tRM5loc_t(
    struct _fx_N10Ast__exp_t_data_t*,
@@ -8511,10 +8517,11 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM15__eq_variants__B2N12Ast__scope_tN12Ast__
       }
    }
    if (b_0->tag == 2) {
-      _fx_T2Bi* vcase_0 = &b_0->u.ScLoop;
+      _fx_T3BBi* vcase_0 = &b_0->u.ScLoop;
       if (a_0->tag == 2) {
-         _fx_T2Bi* vcase_1 = &a_0->u.ScLoop;
-         *fx_result = (bool)((vcase_1->t0 == vcase_0->t0) & (vcase_1->t1 == vcase_0->t1));
+         _fx_T3BBi* vcase_1 = &a_0->u.ScLoop;
+         *fx_result =
+            (bool)((bool)((vcase_1->t0 == vcase_0->t0) & (vcase_1->t1 == vcase_0->t1)) & (vcase_1->t2 == vcase_0->t2));
          goto _fx_endmatch_0;
       }
    }
@@ -26247,7 +26254,7 @@ FX_EXTERN_C int
             _fx_M13Ast_typecheckFM9check_expN10Ast__exp_t3N10Ast__exp_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tLN12Ast__scope_t(
                c_1, &env_2, sc_2, &new_c_1, 0), _fx_catch_142);
          _fx_N12Ast__scope_t v_342;
-         FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(curr_m_idx_0, false, &v_342, 0), _fx_catch_142);
+         FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(curr_m_idx_0, false, false, &v_342, 0), _fx_catch_142);
          FX_CALL(_fx_cons_LN12Ast__scope_t(&v_342, sc_2, true, &loop_sc_0), _fx_catch_142);
          FX_CALL(
             _fx_M13Ast_typecheckFM9check_expN10Ast__exp_t3N10Ast__exp_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tLN12Ast__scope_t(
@@ -26309,7 +26316,7 @@ FX_EXTERN_C int
             _fx_M13Ast_typecheckFM9check_expN10Ast__exp_t3N10Ast__exp_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tLN12Ast__scope_t(
                c_2, &env_2, sc_2, &new_c_2, 0), _fx_catch_143);
          _fx_N12Ast__scope_t v_345;
-         FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(curr_m_idx_0, false, &v_345, 0), _fx_catch_143);
+         FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(curr_m_idx_0, false, false, &v_345, 0), _fx_catch_143);
          FX_CALL(_fx_cons_LN12Ast__scope_t(&v_345, sc_2, true, &loop_sc_1), _fx_catch_143);
          FX_CALL(
             _fx_M13Ast_typecheckFM9check_expN10Ast__exp_t3N10Ast__exp_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tLN12Ast__scope_t(
@@ -26375,7 +26382,9 @@ FX_EXTERN_C int
             FX_CALL(_fx_M3AstFM14new_fold_scopeN12Ast__scope_t1i(curr_m_idx_0, &v_351, 0), _fx_catch_145);
          }
          else {
-            FX_CALL(_fx_M3AstFM14new_loop_scopeN12Ast__scope_t2iB(curr_m_idx_0, is_nested_0, &v_351, 0), _fx_catch_145);
+            FX_CALL(
+               _fx_M3AstFM14new_loop_scopeN12Ast__scope_t3iBB(curr_m_idx_0, is_nested_0, flags_0->for_flag_parallel, &v_351, 0),
+               _fx_catch_145);
          }
          FX_CALL(_fx_cons_LN12Ast__scope_t(&v_351, sc_2, true, &for_sc_0), _fx_catch_145);
          FX_CALL(
@@ -30454,7 +30463,10 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
          if (v_4->tag == 2) {
             fx_str_t v_5 = {0};
             fx_exn_t v_6 = {0};
-            fx_exn_t v_7 = {0};
+            fx_str_t v_7 = {0};
+            fx_exn_t v_8 = {0};
+            fx_exn_t v_9 = {0};
+            _fx_T3BBi* vcase_0 = &v_4->u.ScLoop;
             if (!any_for_0) {
                if (expect_fold_loop_0) {
                   fx_str_t slit_4 = FX_MAKE_STR("\'");
@@ -30466,20 +30478,30 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_5, &v_6, 0), _fx_catch_2);
                   FX_THROW(&v_6, false, _fx_catch_2);
                }
+               else if (vcase_0->t1) {
+                  fx_str_t slit_6 = FX_MAKE_STR("cannot use \'");
+                  fx_str_t slit_7 = FX_MAKE_STR("\' inside a \'@parallel\' loop");
+                  {
+                     const fx_str_t strs_3[] = { slit_6, *kw_0, slit_7 };
+                     FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_7), _fx_catch_2);
+                  }
+                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_7, &v_8, 0), _fx_catch_2);
+                  FX_THROW(&v_8, false, _fx_catch_2);
+               }
                else {
                   bool t_2;
                   if (isbr_0) {
-                     t_2 = v_4->u.ScLoop.t0;
+                     t_2 = vcase_0->t0;
                   }
                   else {
                      t_2 = false;
                   }
                   if (t_2) {
-                     fx_str_t slit_6 =
+                     fx_str_t slit_8 =
                         FX_MAKE_STR(
                            "\'break\' cannot be used inside nested for-loop because of ambiguity. Use explicit curly braces, e.g. \'for ... { for ... { for ... { break }}}\' to exit a single for-loop, or use exceptions, e.g. the standard \'Break\' exception to exit nested loops.");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &slit_6, &v_7, 0), _fx_catch_2);
-                     FX_THROW(&v_7, false, _fx_catch_2);
+                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &slit_8, &v_9, 0), _fx_catch_2);
+                     FX_THROW(&v_9, false, _fx_catch_2);
                   }
                   else {
                      FX_BREAK(_fx_catch_2);
@@ -30491,7 +30513,9 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
             }
 
          _fx_catch_2: ;
-            fx_free_exn(&v_7);
+            fx_free_exn(&v_9);
+            fx_free_exn(&v_8);
+            FX_FREE_STR(&v_7);
             fx_free_exn(&v_6);
             FX_FREE_STR(&v_5);
             goto _fx_endmatch_1;
@@ -30499,73 +30523,73 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
       }
       if (sc_2 != 0) {
          if (sc_2->hd.tag == 3) {
-            fx_str_t v_8 = {0};
-            fx_exn_t v_9 = {0};
+            fx_str_t v_10 = {0};
+            fx_exn_t v_11 = {0};
             if (t_0) {
-               fx_str_t slit_7 = FX_MAKE_STR("cannot use \'");
-               fx_str_t slit_8 = FX_MAKE_STR("\' inside \'fold\' loop");
+               fx_str_t slit_9 = FX_MAKE_STR("cannot use \'");
+               fx_str_t slit_10 = FX_MAKE_STR("\' inside \'fold\' loop");
                {
-                  const fx_str_t strs_3[] = { slit_7, *kw_0, slit_8 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_8), _fx_catch_3);
+                  const fx_str_t strs_4[] = { slit_9, *kw_0, slit_10 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &v_10), _fx_catch_3);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_8, &v_9, 0), _fx_catch_3);
-               FX_THROW(&v_9, false, _fx_catch_3);
+               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_10, &v_11, 0), _fx_catch_3);
+               FX_THROW(&v_11, false, _fx_catch_3);
             }
             else {
                FX_BREAK(_fx_catch_3);
             }
 
          _fx_catch_3: ;
-            fx_free_exn(&v_9);
-            FX_FREE_STR(&v_8);
-            goto _fx_endmatch_1;
-         }
-      }
-      if (sc_2 != 0) {
-         if (sc_2->hd.tag == 4) {
-            fx_str_t v_10 = {0};
-            fx_exn_t v_11 = {0};
-            if (!any_for_0) {
-               fx_str_t slit_9 = FX_MAKE_STR("cannot use \'");
-               fx_str_t slit_10 = FX_MAKE_STR("\' inside array comprehension");
-               {
-                  const fx_str_t strs_4[] = { slit_9, *kw_0, slit_10 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &v_10), _fx_catch_4);
-               }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_10, &v_11, 0), _fx_catch_4);
-               FX_THROW(&v_11, false, _fx_catch_4);
-            }
-            else {
-               FX_BREAK(_fx_catch_4);
-            }
-
-         _fx_catch_4: ;
             fx_free_exn(&v_11);
             FX_FREE_STR(&v_10);
             goto _fx_endmatch_1;
          }
       }
       if (sc_2 != 0) {
-         if (sc_2->hd.tag == 5) {
+         if (sc_2->hd.tag == 4) {
             fx_str_t v_12 = {0};
             fx_exn_t v_13 = {0};
-            if (t_1) {
-               fx_str_t slit_11 = FX_MAKE_STR("\'");
-               fx_str_t slit_12 = FX_MAKE_STR("\' can only be used inside \'fold\' loop");
+            if (!any_for_0) {
+               fx_str_t slit_11 = FX_MAKE_STR("cannot use \'");
+               fx_str_t slit_12 = FX_MAKE_STR("\' inside array comprehension");
                {
                   const fx_str_t strs_5[] = { slit_11, *kw_0, slit_12 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_12), _fx_catch_5);
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_12), _fx_catch_4);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_12, &v_13, 0), _fx_catch_5);
-               FX_THROW(&v_13, false, _fx_catch_5);
+               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_12, &v_13, 0), _fx_catch_4);
+               FX_THROW(&v_13, false, _fx_catch_4);
+            }
+            else {
+               FX_BREAK(_fx_catch_4);
+            }
+
+         _fx_catch_4: ;
+            fx_free_exn(&v_13);
+            FX_FREE_STR(&v_12);
+            goto _fx_endmatch_1;
+         }
+      }
+      if (sc_2 != 0) {
+         if (sc_2->hd.tag == 5) {
+            fx_str_t v_14 = {0};
+            fx_exn_t v_15 = {0};
+            if (t_1) {
+               fx_str_t slit_13 = FX_MAKE_STR("\'");
+               fx_str_t slit_14 = FX_MAKE_STR("\' can only be used inside \'fold\' loop");
+               {
+                  const fx_str_t strs_6[] = { slit_13, *kw_0, slit_14 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_6, 3, &v_14), _fx_catch_5);
+               }
+               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_14, &v_15, 0), _fx_catch_5);
+               FX_THROW(&v_15, false, _fx_catch_5);
             }
             else {
                FX_BREAK(_fx_catch_5);
             }
 
          _fx_catch_5: ;
-            fx_free_exn(&v_13);
-            FX_FREE_STR(&v_12);
+            fx_free_exn(&v_15);
+            FX_FREE_STR(&v_14);
             goto _fx_endmatch_1;
          }
       }

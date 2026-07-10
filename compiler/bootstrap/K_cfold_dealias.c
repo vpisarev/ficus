@@ -63,16 +63,17 @@ typedef struct _fx_R10Ast__loc_t {
    int_ col1;
 } _fx_R10Ast__loc_t;
 
-typedef struct _fx_T2Bi {
+typedef struct _fx_T3BBi {
    bool t0;
-   int_ t1;
-} _fx_T2Bi;
+   bool t1;
+   int_ t2;
+} _fx_T3BBi;
 
 typedef struct _fx_N12Ast__scope_t {
    int tag;
    union {
       int_ ScBlock;
-      struct _fx_T2Bi ScLoop;
+      struct _fx_T3BBi ScLoop;
       int_ ScFold;
       int_ ScArrMap;
       int_ ScMap;
