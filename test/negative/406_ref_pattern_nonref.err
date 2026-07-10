@@ -1,5 +1,5 @@
 406_ref_pattern_nonref.fx:2:21: error: 'ref' pattern is used with non-reference type
  2 | val x = match 5 { | ref y => 1 | _ => 0 }
-   |                     ^
+   |                     ^~~
 
 1 errors occured during type checking.

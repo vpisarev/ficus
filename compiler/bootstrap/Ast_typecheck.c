@@ -6704,6 +6704,8 @@ static int _fx_M13Ast_typecheckFM10__lambda__LT2iS3R9Ast__id_tLN16Ast__env_entry
 
 FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t*, fx_str_t*, void*);
 
+FX_EXTERN_C int _fx_M3AstFM13edit_distancei2SS(fx_str_t*, fx_str_t*, int_*, void*);
+
 FX_EXTERN_C int _fx_M6Ast_ppFM10fun2sigstrS1rR13Ast__deffun_t(struct _fx_rR13Ast__deffun_t_data_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M3AstFM14get_idinfo_typN10Ast__typ_t2N14Ast__id_info_tRM5loc_t(
@@ -17409,99 +17411,6 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM9make_fp2_FPN10Ast__typ_t2N10Ast__typ_tR16
    return 0;
 }
 
-FX_EXTERN_C int _fx_M13Ast_typecheckFM13edit_distancei2SS(fx_str_t* a_0, fx_str_t* b_0, int_* fx_result, void* fx_fv)
-{
-   fx_arr_t prev_0 = {0};
-   fx_arr_t curr_0 = {0};
-   int fx_status = 0;
-   int_ la_0 = FX_STR_LENGTH(*a_0);
-   int_ lb_0 = FX_STR_LENGTH(*b_0);
-   if (la_0 == 0) {
-      *fx_result = lb_0;
-   }
-   else if (lb_0 == 0) {
-      *fx_result = la_0;
-   }
-   else {
-      int_* dstptr_0 = 0;
-      int_ v_0 = lb_0 + 1;
-      {
-         const int_ shape_0[] = { v_0 };
-         FX_CALL(fx_make_arr(1, shape_0, sizeof(int_), 0, 0, 0, &prev_0), _fx_cleanup);
-      }
-      dstptr_0 = (int_*)prev_0.data;
-      for (int_ i_0 = 0; i_0 < v_0; i_0++, dstptr_0++) {
-         *dstptr_0 = 0;
-      }
-      int_* dstptr_1 = 0;
-      int_ v_1 = lb_0 + 1;
-      {
-         const int_ shape_1[] = { v_1 };
-         FX_CALL(fx_make_arr(1, shape_1, sizeof(int_), 0, 0, 0, &curr_0), _fx_cleanup);
-      }
-      dstptr_1 = (int_*)curr_0.data;
-      for (int_ i_1 = 0; i_1 < v_1; i_1++, dstptr_1++) {
-         *dstptr_1 = 0;
-      }
-      int_ v_2 = lb_0 + 1;
-      FX_CHKIDX_RANGE(FX_ARR_SIZE(prev_0, 0), 0, v_2, 1, 1, 0, _fx_cleanup);
-      int_* ptr_0 = FX_PTR_1D(int_, prev_0, 0);
-      for (int_ j_0 = 0; j_0 < v_2; j_0++) {
-         ptr_0[j_0] = j_0;
-      }
-      int_ v_3 = la_0 + 1;
-      int_ v_4 = lb_0 + 1;
-      int_ v_5 = lb_0 + 1;
-      FX_CHKIDX_RANGE(FX_STR_LENGTH(*a_0), 1, v_3, 1, 1, -1, _fx_cleanup);
-      FX_CHKIDX_SCALAR(FX_ARR_SIZE(curr_0, 0), 0, _fx_cleanup);
-      int_ size_0 = FX_ARR_SIZE(curr_0, 0);
-      FX_CHKIDX_RANGE(size_0, 1, v_4, 1, 1, 0, _fx_cleanup);
-      int_ size_1 = FX_ARR_SIZE(prev_0, 0);
-      FX_CHKIDX_RANGE(size_1, 1, v_4, 1, 1, -1, _fx_cleanup);
-      FX_CHKIDX_RANGE(size_0, 1, v_4, 1, 1, -1, _fx_cleanup);
-      FX_CHKIDX_RANGE(size_1, 1, v_4, 1, 1, 0, _fx_cleanup);
-      FX_CHKIDX_RANGE(FX_STR_LENGTH(*b_0), 1, v_4, 1, 1, -1, _fx_cleanup);
-      FX_CHKIDX_RANGE(FX_ARR_SIZE(prev_0, 0), 0, v_5, 1, 1, 0, _fx_cleanup);
-      FX_CHKIDX_RANGE(FX_ARR_SIZE(curr_0, 0), 0, v_5, 1, 1, 0, _fx_cleanup);
-      int_* ptr_1 = FX_PTR_1D(int_, curr_0, 0);
-      int_* ptr_2 = FX_PTR_1D(int_, prev_0, 0);
-      int_ n_0 = FX_LOOP_COUNT(1, v_3, 1);
-      for (int_ i_2 = 0; i_2 < n_0; i_2++) {
-         int_ i_3 = 1 + i_2 * 1;
-         ptr_1[0] = i_3;
-         char_ ai_0 = FX_STR_ELEM(*a_0, i_3 + -1);
-         int_ n_1 = FX_LOOP_COUNT(1, v_4, 1);
-         for (int_ j_1 = 0; j_1 < n_1; j_1++) {
-            int_ j_2 = 1 + j_1 * 1;
-            int_ cost_0;
-            if (ai_0 == FX_STR_ELEM(*b_0, j_2 + -1)) {
-               cost_0 = 0;
-            }
-            else {
-               cost_0 = 1;
-            }
-            ptr_1[j_2] = fx_mini(fx_mini(ptr_2[j_2] + 1, ptr_1[j_2 + -1] + 1), ptr_2[j_2 + -1] + cost_0);
-
-         _fx_catch_0: ;
-            FX_CHECK_EXN(_fx_catch_1);
-         }
-         for (int_ j_3 = 0; j_3 < v_5; j_3++) {
-            ptr_2[j_3] = ptr_1[j_3];
-         }
-
-      _fx_catch_1: ;
-         FX_CHECK_EXN(_fx_cleanup);
-      }
-      FX_CHKIDX(FX_CHKIDX1(prev_0, 0, lb_0), _fx_cleanup);
-      *fx_result = *FX_PTR_1D(int_, prev_0, lb_0);
-   }
-
-_fx_cleanup: ;
-   FX_FREE_ARR(&prev_0);
-   FX_FREE_ARR(&curr_0);
-   return fx_status;
-}
-
 FX_EXTERN_C int _fx_M13Ast_typecheckFM10__lambda__B2T2iST2iS(
    struct _fx_T2iS* arg0_0,
    struct _fx_T2iS* arg1_0,
@@ -17885,7 +17794,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__LT2iS3R9Ast__id_tLN16Ast__env_entry
    }
    else {
       int_ d_0;
-      FX_CALL(_fx_M13Ast_typecheckFM13edit_distancei2SS(target_0, &nm_0, &d_0, 0), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM13edit_distancei2SS(target_0, &nm_0, &d_0, 0), _fx_cleanup);
       if (d_0 <= cv_0->t1) {
          _fx_make_T2iS(d_0, &nm_0, &v_0); FX_CALL(_fx_cons_LT2iS(&v_0, acc_0, true, fx_result), _fx_cleanup);
       }

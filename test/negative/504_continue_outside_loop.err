@@ -1,5 +1,5 @@
-504_continue_outside_loop.fx:2:11: error: cannot use 'continue' outside of loop
+504_continue_outside_loop.fx:2:9: error: cannot use 'continue' outside of loop
  2 | fun f() { continue }
-   |           ^
+   |         ^~~~~~~~~~
 
 1 errors occured during type checking.

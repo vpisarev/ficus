@@ -1,1 +1,3 @@
 112_empty_pattern.fx:2:21: error: pattern is expected
+ 2 | val x = match 1 { | => 0 }
+   |                     ^~

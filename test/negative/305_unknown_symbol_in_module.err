@@ -1,5 +1,5 @@
 305_unknown_symbol_in_module.fx:3:9: error: the appropriate match for 'no_such_function' of type '(double -> <unknown>)' is not found.
  3 | val x = Math.no_such_function(1.0)
-   |         ^
+   |         ^~~~
 
 1 errors occured during type checking.

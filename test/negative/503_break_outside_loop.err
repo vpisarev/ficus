@@ -1,5 +1,5 @@
-503_break_outside_loop.fx:2:11: error: cannot use 'break' outside of loop
+503_break_outside_loop.fx:2:9: error: cannot use 'break' outside of loop
  2 | fun f() { break }
-   |           ^
+   |         ^~~~~~~
 
 1 errors occured during type checking.

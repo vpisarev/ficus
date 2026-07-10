@@ -1,1 +1,3 @@
 103_lowercase_variant.fx:2:14: error: variant label should start with a capital letter A..Z
+ 2 | type bad_t = red | green | blue
+   |              ^~~

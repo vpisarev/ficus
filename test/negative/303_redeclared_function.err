@@ -1,5 +1,5 @@
-303_redeclared_function.fx:3:1: error: the symbol f is re-declared in the same scope; the previous declaration is here: 303_redeclared_function.fx:2:1
+303_redeclared_function.fx:3:5: error: the symbol f is re-declared in the same scope; the previous declaration is here: 303_redeclared_function.fx:2:5
  3 | fun f(a: int) = a + 1
-   | ^
+   |     ^
 
 1 errors occured during type checking.

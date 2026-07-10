@@ -1,5 +1,5 @@
 202_if_no_else.fx:2:9: error: if() expression of non-void type has no 'else' branch
  2 | val a = if true {1}
-   |         ^
+   |         ^~
 
 1 errors occured during type checking.

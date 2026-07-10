@@ -3,6 +3,6 @@ Candidates:
  Some('t) -> 't option@12 [generic: 't] @ Builtins.fx:L:C -- the return type or the signature as a whole does not match
 
  2 | val x = match 5 { | Some y => 1 | _ => 0 }
-   |                     ^
+   |                     ^~~~
 
 1 errors occured during type checking.

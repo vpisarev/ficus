@@ -1,5 +1,5 @@
-201_if_branches_differ.fx:2:27: error: if() expression should have the same type as its branches
+201_if_branches_differ.fx:2:26: error: if() expression should have the same type as its branches
  2 | val a = if true {1} else {"s"}
-   |                           ^
+   |                          ^~~~
 
 1 errors occured during type checking.

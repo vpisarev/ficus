@@ -560,6 +560,29 @@ fun id2str_m(i: id_t): string =
 fun string(i: id_t): string = id2str_(i, false)
 fun pp(i: id_t): string = id2str_(i, true)
 
+// Levenshtein edit distance (two-row DP), shared by the "did you mean"
+// suggestions in the type checker (unknown identifiers) and the parser (unknown
+// imported modules). Only ever called on an error path, so cost is irrelevant.
+fun edit_distance(a: string, b: string): int {
+    val la = a.length(), lb = b.length()
+    if la == 0 { lb }
+    else if lb == 0 { la }
+    else {
+        val prev = array(lb+1, 0), curr = array(lb+1, 0)
+        for j <- 0:lb+1 { prev[j] = j }
+        for i <- 1:la+1 {
+            curr[0] = i
+            val ai = a[i-1]
+            for j <- 1:lb+1 {
+                val cost = if ai == b[j-1] { 0 } else { 1 }
+                curr[j] = min(min(prev[j]+1, curr[j-1]+1), prev[j-1]+cost)
+            }
+            for j <- 0:lb+1 { prev[j] = curr[j] }
+        }
+        prev[lb]
+    }
+}
+
 fun compile_err(loc: loc_t, msg: string) {
     // Build the source excerpt HERE, at raise time, not at print time: the
     // precision (caret vs none) depends on compiler_stage, which advances as

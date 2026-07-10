@@ -1,1 +1,3 @@
 106_empty_match.fx:2:18: error: at least one pattern-matching case is expected
+ 2 | val x = match 1 {}
+   |                  ^

@@ -8440,6 +8440,8 @@ FX_EXTERN_C_VAL(int _FX_EXN_E22LexerUtils__LexerError)
 FX_EXTERN_C_VAL(int _FX_EXN_E18Parser__ParseError)
 FX_EXTERN_C int _fx_M3AstFM6stringS1RM5loc_t(struct _fx_R10Ast__loc_t*, fx_str_t*, void*);
 
+FX_EXTERN_C int _fx_M3AstFM11loc_excerptS1RM5loc_t(struct _fx_R10Ast__loc_t*, fx_str_t*, void*);
+
 FX_EXTERN_C int _fx_F6stringS1E(fx_exn_t*, fx_str_t*, void*);
 
 static int _fx_M8CompilerFM3dfsv5iLiA1LiA1BrLi(
@@ -10280,42 +10282,46 @@ FX_EXTERN_C int _fx_M8CompilerFM9parse_allB2SLS(
             else if (tag_0 == _FX_EXN_E18Parser__ParseError) {
                fx_str_t v_19 = {0};
                fx_str_t v_20 = {0};
+               fx_str_t v_21 = {0};
                _fx_T2R10Ast__loc_tS* vcase_1 = &FX_EXN_DATA(_fx_E18Parser__ParseError_data_t, exn_0.data);
-               FX_CALL(_fx_M3AstFM6stringS1RM5loc_t(&vcase_1->t0, &v_19, 0), _fx_catch_11);
+               _fx_R10Ast__loc_t* loc_0 = &vcase_1->t0;
+               FX_CALL(_fx_M3AstFM6stringS1RM5loc_t(loc_0, &v_19, 0), _fx_catch_11);
+               FX_CALL(_fx_M3AstFM11loc_excerptS1RM5loc_t(loc_0, &v_20, 0), _fx_catch_11);
                fx_str_t slit_5 = FX_MAKE_STR(": error: ");
                fx_str_t* msg_1 = &vcase_1->t1;
                fx_str_t slit_6 = FX_MAKE_STR("\n");
                {
-                  const fx_str_t strs_1[] = { v_19, slit_5, *msg_1, slit_6 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_1, 4, &v_20), _fx_catch_11);
+                  const fx_str_t strs_1[] = { v_19, slit_5, *msg_1, v_20, slit_6 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &v_21), _fx_catch_11);
                }
-               _fx_F12print_stringv1S(&v_20, 0);
+               _fx_F12print_stringv1S(&v_21, 0);
                fx_str_t slit_7 = FX_MAKE_STR("\n");
                _fx_F12print_stringv1S(&slit_7, 0);
                ok_0 = false;
 
             _fx_catch_11: ;
+               FX_FREE_STR(&v_21);
                FX_FREE_STR(&v_20);
                FX_FREE_STR(&v_19);
             }
             else {
-               fx_str_t v_21 = {0};
                fx_str_t v_22 = {0};
-               FX_CALL(_fx_F6stringS1E(&exn_0, &v_21, 0), _fx_catch_12);
+               fx_str_t v_23 = {0};
+               FX_CALL(_fx_F6stringS1E(&exn_0, &v_22, 0), _fx_catch_12);
                fx_str_t slit_8 = FX_MAKE_STR(": exception ");
                fx_str_t slit_9 = FX_MAKE_STR(" occured");
                {
-                  const fx_str_t strs_2[] = { mfname_0, slit_8, v_21, slit_9 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_2, 4, &v_22), _fx_catch_12);
+                  const fx_str_t strs_2[] = { mfname_0, slit_8, v_22, slit_9 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_2, 4, &v_23), _fx_catch_12);
                }
-               _fx_F12print_stringv1S(&v_22, 0);
+               _fx_F12print_stringv1S(&v_23, 0);
                fx_str_t slit_10 = FX_MAKE_STR("\n");
                _fx_F12print_stringv1S(&slit_10, 0);
                ok_0 = false;
 
             _fx_catch_12: ;
+               FX_FREE_STR(&v_23);
                FX_FREE_STR(&v_22);
-               FX_FREE_STR(&v_21);
             }
             FX_CHECK_EXN(_fx_catch_13);
          }

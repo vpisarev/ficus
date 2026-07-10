@@ -24,6 +24,25 @@ type parser_ctx_t =
 
 var parser_ctx = parser_ctx_t { m_idx=-1, filename="", deps=[], inc_dirs=[], default_loc=noloc }
 
+// "did you mean" for a not-found imported module: the candidate hypotheses are
+// the *.fx files visible on the include path (each file name is a module name).
+// A misspelled stdlib import ('Strig' -> 'String') is a common error. The
+// alphabetical tie-break keeps the suggestion deterministic regardless of glob
+// order (golden stability). reform-prep-1.
+fun suggest_module(mname: string, inc_dirs: string list): string {
+    val tlen = mname.length()
+    val thresh = if tlen <= 4 { 1 } else { 2 }
+    val (best_d, best) =
+        fold (bd, b) = (thresh + 1, "") for d <- inc_dirs {
+            fold (bd, b) = (bd, b) for path <- Filename.glob(Filename.concat(d, "*.fx")) {
+                val nm = Filename.remove_extension(Filename.basename(path))
+                val dist = if nm == mname { bd + 1 } else { edit_distance(mname, nm) }
+                if dist < bd || (dist == bd && nm < b) { (dist, nm) } else { (bd, b) }
+            }
+        }
+    if tlen > 0 && best_d <= thresh && best != "" { f"; did you mean '{best}'?" } else { "" }
+}
+
 fun add_to_imported_modules(mname: id_t, loc: loc_t): int
 {
     val mfname = pp(mname)
@@ -38,7 +57,9 @@ fun add_to_imported_modules(mname: id_t, loc: loc_t): int
                 Filename.locate(Filename.concat(mfname, "init.fx"), parser_ctx.inc_dirs)
             }
             catch {
-            | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
+            | NotFoundError =>
+                throw ParseError(loc, f"module {mname} is not found\
+                                       {suggest_module(pp(mname), parser_ctx.inc_dirs)}")
             }
         }
     var dirname = mfname
@@ -236,6 +257,15 @@ fun expseq2exp(eseq: exp_t list, loc: loc_t) =
         val loc = loclist2loc(llist, loc)
         ExpSeq(eseq, (make_new_typ(), loc))
     }
+
+// loc of the last token consumed between `before` and `after` (a suffix of
+// `before`); noloc if nothing was consumed. Lets a node fold its span out to
+// the end of a sub-construct parsed by a helper that returns no loc of its own
+// (e.g. parse_typespec — types carry no source location). reform-prep-1.
+fun consumed_loc(before: tklist_t, after: tklist_t): loc_t {
+    val n = before.length() - after.length()
+    if n <= 0 { noloc } else { before.nth(n-1).1 }
+}
 
 fun match_paren((ts: tklist_t, e: exp_t), ct: token_t, ol: loc_t): (tklist_t, exp_t)
 {
@@ -851,13 +881,18 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
                 | (IDENT(_, _), loc_i) :: _ =>
                     if expect_comma { (ts, result.rev()) }
                     else {
-                        val (ts, i) = parse_dot_ident(ts, false, "")
+                        val (ts1, i) = parse_dot_ident(ts, false, "")
+                        // span the WHOLE (possibly dotted) module name, not just
+                        // its first token: import errors -- misspelled or
+                        // off-path module -- are common and should underline the
+                        // full name. reform-prep-1.
+                        val name_loc = loclist2loc([:: loc_i, consumed_loc(ts, ts1)], loc_i)
                         val i = get_id(i)
-                        val (ts, j) = match ts {
+                        val (ts, j) = match ts1 {
                             | (AS, _) :: (IDENT(_, j), _) :: rest => (rest, get_id(j))
-                            | _ => (ts, i)
+                            | _ => (ts1, i)
                             }
-                        val i_ = add_to_imported_modules(i, loc_i)
+                        val i_ = add_to_imported_modules(i, name_loc)
                         parse_imported_(ts, true, (i_, j) :: result)
                     }
                 | _ =>
@@ -869,8 +904,11 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, exp_t list)
         | (FROM, l1) :: rest =>
             if !toplevel {throw parse_err(ts, "import directives can only be used at the module level")}
             val (ts, m_) = parse_dot_ident(rest, false, "")
+            // point a 'from <module> import ...' not-found error at the module
+            // name, not at the 'from' keyword (reform-prep-1).
+            val name_loc = match rest { | (_, l0) :: _ => loclist2loc([:: l0, consumed_loc(rest, ts)], l0) | _ => l1 }
             val m = get_id(m_)
-            val m_ = add_to_imported_modules(m, l1)
+            val m_ = add_to_imported_modules(m, name_loc)
             match ts {
             | (IMPORT _, _) :: (STAR _, _) :: rest =>
                 extend_expseq_(rest, DirImportFrom(m_, [], l1) :: result)
@@ -1219,8 +1257,12 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
         | (INLINE, _) :: rest =>
             if is_inline {throw parse_err(ts, "duplicate @inline attribute")}
             is_inline = true; vts = rest
-        | (FUN, l1) :: (IDENT(_, i), _) :: _ =>
+        | (FUN, l1) :: (IDENT(_, i), name_l0) :: _ =>
             val (ts, f) = parse_dot_ident(vts.tl(), false, "")
+            // point a function's own diagnostics (redeclaration, implicit-return
+            // warning, ...) at its NAME, not the 'fun' keyword. The name may be
+            // dotted (Class.method), so span from its first token to its last.
+            val name_loc = loclist2loc([:: name_l0, consumed_loc(vts.tl(), ts)], name_l0)
             val dot_pos = f.rfind('.')
             val (class_id_, fname_) =
                 if dot_pos >= 0 {(get_id(f[:dot_pos]), get_id(f[dot_pos+1:]))}
@@ -1229,9 +1271,10 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
                 | (LPAREN(_), _) :: rest => rest
                 | _ => throw parse_err(ts, "'(' is expected after function name")
                 }
-            class_id = class_id_; fname = fname_; loc = l1; break
+            class_id = class_id_; fname = fname_; loc = name_loc; break
         | (OPERATOR, l1) :: (t, l2) :: (LPAREN _, _) :: rest =>
-            vts = rest; fname = get_opname(t); loc = l1
+            // the operator symbol is the name: span 'operator X'.
+            vts = rest; fname = get_opname(t); loc = loclist2loc([:: l1, l2], l1)
             if fname == noid { throw ParseError(l2, "invalid operator name") }
             break
         | _ =>
@@ -1330,10 +1373,12 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     match ts {
     | (COLON, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
-        (ts, ExpTyped(e, t, make_new_ctx(get_exp_loc(e))))
+        val loc = loclist2loc([:: get_exp_loc(e), consumed_loc(rest, ts)], get_exp_loc(e))
+        (ts, ExpTyped(e, t, make_new_ctx(loc)))
     | (CAST, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
-        (ts, ExpCast(e, t, (make_new_typ(), get_exp_loc(e))))
+        val loc = loclist2loc([:: get_exp_loc(e), consumed_loc(rest, ts)], get_exp_loc(e))
+        (ts, ExpCast(e, t, (make_new_typ(), loc)))
     | _ => (ts, e)
     }
 }
@@ -2498,13 +2543,17 @@ fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
     var all_tokens: (Lexer.token_t, Ast.loc_t) list = []
     var prev_lineno = -1
     while true {
-        val more_tokens = lexer()
-        for (t, (lineno, col)) <- more_tokens {
-            val loc = Ast.loc_t {m_idx=dm.dm_idx, line0=lineno, col0=col, line1=lineno, col1=col}
+        // The lexer returns a batch of tokens plus the batch's begin/end point
+        // locs (reform-prep-1); every token in the batch gets that span, so an
+        // AST node built from a single token already carries a true span
+        // ({line0,col0}..{line1,col1}), not a point.
+        val (more_tokens, (bline, bcol), (eline, ecol)) = lexer()
+        val loc = Ast.loc_t {m_idx=dm.dm_idx, line0=bline, col0=bcol, line1=eline, col1=ecol}
+        for (t, _) <- more_tokens {
             if Options.opt.print_tokens {
-                if lineno != prev_lineno {
-                    print(f"\n{pp(fname_id)}:{lineno}: ")
-                    prev_lineno = lineno
+                if bline != prev_lineno {
+                    print(f"\n{pp(fname_id)}:{bline}: ")
+                    prev_lineno = bline
                 }
                 print(f"{Lexer.tok2str(t).0} ")
             }

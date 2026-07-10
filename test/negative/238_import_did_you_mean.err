@@ -1,0 +1,3 @@
+238_import_did_you_mean.fx:4:8: error: module Strig is not found; did you mean 'String'?
+ 4 | import Strig
+   |        ^~~~~

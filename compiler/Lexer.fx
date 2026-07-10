@@ -238,7 +238,7 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
         { STRING("") RPAREN } RPAREN
     where {} denotes groups that are returned together by nexttokens().
 */
-fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
+fun make_lexer(strm: stream_t): (void -> ((token_t, lloc_t) list, lloc_t, lloc_t))
 {
     var new_exp = true  // Ficus is the language with optional ';' separators between
                         // expressions in a block, tha's why we need to distinguish
@@ -340,7 +340,11 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
         }
     }
 
-    fun nexttokens(): (token_t, lloc_t) list
+    // Returns (tokens, batch_begin_loc, batch_end_loc). All tokens in one batch
+    // share the batch span; batches are single-token except a few synthetic
+    // expansions (numeric-suffix, string interpolation, ...), where one span
+    // over the whole literal is the right answer anyway.
+    fun nexttokens(): ((token_t, lloc_t) list, lloc_t, lloc_t)
     {
         val buf = strm.buf
         val len = buf.length()
@@ -374,6 +378,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
 
         val loc = getloc(pos)
 
+        val tokens =
         if '0' <= c <= '9' {
             val (p, (t, c)) = getnumber(buf, pos, loc, prev_dot, !prev_dot)
             match t {
@@ -584,7 +589,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                        i.e. '|' goes immediately after '{', it's represented
                        as 'BAR', not 'BITWISE_OR'
                     */
-                    (LBRACE, loc) :: (match nexttokens() {
+                    (LBRACE, loc) :: (match nexttokens().0 {
                     | (BITWISE_OR, p) :: rest =>
                         paren_stack = (BAR, p) :: paren_stack
                         (BAR, p) :: rest
@@ -639,7 +644,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 else if c1 == '>' {pos += 1; [:: (ARROW, loc)]}
                 else if !prev_ne {[:: (MINUS(false), loc)]} else {
                     expect_neg_number = !expect_neg_number
-                    val ts = nexttokens()
+                    val ts = nexttokens().0
                     expect_neg_number = !expect_neg_number
                     match ts {
                     | (LITERAL(Ast.LitInt(x)), _) :: rest => (LITERAL(Ast.LitInt(-x)), loc) :: rest
@@ -728,7 +733,7 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                     if buf.zero[pos] != '}' {
                         throw Lxu.LexerError(getloc(pos), "'}' is expected after ':...' inside interpolated expression")
                     }
-                    nexttokens()
+                    nexttokens().0
                 | _ =>
                     if c1 == ':' {
                         pos += 1
@@ -806,6 +811,8 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                 throw Lxu.LexerError(loc, f"unrecognized character '{c}'")
             }
         }
+        val endloc = getloc(pos)
+        (tokens, loc, endloc)
     }
     nexttokens
 }
