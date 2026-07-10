@@ -1257,8 +1257,12 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
         | (INLINE, _) :: rest =>
             if is_inline {throw parse_err(ts, "duplicate @inline attribute")}
             is_inline = true; vts = rest
-        | (FUN, l1) :: (IDENT(_, i), _) :: _ =>
+        | (FUN, l1) :: (IDENT(_, i), name_l0) :: _ =>
             val (ts, f) = parse_dot_ident(vts.tl(), false, "")
+            // point a function's own diagnostics (redeclaration, implicit-return
+            // warning, ...) at its NAME, not the 'fun' keyword. The name may be
+            // dotted (Class.method), so span from its first token to its last.
+            val name_loc = loclist2loc([:: name_l0, consumed_loc(vts.tl(), ts)], name_l0)
             val dot_pos = f.rfind('.')
             val (class_id_, fname_) =
                 if dot_pos >= 0 {(get_id(f[:dot_pos]), get_id(f[dot_pos+1:]))}
@@ -1267,9 +1271,10 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
                 | (LPAREN(_), _) :: rest => rest
                 | _ => throw parse_err(ts, "'(' is expected after function name")
                 }
-            class_id = class_id_; fname = fname_; loc = l1; break
+            class_id = class_id_; fname = fname_; loc = name_loc; break
         | (OPERATOR, l1) :: (t, l2) :: (LPAREN _, _) :: rest =>
-            vts = rest; fname = get_opname(t); loc = l1
+            // the operator symbol is the name: span 'operator X'.
+            vts = rest; fname = get_opname(t); loc = loclist2loc([:: l1, l2], l1)
             if fname == noid { throw ParseError(l2, "invalid operator name") }
             break
         | _ =>

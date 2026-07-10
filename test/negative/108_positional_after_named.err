@@ -1,6 +1,6 @@
 108_positional_after_named.fx:3:9: error: the appropriate match for 'g' of type '((int, {a: int}) -> <unknown>)' is not found.
 Candidates:
- g({a: int; b: int}) -> int @ 108_positional_after_named.fx:2:1 -- takes 0 positional argument(s), but 1 given
+ g({a: int; b: int}) -> int @ 108_positional_after_named.fx:2:5 -- takes 0 positional argument(s), but 1 given
 
  3 | println(g(a=1, 2))
    |         ^

@@ -1,6 +1,6 @@
 010_overload_keyword.fx:4:9: error: the appropriate match for 'kk' of type '({z: int} -> <unknown>)' is not found.
 Candidates:
- kk({a: int}) -> int @ 010_overload_keyword.fx:3:1 -- keyword arguments '{z: int}' do not match the accepted '{a: int}'
+ kk({a: int}) -> int @ 010_overload_keyword.fx:3:5 -- keyword arguments '{z: int}' do not match the accepted '{a: int}'
 
  4 | val r = kk(z=5)
    |         ^~
