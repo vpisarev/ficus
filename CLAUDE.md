@@ -83,10 +83,17 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
 - `array(n, init)` / `array((m, n), init)`; ranges `a:b`, `a:b:step`; slices
   `a[i:j]`, `a[::-1]`. `Sys.getenv(name, defval)`; `s.to_int(): int?`.
 - A `match` arm body may be a block: `| pat => val r = ...; expr`.
-- `continue`/`break` can't be a `match`-arm / `if`-branch *value*, and a bare
-  `return` doesn't parse — both misreport as `unexpected token '}'` (FB-015).
-  Use a statement `match` + separate yield, or invert the guard;
-  `return <expr>` is fine.
+- `break`/`continue`/`return` (with a value or bare) are legal in *expression*
+  position — as a `match`-arm or `if`-branch value (`| _ => continue`,
+  `if c {..} else {break}`, `| 0 => return v`) — exactly like `throw`
+  (ctrlflow-1/FB-015). A jumping arm/branch has pseudo-type `TypErr`, so it
+  unifies with any value-producing sibling; K-form/codegen unchanged (they
+  still lower to void jumps and route through the block cleanup chain, so
+  ref-counted locals live at the jump are freed). Legality is unchanged and
+  gives targeted messages: `break`/`continue` need an enclosing loop
+  (`cannot use 'break' outside of loop`); `break`/`continue` in `fold` or
+  `@parallel` bodies stay rejected in BOTH positions (no widening); a bare
+  `return` in a non-void function is a return-type mismatch, not a parse error.
 - Shift count must be `int`: write `x >> int(n)` for a non-int count.
 - **Overload resolution: the least-generic viable candidate wins**, regardless
   of declaration/import order. No unique winner at a fully-determined call =

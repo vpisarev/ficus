@@ -4180,14 +4180,49 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                               may_have_arg_0 = true;
                            }
                            *new_exp_0 = true;
+                           bool bare_0;
                            bool t_17;
-                           if (may_have_arg_0) {
-                              t_17 = c_0 != (char_)59;
+                           if (c_0 == (char_)59) {
+                              t_17 = true;
                            }
                            else {
-                              t_17 = false;
+                              t_17 = c_0 == (char_)125;
                            }
-                           _fx_M5LexerFM6RETURNN14Lexer__token_t1B(t_17, &t_12);
+                           bool t_18;
+                           if (t_17) {
+                              t_18 = true;
+                           }
+                           else {
+                              t_18 = c_0 == (char_)41;
+                           }
+                           bool t_19;
+                           if (t_18) {
+                              t_19 = true;
+                           }
+                           else {
+                              t_19 = c_0 == (char_)93;
+                           }
+                           bool t_20;
+                           if (t_19) {
+                              t_20 = true;
+                           }
+                           else {
+                              t_20 = c_0 == (char_)44;
+                           }
+                           if (t_20) {
+                              bare_0 = true;
+                           }
+                           else {
+                              bare_0 = c_0 == (char_)124;
+                           }
+                           bool t_21;
+                           if (may_have_arg_0) {
+                              t_21 = !bare_0;
+                           }
+                           else {
+                              t_21 = false;
+                           }
+                           _fx_M5LexerFM6RETURNN14Lexer__token_t1B(t_21, &t_12);
 
                         _fx_catch_7: ;
                            if (paren_stack_2) {
@@ -4265,22 +4300,22 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                      }
                      else {
                         fx_str_t v_83 = {0};
-                        _fx_N14Lexer__token_t t_18 = {0};
+                        _fx_N14Lexer__token_t t_22 = {0};
                         _fx_T2N14Lexer__token_tTa2i v_84 = {0};
                         _fx_T2N14Lexer__token_tTa2i v_85 = {0};
                         _fx_LT2N14Lexer__token_tTa2i v_86 = 0;
-                        _fx_N14Lexer__token_t t_19 = {0};
+                        _fx_N14Lexer__token_t t_23 = {0};
                         _fx_T2N14Lexer__token_tTa2i v_87 = {0};
                         _fx_LT2N14Lexer__token_tTa2i result_8 = 0;
                         if (c_0 == (char_)64) {
                            FX_CALL(fx_substr(&ident_0, 1, 0, 1, 2, &v_83), _fx_catch_13);
-                           _fx_M5LexerFM5IDENTN14Lexer__token_t2BS(*new_exp_0, &v_83, &t_18);
+                           _fx_M5LexerFM5IDENTN14Lexer__token_t2BS(*new_exp_0, &v_83, &t_22);
                            *new_exp_0 = false;
                            _fx_make_T2N14Lexer__token_tTa2i(&_fx_g9Lexer__AT, &loc_0, &v_84);
                            _fx_Ta2i v_88;
                            FX_CALL(_fx_M5LexerFM6getlocTa2i2iN20LexerUtils__stream_t(*pos_0 + 1, strm_0, &v_88, 0),
                               _fx_catch_13);
-                           _fx_make_T2N14Lexer__token_tTa2i(&t_18, &v_88, &v_85);
+                           _fx_make_T2N14Lexer__token_tTa2i(&t_22, &v_88, &v_85);
                            FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_85, 0, true, &v_86), _fx_catch_13);
                            FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_84, v_86, false, &v_86), _fx_catch_13);
                            _fx_free_LT2N14Lexer__token_tTa2i(&result_0);
@@ -4288,9 +4323,9 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                            FX_BREAK(_fx_catch_13);
                         }
                         else {
-                           _fx_M5LexerFM5IDENTN14Lexer__token_t2BS(*new_exp_0, &ident_0, &t_19);
+                           _fx_M5LexerFM5IDENTN14Lexer__token_t2BS(*new_exp_0, &ident_0, &t_23);
                            *new_exp_0 = false;
-                           _fx_make_T2N14Lexer__token_tTa2i(&t_19, &loc_0, &v_87);
+                           _fx_make_T2N14Lexer__token_tTa2i(&t_23, &loc_0, &v_87);
                            FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_87, 0, true, &result_8), _fx_catch_13);
                            _fx_free_LT2N14Lexer__token_tTa2i(&result_0);
                            FX_COPY_PTR(result_8, &result_0);
@@ -4302,13 +4337,13 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                            _fx_free_LT2N14Lexer__token_tTa2i(&result_8);
                         }
                         _fx_free_T2N14Lexer__token_tTa2i(&v_87);
-                        _fx_free_N14Lexer__token_t(&t_19);
+                        _fx_free_N14Lexer__token_t(&t_23);
                         if (v_86) {
                            _fx_free_LT2N14Lexer__token_tTa2i(&v_86);
                         }
                         _fx_free_T2N14Lexer__token_tTa2i(&v_85);
                         _fx_free_T2N14Lexer__token_tTa2i(&v_84);
-                        _fx_free_N14Lexer__token_t(&t_18);
+                        _fx_free_N14Lexer__token_t(&t_22);
                         FX_FREE_STR(&v_83);
                      }
                      FX_CHECK_EXN(_fx_catch_66);
@@ -4409,14 +4444,14 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                         _fx_N14Lexer__token_t v_104 = {0};
                         _fx_T2N14Lexer__token_tTa2i v_105 = {0};
                         _fx_LT2N14Lexer__token_tTa2i result_12 = 0;
-                        bool t_20;
+                        bool t_24;
                         if (prev_ne_0) {
-                           t_20 = c1_0 == (char_)93;
+                           t_24 = c1_0 == (char_)93;
                         }
                         else {
-                           t_20 = false;
+                           t_24 = false;
                         }
-                        if (t_20) {
+                        if (t_24) {
                            *pos_0 = *pos_0 + 1;
                            _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&_fx_g15Lexer__LitEmpty, &v_99);
                            _fx_make_T2N14Lexer__token_tTa2i(&v_99, &loc_0, &v_100);
@@ -5172,14 +5207,14 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                            FX_BREAK(_fx_catch_41);
                         }
                         else {
-                           bool t_21;
+                           bool t_25;
                            if (c1_0 == (char_)42) {
-                              t_21 = !prev_ne_0;
+                              t_25 = !prev_ne_0;
                            }
                            else {
-                              t_21 = false;
+                              t_25 = false;
                            }
-                           if (t_21) {
+                           if (t_25) {
                               *pos_0 = *pos_0 + 1;
                               _fx_make_T2N14Lexer__token_tTa2i(&_fx_g12Lexer__POWER, &loc_0, &v_194);
                               FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_194, 0, true, &result_34), _fx_catch_41);
@@ -5549,14 +5584,14 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                            }
                         }
                         else {
-                           bool t_22;
+                           bool t_26;
                            if (c1_0 == (char_)33) {
-                              t_22 = c2_0 == (char_)61;
+                              t_26 = c2_0 == (char_)61;
                            }
                            else {
-                              t_22 = false;
+                              t_26 = false;
                            }
-                           if (t_22) {
+                           if (t_26) {
                               *pos_0 = *pos_0 + 2;
                               _fx_M5LexerFM7DOT_CMPN14Lexer__token_t1N12Ast__cmpop_t(&_fx_g12Lexer__CmpNE, &v_223);
                               _fx_make_T2N14Lexer__token_tTa2i(&v_223, &loc_0, &v_224);
@@ -5566,14 +5601,14 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                               FX_BREAK(_fx_catch_50);
                            }
                            else if (c1_0 == (char_)60) {
-                              bool t_23;
+                              bool t_27;
                               if (c2_0 == (char_)61) {
-                                 t_23 = c3_0 == (char_)62;
+                                 t_27 = c3_0 == (char_)62;
                               }
                               else {
-                                 t_23 = false;
+                                 t_27 = false;
                               }
-                              if (t_23) {
+                              if (t_27) {
                                  *pos_0 = *pos_0 + 3;
                                  _fx_make_T2N14Lexer__token_tTa2i(&_fx_g20Lexer__DOT_SPACESHIP, &loc_0, &v_225);
                                  FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_225, 0, true, &result_55), _fx_catch_50);
@@ -5704,14 +5739,14 @@ static int _fx_M5LexerFM10nexttokensLT2N14Lexer__token_tTa2i0(
                               }
                            }
                            else {
-                              bool t_24;
+                              bool t_28;
                               if (c1_0 == (char_)46) {
-                                 t_24 = c2_0 == (char_)46;
+                                 t_28 = c2_0 == (char_)46;
                               }
                               else {
-                                 t_24 = false;
+                                 t_28 = false;
                               }
-                              if (t_24) {
+                              if (t_28) {
                                  *pos_0 = *pos_0 + 2;
                                  _fx_make_T2N14Lexer__token_tTa2i(&_fx_g15Lexer__ELLIPSIS, &loc_0, &v_248);
                                  FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_248, 0, true, &result_69), _fx_catch_50);

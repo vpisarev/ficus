@@ -138,21 +138,31 @@ bare positive 2^63 errors, immediately-negated form still denotes INT64_MIN,
 nested/parenthesized minus handled by parity, `-` before unsigned literal is
 a clear error. Goldens 007/008.
 
-## FB-015  parser: `continue`/`break`/bare `return` rejected in expression position  [OPEN — pre-reform blocker]
-Two related parser limitations, both misreporting as `unexpected token '}'`:
-1. `continue`/`break` cannot be the *value* of a `match` arm / `if` branch
-   (`| _ => continue` fails to parse).
-2. a bare `return` (no value) does not parse at all; `return <expr>` is fine.
-Routed around in `trace_resolve` and noted in CLAUDE.md.
-**PRIORITY NOTE (Vadim, 2026-07-09): the imperative-fold reform makes fold
-bodies void statement sequences where `match e { | A(x) => acc += x | _ =>
-continue }` is the NATURAL idiom — the reform will hit this head-on.** Fix
-direction: treat `break`/`continue`/bare-`return` as expressions the way
-`throw` already is (parse as primary expressions; type them like `throw`,
-unifying with anything; K-normalization already lowers them in statement
-contexts — extend to arm/branch tails). Additive (accepts strictly more
-programs). Scheduled: pre-reform prep WP (with a targeted diagnostic
-replacing the misleading `'}'` error).
+## FB-015  `continue`/`break`/bare `return` in expression position  [FIXED — ctrlflow-1]
+Two symptoms, both once misreporting as `unexpected token '}'`:
+1. `continue`/`break` as the *value* of a `match` arm / `if` branch
+   (`| _ => continue`) — this was a TYPECHECK issue, not a parse one: the arm
+   parsed but `ExpBreak`/`ExpContinue`/`ExpReturn` had pseudo-type `TypVoid`
+   and would not unify with a value-producing sibling.
+2. a bare `return` (no value) before `}` or `|` on the same line — a LEXER
+   issue: the `RETURN(has_arg)` classifier treated any same-line non-`;` char
+   as "has an argument"; `return\n}` and `return;` already worked.
+Fix (additive, accepts strictly more programs), mirroring `throw`:
+- **Ast.fx `get_exp_ctx`**: `ExpBreak`/`ExpContinue`/`ExpReturn` now carry
+  `TypErr` (like `ExpThrow`), which unifies with any type without binding it —
+  so a jumping arm/branch sits beside valued siblings and the whole match/if
+  takes the siblings' type.
+- **Lexer.fx**: a `return` whose next significant char is `}` `)` `]` `,` `|`
+  (a token that cannot begin an expression) is bare.
+Zero backend change: K-normalization still lowers all three to void K-nodes,
+so generated C is byte-identical for existing programs (bootstrap regen touched
+only `Ast.c`+`Lexer.c`; `-pr-resolve` census 351/344/7/0 unchanged). Legality
+(`check_inside_for`) and the `@parallel`/`fold` restrictions are unchanged and
+fire identically in statement and expression position. This unblocks the
+imperative-fold reform (fold bodies where `| _ => continue` is the natural
+idiom). Directed suite `test/test_ctrlflow.fx` + negatives 216–219; leak oracle
+(1000×1000 locals live at the jump) clean under ASan `detect_leaks` at O0/O3.
+See `docs/ctrlflow1_report.md`.
 
 ## FB-016  greedy first-match resolution (last-declared overload wins)  [FIXED resolve-1]
 Minimal form of FB-007/S2: `fun f(x:int)=x+1; fun f(x:'t)=x; f(5)` returned 5
@@ -174,12 +184,11 @@ rigid side of each trial; `maybe_unify` untouched. +14 comparator verdicts;
 census: 342/341/1/0 (the 1 = the known under-constrained 21-viable
 `__cmp__` site).
 
-## FB-018  `Array.diag(d: 't[])`: `size(a)` used before `a` is defined  [OPEN — one-token fix]
-Should be `size(d)` (`lib/Array.fx:346`); any instantiation of the array form
-fails, unnoticed because nothing instantiates it (generic bodies typecheck at
-instantiation) — exposed by the annotate-2 sweep. Fix is one token, left for
-a convenient commit (prep WP candidate); the sweep's `: 't [,]` annotation
-matches the intended behavior.
+## FB-018  `Array.diag(d: 't[])`: `size(a)` used before `a` is defined  [FIXED — ctrlflow-1 ride-along]
+Was `size(a)` where `a` is the not-yet-defined result; corrected to `size(d)`
+(`lib/Array.fx:346`). The array form was unusable but unnoticed because nothing
+instantiates it (generic bodies typecheck at instantiation) — exposed by the
+annotate-2 sweep. Locked by `matrix.diag_from_vector` (`test/test_matrix.fx`).
 
 ## FB-019  `floor`/`ceil`/`trunc`/`round` return `int`  [RESOLVED — by design]
 Vadim (2026-07-09): intentional (OpenCV `cvFloor`/`cvRound` semantics —
