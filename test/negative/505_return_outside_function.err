@@ -1,5 +1,5 @@
 505_return_outside_function.fx:2:1: error: return statement occurs outside of a function body
  2 | return 5
-   | ^
+   | ^~~~~~~
 
 1 errors occured during type checking.

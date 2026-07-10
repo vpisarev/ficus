@@ -3,6 +3,6 @@ Candidates:
  kk({a: int}) -> int @ 010_overload_keyword.fx:3:1 -- keyword arguments '{z: int}' do not match the accepted '{a: int}'
 
  4 | val r = kk(z=5)
-   |         ^
+   |         ^~
 
 1 errors occured during type checking.

@@ -3,6 +3,6 @@
  length(string) -> int @ Builtins.fx:L:C
 use a module-qualified call (e.g. Module.length(...)) to select one
  13 | val r = length("abc")
-    |         ^
+    |         ^~~~~~
 
 1 errors occured during type checking.

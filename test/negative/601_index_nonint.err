@@ -1,5 +1,5 @@
 601_index_nonint.fx:3:11: error: each scalar index in array access op must have some integer type or bool; in the case of interpolation it can also be float or double
  3 | val b = a["x"]
-   |           ^
+   |           ^~~
 
 1 errors occured during type checking.

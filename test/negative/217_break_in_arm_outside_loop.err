@@ -1,5 +1,5 @@
 217_break_in_arm_outside_loop.fx:5:39: error: cannot use 'break' outside of loop
  5 | fun f(x: int): int = match x { | 0 => break | v => v }
-   |                                       ^
+   |                                       ^~~~~
 
 1 errors occured during type checking.

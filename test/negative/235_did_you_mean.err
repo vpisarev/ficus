@@ -1,5 +1,5 @@
 235_did_you_mean.fx:6:9: error: the appropriate match for 'lenght' of type '<unknown>' is not found; did you mean 'length'?
  6 | val r = lenght + doubled
-   |         ^
+   |         ^~~~~~
 
 1 errors occured during type checking.

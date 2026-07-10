@@ -4,6 +4,6 @@ Candidates:
  oo(float) -> int @ 011_overload_not_found_candidates.fx:5:1 -- argument 1 of type 'string' does not match 'float'
 
  6 | val r = oo("x")
-   |         ^
+   |         ^~
 
 1 errors occured during type checking.

@@ -1,9 +1,9 @@
-234_recovery_maxerrors.fx:5:16: error: the appropriate match for 'undef_a' of type 'int' is not found.
+234_recovery_maxerrors.fx:5:14: error: the appropriate match for 'undef_a' of type 'int' is not found.
  5 | fun a(): int { undef_a }
-   |                ^
-234_recovery_maxerrors.fx:6:16: error: the appropriate match for 'undef_b' of type 'int' is not found.
+   |              ^~~~~~~~~
+234_recovery_maxerrors.fx:6:14: error: the appropriate match for 'undef_b' of type 'int' is not found.
  6 | fun b(): int { undef_b }
-   |                ^
+   |              ^~~~~~~~~
 
 2 further diagnostic(s) suppressed (-fmax-errors=2).
 

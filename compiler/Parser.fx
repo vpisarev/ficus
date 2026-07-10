@@ -2498,13 +2498,17 @@ fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
     var all_tokens: (Lexer.token_t, Ast.loc_t) list = []
     var prev_lineno = -1
     while true {
-        val more_tokens = lexer()
-        for (t, (lineno, col)) <- more_tokens {
-            val loc = Ast.loc_t {m_idx=dm.dm_idx, line0=lineno, col0=col, line1=lineno, col1=col}
+        // The lexer returns a batch of tokens plus the batch's begin/end point
+        // locs (reform-prep-1); every token in the batch gets that span, so an
+        // AST node built from a single token already carries a true span
+        // ({line0,col0}..{line1,col1}), not a point.
+        val (more_tokens, (bline, bcol), (eline, ecol)) = lexer()
+        val loc = Ast.loc_t {m_idx=dm.dm_idx, line0=bline, col0=bcol, line1=eline, col1=ecol}
+        for (t, _) <- more_tokens {
             if Options.opt.print_tokens {
-                if lineno != prev_lineno {
-                    print(f"\n{pp(fname_id)}:{lineno}: ")
-                    prev_lineno = lineno
+                if bline != prev_lineno {
+                    print(f"\n{pp(fname_id)}:{bline}: ")
+                    prev_lineno = bline
                 }
                 print(f"{Lexer.tok2str(t).0} ")
             }

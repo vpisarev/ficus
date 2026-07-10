@@ -1,5 +1,5 @@
 210_wrong_return_type.fx:2:16: error: the function body type does not match the function type
  2 | fun f(): int = "s"
-   |                ^
+   |                ^~~
 
 1 errors occured during type checking.

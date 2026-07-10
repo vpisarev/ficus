@@ -4,6 +4,6 @@ Candidates:
  __negate__('t [+]) -> 't [+] [generic: 't, __var_array__] @ Array.fx:L:C -- argument 1 of type 'string' does not match ''t [+]'
 
  2 | val x = -"abc"
-   |         ^
+   |         ^~~~~~
 
 1 errors occured during type checking.
