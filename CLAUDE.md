@@ -146,6 +146,17 @@ errors are ground truth; if it rejects something the tutorial calls legal,
 minimal repro into `docs/found_bugs.md` and route around (don't fix
 `compiler/` unless asked).
 
+**Compiler code style — prefer functional over imperative.** Most of the
+compiler is accumulator recursion / immutable bindings / `match`, and that is
+the house style to match: historically more robust (fewer side effects → fewer
+state bugs, easier to reason about, safer under the atomic-refcount runtime).
+An imperative rewrite is not automatically an improvement — e.g. converting an
+accumulator recursion to a `for`-loop with `break`/`continue` is more
+imperative but *not* faster (often micro-slower: `break`/`continue` are checked
+in each block's cleanup section) and longer to write than `{}`. Reach for
+mutation/loops only where the functional form is genuinely awkward; when in
+doubt, mirror the surrounding module.
+
 Test-file naming: a test `.fx` must not collide case-insensitively with a
 stdlib module (`char.fx` shadows `Char`); numeric prefixes (`001_name.fx`)
 are safe. Subdir modules import as `Dir.Module`; same-dir siblings by bare
