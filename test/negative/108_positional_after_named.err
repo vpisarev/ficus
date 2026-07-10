@@ -2,5 +2,7 @@
 Candidates:
  g({a: int; b: int}) -> int @ 108_positional_after_named.fx:2:1 -- takes 0 positional argument(s), but 1 given
 
+ 3 | println(g(a=1, 2))
+   |         ^
 
 1 errors occured during type checking.

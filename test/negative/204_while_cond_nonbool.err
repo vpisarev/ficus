@@ -1,3 +1,5 @@
 204_while_cond_nonbool.fx:2:7: error: while() loop condition should have 'bool' type
+ 2 | while 1 {
+   |       ^
 
 1 errors occured during type checking.

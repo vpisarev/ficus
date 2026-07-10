@@ -1,4 +1,5 @@
 213_bool_annot_mismatch.fx:2:6: error: explicit type specification of the defined value does not match the assigned expression type
-213_bool_annot_mismatch.fx:3:9: error: the appropriate match for 'a' of type '<unknown>' is not found.
+ 2 | val a: bool = 1
+   |      ^
 
-2 errors occured during type checking.
+1 errors occured during type checking.

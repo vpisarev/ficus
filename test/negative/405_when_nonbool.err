@@ -1,3 +1,5 @@
 405_when_nonbool.fx:2:28: error: incorrect type of value 'a': expected='bool', actual='int'
+ 2 | val x = match 5 { | a when a => 1 | _ => 0 }
+   |                            ^
 
 1 errors occured during type checking.

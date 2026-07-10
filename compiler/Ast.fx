@@ -49,7 +49,7 @@ operator == (a: id_t, b: id_t) = (a.m == b.m) & (a.i == b.i) && ((a.m == 0) | (a
 
 type scope_t =
     | ScBlock: int
-    | ScLoop: (bool, int)
+    | ScLoop: (bool, bool, int)   // (nested, parallel, block_idx)
     | ScFold: int
     | ScArrMap: int
     | ScMap: int
@@ -485,6 +485,19 @@ fun default_module() =
         dm_block_idx=-1
     }
 
+/* Coarse compilation stage, tracked for diagnostic precision (diag-1). It is
+   deliberately separate from `freeze_ids` (which flips at the start of K-form
+   to lock AST id creation): the FRONTEND stage spans lexer + parser + type
+   checker AND K-normalization, because K-normalization still consumes the AST
+   and its source locations are exact -- a good share of errors surface there.
+   Locations only start to drift in the MIDDLE end (K optimizations: inlining,
+   fusion, ...) and the BACKEND (C generation). The diagnostic printer draws a
+   confident caret only while `is_compiler_frontend()` holds. Set by
+   Compiler.process_all around parse_all / k_normalize_all; reset in init_all. */
+type compiler_stage_t = CompilerInit | CompilerFrontend | CompilerMiddle | CompilerBackend
+var compiler_stage = CompilerInit
+fun is_compiler_frontend(): bool = compiler_stage == CompilerFrontend
+
 var freeze_ids = false
 var lock_all_names = 0
 var all_names = Dynvec.create(0, "")
@@ -548,12 +561,65 @@ fun string(i: id_t): string = id2str_(i, false)
 fun pp(i: id_t): string = id2str_(i, true)
 
 fun compile_err(loc: loc_t, msg: string) {
-    val whole_msg = f"{loc}: error: {msg}"
+    // Build the source excerpt HERE, at raise time, not at print time: the
+    // precision (caret vs none) depends on compiler_stage, which advances as
+    // the driver runs, so by end-of-run every error would look like a backend
+    // error. The excerpt goes right under the error line, before any
+    // "when instantiating ..." context tail.
+    val whole_msg = f"{loc}: error: {msg}{loc_excerpt(loc)}"
     val whole_msg = match all_compile_err_ctx {
         | [] => whole_msg
         | ctx => "\n\t".join(whole_msg :: ctx)
         }
     CompileError(loc, whole_msg)
+}
+
+// diag-1: source-excerpt rendering for diagnostics. Lines are read lazily (only
+// when a diagnostic is actually shown) and cached per module. loc_t carries a
+// full span {line0,col0 .. line1,col1}. Precision is stage-honest: in the
+// frontend (is_frontend_stage) locations are exact and we draw a gcc/clang
+// caret '^~~~'; past the AST they drift, so we print the source line WITHOUT a
+// caret rather than point confidently at an innocent column. One renderer
+// serves both errors and warnings.
+var src_lines_cache: (int, string list) Hashmap.t = Hashmap.empty(16, -1, ([]: string list))
+
+fun get_source_line(m_idx: int, lineno: int): string {
+    if m_idx < 0 || lineno < 1 { "" }
+    else {
+        val lines = match src_lines_cache.find_opt(m_idx) {
+            | Some(ls) => ls
+            | _ =>
+                val ls = try { File.read_utf8(all_modules[m_idx].dm_filename).split('\n', allow_empty=true) }
+                         catch { | _ => ([]: string list) }
+                src_lines_cache.add(m_idx, ls)
+                ls
+            }
+        if 1 <= lineno <= lines.length() { lines.nth(lineno-1) } else { "" }
+    }
+}
+
+fun loc_excerpt(loc: loc_t): string {
+    // Stage-honest precision: the frontend (lexer/parser/typecheck AND
+    // K-normalization) has trustworthy AST locations, so there we draw a source
+    // excerpt with a caret. In the middle end (K optimizations) and backend
+    // (C generation) locations drift -- and not all context reaches C-gen
+    // intact -- so a confident excerpt would point at an innocent line; those
+    // (rarer) diagnostics keep the plain "file:line: error: ..." form.
+    if !is_compiler_frontend() || loc.col0 < 1 { "" }
+    else {
+        val raw = get_source_line(loc.m_idx, loc.line0)
+        if raw == "" { "" }
+        else {
+            // tabs -> single space: the lexer counts one column per source char
+            // (tabs included), so a 1:1 replacement keeps the caret aligned.
+            val disp = string([for c <- raw { if c == '\t' { ' ' } else { c } }])
+            val gutter = string(loc.line0)
+            val pad = ' ' * gutter.length()
+            val span = if loc.line1 == loc.line0 && loc.col1 > loc.col0 { loc.col1 - loc.col0 } else { 1 }
+            val caret = (' ' * (loc.col0 - 1)) + "^" + ('~' * (span - 1))
+            f"\n {gutter} | {disp}\n {pad} | {caret}"
+        }
+    }
 }
 
 // non-fatal diagnostic: prints in the same format as an error but with
@@ -562,7 +628,7 @@ fun compile_err(loc: loc_t, msg: string) {
 // (Compiler.print_all_compile_warns / process_all), which can see Options.
 fun compile_warning(loc: loc_t, msg: string) {
     val whole_msg = f"{loc}: warning: {msg}"
-    println(whole_msg)
+    println(whole_msg + loc_excerpt(loc))
     all_compile_warns = all_compile_warns + 1
 }
 
@@ -752,7 +818,7 @@ fun new_block_idx(m_idx: int)
 }
 
 fun new_block_scope(m_idx: int) = ScBlock(new_block_idx(m_idx))
-fun new_loop_scope(m_idx: int, nested: bool) = ScLoop(nested, new_block_idx(m_idx))
+fun new_loop_scope(m_idx: int, nested: bool, parallel: bool) = ScLoop(nested, parallel, new_block_idx(m_idx))
 fun new_map_scope(m_idx: int) = ScMap(new_block_idx(m_idx))
 fun new_arr_map_scope(m_idx: int) = ScArrMap(new_block_idx(m_idx))
 fun new_fold_scope(m_idx: int) = ScFold(new_block_idx(m_idx))
@@ -762,9 +828,10 @@ fun scope2str(sc: scope_t list): string {
     | scj :: rest =>
         val prefix = match scj {
             | ScBlock(b) => f"block({b})"
-            | ScLoop(f, b) =>
+            | ScLoop(f, par, b) =>
                 val nested = if f {"nested_"} else {""}
-                f"{nested}loop_block({b})"
+                val par_s = if par {"parallel_"} else {""}
+                f"{par_s}{nested}loop_block({b})"
             | ScArrMap(b) => f"arr_map_block({b})"
             | ScMap(b) => f"map_block({b})"
             | ScFold(b) => f"fold_block({b})"
@@ -1672,6 +1739,8 @@ val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)
 fun init_all(): void
 {
     freeze_ids = false
+    compiler_stage = CompilerInit
+    src_lines_cache.clear()
     all_names.clear()
     all_strhash.clear()
     all_c_inc_dirs.clear()

@@ -1,3 +1,5 @@
 203_if_cond_nonbool.fx:2:12: error: if() condition should have 'bool' type
+ 2 | val a = if 3 {1} else {2}
+   |            ^
 
 1 errors occured during type checking.

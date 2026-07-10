@@ -1,3 +1,5 @@
 501_assign_to_val.fx:3:1: error: the left side of an assignment is an immutable value
+ 3 | x = 2
+   | ^
 
 1 errors occured during type checking.

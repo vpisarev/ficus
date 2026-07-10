@@ -1,4 +1,5 @@
 306_unknown_type.fx:2:6: error: the appropriate match for 'nosuch_t' is not found
-306_unknown_type.fx:3:9: error: the appropriate match for 'x' of type '<unknown>' is not found.
+ 2 | val x: nosuch_t = 0
+   |      ^
 
-2 errors occured during type checking.
+1 errors occured during type checking.

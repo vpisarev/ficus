@@ -1,3 +1,5 @@
 211_for_body_nonvoid.fx:3:16: error: improper type of the arithmetic operation result
+ 3 | for x <- a { x + 1 }
+   |                ^
 
 1 errors occured during type checking.

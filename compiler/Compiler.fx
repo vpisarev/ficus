@@ -653,9 +653,46 @@ fun run_app(): bool
 
 fun print_all_compile_errs()
 {
-    val nerrs = Ast.all_compile_errs.length()
+    // Errors were accumulated most-recent-first. diag-1 makes multi-error runs
+    // readable: (1) drop exact-duplicate messages -- a generic function's body
+    // error is otherwise reported once per distinct instantiation -- and
+    // (2) sort by source position so the report reads top-to-bottom regardless
+    // of the order in which definitions happened to be checked.
+    val seen = Hashset.empty(256, "")
+    val uniq = fold acc = [] for e <- Ast.all_compile_errs.rev() {
+        // Dedup key is the PRIMARY line of the message (the "file:line:col:
+        // error: ..." line), excluding any "\n\twhen instantiating ..." context
+        // tail: the same generic-body error reached from N distinct call sites
+        // is one bug, reported once (with whichever context came first).
+        val msg = match e {
+            | Ast.CompileError(_, msg) => msg
+            | Fail(msg) => "Failure: " + msg
+            | _ => ""
+            }
+        val key = match msg.find('\n') { | (-1) => msg | nl => msg[:nl] }
+        if key != "" && seen.mem(key) { acc }
+        else { if key != "" { seen.add(key) }; e :: acc }
+    }
+    fun errkey(e: exn): (int, int, int) = match e {
+        | Ast.CompileError(loc, _) => (loc.m_idx, loc.line0, loc.col0)
+        | _ => (1000000000, 0, 0)     // non-positional (e.g. Fail) sort last
+        }
+    val sorted = uniq.rev().sort(fun (a: exn, b: exn) {
+        val (ma, la, ca) = errkey(a)
+        val (mb, lb, cb) = errkey(b)
+        ma < mb || (ma == mb && (la < lb || (la == lb && ca < cb)))
+    })
+    val nerrs = sorted.length()
     if nerrs != 0 {
-        Ast.all_compile_errs.rev().app(Ast.print_compile_err)
+        val cap = Options.opt.max_errors
+        for e@i <- sorted {
+            if i >= cap { break }
+            Ast.print_compile_err(e)
+        }
+        if nerrs > cap {
+            println(f"\n{nerrs - cap} further diagnostic(s) suppressed \
+                     (-fmax-errors={cap}).")
+        }
         println(f"\n{nerrs} errors occured during type checking.")
     }
 }
@@ -689,6 +726,10 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
    there are (/usr|...)/lib/ficus-{__ficus_major__}.{__ficus_minor__}/{{runtime, lib}}") }
         // classify stdlib vs user modules for -Wimplicit-rettype scoping
         Ast.ficus_std_path = Filename.normalize(ficus_root, "lib")
+        // Frontend spans parsing, type checking and K-normalization -- all
+        // consume the AST and carry exact source locations, so diagnostics
+        // there get a caret excerpt (diag-1). See Ast.compiler_stage.
+        Ast.compiler_stage = Ast.CompilerFrontend
         val ok = parse_all(fname0, ficus_path)
         if !ok { throw CumulativeParseError }
         val graph = [:: for minfo <- Ast.all_modules {
@@ -719,6 +760,10 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
             pr_verbose(clrmsg(MsgBlue, "K-normalization complete"))
             if Options.opt.print_k0 { K_pp.pp_kmods(kmods) }
         }
+        // Past K-normalization: the middle end (inlining, fusion, ...) rewrites
+        // the IR and source locations start to drift, so diagnostics from here
+        // on drop the caret (they keep the plain file:line form).
+        Ast.compiler_stage = Ast.CompilerMiddle
         val (kmods, ok) = if ok {
             pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
             k_optimize_all(kmods)
@@ -727,6 +772,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
             pr_verbose(clrmsg(MsgBlue, "K-form optimization complete"))
             if Options.opt.print_k { K_pp.pp_kmods(kmods) }
         }
+        Ast.compiler_stage = Ast.CompilerBackend
         val ok = if !Options.opt.gen_c { ok } else {
             val (cmods, ok) = if ok { k2c_all(kmods) } else { ([], false) }
             val ok =

@@ -1,3 +1,5 @@
 704_tag_on_nonvariant.fx:3:9: error: attempt to treat non-record and non-variant as a record
+ 3 | println(x.__tag__)
+   |         ^
 
 1 errors occured during type checking.

@@ -2,5 +2,7 @@
 Candidates:
  ff(int, int) -> int @ 009_overload_arity.fx:4:1 -- takes 2 argument(s), but 1 given
 
+ 5 | val r = ff(1)
+   |         ^
 
 1 errors occured during type checking.

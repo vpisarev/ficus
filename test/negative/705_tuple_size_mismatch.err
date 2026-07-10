@@ -1,4 +1,5 @@
 705_tuple_size_mismatch.fx:2:5: error: improper type of the tuple pattern
-705_tuple_size_mismatch.fx:3:9: error: the appropriate match for 'a' of type '<unknown>' is not found.
+ 2 | val (a, b) = (1, 2, 3)
+   |     ^
 
-2 errors occured during type checking.
+1 errors occured during type checking.

@@ -12,5 +12,7 @@ Candidates:
  __add__('t1 Complex.complex@3, 't2 Complex.complex@3) -> 't3 Complex.complex@3 [generic: 't3, 't1, 't2] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t1 Complex.complex@3',
  __add__('ta [+], 'tb [+]) -> 't3 [+] [generic: 't3, 'ta, 'tb, __var_array__] @ Array.fx:L:C -- argument 1 of type 'int' does not match ''ta [+]'
 
+ 2 | val a = 1 + "x"
+   |           ^
 
 1 errors occured during type checking.
