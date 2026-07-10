@@ -1,4 +1,3 @@
 404_dup_pattern_ident.fx:2:9: error: duplicate identifier 'a' in the pattern
-404_dup_pattern_ident.fx:3:9: error: the appropriate match for 'a' of type '<unknown>' is not found.
 
-2 errors occured during type checking.
+1 errors occured during type checking.

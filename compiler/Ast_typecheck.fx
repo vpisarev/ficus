@@ -587,6 +587,40 @@ fun typ_has_free_vars(t: typ_t): bool {
     has_free
 }
 
+/* Error-recovery support (diag-1). TypErr is the poison pseudo-type: it is
+   produced when a definition fails to typecheck, and it unifies with anything
+   WITHOUT binding the other side (maybe_unify ~341). typ_has_typerr detects a
+   type already contaminated by an upstream error; such a type must never drive
+   a NEW diagnostic (structural cascade suppression), it just flows silently. */
+fun typ_has_typerr(t: typ_t): bool {
+    var has_err = false
+    fun check_(t: typ_t, callb: ast_callb_t): typ_t =
+        if has_err { t }
+        else {
+            match deref_typ(t) {
+            | TypErr => has_err = true; t
+            | t1 => walk_typ(t1, callb)
+            }
+        }
+    val callb = ast_callb_t {ast_cb_typ=Some(check_), ast_cb_exp=None, ast_cb_pat=None}
+    val _ = check_(t, callb)
+    has_err
+}
+
+/* Force the RESULT of a suppressed resolution to TypErr so the poison
+   propagates upward: for a call/operator the expected type is TypFun(args, rt)
+   and rt IS the enclosing expression's result var, so pinning it to TypErr
+   makes the whole expression TypErr; for a plain value lookup the type var
+   itself is pinned. Uses direct var assignment because unify deliberately
+   does NOT bind against TypErr. Only ever runs on an already-failed path. */
+fun poison_result_typ(t: typ_t): void =
+    match deref_typ(t) {
+    | TypFun(_, rt) =>
+        (match deref_typ(rt) { | TypVar((ref None) as r) => *r = Some(TypErr) | _ => {} })
+    | TypVar((ref None) as r) => *r = Some(TypErr)
+    | _ => {}
+    }
+
 /* this is another flavor of type unification function;
    it throws an exception in the case of failure */
 fun unify(t1: typ_t, t2: typ_t, loc: loc_t, msg: string): void =
@@ -1180,7 +1214,16 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): 
             | _ => t
             }
         if df_templ_args == [] {
-            if maybe_unify(df_typ, t, loc, true) { Some((i, t)) }
+            if maybe_unify(df_typ, t, loc, true) {
+                // Recovery (diag-1): a function whose body failed keeps its
+                // declared signature, but if its return type was poisoned to
+                // TypErr (no annotation, no healthy branch), propagate that to
+                // the call result -- maybe_unify above leaves the caller's
+                // result var free because TypErr never binds. Clean compiles
+                // never reach here (no df_typ is TypErr-typed), census stands.
+                if typ_has_typerr(df_typ) { poison_result_typ(t) }
+                Some((i, t))
+            }
             else { throw compile_err(loc, f"internal error: the winning overload of \
                    '{pp(n)}' failed to re-unify at commit") }
         } else {
@@ -1307,7 +1350,13 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): 
                     | [] =>
                         unify(dv_typ, t, loc, f"incorrect type of value '{pp(n)}': \
                               expected='{typ2str(t)}', actual='{typ2str(dv_typ)}'")
-                        Some((i, t))
+                        // Recovery (diag-1): a value poisoned by a failed
+                        // definition carries TypErr; propagate that poison to
+                        // the use site (unify above leaves `t` free because
+                        // TypErr never binds), so uses stay structurally
+                        // suppressed. No effect on a clean compile (no value is
+                        // TypErr-typed there), so the -pr-resolve census stands.
+                        Some((i, if typ_has_typerr(dv_typ) {dv_typ} else {t}))
                     | _ => scan_(rest, viable)  // a viable function shadows it, as today
                     }
                 | IdModule _ =>
@@ -1368,13 +1417,23 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): 
 
 fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_t, typ_t)
 {
-    val (nt_opt, possible_matches) = lookup_id_opt(n, t, env, sc, loc)
-    match nt_opt {
-    | Some(nt) => nt
-    | None =>
-        match try_autogen_symbols(n, t, env, sc, loc) {
-        | Some(nt1) => nt1
-        | _ => throw report_not_found_typed(n, t, possible_matches, sc, loc)
+    // Structural cascade suppression (diag-1): if the expected type is already
+    // contaminated by an upstream error (a poisoned operand/callee), this
+    // resolution cannot succeed for an honest reason -- report nothing, pin the
+    // result to TypErr, and let the poison flow on. The genuine error was
+    // already reported at the site that produced the TypErr.
+    if typ_has_typerr(t) {
+        poison_result_typ(t)
+        (n, t)
+    } else {
+        val (nt_opt, possible_matches) = lookup_id_opt(n, t, env, sc, loc)
+        match nt_opt {
+        | Some(nt) => nt
+        | None =>
+            match try_autogen_symbols(n, t, env, sc, loc) {
+            | Some(nt1) => nt1
+            | _ => throw report_not_found_typed(n, t, possible_matches, sc, loc)
+            }
         }
     }
 }
@@ -2534,9 +2593,16 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 unify(typ2, etyp, loc2, "if() expression should have the same type as its branches")
             }
         }
+        // Per-branch error recovery (diag-1): a failure in one branch is
+        // reported and the other branch is still checked, so both branches'
+        // errors surface in one run. Branch types were already unified with
+        // `etyp` above, so a poisoned branch does not disturb the if's type --
+        // the healthy branch determines it, like a jumping throw/ctrlflow sibling.
         val new_c = check_exp(c, env, sc)
-        val new_e1 = check_exp(e1, env, sc)
-        val new_e2 = check_exp(e2, env, sc)
+        val new_e1 = try { check_exp(e1, env, sc) }
+                     catch { | CompileError(_, _) as err => push_compile_err(err); e1 }
+        val new_e2 = try { check_exp(e2, env, sc) }
+                     catch { | CompileError(_, _) as err => push_compile_err(err); e2 }
         ExpIf(new_c, new_e1, new_e2, ctx)
     | ExpWhile(c, body, _) =>
         val (ctyp, cloc) = get_exp_ctx(c)
@@ -3022,6 +3088,37 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     new_e
 }
 
+/* Error recovery (diag-1): when a `val`/`var` definition fails to typecheck,
+   bind EVERY identifier its pattern introduces to a poison value of type
+   `poison_t` (TypErr when there is no usable annotation), so later statements
+   that reference those names are structurally suppressed instead of producing
+   spurious "undefined" cascades. Mirrors the single-ident recovery that was
+   here before, generalized to tuple/record/as/... patterns. */
+fun poison_pattern_vars(p: pat_t, poison_t: typ_t, flags: val_flags_t,
+                        sc: scope_t list, m_idx: int, env0: env_t): env_t
+{
+    var env = env0
+    fun bind1(n: id_t, ploc: loc_t): void {
+        val n1 = dup_id(m_idx, n)
+        val dv = defval_t {dv_name=n1, dv_typ=poison_t, dv_flags=flags, dv_scope=sc, dv_loc=ploc}
+        set_id_entry(n1, IdDVal(dv))
+        env = add_id_to_env(n, n1, env)
+    }
+    // Bind every identifier the pattern introduces; delegate the structural
+    // recursion to walk_pat so all pattern shapes (incl. future ones) are
+    // covered. PatAs' alias is an id_t (not a sub-pattern) so bind it explicitly
+    // before recursing into the aliased pattern.
+    fun cb(p: pat_t, callb: ast_callb_t): pat_t =
+        match p {
+        | PatIdent(n, ploc) => bind1(n, ploc); p
+        | PatAs(_, n, ploc) => bind1(n, ploc); walk_pat(p, callb)
+        | _ => walk_pat(p, callb)
+        }
+    val callb = ast_callb_t {ast_cb_typ=None, ast_cb_exp=None, ast_cb_pat=Some(cb)}
+    ignore(check_n_walk_pat(p, callb))
+    env
+}
+
 fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool): (exp_t list, env_t)
 {
     /*
@@ -3098,15 +3195,19 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 }
                 val is_mutable = flags.val_flag_mutable
                 val t = get_exp_typ(e)
-                val (p, t1) = match p {
-                | PatTyped(p1, t1, loc) =>
-                    val t1 = check_typ(t1, env, sc, loc)
-                    unify(t, t1, loc, "explicit type specification of the defined \
-                          value does not match the assigned expression type")
-                    (p1, t1)
-                | _ => (p, t)
-                }
                 try {
+                    // The annotation unify is now INSIDE the recovery try: an
+                    // explicit-type mismatch must poison the symbol like any
+                    // other failure, not escape and leave the name unbound
+                    // (which used to cascade into spurious "undefined" errors).
+                    val (p, _) = match p {
+                    | PatTyped(p1, t1, loc) =>
+                        val t1 = check_typ(t1, env, sc, loc)
+                        unify(t, t1, loc, "explicit type specification of the defined \
+                              value does not match the assigned expression type")
+                        (p1, t1)
+                    | _ => (p, t)
+                    }
                     val e1 = check_exp(e, env, sc)
                     val (p1, env1, _, _, _) = check_pat(p, t, env, empty_idset, empty_idset,
                                                         sc, false, true, is_mutable)
@@ -3114,16 +3215,19 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 } catch {
                 | CompileError(_, _) as err =>
                     push_compile_err(err)
-                    match pat_skip_typed(p) {
-                    | PatIdent(n, ploc) =>
-                        val n1 = dup_id(curr_m_idx, n)
-                        val dv = defval_t {dv_name=n1, dv_typ=t1, dv_flags=flags, dv_scope=sc, dv_loc=loc}
-                        set_id_entry(n1, IdDVal(dv))
-                        val env1 = add_id_to_env(n, n1, env)
-                        (DefVal(PatTyped(PatIdent(n1, ploc), t1, ploc), e, flags, loc) :: eseq, env1)
-                    | _ =>
-                        (DefVal(p, e, flags, loc) :: eseq, env)
-                    }
+                    // Poison every name the pattern binds. With an explicit
+                    // annotation, poison with THAT type -- the §1.7 firewall:
+                    // callers keep checking against the declared type. Without
+                    // one, poison with TypErr so later uses are suppressed
+                    // (structural cascade suppression), not cascaded.
+                    val poison_t = match p {
+                        | PatTyped(_, t1, tloc) =>
+                            (try { check_typ(t1, env, sc, tloc) } catch { | CompileError(_, _) => TypErr })
+                        | _ => TypErr
+                        }
+                    val env1 = poison_pattern_vars(pat_skip_typed(p), poison_t, flags,
+                                                   sc, curr_m_idx, env)
+                    (DefVal(p, e, flags, loc) :: eseq, env1)
                 }
             | DefFun(df) =>
                 if idx == nexps - 1 && !is_glob_scope {
@@ -3134,7 +3238,25 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                 // return var to a concrete type for non-template functions.
                 val warn_rettype = Options.opt.W_implicit_rettype && has_implicit_rettype(df)
                 val df =
-                    if df->df_templ_args == [] { check_deffun(df, env) }
+                    if df->df_templ_args == [] {
+                        try { check_deffun(df, env) }
+                        catch {
+                        | CompileError(_, _) as err =>
+                            // Body failed. The function was registered in `env`
+                            // with its declared signature BEFORE the body check
+                            // (so recursion resolves) -- that pre-registration IS
+                            // the §1.7 firewall: callers keep checking against the
+                            // declared interface. If the return type was left to
+                            // inference and NO healthy branch pinned it, poison it
+                            // to TypErr so callers are structurally suppressed
+                            // rather than cascaded; a branch that DID typecheck
+                            // (e.g. an early `return 42`) has already resolved the
+                            // return type -- poison_result_typ leaves that intact.
+                            push_compile_err(err)
+                            poison_result_typ(df->df_typ)
+                            df
+                        }
+                    }
                     else {
                         // update environment of the template function
                         // to give it access to the above defined
@@ -4342,12 +4464,22 @@ fun check_cases( cases: (pat_t, exp_t) list, inptyp: typ_t, outtyp: typ_t,
 
     [:: for (p, e) <- cases {
         val case_sc = new_block_scope(curr_m_idx) :: sc
-        val (p1, env1, _, _, _) = check_pat(p, inptyp, env, empty_idset, empty_idset,
-                                                case_sc, false, false, false)
-        val (e1_typ, e1_loc) = get_exp_ctx(e)
-        unify(e1_typ, outtyp, e1_loc, "the case expression type does not \
-              match the whole expression type (or the type of previous case(s))")
-        (p1, check_exp(e, env1, case_sc))
+        // Per-arm error recovery (diag-1): a failure in one arm is reported and
+        // the loop moves on, so errors in sibling arms are found in the same
+        // run. A poisoned arm contributes no type to `outtyp` (the unify below
+        // ran against a fresh e1_typ that never bound it, or did not run at all),
+        // so the healthy arms determine the match result -- the same "jumping
+        // sibling" logic as throw/ctrlflow-1. The AST is discarded on error.
+        try {
+            val (p1, env1, _, _, _) = check_pat(p, inptyp, env, empty_idset, empty_idset,
+                                                    case_sc, false, false, false)
+            val (e1_typ, e1_loc) = get_exp_ctx(e)
+            unify(e1_typ, outtyp, e1_loc, "the case expression type does not \
+                  match the whole expression type (or the type of previous case(s))")
+            (p1, check_exp(e, env1, case_sc))
+        } catch {
+        | CompileError(_, _) as err => push_compile_err(err); (p, e)
+        }
     } ]
 }
 
