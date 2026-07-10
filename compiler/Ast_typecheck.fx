@@ -993,8 +993,72 @@ fun is_real_typ(t: typ_t) {
     !have_typ_vars
 }
 
+// diag-1: Levenshtein edit distance (two-row DP). Only ever called on the
+// error path (building a not-found diagnostic), so cost is irrelevant.
+fun edit_distance(a: string, b: string): int {
+    val la = a.length(), lb = b.length()
+    if la == 0 { lb }
+    else if lb == 0 { la }
+    else {
+        val prev = array(lb+1, 0), curr = array(lb+1, 0)
+        for j <- 0:lb+1 { prev[j] = j }
+        for i <- 1:la+1 {
+            curr[0] = i
+            val ai = a[i-1]
+            for j <- 1:lb+1 {
+                val cost = if ai == b[j-1] { 0 } else { 1 }
+                curr[j] = min(min(prev[j]+1, curr[j-1]+1), prev[j-1]+cost)
+            }
+            for j <- 0:lb+1 { prev[j] = curr[j] }
+        }
+        prev[lb]
+    }
+}
+
+// diag-1: up to two visible names closest to `n` within an edit-distance
+// threshold (scaled by length), as a "; did you mean 'x'?" tail -- gcc/clang
+// style. Empty when nothing is close. Skips the name itself and compiler
+// gensym/internal names (leading '_').
+fun suggest_similar(n: id_t, env: env_t): string {
+    val target = pp(n)
+    val tlen = target.length()
+    if tlen == 0 { "" }
+    else {
+        val thresh = if tlen <= 4 { 1 } else { 2 }
+        val cand = env.foldl(fun (key: id_t, _: env_entry_t list, acc: (int, string) list) {
+            val nm = pp(key)
+            if nm == target || nm == "" || nm.startswith("_") { acc }
+            else {
+                val d = edit_distance(target, nm)
+                if d <= thresh { (d, nm) :: acc } else { acc }
+            }
+        }, [])
+        // nearest first, then alphabetical; adjacent-dedup collapses the same
+        // name reached via several ids (equal distance -> adjacent after sort).
+        val cand = cand.sort(fun ((d1, s1): (int, string), (d2, s2): (int, string)) {
+            d1 < d2 || (d1 == d2 && s1 < s2) })
+        fun take2(l: (int, string) list, last: string, acc: string list): string list =
+            if acc.length() >= 2 { acc.rev() }
+            else {
+                match l {
+                | (_, nm) :: rest => if nm == last { take2(rest, last, acc) }
+                                     else { take2(rest, nm, nm :: acc) }
+                | [] => acc.rev()
+                }
+            }
+        match take2(cand, "", []) {
+        | [] => ""
+        | a :: [] => f"; did you mean '{a}'?"
+        | a :: b :: _ => f"; did you mean '{a}' or '{b}'?"
+        }
+    }
+}
+
 fun report_not_found(n: id_t, loc: loc_t) =
     compile_err(loc, f"the appropriate match for '{pp(n)}' is not found")
+
+fun report_not_found_env(n: id_t, env: env_t, loc: loc_t) =
+    compile_err(loc, f"the appropriate match for '{pp(n)}' is not found{suggest_similar(n, env)}")
 
 /* one-line explanation of why a function candidate does not accept the call:
    arity, keyword acceptance, or the first mismatching argument (tested with
@@ -1053,7 +1117,7 @@ fun fun_mismatch_reason(df: deffun_t ref, call_argtyps: typ_t list,
 }
 
 fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list,
-                           sc: scope_t list, loc: loc_t) {
+                           env: env_t, sc: scope_t list, loc: loc_t) {
     val nstr = pp(n)
     val call_argtyps_opt = match deref_typ(t) {
         | TypFun(argtyps, _) => Some(argtyps)
@@ -1076,11 +1140,17 @@ fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: env_entry_t list
                 f"'{nstr}: {typ2str(tj)}' defined at {locj}"
             }
         } ]
-    val candidates_msg =
-        if strs == [] { "" }
-        else { join_embrace("\nCandidates:\n\t", "\n", ",\n\t", strs) }
+    // With candidates, list them (name exists, the call does not match any).
+    // With none, the name is genuinely unknown -> offer an edit-distance
+    // "did you mean" over the visible names (diag-1).
+    val tail =
+        if strs != [] { "." + join_embrace("\nCandidates:\n\t", "\n", ",\n\t", strs) }
+        else {
+            val s = suggest_similar(n, env)
+            if s == "" { "." } else { s }
+        }
     compile_err(loc, f"the appropriate match for '{nstr}' of \
-                type '{typ2str(t)}' is not found.{candidates_msg}")
+                type '{typ2str(t)}' is not found{tail}")
 }
 
 fun find_first(n: id_t, env: env_t, env0: env_t, sc: scope_t list,
@@ -1432,7 +1502,7 @@ fun lookup_id(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): (id_
         | None =>
             match try_autogen_symbols(n, t, env, sc, loc) {
             | Some(nt1) => nt1
-            | _ => throw report_not_found_typed(n, t, possible_matches, sc, loc)
+            | _ => throw report_not_found_typed(n, t, possible_matches, env, sc, loc)
             }
         }
     }
@@ -1888,7 +1958,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | Some((f, t, _)) =>
                 ExpMem(new_e1, ExpIdent(f, (t, eloc)), ctx)
             | _ =>
-                throw report_not_found_typed(n2, etyp, candidates, sc, eloc)
+                throw report_not_found_typed(n2, etyp, candidates, env, sc, eloc)
             }
         | (TypExn, _, ExpIdent(n2, (etyp2, eloc2))) when n2 == std__tag__ =>
             unify(etyp, TypInt, eloc, "variant tag is integer, but the other type is expected")
