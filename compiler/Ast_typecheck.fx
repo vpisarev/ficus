@@ -993,28 +993,6 @@ fun is_real_typ(t: typ_t) {
     !have_typ_vars
 }
 
-// diag-1: Levenshtein edit distance (two-row DP). Only ever called on the
-// error path (building a not-found diagnostic), so cost is irrelevant.
-fun edit_distance(a: string, b: string): int {
-    val la = a.length(), lb = b.length()
-    if la == 0 { lb }
-    else if lb == 0 { la }
-    else {
-        val prev = array(lb+1, 0), curr = array(lb+1, 0)
-        for j <- 0:lb+1 { prev[j] = j }
-        for i <- 1:la+1 {
-            curr[0] = i
-            val ai = a[i-1]
-            for j <- 1:lb+1 {
-                val cost = if ai == b[j-1] { 0 } else { 1 }
-                curr[j] = min(min(prev[j]+1, curr[j-1]+1), prev[j-1]+cost)
-            }
-            for j <- 0:lb+1 { prev[j] = curr[j] }
-        }
-        prev[lb]
-    }
-}
-
 // diag-1: up to two visible names closest to `n` within an edit-distance
 // threshold (scaled by length), as a "; did you mean 'x'?" tail -- gcc/clang
 // style. Empty when nothing is close. Skips the name itself and compiler

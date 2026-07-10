@@ -24,6 +24,25 @@ type parser_ctx_t =
 
 var parser_ctx = parser_ctx_t { m_idx=-1, filename="", deps=[], inc_dirs=[], default_loc=noloc }
 
+// "did you mean" for a not-found imported module: the candidate hypotheses are
+// the *.fx files visible on the include path (each file name is a module name).
+// A misspelled stdlib import ('Strig' -> 'String') is a common error. The
+// alphabetical tie-break keeps the suggestion deterministic regardless of glob
+// order (golden stability). reform-prep-1.
+fun suggest_module(mname: string, inc_dirs: string list): string {
+    val tlen = mname.length()
+    val thresh = if tlen <= 4 { 1 } else { 2 }
+    val (best_d, best) =
+        fold (bd, b) = (thresh + 1, "") for d <- inc_dirs {
+            fold (bd, b) = (bd, b) for path <- Filename.glob(Filename.concat(d, "*.fx")) {
+                val nm = Filename.remove_extension(Filename.basename(path))
+                val dist = if nm == mname { bd + 1 } else { edit_distance(mname, nm) }
+                if dist < bd || (dist == bd && nm < b) { (dist, nm) } else { (bd, b) }
+            }
+        }
+    if tlen > 0 && best_d <= thresh && best != "" { f"; did you mean '{best}'?" } else { "" }
+}
+
 fun add_to_imported_modules(mname: id_t, loc: loc_t): int
 {
     val mfname = pp(mname)
@@ -38,7 +57,9 @@ fun add_to_imported_modules(mname: id_t, loc: loc_t): int
                 Filename.locate(Filename.concat(mfname, "init.fx"), parser_ctx.inc_dirs)
             }
             catch {
-            | NotFoundError => throw ParseError(loc, f"module {mname} is not found")
+            | NotFoundError =>
+                throw ParseError(loc, f"module {mname} is not found\
+                                       {suggest_module(pp(mname), parser_ctx.inc_dirs)}")
             }
         }
     var dirname = mfname
