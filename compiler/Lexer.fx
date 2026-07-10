@@ -503,7 +503,16 @@ fun make_lexer(strm: stream_t): (void -> (token_t, lloc_t) list)
                             } else {true}
                         } else {true}
                     new_exp = true
-                    RETURN(may_have_arg && c != ';')
+                    // a bare 'return' (no value) is recognized when the next
+                    // significant char cannot begin an expression: a statement
+                    // terminator ';', a newline outside of ()/[] (handled by
+                    // may_have_arg above), or a closing/separator token
+                    // '}' ')' ']' ',' '|' (e.g. '{ return }', 'return | ...' in
+                    // a match arm). Without this, the parser tried to read a
+                    // value and misreported "unexpected token '}'/'|'".
+                    val bare = c == ';' || c == '}' || c == ')' ||
+                               c == ']' || c == ',' || c == '|'
+                    RETURN(may_have_arg && !bare)
                 | (t, -1) =>
                     throw Lxu.LexerError(loc, f"Identifier '{ident}' is reserved and cannot be used")
                 | (t, 0) => check_ne(new_exp, loc, ident); new_exp = false; t

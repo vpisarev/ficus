@@ -1,0 +1,3 @@
+219_continue_in_arm_outside_loop.fx:3:39: error: cannot use 'continue' outside of loop
+
+1 errors occured during type checking.

@@ -641,9 +641,15 @@ fun set_id_entry(i: id_t, n: id_info_t)
 fun get_exp_ctx(e: exp_t)
 {
     | ExpNop(l) => (TypVoid, l)
-    | ExpBreak(_, l) => (TypVoid, l)
-    | ExpContinue(l) => (TypVoid, l)
-    | ExpReturn(_, l) => (TypVoid, l)
+    // break/continue/return never yield a value: like 'throw' (see ExpThrow
+    // below) they carry the pseudo-type TypErr, which unifies with any type.
+    // This lets a jumping arm/branch ('| _ => continue', 'if c {..} else {break}')
+    // sit beside value-producing siblings without forcing the whole
+    // match/if to 'void'. K-normalization lowers them to void K-nodes exactly
+    // as before, so codegen is unaffected.
+    | ExpBreak(_, l) => (TypErr, l)
+    | ExpContinue(l) => (TypErr, l)
+    | ExpReturn(_, l) => (TypErr, l)
     | ExpRange(_, _, _, c) => c
     | ExpLit(_, c) => c
     | ExpIdent(_, c) => c

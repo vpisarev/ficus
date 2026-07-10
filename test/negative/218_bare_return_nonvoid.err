@@ -1,0 +1,3 @@
+218_bare_return_nonvoid.fx:5:43: error: the return statement type void is inconsistent with the previously deduced type int of function f
+
+1 errors occured during type checking.

@@ -9133,7 +9133,7 @@ FX_EXTERN_C int _fx_M3AstFM11get_exp_ctxT2N10Ast__typ_tRM5loc_t1N10Ast__exp_t(
       }
       if (tag_0 == 2) {
          _fx_T2N10Ast__typ_tR10Ast__loc_t result_2 = {0};
-         _fx_make_T2N10Ast__typ_tR10Ast__loc_t(_fx_g12Ast__TypVoid, &e_2->u.ExpBreak.t1, &result_2);
+         _fx_make_T2N10Ast__typ_tR10Ast__loc_t(_fx_g11Ast__TypErr, &e_2->u.ExpBreak.t1, &result_2);
          _fx_free_T2N10Ast__typ_tR10Ast__loc_t(&result_0);
          _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(&result_2, &result_0);
          FX_BREAK(_fx_catch_1);
@@ -9144,7 +9144,7 @@ FX_EXTERN_C int _fx_M3AstFM11get_exp_ctxT2N10Ast__typ_tRM5loc_t1N10Ast__exp_t(
       }
       if (tag_0 == 3) {
          _fx_T2N10Ast__typ_tR10Ast__loc_t result_3 = {0};
-         _fx_make_T2N10Ast__typ_tR10Ast__loc_t(_fx_g12Ast__TypVoid, &e_2->u.ExpContinue, &result_3);
+         _fx_make_T2N10Ast__typ_tR10Ast__loc_t(_fx_g11Ast__TypErr, &e_2->u.ExpContinue, &result_3);
          _fx_free_T2N10Ast__typ_tR10Ast__loc_t(&result_0);
          _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(&result_3, &result_0);
          FX_BREAK(_fx_catch_2);
@@ -9155,7 +9155,7 @@ FX_EXTERN_C int _fx_M3AstFM11get_exp_ctxT2N10Ast__typ_tRM5loc_t1N10Ast__exp_t(
       }
       if (tag_0 == 4) {
          _fx_T2N10Ast__typ_tR10Ast__loc_t result_4 = {0};
-         _fx_make_T2N10Ast__typ_tR10Ast__loc_t(_fx_g12Ast__TypVoid, &e_2->u.ExpReturn.t1, &result_4);
+         _fx_make_T2N10Ast__typ_tR10Ast__loc_t(_fx_g11Ast__TypErr, &e_2->u.ExpReturn.t1, &result_4);
          _fx_free_T2N10Ast__typ_tR10Ast__loc_t(&result_0);
          _fx_copy_T2N10Ast__typ_tR10Ast__loc_t(&result_4, &result_0);
          FX_BREAK(_fx_catch_3);
