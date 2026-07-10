@@ -31,10 +31,20 @@ typedef struct _fx_Nt6option1S {
    } u;
 } _fx_Nt6option1S;
 
+typedef struct _fx_FPB2SS {
+   int (*fp)(fx_str_t*, fx_str_t*, bool*, void*);
+   fx_fcv_t* fcv;
+} _fx_FPB2SS;
+
 typedef struct _fx_Ta2S {
    fx_str_t t0;
    fx_str_t t1;
 } _fx_Ta2S;
+
+typedef struct _fx_T2A1SB {
+   fx_arr_t t0;
+   bool t1;
+} _fx_T2A1SB;
 
 typedef struct {
    int_ rc;
@@ -96,7 +106,28 @@ static void _fx_make_Ta2S(fx_str_t* t0, fx_str_t* t1, struct _fx_Ta2S* fx_result
    fx_copy_str(t1, &fx_result->t1);
 }
 
+static void _fx_free_T2A1SB(struct _fx_T2A1SB* dst)
+{
+   fx_free_arr(&dst->t0);
+}
+
+static void _fx_copy_T2A1SB(struct _fx_T2A1SB* src, struct _fx_T2A1SB* dst)
+{
+   fx_copy_arr(&src->t0, &dst->t0);
+   dst->t1 = src->t1;
+}
+
+static void _fx_make_T2A1SB(fx_arr_t* t0, bool t1, struct _fx_T2A1SB* fx_result)
+{
+   fx_copy_arr(t0, &fx_result->t0);
+   fx_result->t1 = t1;
+}
+
 _fx_Nt6option1S _fx_g14Filename__None = { 1 };
+FX_EXTERN_C int_ _fx_F7__cmp__i2SS(fx_str_t*, fx_str_t*, void*);
+
+static int _fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(int_, int_, fx_arr_t*, struct _fx_FPB2SS*, int_, void*);
+
 FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
 
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t*, fx_str_t*, void*);
@@ -113,6 +144,240 @@ FX_EXTERN_C void _fx_M8FilenameFM4SomeNt6option1S1S(fx_str_t* arg0, struct _fx_N
 {
    fx_result->tag = 2;
    fx_copy_str(arg0, &fx_result->u.Some);
+}
+
+FX_EXTERN_C int _fx_M8FilenameFM6__lt__B2SS(fx_str_t* a_0, fx_str_t* b_0, bool* fx_result, void* fx_fv)
+{
+   int fx_status = 0;
+   int_ v_0 = _fx_F7__cmp__i2SS(a_0, b_0, 0);
+   *fx_result = v_0 < 0;
+   return fx_status;
+}
+
+FX_EXTERN_C void _fx_M8FilenameFM6_swap_v3A1Sii(fx_arr_t* arr, int_ i, int_ j, void* fx_fv)
+{
+   
+size_t esz = arr->dim[0].step;
+    if(esz % sizeof(int) == 0) {
+        int* ptr0 = (int*)(arr->data + i*esz);
+        int* ptr1 = (int*)(arr->data + j*esz);
+        esz /= sizeof(int);
+        for( size_t k = 0; k < esz; k++ ) {
+            int t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    } else {
+        char* ptr0 = arr->data + i*esz;
+        char* ptr1 = arr->data + j*esz;
+        for( size_t k = 0; k < esz; k++ ) {
+            char t0 = ptr0[k], t1 = ptr1[k];
+            ptr0[k] = t1; ptr1[k] = t0;
+        }
+    }
+
+}
+
+FX_EXTERN_C int _fx_M8FilenameFM4sortv3A1SFPB2SSi(fx_arr_t* arr_0, struct _fx_FPB2SS* lt_0, int_ prefix_0, void* fx_fv)
+{
+   int fx_status = 0;
+   FX_CALL(_fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(0, FX_ARR_SIZE(*arr_0, 0) - 1, arr_0, lt_0, prefix_0, 0), _fx_cleanup);
+
+_fx_cleanup: ;
+   return fx_status;
+}
+
+static int _fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(
+   int_ lo_0,
+   int_ hi_0,
+   fx_arr_t* arr_0,
+   struct _fx_FPB2SS* lt_0,
+   int_ prefix_0,
+   void* fx_fv)
+{
+   int fx_status = 0;
+   FX_CALL(fx_check_stack(), _fx_cleanup);
+   int_ lo_1 = lo_0;
+   int_ hi_1 = hi_0;
+   for (;;) {
+      fx_str_t a_0 = {0};
+      fx_str_t b_0 = {0};
+      fx_str_t p_0 = {0};
+      fx_str_t p_1 = {0};
+      fx_str_t a_1 = {0};
+      fx_str_t a_2 = {0};
+      fx_str_t b_1 = {0};
+      int_ lo_2 = lo_1;
+      int_ hi_2 = hi_1;
+      if (lo_2 + 1 < hi_2) {
+         int_ m_0 = (lo_2 + hi_2) / 2;
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, lo_2), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, lo_2), &a_0);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, m_0), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, m_0), &b_0);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, hi_2), &p_0);
+         bool v_0;
+         FX_CALL(lt_0->fp(&a_0, &b_0, &v_0, lt_0->fcv), _fx_catch_2);
+         if (v_0) {
+            bool v_1;
+            FX_CALL(lt_0->fp(&b_0, &p_0, &v_1, lt_0->fcv), _fx_catch_2);
+            if (v_1) {
+               FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, m_0), _fx_catch_2);
+               fx_str_t* v_2 = FX_PTR_1D(fx_str_t, *arr_0, m_0);
+               FX_FREE_STR(v_2);
+               fx_copy_str(&p_0, v_2);
+               fx_copy_str(&b_0, &p_1);
+            }
+            else {
+               bool v_3;
+               FX_CALL(lt_0->fp(&a_0, &p_0, &v_3, lt_0->fcv), _fx_catch_2);
+               if (v_3) {
+                  fx_copy_str(&p_0, &p_1);
+               }
+               else {
+                  FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, lo_2), _fx_catch_2);
+                  fx_str_t* v_4 = FX_PTR_1D(fx_str_t, *arr_0, lo_2);
+                  FX_FREE_STR(v_4);
+                  fx_copy_str(&p_0, v_4);
+                  fx_copy_str(&a_0, &p_1);
+               }
+            }
+         }
+         else {
+            bool v_5;
+            FX_CALL(lt_0->fp(&a_0, &p_0, &v_5, lt_0->fcv), _fx_catch_2);
+            if (v_5) {
+               FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, lo_2), _fx_catch_2);
+               fx_str_t* v_6 = FX_PTR_1D(fx_str_t, *arr_0, lo_2);
+               FX_FREE_STR(v_6);
+               fx_copy_str(&p_0, v_6);
+               fx_copy_str(&a_0, &p_1);
+            }
+            else {
+               bool v_7;
+               FX_CALL(lt_0->fp(&b_0, &p_0, &v_7, lt_0->fcv), _fx_catch_2);
+               if (v_7) {
+                  fx_copy_str(&p_0, &p_1);
+               }
+               else {
+                  FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, m_0), _fx_catch_2);
+                  fx_str_t* v_8 = FX_PTR_1D(fx_str_t, *arr_0, m_0);
+                  FX_FREE_STR(v_8);
+                  fx_copy_str(&p_0, v_8);
+                  fx_copy_str(&b_0, &p_1);
+               }
+            }
+         }
+         int_ __fold_result___0 = lo_2;
+         int_ n_0 = FX_LOOP_COUNT(lo_2, hi_2, 1);
+         for (int_ j_0 = 0; j_0 < n_0; j_0++) {
+            fx_str_t v_9 = {0};
+            int_ j_1 = lo_2 + j_0 * 1;
+            int_ i0_0 = __fold_result___0;
+            FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, j_1), _fx_catch_0);
+            fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, j_1), &v_9);
+            bool v_10;
+            FX_CALL(lt_0->fp(&v_9, &p_1, &v_10, lt_0->fcv), _fx_catch_0);
+            int_ v_11;
+            if (v_10) {
+               _fx_M8FilenameFM6_swap_v3A1Sii(arr_0, i0_0, j_1, 0); v_11 = i0_0 + 1;
+            }
+            else {
+               v_11 = i0_0;
+            }
+            __fold_result___0 = v_11;
+
+         _fx_catch_0: ;
+            FX_FREE_STR(&v_9);
+            FX_CHECK_EXN(_fx_catch_2);
+         }
+         int_ i0_1 = __fold_result___0;
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, i0_1), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, i0_1), &a_1);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
+         fx_str_t* v_12 = FX_PTR_1D(fx_str_t, *arr_0, hi_2);
+         FX_FREE_STR(v_12);
+         fx_copy_str(&a_1, v_12);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, i0_1), _fx_catch_2);
+         fx_str_t* v_13 = FX_PTR_1D(fx_str_t, *arr_0, i0_1);
+         FX_FREE_STR(v_13);
+         fx_copy_str(&p_1, v_13);
+         int_ i1_0 = hi_2;
+         int_ n_1 = FX_LOOP_COUNT(i0_1, hi_2, 1);
+         for (int_ j_2 = 0; j_2 < n_1; j_2++) {
+            fx_str_t v_14 = {0};
+            int_ j_3 = i0_1 + j_2 * 1;
+            int_ v_15 = j_3 + 1;
+            FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, v_15), _fx_catch_1);
+            fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, v_15), &v_14);
+            bool v_16;
+            FX_CALL(lt_0->fp(&p_1, &v_14, &v_16, lt_0->fcv), _fx_catch_1);
+            if (v_16) {
+               i1_0 = j_3; FX_BREAK(_fx_catch_1);
+            }
+
+         _fx_catch_1: ;
+            FX_FREE_STR(&v_14);
+            FX_CHECK_BREAK();
+            FX_CHECK_EXN(_fx_catch_2);
+         }
+         if (i0_1 - lo_2 < hi_2 - i1_0) {
+            if (i1_0 < prefix_0) {
+               FX_CALL(_fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(i1_0 + 1, hi_2, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
+            }
+            lo_1 = lo_2;
+            hi_1 = i0_1 - 1;
+         }
+         else {
+            FX_CALL(_fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(lo_2, i0_1 - 1, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
+            if (i1_0 < prefix_0) {
+               lo_1 = i1_0 + 1; hi_1 = hi_2;
+            }
+            else {
+               FX_BREAK(_fx_catch_2);
+            }
+         }
+      }
+      else if (lo_2 < hi_2) {
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, lo_2), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, lo_2), &a_2);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, hi_2), &b_1);
+         bool v_17;
+         FX_CALL(lt_0->fp(&b_1, &a_2, &v_17, lt_0->fcv), _fx_catch_2);
+         if (v_17) {
+            FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
+            fx_str_t* v_18 = FX_PTR_1D(fx_str_t, *arr_0, hi_2);
+            FX_FREE_STR(v_18);
+            fx_copy_str(&a_2, v_18);
+            FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, lo_2), _fx_catch_2);
+            fx_str_t* v_19 = FX_PTR_1D(fx_str_t, *arr_0, lo_2);
+            FX_FREE_STR(v_19);
+            fx_copy_str(&b_1, v_19);
+            FX_BREAK(_fx_catch_2);
+         }
+         else {
+            FX_BREAK(_fx_catch_2);
+         }
+      }
+      else {
+         FX_BREAK(_fx_catch_2);
+      }
+
+   _fx_catch_2: ;
+      FX_FREE_STR(&b_1);
+      FX_FREE_STR(&a_2);
+      FX_FREE_STR(&a_1);
+      FX_FREE_STR(&p_1);
+      FX_FREE_STR(&p_0);
+      FX_FREE_STR(&b_0);
+      FX_FREE_STR(&a_0);
+      FX_CHECK_BREAK();
+      FX_CHECK_EXN(_fx_cleanup);
+   }
+
+_fx_cleanup: ;
+   return fx_status;
 }
 
 FX_EXTERN_C int _fx_M8FilenameFM7dir_sepS0(fx_str_t* fx_result, void* fx_fv)
@@ -606,6 +871,106 @@ _fx_cleanup: ;
    FX_FREE_STR(&v_0);
    FX_FREE_STR(&sep_0);
    FX_FREE_STR(&v_1);
+   return fx_status;
+}
+
+FX_EXTERN_C int _fx_M8FilenameFM5glob_T2A1SB2SA1S(
+   fx_str_t* pattern,
+   fx_arr_t* strarr,
+   struct _fx_T2A1SB* fx_result,
+   void* fx_fv)
+{
+   
+fx_cstr_t cpattern;
+        int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
+        if (fx_status < 0) return fx_status;
+#if defined _WIN32 || defined WINCE
+        fx_result->t1 = false;
+        int_ i, capacity = 0, nentries = 0;
+        fx_str_t* buf = 0, *newbuf = 0;
+        struct _finddata_t fd;
+        intptr_t h = _findfirst(cpattern.data, &fd);
+        fx_free_cstr(&cpattern);
+        if (h == -1L) {
+            if (errno == ENOENT)
+                return FX_OK;
+            FX_FAST_THROW_RET(FX_EXN_IOError);
+        }
+        for(;;) {
+            if (nentries >= capacity) {
+                capacity *= 2;
+                if (capacity < 256) capacity = 256;
+                newbuf = (fx_str_t*)fx_realloc(buf, capacity*sizeof(buf[0]));
+                if (!newbuf) {
+                    FX_SET_EXN_FAST(FX_EXN_OutOfMemError);
+                    break;
+                }
+                buf = newbuf;
+            }
+            fx_status = fx_cstr2str(fd.name, -1, buf + nentries);
+            if (fx_status < 0) break;
+            nentries++;
+            if (_findnext(h, &fd) != 0)
+                break;
+        }
+        _findclose(h);
+        if (fx_status >= 0) {
+            fx_status = fx_make_arr(1, &nentries, sizeof(fx_str_t), strarr->free_elem, strarr->copy_elem, 0, &fx_result->t0);
+            if (fx_status >= 0) {
+                memcpy(fx_result->t0.data, buf, nentries*sizeof(buf[0]));
+                nentries = 0;
+            }
+        }
+        for (i = 0; i < nentries; i++)
+            fx_free_str(buf + i);
+        fx_free(buf);
+#else
+        fx_result->t1 = true;
+        glob_t globbuf;
+        globbuf.gl_offs = 0;
+        int glob_err = glob(cpattern.data, GLOB_TILDE, NULL, &globbuf);
+        int_ nentries = (int_)globbuf.gl_pathc;
+        fx_free_cstr(&cpattern);
+        if (glob_err != 0) {
+            if (glob_err == GLOB_NOMATCH)
+                return FX_OK;
+            FX_FAST_THROW_RET(FX_EXN_IOError);
+        }
+        fx_status = fx_make_arr(1, &nentries, sizeof(fx_str_t), strarr->free_elem, strarr->copy_elem, 0, &fx_result->t0);
+        if (fx_status >= 0) {
+            fx_str_t* data = (fx_str_t*)(fx_result->t0.data);
+            for(int_ i = 0; i < nentries && fx_status >= 0; i++, data++) {
+                fx_status = fx_cstr2str(globbuf.gl_pathv[i], -1, data);
+            }
+        }
+        globfree(&globbuf);
+#endif
+        return fx_status;
+
+}
+
+FX_EXTERN_C int _fx_M8FilenameFM4globA1S1S(fx_str_t* pattern_0, fx_arr_t* fx_result, void* fx_fv)
+{
+   fx_arr_t z_0 = {0};
+   _fx_T2A1SB v_0 = {0};
+   fx_arr_t files_0 = {0};
+   _fx_FPB2SS __lt___0 = {0};
+   int fx_status = 0;
+   FX_CALL(_fx_M8FilenameFM5glob_T2A1SB2SA1S(pattern_0, &z_0, &v_0, 0), _fx_cleanup);
+   fx_copy_arr(&v_0.t0, &files_0);
+   bool sorted_0 = v_0.t1;
+   if (!sorted_0) {
+      _fx_FPB2SS __lt___fp_0 = { _fx_M8FilenameFM6__lt__B2SS, 0 };
+      FX_COPY_FP(&__lt___fp_0, &__lt___0);
+      FX_CALL(_fx_M8FilenameFM4sortv3A1SFPB2SSi(&files_0, &__lt___0, FX_ARR_SIZE(files_0, 0), 0), _fx_cleanup);
+   }
+   fx_copy_arr(&files_0, fx_result);
+
+_fx_cleanup: ;
+   FX_FREE_ARR(&z_0);
+   _fx_free_T2A1SB(&v_0);
+   FX_FREE_ARR(&files_0);
+   FX_FREE_FP(&__lt___0);
    return fx_status;
 }
 
