@@ -7,16 +7,16 @@
 - [ ] new syntax for fold: `fold acc = 0 for x <- arr {acc + x}` => `fold acc = 0 for x <- arr {acc += x}`
 - [ ] add syntax to append elements to lists, vectors during fold?
       We already have runtime support for vector writers for vector comprehensions,
-      maybe need to add list writer as well. E.g. `fold val l = [] for x <- 1:n {if isprime(n) {l+=x}}`.
+      maybe need to add list writer as well. E.g. `fold val l = [] for x <- 1:n {if isprime(n) {l++=x}}`.
       It partially duplicates list comprehensions, but fold is more universal.
       In fact, list comprehensions can then be converted to just fold's that are,
       in their turn, are converted to simple loops.
 - [ ] because of new syntax for generic types, we can get rid of `(x :> new_type)` type cast syntax and switch to normal `new_type(x)`.
-- [ ] currently we use Matlab-style .op for elemwise-operations, but it looks weird
+- [ ] ~~currently we use Matlab-style .op for elemwise-operations, but it looks weird
       sometimes for those who are not familiar with Matlab. Shall we drop all .op
       operations and use Python-style `@` for matrix multiplication? We also use `@` for
       preprocessor in Ficus, but we should be able to differentiate between binary `@`,
-      unary `@` in front of macros and macro interpolation `@{...}`.
+      unary `@` in front of macros and macro interpolation `@{...}`.~~
 - [x] (turned out to be a misdiagnosis: unescaped `f"{find("x")}"` always worked; only the C/Python-style
       escaped `f"{find(\"x\")}"` fails, with a misleading error. Locked by `basic.fstring_nested_literals`.)
       ~~not quite a new syntax: support string literals inside f-strings interpolations (see CLAUDE.md)~~
@@ -41,14 +41,14 @@
       // @for is a representation of `for p1 <- e1, ..., pn <- en {body}` statement parameterized by the body type.
       // It has .clauses (list of (pattern, expression) tuples) and .body (expression) members
       // @gensym(prefix) generates unique symbol starting with the specified prefix
-      macro sum[t](for_: @for[t], ~init: t = t(0)):t {
-         fold @gensym(s) = init for for_.clauses {s += for_.body}
+      macro sum[t](for_: @for[t], ~initval: t = t(0)):t {
+         fold s = initval for for_.clauses {s += for_.body}
       }
 
       macro EXPECT_EQ[t](a: t, b: t): void = EXPECT_EQ_(a, b, @string(a), @string(b), @file, @line)
       ```
 - [ ] get rid of `` `...` `` notation. See macros above.
-- [ ] do we want a ternary selection operator? `(a ? b : c)` (we now use `if(a) {b} else {c}`)
+- [ ] ~~do we want a ternary selection operator? `(a ? b : c)` (we now use `if(a) {b} else {c}`)~~
 - [ ] support variadic functions, e.g. `println(a, b, c)`; `max(a, b, c, d)`.
       Almost the same syntax as with variadic tuples, just without `()` around `...` or `t ...`.
       This variadic parameter should be the last non-keyword parameter.
@@ -107,7 +107,8 @@
       e.g. for OpenCV bindings. Maybe we need to add `tensor` type that is a black box, sitting in CPU, GPU or NPU memory and
       there is a set of operations on it (with fusion etc.)
 - [ ] try to accept `(op)` everywhere where `__opname__` is accepted, e.g. `Complex.(*)(a, b)`
-- [ ] (maybe not) introduce infix `++` as concatenation operator. This should solve several problems with incorrect typing.
+- [ ] introduce infix `++` as concatenation operator. `some_list ++ another_list`, `some_vec ++= 5 // push_back`.
+      `+` will be kept as synonym of concatenation for strings, lists, vectors.
 - [ ] revise uniform containers and their names. We now have:
     * arrays (`'t [,,]` => `t [,,]`; `t`, if not a concrete type, will be specified separately as a template parameter).
     * lists (`'t list` => `list[t]`)
@@ -174,9 +175,9 @@
 
 # Convenience stuff:
 
-- [ ] better diagnostic of errors. This is too generic request, some details are needed.
+- [x] better diagnostic of errors. This is too generic request, some details are needed.
   - [ ] for example, when a reserved name/keyword is used as identifier
-- [ ] more convenient error messages, similar to gcc/clang or other compilers when we display code
+- [x] more convenient error messages, similar to gcc/clang or other compilers when we display code
       line and put `^` mark below it where the error occured
 - [x] (added `tools/update_compiler.py`) regenerate bootstrap sources with a special compiler key or
       at least some python script (tools/update_compiler.py?)

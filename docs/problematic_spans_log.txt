@@ -1,0 +1,194 @@
+reform-prep-1 — span audit log
+==============================
+For each syntax construct scheduled for the reform, a minimal program that
+triggers a diagnostic on or near the construct, plus the compiler's output with
+the caret excerpt. This shows what source span each construct currently gets.
+
+Legend: the "N | ... / | ^~~~" lines are the compiler's own caret rendering.
+A caret under the offending TOKEN is good; the questions are (a) does it land on
+the right thing, and (b) for the migrator, does the whole CONSTRUCT get a span.
+
+
+================================================================================
+FOLD — error inside the fold body
+================================================================================
+--- source (fold_body.fx): ------------------------------------------------
+val s = fold acc = 0 for x <- [1,2,3] {acc + undefined_in_fold}
+println(s)
+--- ficus -no-c  output: ---------------------------------------------------
+fold_body.fx:1:46: error: the appropriate match for 'undefined_in_fold' of type '<unknown>' is not found.
+ 1 | val s = fold acc = 0 for x <- [1,2,3] {acc + undefined_in_fold}
+   |                                              ^~~~~~~~~~~~~~~~~
+fold_body.fx:2:9: error: the appropriate match for 's' of type '<unknown>' is not found.
+ 2 | println(s)
+   |         ^
+
+2 errors occured during type checking.
+
+================================================================================
+FOLD — whole-fold result type mismatch (points where?)
+================================================================================
+--- source (fold_result.fx): ------------------------------------------------
+val s: string = fold acc = 0 for x <- [1,2,3] {acc + x}
+println(s)
+--- ficus -no-c  output: ---------------------------------------------------
+fold_result.fx:1:22: error: incorrect type of value '__fold_result__': expected='string', actual='int'
+ 1 | val s: string = fold acc = 0 for x <- [1,2,3] {acc + x}
+   |                      ^~~
+fold_result.fx:2:9: error: the appropriate match for 's' of type '<unknown>' is not found.
+ 2 | println(s)
+   |         ^
+
+2 errors occured during type checking.
+
+================================================================================
+.op (elementwise) — error on an operand of .*
+================================================================================
+--- source (op_operand.fx): ------------------------------------------------
+val a = [1.0, 2.0, 3.0]
+val c = a .* undefined_op
+println(c)
+--- ficus -no-c  output: ---------------------------------------------------
+op_operand.fx:2:14: error: the appropriate match for 'undefined_op' of type '<unknown>' is not found.
+ 2 | val c = a .* undefined_op
+   |              ^~~~~~~~~~~~
+
+1 errors occured during type checking.
+
+================================================================================
+.op (elementwise) — type mismatch on .* itself (points where?)
+================================================================================
+--- source (op_mismatch.fx): ------------------------------------------------
+val a = [1.0, 2.0, 3.0]
+val c = a .* "not an array"
+println(c)
+--- ficus -no-c  output: ---------------------------------------------------
+/home/vpisarev/work/ficus/lib/Array.fx:90:20: error: the appropriate match for '__dot_mul__' of type '((double, string) -> <unknown>)' is not found.
+Candidates:
+	__dot_mul__(('t ...), 'ts) -> ('t3 ...) [generic: 't, 'ts, 't3, __var_tuple__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:636:1 -- argument 1 of type 'double' does not match '('t ...)',
+	__dot_mul__('ts, ('t ...)) -> ('t3 ...) [generic: 't, 'ts, 't3, __var_tuple__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:638:1 -- argument 2 of type 'string' does not match '('t ...)',
+	__dot_mul__(('t1 ...), ('t2 ...)) -> ('t3 ...) [generic: 't3, 't1, 't2, __var_tuple__] @ /home/vpisarev/work/ficus/lib/Builtins.fx:644:1 -- argument 1 of type 'double' does not match '('t1 ...)',
+	__dot_mul__('ta [+], 'tb) -> 't3 [+] [generic: 't3, 'ta, 'tb, __var_array__] @ /home/vpisarev/work/ficus/lib/Array.fx:89:1 -- argument 1 of type 'double' does not match ''ta [+]',
+	__dot_mul__('ta, 'tb [+]) -> 't3 [+] [generic: 't3, 'ta, 'tb, __var_array__] @ /home/vpisarev/work/ficus/lib/Array.fx:102:1 -- argument 2 of type 'string' does not match ''tb [+]',
+	__dot_mul__('ta [+], 'tb [+]) -> 't3 [+] [generic: 't3, 'ta, 'tb, __var_array__] @ /home/vpisarev/work/ficus/lib/Array.fx:119:1 -- argument 1 of type 'double' does not match ''ta [+]',
+	__dot_mul__('t1 vector, 't2 vector) -> 't3 vector [generic: 't3, 't1, 't2] @ /home/vpisarev/work/ficus/lib/Vector.fx:14:1 -- argument 1 of type 'double' does not match ''t1 vector',
+	__dot_mul__('t vector, 't) -> 't vector [generic: 't] @ /home/vpisarev/work/ficus/lib/Vector.fx:15:1 -- argument 1 of type 'double' does not match ''t vector',
+	__dot_mul__('t, 't vector) -> 't vector [generic: 't] @ /home/vpisarev/work/ficus/lib/Vector.fx:16:1 -- argument 2 of type 'string' does not match ''t vector'
+
+ 90 |     [for x <- a {x .* b}]
+    |                    ^~
+	when instantiating '__dot_mul__' at op_mismatch.fx:2:11
+
+1 errors occured during type checking.
+
+================================================================================
+backtick — error inside the backtick form
+================================================================================
+--- source (bt_inside.fx): ------------------------------------------------
+val a = [1.0, 2.0; 3.0, 4.0]
+val c = `a * undefined_inside`
+println(c)
+--- ficus -no-c  output: ---------------------------------------------------
+bt_inside.fx:2:14: error: the appropriate match for 'undefined_inside' of type '<unknown>' is not found.
+ 2 | val c = `a * undefined_inside`
+   |              ^~~~~~~~~~~~~~~~
+
+1 errors occured during type checking.
+
+================================================================================
+backtick — whole-backtick result type mismatch (points where?)
+================================================================================
+--- source (bt_result.fx): ------------------------------------------------
+val a = [1.0, 2.0; 3.0, 4.0]
+val c: string = `a * a`
+println(c)
+--- ficus -no-c  output: ---------------------------------------------------
+bt_result.fx:2:17: error: improper type of tuple elements or the number of elements
+ 2 | val c: string = `a * a`
+   |                 ^
+
+1 errors occured during type checking.
+
+================================================================================
+TYPE NAME — unknown type in a val annotation (caret lands on ':' not the type)
+================================================================================
+--- source (typ_annot.fx): ------------------------------------------------
+val x: undefined_type = 5
+println(x)
+--- ficus -no-c  output: ---------------------------------------------------
+typ_annot.fx:1:6: error: the appropriate match for 'undefined_type' is not found
+ 1 | val x: undefined_type = 5
+   |      ^
+
+1 errors occured during type checking.
+
+================================================================================
+'t / TYPE NAME — unknown type in a generic signature (caret on ':' not the name)
+================================================================================
+--- source (typ_sig.fx): ------------------------------------------------
+fun f(x: 't, y: nosuchtype): 't = x
+println(f(5, 6))
+--- ficus -no-c  output: ---------------------------------------------------
+typ_sig.fx:1:15: error: the appropriate match for 'nosuchtype' is not found
+ 1 | fun f(x: 't, y: nosuchtype): 't = x
+   |               ^
+
+1 errors occured during type checking.
+
+================================================================================
+TYPE EXPR — unknown type inside a compound type ('nosuch list')
+================================================================================
+--- source (typ_nested.fx): ------------------------------------------------
+val v: nosuch list = []
+println(v)
+--- ficus -no-c  output: ---------------------------------------------------
+typ_nested.fx:1:6: error: the appropriate match for 'nosuch' is not found
+ 1 | val v: nosuch list = []
+   |      ^
+
+1 errors occured during type checking.
+
+================================================================================
+NOTES (plain text, per category)
+================================================================================
+
+FOLD:
+  - An error INSIDE the fold body lands on the offending sub-expression with a
+    correct token span. Good for diagnostics.
+  - For the imperative-fold MIGRATOR: it needs the span of the WHOLE
+    'fold ... for ... {...}' form (to replace it). That whole-construct span is
+    NOT what an inner error shows; it must be read from the fold node's own loc,
+    which is not yet confirmed to cover the whole form (likely partial).
+
+.op (elementwise):
+  - Error on an operand lands correctly (token span).
+  - For the '.op -> plain op / @ matmul' MIGRATOR: it needs the position of the
+    OPERATOR TOKEN itself ('.*', '.+', ...) to rewrite just that token. The
+    operator token has a span now (WP-1a), but the ExpBinary node stores the
+    operator KIND, not a separate loc for the operator token -- so the exact
+    '.*' position is not directly available from the node. Needs attention.
+
+backtick:
+  - Error inside the backtick lands correctly.
+  - For the 'remove backtick' MIGRATOR: it needs the span of the backtick
+    delimiters / the whole `...` form. Backticks are desugared during parsing,
+    so the delimiter positions may be lost by the time the AST is built.
+
+'t / TYPE NAMES / TYPE EXPRESSIONS  <-- the biggest gap:
+  - A type error (unknown type name) does NOT point at the type name: the caret
+    lands on the preceding ':' (a single point), because typ_t carries NO source
+    location. Types are structural and loc-less in the AST.
+  - Consequence: the 't -> [t] reform and the type-name renames (half -> fp16,
+    vector, Dynvec.t) CANNOT locate type occurrences via AST spans. A span-based
+    migrator would need either (a) token-level scanning for these, or (b) adding
+    source locations to typ_t (a real change).
+
+SUMMARY:
+  - Token-level spans (WP-1a) work everywhere: identifiers, operators, keywords
+    all get their full width, and sub-expression errors point precisely.
+  - Construct/NODE-level spans are partial for the reform targets. Ranked by
+    difficulty for a span-based migrator:
+      1. TYPES ('t, type names) -- loc-less, the hard one.
+      2. .op operator token -- kind stored, not a token loc.
+      3. backtick delimiters -- desugared early.
+      4. fold whole-form extent -- needs the fold node loc confirmed/folded.

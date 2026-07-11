@@ -66,15 +66,7 @@ excerpt**; the T3 harness compares excerpt lines verbatim — use
 **Spans (reform-prep-1).** `loc_t` is a true span now, not a point: the lexer
 returns each batch's `(begin, end)` and the parser stamps every token with it,
 so a caret shows the token width (`^~~~`) and `loclist2loc` folds real node
-spans. Diagnostics point at the NAME: a function's own errors at its name (not
-`fun`), an unknown import at the whole (dotted) module name (with a
-Levenshtein module `did you mean`, candidates globbed from the include path),
-parse errors now carry carets too. Helper `consumed_loc(before, after)` folds a
-node's span out to the end of a sub-parser that returns no loc. **Gotcha
-(FB-020): `typ_t` carries NO source location** — type-name diagnostics land on
-the preceding `:`, and a span-based migrator cannot locate type occurrences
-(`'t`, `half`, `vector`) via the AST. `docs/problematic_spans_log.txt` audits
-which reform constructs have usable spans.
+spans. **Gotcha (FB-020): `typ_t` carries NO source location**.
 
 ## Writing Ficus (.fx) — gotchas
 
