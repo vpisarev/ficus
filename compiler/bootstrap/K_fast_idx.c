@@ -4742,14 +4742,14 @@ FX_EXTERN_C int_ _fx_M10K_fast_idxFM6lengthi1LT3N14K_form__kexp_tLT2R9Ast__id_tN
    struct _fx_LT3N14K_form__kexp_tLT2R9Ast__id_tN13K_form__dom_tLR9Ast__id_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M10K_fast_idxFM6lengthi1LN13K_form__dom_t(struct _fx_LN13K_form__dom_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -5496,7 +5496,7 @@ FX_EXTERN_C bool _fx_M10K_fast_idxFM8__same__B2LN14K_form__atom_tLN14K_form__ato
    struct _fx_LN14K_form__atom_t_data_t* b,
    void* fx_fv)
 {
-   
+
 return a == b;
 
 }
@@ -5506,7 +5506,7 @@ FX_EXTERN_C bool _fx_M10K_fast_idxFM8__same__B2LT2R9Ast__id_tN14K_form__ktyp_tLT
    struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* b,
    void* fx_fv)
 {
-   
+
 return a == b;
 
 }
@@ -5516,7 +5516,7 @@ FX_EXTERN_C bool _fx_M10K_fast_idxFM8__same__B2LN14K_form__ktyp_tLN14K_form__kty
    struct _fx_LN14K_form__ktyp_t_data_t* b,
    void* fx_fv)
 {
-   
+
 return a == b;
 
 }
@@ -10998,4 +10998,3 @@ FX_EXTERN_C void fx_deinit_K_fast_idx(void)
 {
 
 }
-

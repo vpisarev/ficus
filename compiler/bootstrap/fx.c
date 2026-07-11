@@ -607,4 +607,3 @@ int main(int argc, char** argv)
   fx_deinit_Builtins();
   return fx_deinit(fx_status);
 }
-

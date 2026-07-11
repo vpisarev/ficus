@@ -1079,7 +1079,7 @@ FX_EXTERN_C void _fx_M5LexerFM4SomeNt6option1R8format_t1R8format_t(
 
 FX_EXTERN_C int_ _fx_M5LexerFM6lengthi1LT2ST2N14Lexer__token_ti(struct _fx_LT2ST2N14Lexer__token_ti_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -1090,7 +1090,7 @@ FX_EXTERN_C void _fx_M5LexerFM5link2LT2N14Lexer__token_tTa2i2LT2N14Lexer__token_
    struct _fx_LT2N14Lexer__token_tTa2i_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -1137,7 +1137,7 @@ FX_EXTERN_C void _fx_M5LexerFM5link2LN14Lexer__token_t2LN14Lexer__token_tLN14Lex
    struct _fx_LN14Lexer__token_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -6540,4 +6540,3 @@ FX_EXTERN_C void fx_deinit_Lexer(void)
       _fx_free_Nt10Hashmap__t2ST2N14Lexer__token_ti(&_fx_g21Lexer__ficus_keywords);
    }
 }
-

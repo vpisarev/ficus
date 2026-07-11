@@ -5808,7 +5808,6 @@ FX_EXTERN_C int _fx_M4C_ppFM20pprint_top_to_stringS1LN15C_form__cstmt_t(
    _fx_catch_0: ;
       FX_CHECK_EXN(_fx_cleanup);
    }
-   FX_CALL(_fx_M2PPFM7newlinev1RM1t(&pp_0, 0), _fx_cleanup);
    FX_CALL(_fx_M2PPFM3endv1RM1t(&pp_0, 0), _fx_cleanup);
    FX_CALL(_fx_M2PPFM5flushv1RM1t(&pp_0, 0), _fx_cleanup);
    _fx_FPLS0* f_0 = &pp_0.get_f;

@@ -3774,7 +3774,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int_ _fx_M8K_mangleFM6lengthi1LN14K_form__ktyp_t(struct _fx_LN14K_form__ktyp_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -4162,7 +4162,7 @@ FX_EXTERN_C bool _fx_M8K_mangleFM8__same__B2LT2R9Ast__id_tN14K_form__ktyp_tLT2R9
    struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* b,
    void* fx_fv)
 {
-   
+
 return a == b;
 
 }
@@ -4172,7 +4172,7 @@ FX_EXTERN_C bool _fx_M8K_mangleFM8__same__B2LN14K_form__ktyp_tLN14K_form__ktyp_t
    struct _fx_LN14K_form__ktyp_t_data_t* b,
    void* fx_fv)
 {
-   
+
 return a == b;
 
 }
@@ -9126,4 +9126,3 @@ FX_EXTERN_C void fx_deinit_K_mangle(void)
 {
 
 }
-

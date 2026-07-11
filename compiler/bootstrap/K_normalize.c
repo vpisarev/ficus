@@ -8281,7 +8281,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1Li(struct _fx_Li_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -8290,14 +8290,14 @@ FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1LT2R9Ast__id_tN10Ast__pat_t(
    struct _fx_LT2R9Ast__id_tN10Ast__pat_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1LN14K_form__ktyp_t(struct _fx_LN14K_form__ktyp_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -8306,28 +8306,28 @@ FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1LT2R9Ast__id_tN14K_form__ktyp_t(
    struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1LN10Ast__typ_t(struct _fx_LN10Ast__typ_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1LN10Ast__exp_t(struct _fx_LN10Ast__exp_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M11K_normalizeFM6lengthi1LN10Ast__pat_t(struct _fx_LN10Ast__pat_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -8339,7 +8339,7 @@ FX_EXTERN_C void
    struct _fx_LT2LN14K_form__kexp_tN14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -8388,7 +8388,7 @@ FX_EXTERN_C void _fx_M11K_normalizeFM5link2LRM10pat_info_t2LRM10pat_info_tLRM10p
    struct _fx_LR23K_normalize__pat_info_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -8399,7 +8399,7 @@ FX_EXTERN_C void _fx_M11K_normalizeFM5link2LN14K_form__atom_t2LN14K_form__atom_t
    struct _fx_LN14K_form__atom_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -8446,7 +8446,7 @@ FX_EXTERN_C void _fx_M11K_normalizeFM5link2LN14K_form__kexp_t2LN14K_form__kexp_t
    struct _fx_LN14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -21622,4 +21622,3 @@ FX_EXTERN_C void fx_deinit_K_normalize(void)
       _fx_free_LT2N14K_form__atom_ti(&_fx_g29K_normalize__idx_access_stack);
    }
 }
-

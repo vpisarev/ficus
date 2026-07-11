@@ -2830,7 +2830,7 @@ FX_EXTERN_C void _fx_M9K_flattenFM5link2LN14K_form__kexp_t2LN14K_form__kexp_tLN1
    struct _fx_LN14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -3524,4 +3524,3 @@ FX_EXTERN_C void fx_deinit_K_flatten(void)
 {
 
 }
-

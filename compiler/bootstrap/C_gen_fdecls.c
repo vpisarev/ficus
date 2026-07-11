@@ -5098,7 +5098,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int_ _fx_M12C_gen_fdeclsFM6lengthi1LR9Ast__id_t(struct _fx_LR9Ast__id_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -5109,7 +5109,7 @@ FX_EXTERN_C void _fx_M12C_gen_fdeclsFM5link2LN15C_form__cstmt_t2LN15C_form__cstm
    struct _fx_LN15C_form__cstmt_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -7674,4 +7674,3 @@ FX_EXTERN_C void fx_deinit_C_gen_fdecls(void)
 {
 
 }
-

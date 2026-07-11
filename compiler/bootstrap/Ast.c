@@ -5165,7 +5165,7 @@ FX_EXTERN_C void _fx_M3AstFM4SomeNt6option1i1i(int_ arg0, struct _fx_Nt6option1i
 
 FX_EXTERN_C int_ _fx_M3AstFM6lengthi1LS(struct _fx_LS_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -28123,4 +28123,3 @@ FX_EXTERN_C void fx_deinit_Ast(void)
    _fx_free_T2LSi(&_fx_g19Ast__builtin_ids18_);
    _fx_free_T2LSi(&_fx_g19Ast__builtin_ids19_);
 }
-

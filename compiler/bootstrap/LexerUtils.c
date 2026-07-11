@@ -350,7 +350,7 @@ FX_EXTERN_C int _fx_M10LexerUtilsFM10getnumber_T5ildiC5SiBBB(
    struct _fx_T5ildiC* fx_result,
    void* fx_fv)
 {
-   
+
 const int MAX_ATOF = 128;
     char buf[128 + 16];
     int_ i = 0, len = s->length - pos;
@@ -548,7 +548,7 @@ FX_EXTERN_C int _fx_M10LexerUtilsFM10getstring_T4iSiB5SiCBB(
    struct _fx_T4iSiB* fx_result,
    void* fx_fv)
 {
-   
+
 int delta_lines = 0;
     int_ sz = 256, n = 0;
     char_ buf0[256 + 32];
@@ -757,4 +757,3 @@ FX_EXTERN_C void fx_deinit_LexerUtils(void)
 {
 
 }
-

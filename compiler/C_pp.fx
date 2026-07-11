@@ -645,7 +645,9 @@ fun pprint_top_to_string(code: ccode_t): string
         if i != 0 { pp.break0() }
         pp_cstmt_(pp, s)
     }
-    pp.newline(); pp.end(); pp.flush()
+    // no trailing pp.newline() here: join_embrace already terminates the file
+    // with a single '\n' (suffix), an extra newline would leave a blank last line.
+    pp.end(); pp.flush()
     val all_lines = pp.get_f()
     join_embrace("", "\n", "\n", all_lines)
 }

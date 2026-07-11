@@ -3960,7 +3960,7 @@ FX_EXTERN_C void _fx_M15K_remove_unusedFM4SomeNt6option1R9Ast__id_t1R9Ast__id_t(
 
 FX_EXTERN_C int_ _fx_M15K_remove_unusedFM6lengthi1LN14K_form__kexp_t(struct _fx_LN14K_form__kexp_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -3971,7 +3971,7 @@ FX_EXTERN_C void _fx_M15K_remove_unusedFM5link2LN14K_form__kexp_t2LN14K_form__ke
    struct _fx_LN14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -7338,4 +7338,3 @@ FX_EXTERN_C void fx_deinit_K_remove_unused(void)
 {
 
 }
-

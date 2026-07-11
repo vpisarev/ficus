@@ -3715,7 +3715,7 @@ FX_EXTERN_C int_ _fx_M6Ast_ppFM6lengthi1LT3R9Ast__id_tN10Ast__typ_tR16Ast__fun_f
    struct _fx_LT3R9Ast__id_tN10Ast__typ_tR16Ast__fun_flags_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -7358,4 +7358,3 @@ FX_EXTERN_C void fx_deinit_Ast_pp(void)
 {
 
 }
-

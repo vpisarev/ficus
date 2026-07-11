@@ -4,28 +4,28 @@
 
 FX_EXTERN_C bool _fx_M4CharFM7isalphaB1C(char_ c, void* fx_fv)
 {
-   
+
 return fx_isalpha(c);
 
 }
 
 FX_EXTERN_C bool _fx_M4CharFM7isalnumB1C(char_ c, void* fx_fv)
 {
-   
+
 return fx_isalnum(c);
 
 }
 
 FX_EXTERN_C bool _fx_M4CharFM7isdigitB1C(char_ c, void* fx_fv)
 {
-   
+
 return fx_isdigit(c);
 
 }
 
 FX_EXTERN_C bool _fx_M4CharFM7isspaceB1C(char_ c, void* fx_fv)
 {
-   
+
 return fx_isspace(c);
 
 }
@@ -40,4 +40,3 @@ FX_EXTERN_C void fx_deinit_Char(void)
 {
 
 }
-

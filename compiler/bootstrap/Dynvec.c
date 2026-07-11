@@ -17,4 +17,3 @@ FX_EXTERN_C void fx_deinit_Dynvec(void)
 {
 
 }
-
