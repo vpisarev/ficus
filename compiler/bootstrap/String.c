@@ -66,14 +66,14 @@ FX_EXTERN_C int _fx_F4joinS2SLS(fx_str_t*, struct _fx_LS_data_t*, fx_str_t*, voi
 
 FX_EXTERN_C int _fx_M6StringFM4copyS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 return fx_make_str(s->data, s->length, fx_result);
 
 }
 
 FX_EXTERN_C bool _fx_M6StringFM10startswithB2SS(fx_str_t* s, fx_str_t* prefix, void* fx_fv)
 {
-   
+
 int_ sz1 = s->length;
     int_ sz2 = prefix->length;
     return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data, prefix->data,
@@ -83,14 +83,14 @@ int_ sz1 = s->length;
 
 FX_EXTERN_C bool _fx_M6StringFM10startswithB2SC(fx_str_t* s, char_ prefix, void* fx_fv)
 {
-   
+
 return s->length > 0 && s->data[0] == prefix;
 
 }
 
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SS(fx_str_t* s, fx_str_t* suffix, void* fx_fv)
 {
-   
+
 int_ sz1 = s->length;
     int_ sz2 = suffix->length;
     return sz2 == 0 ? true : sz2 <= sz1 && memcmp(s->data + (sz1 - sz2), suffix->data,
@@ -100,14 +100,14 @@ int_ sz1 = s->length;
 
 FX_EXTERN_C bool _fx_M6StringFM8endswithB2SC(fx_str_t* s, char_ suffix, void* fx_fv)
 {
-   
+
 return s->length > 0 && s->data[s->length-1] == suffix;
 
 }
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv)
 {
-   
+
 int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
     if (sz2 == 0)
         return 0;
@@ -122,7 +122,7 @@ int_ i, sz1 = s->length, sz2 = part->length, l = sz1 - sz2 + 1;
 
 FX_EXTERN_C int_ _fx_M6StringFM4findi2SC(fx_str_t* s, char_ c, void* fx_fv)
 {
-   
+
 int_ i, sz1 = s->length;
     for( i = 0; i < sz1; i++ )
         if( s->data[i] == c ) return i;
@@ -132,7 +132,7 @@ int_ i, sz1 = s->length;
 
 FX_EXTERN_C int_ _fx_M6StringFM5rfindi3SSi(fx_str_t* s, fx_str_t* part, int_ from_pos, void* fx_fv)
 {
-   
+
 int_ sz1 = s->length, sz2 = part->length;
     int_ i = (from_pos < sz1 ? from_pos+1 : sz1) - sz2;
     if (sz2 == 0)
@@ -147,7 +147,7 @@ int_ sz1 = s->length, sz2 = part->length;
 
 FX_EXTERN_C int_ _fx_M6StringFM5rfindi2SC(fx_str_t* s, char_ c, void* fx_fv)
 {
-   
+
 int_ i, sz1 = s->length;
     for( i = sz1-1; i >= 0; i-- )
         if( s->data[i] == c ) return i;
@@ -157,7 +157,7 @@ int_ i, sz1 = s->length;
 
 FX_EXTERN_C int_ _fx_M6StringFM5rfindi3SCi(fx_str_t* s, char_ c, int_ from_pos, void* fx_fv)
 {
-   
+
 int_ i, sz1 = s->length;
     for( i = (from_pos < sz1 ? from_pos : sz1-1); i >= 0; i-- )
         if( s->data[i] == c ) return i;
@@ -167,7 +167,7 @@ int_ i, sz1 = s->length;
 
 FX_EXTERN_C bool _fx_M6StringFM8containsB2SC(fx_str_t* s, char_ c, void* fx_fv)
 {
-   
+
 int_ i, sz = s->length;
     char_* data = s->data;
 
@@ -185,7 +185,7 @@ FX_EXTERN_C int _fx_M6StringFM7replaceS3SSS(
    fx_str_t* fx_result,
    void* fx_fv)
 {
-   
+
 int_ i, j = 0, sz = s->length, sz1 = substr->length, sz2 = new_substr->length;
     int_ newsz = 0;
     if (sz == 0 || sz1 == 0) {
@@ -222,7 +222,7 @@ int_ i, j = 0, sz = s->length, sz1 = substr->length, sz2 = new_substr->length;
 
 FX_EXTERN_C int _fx_M6StringFM12decapitalizeS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 int_ sz = s->length;
     const char_* src = s->data;
     if (sz == 0 || fx_tolower(src[0]) == src[0]) {
@@ -242,7 +242,7 @@ int_ sz = s->length;
 
 FX_EXTERN_C int _fx_M6StringFM6rstripS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 const char_* ptr = s->data;
     int_ sz = s->length;
     for (; sz > 0 && fx_isspace(ptr[sz - 1]); sz--)
@@ -253,7 +253,7 @@ const char_* ptr = s->data;
 
 FX_EXTERN_C int _fx_M6StringFM5stripS1S(fx_str_t* s, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 const char_* ptr = s->data;
     int_ i = 0, sz = s->length;
     for (; i < sz && fx_isspace(ptr[i]); i++)
@@ -370,7 +370,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C void _fx_M6StringFM7to_int_Nt6option1i2Si(fx_str_t* a, int_ base, struct _fx_Nt6option1i* fx_result, void* fx_fv)
 {
-   
+
 bool ok = fx_atoi(a, &fx_result->u.Some, (int)base);
     fx_result->tag = (int)(ok+1);
 
@@ -378,7 +378,7 @@ bool ok = fx_atoi(a, &fx_result->u.Some, (int)base);
 
 FX_EXTERN_C int_ _fx_M6StringFM10to_int_or_i3Sii(fx_str_t* a, int_ defval, int_ base, void* fx_fv)
 {
-   
+
 int_ result;
     bool ok = fx_atoi(a, &result, (int)base);
     return ok ? result : defval;
@@ -551,4 +551,3 @@ FX_EXTERN_C void fx_deinit_String(void)
 {
 
 }
-

@@ -105,7 +105,7 @@ static void _fx_make_R5Re__t(fx_cptr_t r_handle, struct _fx_R5Re__t* fx_result)
 
 FX_EXTERN_C int _fx_M2ReFM7compileRM1t1S(fx_str_t* rstr, struct _fx_R5Re__t* fx_result, void* fx_fv)
 {
-   
+
 int fx_status = fx_re_compile(rstr, &fx_result->handle);
     return fx_status;
 
@@ -120,7 +120,7 @@ FX_EXTERN_C int _fx_M2ReFM8replace_S5RM1tSSBB(
    fx_str_t* fx_result,
    void* fx_fv)
 {
-   
+
 int flags = (ignorecase ? FX_RE_IGNORECASE : 0) |
                     (multiline ? FX_RE_MULTILINE : 0);
         return fx_re_replace(regex->handle, str, subst, flags, fx_result);
@@ -153,4 +153,3 @@ FX_EXTERN_C void fx_deinit_Re(void)
 {
 
 }
-

@@ -3762,7 +3762,7 @@ FX_EXTERN_C void _fx_M11K_declosureFM5link2LN14K_form__atom_t2LN14K_form__atom_t
    struct _fx_LN14K_form__atom_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -3773,7 +3773,7 @@ FX_EXTERN_C void _fx_M11K_declosureFM5link2LR9Ast__id_t2LR9Ast__id_tLR9Ast__id_t
    struct _fx_LR9Ast__id_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -5566,4 +5566,3 @@ FX_EXTERN_C void fx_deinit_K_declosure(void)
 {
 
 }
-

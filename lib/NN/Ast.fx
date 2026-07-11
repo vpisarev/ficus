@@ -22,7 +22,7 @@ class nndata_t =
     | NN_Data_U32: uint32 []
     | NN_Data_I64: int64 []
     | NN_Data_U64: uint64 []
-    | NN_Data_FP16: half []
+    | NN_Data_FP16: fp16 []
     | NN_Data_Stub_BF16
     | NN_Data_FP32: float []
     | NN_Data_FP64: double []

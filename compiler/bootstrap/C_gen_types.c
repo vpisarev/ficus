@@ -6512,7 +6512,7 @@ FX_EXTERN_C void _fx_M11C_gen_typesFM5link2LN15C_form__cstmt_t2LN15C_form__cstmt
    struct _fx_LN15C_form__cstmt_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -6523,7 +6523,7 @@ FX_EXTERN_C void _fx_M11C_gen_typesFM5link2LN14C_form__ctyp_t2LN14C_form__ctyp_t
    struct _fx_LN14C_form__ctyp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -14361,4 +14361,3 @@ FX_EXTERN_C void fx_deinit_C_gen_types(void)
 {
 
 }
-

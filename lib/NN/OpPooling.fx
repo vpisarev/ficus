@@ -173,11 +173,11 @@ static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                         float v;
                         if ((unsigned)yi >= (unsigned)Hi || (unsigned)xi >= (unsigned)Wi)
                             continue;
-                        v = FX_FLOAT(inptr[yi*Wi + xi]);
+                        v = FX_F16TOF32(inptr[yi*Wi + xi]);
                         s += v;
                         count++;
                     }
-                    outptr[x0] = FX_FLOAT16(count_include_pad ? s*avg_scale : s/count);
+                    outptr[x0] = FX_F32TOF16(count_include_pad ? s*avg_scale : s/count);
                 }
                 if (x0 == W0)
                     break;
@@ -228,12 +228,12 @@ static void _fx_avgpool_2d_f16(int nc, const char* inptr_, char* outptr_,
                 for (; x0 < x1; x0++) {
                     int xi_ = x0*stride_x - pad_left;
                     const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
-                    s = FX_FLOAT(inptr_xi[ofstab[0]]);
+                    s = FX_F16TOF32(inptr_xi[ofstab[0]]);
                     for (int k = 1; k < ksize; k++) {
-                        float v = FX_FLOAT(inptr_xi[ofstab[k]]);
+                        float v = FX_F16TOF32(inptr_xi[ofstab[k]]);
                         s += v;
                     }
-                    outptr[x0] = FX_FLOAT16(s*avg_scale);
+                    outptr[x0] = FX_F32TOF16(s*avg_scale);
                 }
                 x1 = W0;
             }
@@ -849,7 +849,7 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
 
     if ((size_t)NC*out_planesize*pool.Hk*pool.Wk < 100000)
         ntasks = 1;
-#ifdef HAVE_JIT    
+#ifdef HAVE_JIT
     if(pool_typ == 'M' && use_jit && (
         (inp_typ == FX_F32 && pool.jit_func_f32 != NULL)
     #if _FX_NN_ENABLE_FP16
@@ -861,11 +861,11 @@ fun run_pooling(pool_typ: char, inp: Ast.nntensor_t, out: Ast.nntensor_t,
             return _fx_maxpool_2d_f32_jit(jctx, NC, inp_data->data, out_data->data, ntasks, &pool);
         else
             return _fx_maxpool_2d_f16_jit(jctx, NC, inp_data->data, out_data->data, ntasks, &pool);
-// (use_jit && pool->jit_func_f16 != NULL) ? _fx_maxpool_2d_f16_jit : 
+// (use_jit && pool->jit_func_f16 != NULL) ? _fx_maxpool_2d_f16_jit :
     }
-    else 
+    else
 #endif
-    {    
+    {
         #pragma omp parallel for num_threads(ntasks)
         for (int_ task_id = 0; task_id < ntasks; task_id++) {
             int_ nc0 = task_id*NC/ntasks, nc1 = (task_id+1)*NC/ntasks;
@@ -980,10 +980,10 @@ fun run_global_avgpool(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): v
                     int_ block_end = j + block_size < planesize ? j + block_size : planesize;
                     float s = 0;
                     for (; j < block_end; j++)
-                        s += FX_FLOAT(inptr[j]);
+                        s += FX_F16TOF32(inptr[j]);
                     total += s;
                 }
-                *outptr = FX_FLOAT16((float)(total*scale));
+                *outptr = FX_F32TOF16((float)(total*scale));
             }
         #endif
         }

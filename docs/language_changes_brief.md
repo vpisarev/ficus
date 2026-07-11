@@ -94,7 +94,7 @@ losing the function's interface — session-2/LSP groundwork) and a future
 dividend for separate interface-only compilation. Not a language change for
 *users* — inference stays; the flag is a discipline knob.
 
-## 2. fold — imperative form — DECIDED & IMPLEMENTED (fold-1; see docs/fold1_report.md)
+## 2. fold — imperative form — DECIDED & IMPLEMENTED (fold-1, 2026-07-11)
 
 Body is a void expression; accumulators are scoped variables updated by named
 assignment; tuple assignment `(a, b) = (b, a+b)` has simultaneous semantics
@@ -104,6 +104,16 @@ assign outer accumulators; fold is sugar, erased by K-form. Migration is loud
 (old tuple bodies fail typecheck); acceptance = bitwise-identical K-form for
 migrated code. (Vadim has a worked design for the reform mechanics — to be
 written up for the Brief #3 session.)
+
+Shipped per spec via the __fold__ staging (now the standard keyword-reform
+playbook: temp keyword → per-module migration, ladder-green each batch →
+2-stage bootstrap flip). Census: 261 sites, W(closure-captures-acc)=0 —
+var-capture semantics changes no migrated site. Byproducts: simultaneous
+tuple assignment `(a,b)=(b,a+b)` (with `_` components) as a language feature;
+FB-023 latent C-gen soundness fix. Remaining in §2: writer accumulators
+(wave 2), reduction sugars → intrinsic (@parallel wave), scan question, and
+a follow-up: a dedicated "fold body must be void" primary error instead of
+warning+type-error.
 
 - `@parallel` on general fold is forbidden by design. Named reduction sugars
   instead: `sum`, `minmax` (one pass), `argmin`/`argmax`, `count`, `mean`,
@@ -149,9 +159,22 @@ way to name/pack a case's payload — proposal: auto-introduce `Case.t`
 (`Engineer.t`) and allow `Engineer(data: Engineer.t)`. (2022-era wish,
 resolve now.)
 
-### 3.4 Type renames — CANDIDATE
-`half` → `fp16` (`half` is too generic a name), add `bf16`. Mechanical,
-automigrator-friendly.
+### 3.4 Type renames — DECIDED & IMPLEMENTED (types-1, 2026-07-12)
+`half` → `fp16` (`half` is too generic a name), add `bf16`. Details in
+`docs/types1_report.md`.
+- **fp16** is the canonical 16-bit float name now: the parser accepts `fp16`
+  and every printer/dump emits `fp16`; conversions are `fp16(x)`.
+- **`half` kept as a stdlib alias** (`type half = fp16`) for source
+  compatibility, plus `fp32`/`fp64` added for a consistent `fpNN` family.
+  Being non-builtin type names, all three can be shadowed by a user binding
+  (unlike a builtin) — an accepted tradeoff, revisitable.
+- **bf16** (bfloat16) added as an fp16 twin: 16-bit storage, arithmetic
+  promoted to float32, `bf16(x)` conversions, `string`/`print`, arrays,
+  `Type_BF16` coercion. Represented as `TypFloat(17)` (`Ast.BF16`; fp16 is the
+  real 16, `17/8==2` gives the byte size, generic `TypFloat _` sites treat it
+  as a float for free). Literal suffix `bf` (`1.5bf`), mirroring fp16's `h`.
+  Runtime conversion is fast round-half-up (exact round-to-nearest-even is too
+  slow in software); constant folding does not model 16-bit rounding (as fp16).
 
 ### 3.5 Containers — DECIDED direction (2026-07-09)
 Four sequence containers, renamed to match the target persona's intuition

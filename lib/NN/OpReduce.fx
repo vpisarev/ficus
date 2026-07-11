@@ -491,9 +491,9 @@ _FX_REDUCE_IMPL(fx_f16, double, sum_f16, _FX_REDUCE_OP_SUM, 0.f)
 _FX_REDUCE_IMPL(fx_f16, double, prod_f16, _FX_REDUCE_OP_PROD, 1.f)
 
 static void _fx_finit_cast_f64f16(const char* inptr, char* outptr, double param)
-{ *(fx_f16*)outptr = FX_FLOAT16((float)*(double*)inptr); }
+{ *(fx_f16*)outptr = FX_F32TOF16((float)*(double*)inptr); }
 static void _fx_finit_scale_f64f16(const char* inptr, char* outptr, double param)
-{ *(fx_f16*)outptr = FX_FLOAT16((float)(*(double*)inptr*param)); }
+{ *(fx_f16*)outptr = FX_F32TOF16((float)(*(double*)inptr*param)); }
 #endif
 
 typedef void (*_fx_reduce_func_t)(const char* inptr, int_ ystep, int_ xstep,

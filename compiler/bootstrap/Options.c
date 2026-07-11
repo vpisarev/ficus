@@ -307,7 +307,7 @@ static void _fx_make_Ta2S(fx_str_t* t0, fx_str_t* t1, struct _fx_Ta2S* fx_result
 }
 
 _fx_R18Options__options_t _fx_g12Options__opt = {0};
-bool _fx_g18Options__is_arch64 = 
+bool _fx_g18Options__is_arch64 =
 (bool)(sizeof(void*) > 4)
 ;
 FX_EXTERN_C int _fx_F4reprS1S(fx_str_t*, fx_str_t*, void*);
@@ -356,7 +356,7 @@ FX_EXTERN_C void _fx_M7OptionsFM5link2LS2LSLS(
    struct _fx_LS_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -1803,4 +1803,3 @@ FX_EXTERN_C void fx_deinit_Options(void)
 {
    _fx_free_R18Options__options_t(&_fx_g12Options__opt);
 }
-

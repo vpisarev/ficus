@@ -218,7 +218,8 @@ type assoc_t = AssocLeft | AssocRight
                     else {pp.newline(); pp.str("U"+s)}
                 }
             }
-        | KLitFloat(16, f) => pp.str(f"FX_FLOAT16({K_form.klit2str(KLitFloat(32,f), true, loc)})")
+        | KLitFloat(16, f) => pp.str(f"FX_F32TOF16({K_form.klit2str(KLitFloat(32,f), true, loc)})")
+        | KLitFloat(17, f) => pp.str(f"FX_F32TOBF16({K_form.klit2str(KLitFloat(32,f), true, loc)})")
         | _ => pp.str(K_form.klit2str(l, true, loc))
         }
     | CExpBinary(COpArrayElem as bop, a, b, _) =>
@@ -645,7 +646,9 @@ fun pprint_top_to_string(code: ccode_t): string
         if i != 0 { pp.break0() }
         pp_cstmt_(pp, s)
     }
-    pp.newline(); pp.end(); pp.flush()
+    // no trailing pp.newline() here: join_embrace already terminates the file
+    // with a single '\n' (suffix), an extra newline would leave a blank last line.
+    pp.end(); pp.flush()
     val all_lines = pp.get_f()
     join_embrace("", "\n", "\n", all_lines)
 }

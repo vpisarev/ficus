@@ -344,7 +344,7 @@ void _fx_conv_block_f16( int k, const void *a_, const void *b_,
     }
     for(int i = 0; i < FX_CONV_MR_F16; i++) {
         for(int j = 0; j < FX_CONV_NR_F16; j++)
-            c[i*ldc + j] = FX_FLOAT16(cbuf[i*FX_CONV_NR_F16 + j]);
+            c[i*ldc + j] = FX_F32TOF16(cbuf[i*FX_CONV_NR_F16 + j]);
     }
 #endif
 }
@@ -707,20 +707,20 @@ void _fx_conv_update_block_f16( int np, int width, const void* a_, const void* b
     {
         for( int i = 0; i < FX_CONV_MR_F16; i++ )
         {
-            float ai = FX_FLOAT(a[FX_CONV_MR_F16*p + i]);
+            float ai = FX_F16TOF32(a[FX_CONV_MR_F16*p + i]);
             for( int j = 0; j < FX_CONV_NR_F16; j++ )
-                cbuf[i*FX_CONV_NR_F16+j] += FX_FLOAT(b[FX_CONV_NR_F16*p + j])*ai;
+                cbuf[i*FX_CONV_NR_F16+j] += FX_F16TOF32(b[FX_CONV_NR_F16*p + j])*ai;
         }
     }
     if (!init_c) {
         for(int i = 0; i < FX_CONV_MR_F16; i++) {
             for(int j = 0; j < FX_CONV_NR_F16; j++)
-                c[i*ldc + j] = FX_FLOAT16(FX_FLOAT(c[i*ldc + j]) + cbuf[i*FX_CONV_NR_F16 + j]);
+                c[i*ldc + j] = FX_F32TOF16(FX_F16TOF32(c[i*ldc + j]) + cbuf[i*FX_CONV_NR_F16 + j]);
         }
     } else {
         for(int i = 0; i < FX_CONV_MR_F16; i++) {
             for(int j = 0; j < FX_CONV_NR_F16; j++)
-                c[i*ldc + j] = FX_FLOAT16(cbuf[i*FX_CONV_NR_F16 + j]);
+                c[i*ldc + j] = FX_F32TOF16(cbuf[i*FX_CONV_NR_F16 + j]);
         }
     }
 #endif

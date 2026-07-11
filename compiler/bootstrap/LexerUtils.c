@@ -350,7 +350,7 @@ FX_EXTERN_C int _fx_M10LexerUtilsFM10getnumber_T5ildiC5SiBBB(
    struct _fx_T5ildiC* fx_result,
    void* fx_fv)
 {
-   
+
 const int MAX_ATOF = 128;
     char buf[128 + 16];
     int_ i = 0, len = s->length - pos;
@@ -507,6 +507,13 @@ const int MAX_ATOF = 128;
             bits = 16;
             ++i;
             endptr++;
+        } else if ((c == 'b' || c == 'B') && i+1 < len &&
+                   (ptr[i+1] == 'f' || ptr[i+1] == 'F')) {
+            // bf16 (bfloat16): the two-char 'bf' suffix. Uses width code 17
+            // (fp16 'h' is the real 16); see Ast.BF16.
+            bits = 17;
+            i += 2;
+            endptr += 2;
         }
         if (allow_complex && i < len && ptr[i] == 'i') {
             endptr++;
@@ -548,7 +555,7 @@ FX_EXTERN_C int _fx_M10LexerUtilsFM10getstring_T4iSiB5SiCBB(
    struct _fx_T4iSiB* fx_result,
    void* fx_fv)
 {
-   
+
 int delta_lines = 0;
     int_ sz = 256, n = 0;
     char_ buf0[256 + 32];
@@ -757,4 +764,3 @@ FX_EXTERN_C void fx_deinit_LexerUtils(void)
 {
 
 }
-

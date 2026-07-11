@@ -204,9 +204,9 @@ void _fx_nn_elemwise_sigmoid_f16(const void* inptr_, void* outptr_,
     const fx_f16* inptr = (const fx_f16*)inptr_;
     fx_f16* outptr = (fx_f16*)outptr_;
     for (int_ i = 0; i < len; i++) {
-        float x = FX_FLOAT(inptr[i]);
+        float x = FX_F16TOF32(inptr[i]);
         float e_x = expf(-fabsf(x));
-        outptr[i] = FX_FLOAT16((x >= 0.f ? 1.f : e_x)/(1 + e_x));
+        outptr[i] = FX_F32TOF16((x >= 0.f ? 1.f : e_x)/(1 + e_x));
     }
 }
 
@@ -216,7 +216,7 @@ void _fx_nn_elemwise_sigmoid_f16f32(const void* inptr_, void* outptr_,
     const fx_f16* inptr = (const fx_f16*)inptr_;
     float* outptr = (float*)outptr_;
     for (int_ i = 0; i < len; i++) {
-        float x = FX_FLOAT(inptr[i]);
+        float x = FX_F16TOF32(inptr[i]);
         float e_x = expf(-fabsf(x));
         outptr[i] = (x >= 0.f ? 1.f : e_x)/(1 + e_x);
     }
@@ -244,10 +244,10 @@ void _fx_nn_elemwise_mish_f16(const void* inptr_, void* outptr_,
     }
 #endif
     for (; i < len; i++) {
-        float x = FX_FLOAT(inptr[i]);
+        float x = FX_F16TOF32(inptr[i]);
         x *= (x > -36.73f ? 1.f : 0.f);
         float y = expf(-x);
-        outptr[i] = FX_FLOAT16(x*(1 + 2*y)/(1 + 2*y + 2*y*y));
+        outptr[i] = FX_F32TOF16(x*(1 + 2*y)/(1 + 2*y + 2*y*y));
     }
 }
 
@@ -272,8 +272,8 @@ void _fx_nn_elemwise_leaky_relu_f16(const void* inptr_, void* outptr_,
     fx_f16* outptr = (fx_f16*)outptr_;
     float alpha = *param;
     for (int_ j = 0; j < len; j++) {
-        float x = FX_FLOAT(inptr[j]);
-        outptr[j] = FX_FLOAT16(x*(x >= 0 ? 1.f : alpha));
+        float x = FX_F16TOF32(inptr[j]);
+        outptr[j] = FX_F32TOF16(x*(x >= 0 ? 1.f : alpha));
     }
 }
 
@@ -284,7 +284,7 @@ void _fx_nn_elemwise_scale_f16(const void* inptr_, void* outptr_,
     fx_f16* outptr = (fx_f16*)outptr_;
     float scale = *param;
     for (int_ i = 0; i < len; i++)
-        outptr[i] = FX_FLOAT16(inptr[i]*scale);
+        outptr[i] = FX_F32TOF16(inptr[i]*scale);
 }
 #endif
 

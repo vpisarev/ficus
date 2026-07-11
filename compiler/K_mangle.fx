@@ -216,6 +216,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
         | KTypUInt 64 => "q" :: result
         | KTypUInt n => throw compile_err(loc, f"unsupported typ KTypUInt({n})")
         | KTypFloat 16 => "h" :: result
+        | KTypFloat 17 => "g" :: result
         | KTypFloat 32 => "f" :: result
         | KTypFloat 64 => "d" :: result
         | KTypFloat n => throw compile_err(loc, f"unsupported typ KTypFloat({n})")

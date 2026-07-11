@@ -1370,7 +1370,8 @@ fun string(t: ktyp_t): string
         | KTypSInt(n) => f"int{n}_t"
         | KTypUInt(n) => f"uint{n}_t"
         | KTypLong => "long"
-        | KTypFloat(16) => "half"
+        | KTypFloat(16) => "fp16"
+        | KTypFloat(17) => "bf16"
         | KTypFloat(32) => "float"
         | KTypFloat(64) => "double"
         | KTypFloat(n) => throw compile_err(noloc, f"unsupported {n}-bit floating-point type")
@@ -1445,6 +1446,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     | KLitUInt(b, v) =>
         if cmode { f"{v}u" } else { f"{v}u{b}" }
     | KLitFloat(16, v) => if !cmode {f"{v}h"} else {flt2str(v, "f")}
+    | KLitFloat(17, v) => if !cmode {f"{v}bf"} else {flt2str(v, "f")}
     | KLitFloat(32, v) => if !cmode {f"{v}f"} else {flt2str(v, "f")}
     | KLitFloat(64, v) => if !cmode {f"{v}"} else {flt2str(v, "")}
     | KLitFloat(b, v) => throw compile_err(loc, f"invalid literal LitFloat({b}, {v})")

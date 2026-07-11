@@ -156,7 +156,7 @@ FX_EXTERN_C int _fx_M8FilenameFM6__lt__B2SS(fx_str_t* a_0, fx_str_t* b_0, bool* 
 
 FX_EXTERN_C void _fx_M8FilenameFM6_swap_v3A1Sii(fx_arr_t* arr, int_ i, int_ j, void* fx_fv)
 {
-   
+
 size_t esz = arr->dim[0].step;
     if(esz % sizeof(int) == 0) {
         int* ptr0 = (int*)(arr->data + i*esz);
@@ -375,7 +375,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM7dir_sepS0(fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 const char sep[] =
 #if defined _WIN32 || defined WINCE
         {92, 0} // back slash
@@ -764,7 +764,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M8FilenameFM6getcwdS0(fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 char buf[PATH_MAX+16];
 #if defined WIN32 || defined _WIN32
     char* p = _getcwd(buf, PATH_MAX);
@@ -777,7 +777,7 @@ char buf[PATH_MAX+16];
 
 FX_EXTERN_C int _fx_M8FilenameFM6existsB1S(fx_str_t* name, bool* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t name_;
     int fx_status = fx_str2cstr(name, &name_, 0, 0);
     if (fx_status >= 0) {
@@ -876,7 +876,7 @@ FX_EXTERN_C int _fx_M8FilenameFM5glob_T2A1SB2SA1S(
    struct _fx_T2A1SB* fx_result,
    void* fx_fv)
 {
-   
+
 fx_cstr_t cpattern;
         int fx_status = fx_str2cstr(pattern, &cpattern, 0, 0);
         if (fx_status < 0) return fx_status;
@@ -980,4 +980,3 @@ FX_EXTERN_C void fx_deinit_Filename(void)
 {
 
 }
-

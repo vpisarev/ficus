@@ -6470,7 +6470,7 @@ FX_EXTERN_C int_ _fx_M13K_copy_n_skipFM6lengthi1LT2R9Ast__id_tT2iN14K_form__kexp
    struct _fx_LT2R9Ast__id_tT2iN14K_form__kexp_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -6481,7 +6481,7 @@ FX_EXTERN_C void _fx_M13K_copy_n_skipFM5link2LN14K_form__kexp_t2LN14K_form__kexp
    struct _fx_LN14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -6524,7 +6524,7 @@ FX_EXTERN_C int _fx_M13K_copy_n_skipFM7__add__LN14K_form__kexp_t2LN14K_form__kex
 
 FX_EXTERN_C void _fx_M13K_copy_n_skipFM6_swap_v3A1T2iN14K_form__kexp_tii(fx_arr_t* arr, int_ i, int_ j, void* fx_fv)
 {
-   
+
 size_t esz = arr->dim[0].step;
     if(esz % sizeof(int) == 0) {
         int* ptr0 = (int*)(arr->data + i*esz);
@@ -8846,4 +8846,3 @@ FX_EXTERN_C void fx_deinit_K_copy_n_skip(void)
 {
 
 }
-

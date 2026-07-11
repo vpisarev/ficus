@@ -2668,11 +2668,26 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val ctyp = C_gen_types.ktyp2ctyp(kt, kloc)
             (true, (match (atyp, ctyp) {
             | (KTypFloat(16), CTypFloat(32)) =>
-                make_call(get_id("FX_FLOAT"), [:: ce1], CTypFloat(32), kloc)
+                make_call(get_id("FX_F16TOF32"), [:: ce1], CTypFloat(32), kloc)
+            | (KTypFloat(17), CTypFloat(32)) =>
+                make_call(get_id("FX_BF16TOF32"), [:: ce1], CTypFloat(32), kloc)
+            | (KTypFloat(16), CTypFloat(16)) | (KTypFloat(17), CTypFloat(17)) => ce1
+            | (KTypFloat(16), CTypFloat(17)) =>
+                make_call(get_id("FX_F32TOBF16"),
+                    [:: make_call(get_id("FX_F16TOF32"), [:: ce1], CTypFloat(32), kloc)],
+                    CTypFloat(17), kloc)
+            | (KTypFloat(17), CTypFloat(16)) =>
+                make_call(get_id("FX_F32TOF16"),
+                    [:: make_call(get_id("FX_BF16TOF32"), [:: ce1], CTypFloat(32), kloc)],
+                    CTypFloat(16), kloc)
             | (KTypFloat(16), _) =>
-                CExpCast(make_call(get_id("FX_FLOAT"), [:: ce1], CTypFloat(32), kloc), ctyp, kloc)
+                CExpCast(make_call(get_id("FX_F16TOF32"), [:: ce1], CTypFloat(32), kloc), ctyp, kloc)
+            | (KTypFloat(17), _) =>
+                CExpCast(make_call(get_id("FX_BF16TOF32"), [:: ce1], CTypFloat(32), kloc), ctyp, kloc)
             | (_, CTypFloat(16)) =>
-                make_call(get_id("FX_FLOAT16"), [:: ce1], CTypFloat(16), kloc)
+                make_call(get_id("FX_F32TOF16"), [:: ce1], CTypFloat(16), kloc)
+            | (_, CTypFloat(17)) =>
+                make_call(get_id("FX_F32TOBF16"), [:: ce1], CTypFloat(17), kloc)
             | _ => CExpCast(ce1, ctyp, kloc)
             }), ccode)
         | KExpMap (e_idoml_l, body, flags, _) =>

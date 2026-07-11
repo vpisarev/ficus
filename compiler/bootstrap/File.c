@@ -34,10 +34,10 @@ static void _fx_make_R7File__t(fx_cptr_t r_handle, struct _fx_R7File__t* fx_resu
    fx_copy_cptr(r_handle, &fx_result->handle);
 }
 
-int_ _fx_g14File__SEEK_SET = 
+int_ _fx_g14File__SEEK_SET =
 (int)SEEK_SET
 ;
-int_ _fx_g14File__SEEK_END = 
+int_ _fx_g14File__SEEK_END =
 (int)SEEK_END
 ;
 _fx_R7File__t _fx_g12File__stdout = {0};
@@ -45,7 +45,7 @@ FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
 
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {
-   
+
 if(i != 0 && i != 1 && i != 2)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     fx_result->handle = fx_get_stdstream(i);
@@ -55,7 +55,7 @@ if(i != 0 && i != 1 && i != 2)
 
 FX_EXTERN_C int _fx_M4FileFM5open_p3SSB(fx_str_t* fname, fx_str_t* mode, bool ispipe, fx_cptr_t* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t fname_, mode_;
     int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
     if (fx_status >= 0) {
@@ -99,7 +99,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C void _fx_M4FileFM5closev1RM1t(struct _fx_R7File__t* f, void* fx_fv)
 {
-   
+
 if(f->handle && f->handle->ptr) {
         f->handle->free_f(f->handle->ptr);
         f->handle->ptr = 0;
@@ -109,7 +109,7 @@ if(f->handle && f->handle->ptr) {
 
 FX_EXTERN_C int _fx_M4FileFM18pclose_exit_statusi1RM1t(struct _fx_R7File__t* f, int_* fx_result, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr || f->handle->free_f != fx_pipe_destructor)
         FX_FAST_THROW_RET(FX_EXN_FileOpenError);
 
@@ -127,7 +127,7 @@ if(!f->handle || !f->handle->ptr || f->handle->free_f != fx_pipe_destructor)
 
 FX_EXTERN_C int _fx_M4FileFM4seekv3RM1tli(struct _fx_R7File__t* f, int64_t pos, int_ origin, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     int code = fseek((FILE*)(f->handle->ptr), (long)pos, origin);
@@ -137,7 +137,7 @@ if(!f->handle || !f->handle->ptr)
 
 FX_EXTERN_C int _fx_M4FileFM4telll1RM1t(struct _fx_R7File__t* f, int64_t* fx_result, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     long code = ftell((FILE*)(f->handle->ptr));
@@ -149,7 +149,7 @@ if(!f->handle || !f->handle->ptr)
 
 FX_EXTERN_C int _fx_M4FileFM5flushv1RM1t(struct _fx_R7File__t* f, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     fflush((FILE*)(f->handle->ptr));
@@ -159,7 +159,7 @@ if(!f->handle || !f->handle->ptr)
 
 FX_EXTERN_C int _fx_M4FileFM5printv2RM1tS(struct _fx_R7File__t* f, fx_str_t* x, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     return fx_fputs((FILE*)(f->handle->ptr), x);
@@ -168,7 +168,7 @@ if(!f->handle || !f->handle->ptr)
 
 FX_EXTERN_C int _fx_M4FileFM4readi2RM1tA1b(struct _fx_R7File__t* f, fx_arr_t* a, int_* fx_result, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     FILE* fh = (FILE*)f->handle->ptr;
@@ -181,7 +181,7 @@ if(!f->handle || !f->handle->ptr)
 
 FX_EXTERN_C int _fx_M4FileFM6readlnS1RM1t(struct _fx_R7File__t* f, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
     return fx_fgets((FILE*)(f->handle->ptr), fx_result);
@@ -228,7 +228,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int _fx_M4FileFM9read_utf8S1S(fx_str_t* fname, fx_str_t* fx_result, void* fx_fv)
 {
-   
+
 fx_cstr_t fname_;
     int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
     if (fx_status >= 0) {
@@ -264,7 +264,7 @@ fx_cstr_t fname_;
 
 FX_EXTERN_C int _fx_M4FileFM10write_utf8v2SS(fx_str_t* fname, fx_str_t* text, void* fx_fv)
 {
-   
+
 fx_cstr_t fname_;
     int fx_status = fx_str2cstr(fname, &fname_, 0, 0);
     if (fx_status >= 0) {
@@ -309,4 +309,3 @@ FX_EXTERN_C void fx_deinit_File(void)
 {
    _fx_free_R7File__t(&_fx_g12File__stdout);
 }
-

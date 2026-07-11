@@ -376,8 +376,6 @@ FX_EXTERN_C int _fx_M2PPFM7make_fpFPLS03rirA1CrLS(
 
 static int _fx_M2PPFM7print_fv1S(fx_str_t*, void*);
 
-FX_EXTERN_C bool _fx_M6StringFM8endswithB2SC(fx_str_t*, char_, void*);
-
 FX_EXTERN_C int _fx_F6stringS1A1C(fx_arr_t*, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M6StringFM6rstripS1S(fx_str_t*, fx_str_t*, void*);
@@ -658,66 +656,61 @@ _fx_cleanup: ;
 
 static int _fx_M2PPFM7print_fv1S(fx_str_t* s_0, void* fx_fv)
 {
-   fx_arr_t v_0 = {0};
-   fx_str_t v_1 = {0};
-   fx_str_t v_2 = {0};
-   _fx_LS v_3 = 0;
    int fx_status = 0;
    _fx_M2PPFM7print_fv1S_cldata_t* cv_0 = (_fx_M2PPFM7print_fv1S_cldata_t*)fx_fv;
    int_* bufsize_0 = &cv_0->t0->data;
    int_* capacity_0 = &cv_0->t1->data;
    fx_arr_t* curr_0 = &cv_0->t2->data;
    _fx_LS* lines_0 = &cv_0->t3->data;
-   int_ strsize_0 = FX_STR_LENGTH(*s_0);
-   int_ bufsz_0 = *bufsize_0;
-   while (bufsz_0 + strsize_0 > *capacity_0) {
+   int_ len_0 = FX_STR_LENGTH(*s_0);
+   for (int_ i_0 = 0; i_0 < len_0; i_0++) {
+      fx_arr_t v_0 = {0};
+      fx_str_t v_1 = {0};
+      fx_str_t v_2 = {0};
+      _fx_LS v_3 = 0;
       fx_arr_t v_4 = {0};
-      *capacity_0 = *capacity_0 * 2;
-      {
-         const int8_t tags_0[] = { 1, 1, -1 };
-         const void* parts_0[] = { curr_0, curr_0 };
-         FX_CALL(fx_compose_arr(1, sizeof(char_), 0, 0, tags_0, parts_0, &v_4), _fx_catch_0);
+      char_ c_0 = s_0->data[i_0];
+      if (c_0 == (char_)10) {
+         {
+            const int_ ranges_0[] = { 1, 0, *bufsize_0, 1 };
+            FX_CALL(fx_subarr(curr_0, ranges_0, &v_0), _fx_catch_0);
+         }
+         FX_CALL(_fx_F6stringS1A1C(&v_0, &v_1, 0), _fx_catch_0);
+         FX_CALL(_fx_M6StringFM6rstripS1S(&v_1, &v_2, 0), _fx_catch_0);
+         FX_CALL(_fx_cons_LS(&v_2, *lines_0, true, &v_3), _fx_catch_0);
+         _fx_free_LS(lines_0);
+         FX_COPY_PTR(v_3, lines_0);
+         *bufsize_0 = 0;
       }
-      FX_FREE_ARR(curr_0);
-      fx_copy_arr(&v_4, curr_0);
+      else {
+         if (*bufsize_0 >= *capacity_0) {
+            *capacity_0 = *capacity_0 * 2;
+            {
+               const int8_t tags_0[] = { 1, 1, -1 };
+               const void* parts_0[] = { curr_0, curr_0 };
+               FX_CALL(fx_compose_arr(1, sizeof(char_), 0, 0, tags_0, parts_0, &v_4), _fx_catch_0);
+            }
+            FX_FREE_ARR(curr_0);
+            fx_copy_arr(&v_4, curr_0);
+         }
+         FX_CHKIDX(FX_CHKIDX1(*curr_0, 0, *bufsize_0), _fx_catch_0);
+         char_* v_5 = FX_PTR_1D(char_, *curr_0, *bufsize_0);
+         *v_5 = c_0;
+         *bufsize_0 = *bufsize_0 + 1;
+      }
 
    _fx_catch_0: ;
       FX_FREE_ARR(&v_4);
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   int_ len_0 = FX_STR_LENGTH(*s_0);
-   for (int_ i_0 = 0; i_0 < len_0; i_0++) {
-      char_ c_0 = s_0->data[i_0];
-      int_ v_5 = bufsz_0 + i_0;
-      FX_CHKIDX(FX_CHKIDX1(*curr_0, 0, v_5), _fx_catch_1);
-      char_* v_6 = FX_PTR_1D(char_, *curr_0, v_5);
-      *v_6 = c_0;
-
-   _fx_catch_1: ;
-      FX_CHECK_EXN(_fx_cleanup);
-   }
-   *bufsize_0 = bufsz_0 + strsize_0;
-   bool v_7 = _fx_M6StringFM8endswithB2SC(s_0, (char_)10, 0);
-   if (v_7) {
-      {
-         const int_ ranges_0[] = { 1, 0, *bufsize_0, 1 };
-         FX_CALL(fx_subarr(curr_0, ranges_0, &v_0), _fx_cleanup);
+      if (v_3) {
+         _fx_free_LS(&v_3);
       }
-      FX_CALL(_fx_F6stringS1A1C(&v_0, &v_1, 0), _fx_cleanup);
-      FX_CALL(_fx_M6StringFM6rstripS1S(&v_1, &v_2, 0), _fx_cleanup);
-      FX_CALL(_fx_cons_LS(&v_2, *lines_0, true, &v_3), _fx_cleanup);
-      _fx_free_LS(lines_0);
-      FX_COPY_PTR(v_3, lines_0);
-      *bufsize_0 = 0;
+      FX_FREE_STR(&v_2);
+      FX_FREE_STR(&v_1);
+      FX_FREE_ARR(&v_0);
+      FX_CHECK_EXN(_fx_cleanup);
    }
 
 _fx_cleanup: ;
-   FX_FREE_ARR(&v_0);
-   FX_FREE_STR(&v_1);
-   FX_FREE_STR(&v_2);
-   if (v_3) {
-      _fx_free_LS(&v_3);
-   }
    return fx_status;
 }
 
@@ -2196,4 +2189,3 @@ FX_EXTERN_C void fx_deinit_PP(void)
 {
 
 }
-

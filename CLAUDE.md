@@ -83,6 +83,15 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
 - Record *type* fields use `;`; *construction* uses `,` (`pt_t {x=1, y=2}`).
 - Small unsigned ints promote to `int` (`200u8 + 100u8 == 300`); wrap
   explicitly: `((a + b) :> uint8)`. `uint64` wraps natively.
+- **16-bit floats (types-1):** `fp16` (IEEE half; the old name `half` is a
+  stdlib alias) and `bf16` (bfloat16). Both are storage-only — arithmetic
+  promotes to `float32`, so `fp16(x)`/`bf16(x)` convert and `float(v)` reads
+  back. Literals: `1.5h` = fp16, `1.5bf` = bf16. `bf16` is `TypFloat(17)`
+  internally (`Ast.BF16`; fp16 is the real 16) — match the literal `17`, never
+  `BF16`, in patterns. Runtime f32→bf16 is fast round-half-up, and constant
+  folding does NOT model 16-bit rounding (so `float(bf16(const))` shows the
+  unrounded value — use a runtime value to observe real rounding). `fp32`/`fp64`
+  exist as aliases for `float`/`double`.
 - `/` truncates toward zero; `%` takes the sign of the dividend
   (`-17 % 5 == -2`). `int(x)` truncates. `floor`/`ceil`/`trunc`/`round`
   return `int` **by design** (array forms: `int [+]`).

@@ -3400,7 +3400,7 @@ FX_EXTERN_C int_ _fx_M10K_annotateFM6lengthi1LT2R9Ast__id_tN14K_form__ktyp_t(
    struct _fx_LT2R9Ast__id_tN14K_form__ktyp_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -3411,7 +3411,7 @@ FX_EXTERN_C void _fx_M10K_annotateFM5link2LN14K_form__kexp_t2LN14K_form__kexp_tL
    struct _fx_LN14K_form__kexp_t_data_t** fx_result,
    void* fx_fv)
 {
-   
+
 fx_link_lists(l1, l2, fx_result);
 
 }
@@ -5866,4 +5866,3 @@ FX_EXTERN_C void fx_deinit_K_annotate(void)
 {
 
 }
-

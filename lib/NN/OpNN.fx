@@ -62,7 +62,7 @@ fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
             } else {
                 const fx_f16* inptr = (const fx_f16*)inp_data->data + ofs;
                 for(; j < C; j++) {
-                    float x = FX_FLOAT(inptr[j*plane_size]);
+                    float x = FX_F16TOF32(inptr[j*plane_size]);
                     buf[j] = x;
                 }
             }
@@ -110,7 +110,7 @@ fun run_softmax(inp: Ast.nntensor_t, out: Ast.nntensor_t, ntasks: int): void
             } else {
                 fx_f16* outptr = (fx_f16*)out_data->data + ofs;
                 for (j = 0; j < C; j++)
-                    outptr[j*plane_size] = FX_FLOAT16(buf[j]*s);
+                    outptr[j*plane_size] = FX_F32TOF16(buf[j]*s);
             }
         }
     }

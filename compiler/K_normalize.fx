@@ -721,7 +721,7 @@ fun arithm_subexp2atom(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list): (
     val loc = get_exp_loc(e)
     val (a, code) = exp2atom(e, code, tref, sc)
     match get_atom_ktyp(a, loc) {
-    | KTypFloat(16) => kexp2atom(curr_module(sc), "v",
+    | KTypFloat(16) | KTypFloat(17) => kexp2atom(curr_module(sc), "v",
         KExpCast(a, KTypFloat(32), loc), tref, code)
     | _ => (a, code)
     }

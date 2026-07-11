@@ -3043,7 +3043,7 @@ FX_EXTERN_C int
 
 FX_EXTERN_C int_ _fx_M13K_lift_simpleFM6lengthi1LR9Ast__id_t(struct _fx_LR9Ast__id_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -4183,4 +4183,3 @@ FX_EXTERN_C void fx_deinit_K_lift_simple(void)
 {
 
 }
-

@@ -84,16 +84,22 @@ fun pprint_to_string_list(margin: int, ~default_indent: int=4): t
     var curr = array(capacity, ' ')
     fun print_f(s: string)
     {
-        val strsize = s.length(), bufsz = bufsize
-        while bufsz + strsize > capacity {
-            capacity *= 2
-            curr = [ \curr, \curr ]
-        }
-        for c@i <- s { curr[bufsz+i] = c }
-        bufsize = bufsz + strsize
-        if s.endswith('\n') {
-            lines = string(curr[:bufsize]).rstrip() :: lines
-            bufsize = 0
+        // split the chunk on every '\n' and rstrip each completed line;
+        // a single str() chunk may carry embedded newlines (e.g. an inline
+        // C block), so rstripping only when the whole chunk ends with '\n'
+        // would leave trailing whitespace on the interior lines.
+        for c <- s {
+            if c == '\n' {
+                lines = string(curr[:bufsize]).rstrip() :: lines
+                bufsize = 0
+            } else {
+                if bufsize >= capacity {
+                    capacity *= 2
+                    curr = [ \curr, \curr ]
+                }
+                curr[bufsize] = c
+                bufsize += 1
+            }
         }
     }
     fun get_f()

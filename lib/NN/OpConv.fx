@@ -200,7 +200,7 @@ static int _fx_init_conv2d(
             for(int c = 0; c < C; c++) {
                 float scale = bn_ab ? bn_ab[c] : 1.f;
                 for (int k = 0; k < ksize; k++)
-                    conv->wf16[c*padded_ksize + k] = FX_FLOAT16(weights[c*ksize + k]*scale);
+                    conv->wf16[c*padded_ksize + k] = FX_F32TOF16(weights[c*ksize + k]*scale);
             }
         }
     #endif
@@ -269,7 +269,7 @@ static int _fx_init_conv2d(
                 for (int i = 0; i < _FX_WINO_NATOMS_F16; i++,
                     wptr_f16 += Cg*_FX_WINO_KBLOCK*_FX_WINO_ATOM_F16) {
                     for (int j = 0; j < _FX_WINO_ATOM_F16; j++)
-                        wptr_f16[j] = FX_FLOAT16(GWG[i*_FX_WINO_ATOM_F16 + j]);
+                        wptr_f16[j] = FX_F32TOF16(GWG[i*_FX_WINO_ATOM_F16 + j]);
                 }
             #endif
             }
@@ -954,18 +954,18 @@ int _fx_conv2d(const _fx_nntensor_t* inp, _fx_nntensor_t* out,
 
                             if (bpptr) {
                                 for (; j < out_width; j++) {
-                                    float v = FX_FLOAT(cptr[j]) + biasval;
-                                    v += FX_FLOAT(bpptr[j]);
+                                    float v = FX_F16TOF32(cptr[j]) + biasval;
+                                    v += FX_F16TOF32(bpptr[j]);
                                     v = v <= maxval ? v : maxval;
                                     v *= (v < 0.f ? alpha : 1.f);
-                                    outptr[j] = FX_FLOAT16(v);
+                                    outptr[j] = FX_F32TOF16(v);
                                 }
                             } else {
                                 for (; j < out_width; j++) {
-                                    float v = FX_FLOAT(cptr[j]) + biasval;
+                                    float v = FX_F16TOF32(cptr[j]) + biasval;
                                     v = v <= maxval ? v : maxval;
                                     v *= (v < 0.f ? alpha : 1.f);
-                                    outptr[j] = FX_FLOAT16(v);
+                                    outptr[j] = FX_F32TOF16(v);
                                 }
                             }
 
