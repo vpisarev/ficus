@@ -4237,7 +4237,7 @@ static int _fx_M6Ast_ppFM7pptype_v5N10Ast__typ_tN16Ast_pp__typ_pr_tBR10Ast__loc_
       }
       if (tag_0 == 10) {
          if (t_2->u.TypFloat == 16) {
-            fx_str_t slit_5 = FX_MAKE_STR("half");
+            fx_str_t slit_5 = FX_MAKE_STR("fp16");
             FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_5, 0), _fx_catch_5);
             FX_BREAK(_fx_catch_5);
 

@@ -63,6 +63,13 @@ class 't option = None | Some: 't
 
 type byte = uint8
 
+// canonical fp names are fp16/fp32/fp64; 'half' is kept as a compatibility
+// alias for fp16. Unlike a builtin type name, these aliases can be shadowed
+// by a user's own binding (ordinary non-builtin type-name scoping).
+type half = fp16
+type fp32 = float
+type fp64 = double
+
 fun value_or(x: 't?, defval: 't): 't = match x { | Some(x) => x | _ => defval }
 fun value(x: 't?): 't = match x { | Some(x) => x | _ => throw OptionError }
 fun isnone(x: 't?): bool { | Some _ => false | _ => true }
@@ -78,7 +85,7 @@ fun __is_scalar__(x: 't): bool = false
 @inline fun __is_scalar__(x: uint32): bool = true
 @inline fun __is_scalar__(x: int64): bool = true
 @inline fun __is_scalar__(x: uint64): bool = true
-@inline fun __is_scalar__(x: half): bool = true
+@inline fun __is_scalar__(x: fp16): bool = true
 @inline fun __is_scalar__(x: float): bool = true
 @inline fun __is_scalar__(x: double): bool = true
 @inline fun __is_scalar__(x: bool): bool = true
@@ -94,7 +101,7 @@ fun __is_scalar__(x: 't): bool = false
 @inline fun scalar_type(_: uint32): scalar_t = Type_U32
 @inline fun scalar_type(_: int64): scalar_t = Type_I64
 @inline fun scalar_type(_: uint64): scalar_t = Type_U64
-@inline fun scalar_type(_: half): scalar_t = Type_F16
+@inline fun scalar_type(_: fp16): scalar_t = Type_F16
 @inline fun scalar_type(_: float): scalar_t = Type_F32
 @inline fun scalar_type(_: double): scalar_t = Type_F64
 @inline fun scalar_type(_: bool): scalar_t = Type_Bool
@@ -210,7 +217,7 @@ fun string(a: bool): string = if a {"true"} else {"false"}
 @pure fun string(a: uint64): string = @ccode { return fx_itoa((int64_t)a, true, fx_result) }
 @pure fun string(a: int64): string = @ccode { return fx_itoa(a, false, fx_result) }
 @pure fun string(c: char): string = @ccode { return fx_make_str(&c, 1, fx_result) }
-@pure fun string(a: half): string
+@pure fun string(a: fp16): string
 @ccode {
     char buf[32];
     fx_bits32_t u;
@@ -427,7 +434,7 @@ fun string(x: int64, fmt: format_t): string = format_(x, false, fmt)
 fun string(x: uint64, fmt: format_t): string = format_(x :> int64, true, fmt)
 fun string(x: float, fmt: format_t): string = format_(x :> double, 8, fmt)
 fun string(x: double, fmt: format_t): string = format_(x, 16, fmt)
-fun string(x: half, fmt: format_t): string = format_(x :> double, 4, fmt)
+fun string(x: fp16, fmt: format_t): string = format_(x :> double, 4, fmt)
 @pure fun string(x: long, fmt: format_t): string
 @ccode {
     FX_STATIC_ASSERT(sizeof(*fmt) == sizeof(fx_format_t));
@@ -792,7 +799,7 @@ fun uint64(x: 't): uint64 = (x :> uint64)
 fun int64(x: 't): int64 = (x :> int64)
 fun float(x: 't): float = (x :> float)
 fun double(x: 't): double = (x :> double)
-fun half(x: 't): half = (x :> half)
+fun fp16(x: 't): fp16 = (x :> fp16)
 
 @pure fun int(x: long): int
 @ccode { return fx_ltoi(x, fx_result) }
@@ -823,7 +830,7 @@ fun uint64(x: ('t...)): (uint64...) = (for xj <- x {uint64(xj)})
 fun int64(x: ('t...)): (int64...) = (for xj <- x {int64(xj)})
 fun float(x: ('t...)): (float...) = (for xj <- x {float(xj)})
 fun double(x: ('t...)): (double...) = (for xj <- x {double(xj)})
-fun half(x: ('t...)): (half...) = (for xj <- x {half(xj)})
+fun fp16(x: ('t...)): (fp16...) = (for xj <- x {fp16(xj)})
 
 fun int(x: 't [+]): int [+] = [for xj <- x {int(xj)}]
 fun uint8(x: 't [+]): uint8 [+] = [for xj <- x {uint8(xj)}]
@@ -836,7 +843,7 @@ fun uint64(x: 't [+]): uint64 [+] = [for xj <- x {uint64(xj)}]
 fun int64(x: 't [+]): int64 [+] = [for xj <- x {int64(xj)}]
 fun float(x: 't [+]): float [+] = [for xj <- x {float(xj)}]
 fun double(x: 't [+]): double [+] = [for xj <- x {double(xj)}]
-fun half(x: 't [+]): half [+] = [for xj <- x {half(xj)}]
+fun fp16(x: 't [+]): fp16 [+] = [for xj <- x {fp16(xj)}]
 
 type uint8x3 = (uint8*3)
 type uint8x4 = (uint8*4)
@@ -1011,7 +1018,7 @@ fun print(a: long): void = @ccode {
     }
     return fx_status;
 }
-@nothrow fun print(a: half): void
+@nothrow fun print(a: fp16): void
 @ccode {
     fx_bits32_t u;
     float f = FX_F16TOF32(a);

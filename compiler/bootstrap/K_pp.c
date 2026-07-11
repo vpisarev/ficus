@@ -3572,7 +3572,7 @@ _fx_endmatch_0: ;
    }
    if (tag_1 == 5) {
       if (t_0->u.KTypFloat == 16) {
-         fx_str_t slit_5 = FX_MAKE_STR("half");
+         fx_str_t slit_5 = FX_MAKE_STR("fp16");
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_5, 0), _fx_catch_5);
 
       _fx_catch_5: ;

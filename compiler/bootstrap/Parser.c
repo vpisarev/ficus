@@ -23784,7 +23784,7 @@ FX_EXTERN_C int
          if (fx_streq(&i_0, &slit_15)) {
             FX_CALL(_fx_M3AstFM7TypUIntN10Ast__typ_t1i(64, &t_0), _fx_catch_9);  _fx_catch_9: ; goto _fx_endmatch_0;
          }
-         fx_str_t slit_16 = FX_MAKE_STR("half");
+         fx_str_t slit_16 = FX_MAKE_STR("fp16");
          if (fx_streq(&i_0, &slit_16)) {
             FX_CALL(_fx_M3AstFM8TypFloatN10Ast__typ_t1i(16, &t_0), _fx_catch_10);  _fx_catch_10: ; goto _fx_endmatch_0;
          }

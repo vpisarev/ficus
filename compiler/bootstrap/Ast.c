@@ -23871,7 +23871,7 @@ FX_EXTERN_C int _fx_M3AstFM7typ2strS1N10Ast__typ_t(struct _fx_N10Ast__typ_t_data
       if (tag_0 == 10) {
          int_ n_0 = t_2->u.TypFloat;
          if (n_0 == 16) {
-            fx_str_t slit_12 = FX_MAKE_STR("half");
+            fx_str_t slit_12 = FX_MAKE_STR("fp16");
             FX_FREE_STR(&result_0);
             fx_copy_str(&slit_12, &result_0);
             FX_BREAK(_fx_catch_12);

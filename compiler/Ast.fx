@@ -1388,7 +1388,7 @@ fun typ2str(t: typ_t): string {
     | TypUInt(n) => f"uint{n}"
     | TypFloat(n) =>
         match n {
-        | 16 => "half"
+        | 16 => "fp16"
         | 32 => "float"
         | 64 => "double"
         | _ => throw compile_err(noloc, f"bad floating-point type TypFloat({n})")

@@ -1370,7 +1370,7 @@ fun string(t: ktyp_t): string
         | KTypSInt(n) => f"int{n}_t"
         | KTypUInt(n) => f"uint{n}_t"
         | KTypLong => "long"
-        | KTypFloat(16) => "half"
+        | KTypFloat(16) => "fp16"
         | KTypFloat(32) => "float"
         | KTypFloat(64) => "double"
         | KTypFloat(n) => throw compile_err(noloc, f"unsupported {n}-bit floating-point type")

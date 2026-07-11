@@ -16219,7 +16219,7 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
    }
    if (tag_0 == 5) {
       if (t_0->u.KTypFloat == 16) {
-         fx_str_t slit_7 = FX_MAKE_STR("half"); fx_copy_str(&slit_7, fx_result); goto _fx_endmatch_1;
+         fx_str_t slit_7 = FX_MAKE_STR("fp16"); fx_copy_str(&slit_7, fx_result); goto _fx_endmatch_1;
       }
    }
    if (tag_0 == 5) {
