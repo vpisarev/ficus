@@ -15855,17 +15855,22 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM14typ_bounds_intTa2l1N10Ast__typ_t(
       }
    }
    if (tag_0 == 10) {
+      if (t_0->u.TypFloat == 17) {
+         _fx_Ta2l tup_10 = { -256LL, 256LL }; *fx_result = tup_10; goto _fx_endmatch_0;
+      }
+   }
+   if (tag_0 == 10) {
       if (t_0->u.TypFloat == 32) {
-         _fx_Ta2l tup_10 = { -16777216LL, 16777216LL }; *fx_result = tup_10; goto _fx_endmatch_0;
+         _fx_Ta2l tup_11 = { -16777216LL, 16777216LL }; *fx_result = tup_11; goto _fx_endmatch_0;
       }
    }
    if (tag_0 == 10) {
       if (t_0->u.TypFloat == 64) {
-         _fx_Ta2l tup_11 = { -9007199254740992LL, 9007199254740992LL }; *fx_result = tup_11; goto _fx_endmatch_0;
+         _fx_Ta2l tup_12 = { -9007199254740992LL, 9007199254740992LL }; *fx_result = tup_12; goto _fx_endmatch_0;
       }
    }
-   _fx_Ta2l tup_12 = { 0LL, -1LL };
-   *fx_result = tup_12;
+   _fx_Ta2l tup_13 = { 0LL, -1LL };
+   *fx_result = tup_13;
 
 _fx_endmatch_0: ;
    return fx_status;
@@ -16260,6 +16265,11 @@ FX_EXTERN_C int
                         if (tag_3 == 10) {
                            if (t_2->u.TypFloat == 16) {
                               a_1 = 65504.0; goto _fx_endmatch_0;
+                           }
+                        }
+                        if (tag_3 == 10) {
+                           if (t_2->u.TypFloat == 17) {
+                              a_1 = 3.389531e+38; goto _fx_endmatch_0;
                            }
                         }
                         if (tag_3 == 10) {

@@ -806,6 +806,7 @@ fun typ_bounds_int(t: typ_t): (int64, int64)
     | TypUInt(64) => (0i64, 9223372036854775807i64)
     | TypLong => (-9223372036854775807i64 - 1, 9223372036854775807i64)
     | TypFloat(16) => (-4096i64, 4096i64)
+    | TypFloat(17) => (-256i64, 256i64)     // bf16: 8-bit significand
     | TypFloat(32) => (-16777216i64, 16777216i64)
     | TypFloat(64) => (-9007199254740992i64, 9007199254740992i64)
     | _ => (0i64, -1i64)
@@ -814,6 +815,7 @@ fun typ_bounds_int(t: typ_t): (int64, int64)
 fun typ_bounds_flt(t: typ_t): double
 {
     | TypFloat(16) => 65504.
+    | TypFloat(17) => 3.389531e+38      // bf16 max (same 8-bit exponent as float32)
     | TypFloat(32) => 3.402823e+38
     | _ => 0.
 }

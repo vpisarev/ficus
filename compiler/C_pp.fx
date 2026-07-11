@@ -219,6 +219,7 @@ type assoc_t = AssocLeft | AssocRight
                 }
             }
         | KLitFloat(16, f) => pp.str(f"FX_F32TOF16({K_form.klit2str(KLitFloat(32,f), true, loc)})")
+        | KLitFloat(17, f) => pp.str(f"FX_F32TOBF16({K_form.klit2str(KLitFloat(32,f), true, loc)})")
         | _ => pp.str(K_form.klit2str(l, true, loc))
         }
     | CExpBinary(COpArrayElem as bop, a, b, _) =>

@@ -507,6 +507,13 @@ const int MAX_ATOF = 128;
             bits = 16;
             ++i;
             endptr++;
+        } else if ((c == 'b' || c == 'B') && i+1 < len &&
+                   (ptr[i+1] == 'f' || ptr[i+1] == 'F')) {
+            // bf16 (bfloat16): the two-char 'bf' suffix. Uses width code 17
+            // (fp16 'h' is the real 16); see Ast.BF16.
+            bits = 17;
+            i += 2;
+            endptr += 2;
         }
         if (allow_complex && i < len && ptr[i] == 'i') {
             endptr++;

@@ -85,7 +85,8 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool): (char, int, bool)
 /* Extracts an integer or floating-point number literal.
    The number should not have a sign in front and must start with a digit.
    0x, 0b, 0o/0 prefixes are supported.
-   h, f, uNN, iNN, L and UL suffixes are also supported.
+   h, bf, f, uNN, iNN, L and UL suffixes are also supported
+   (h => fp16, bf => bf16, f => float).
 */
 @private @pure fun getnumber_(s: string, pos: int,
     just_int: bool, get_suffix: bool, allow_complex: bool):
@@ -247,6 +248,13 @@ fun skip_spaces(s: stream_t, pos: int, allow_nested: bool): (char, int, bool)
             bits = 16;
             ++i;
             endptr++;
+        } else if ((c == 'b' || c == 'B') && i+1 < len &&
+                   (ptr[i+1] == 'f' || ptr[i+1] == 'F')) {
+            // bf16 (bfloat16): the two-char 'bf' suffix. Uses width code 17
+            // (fp16 'h' is the real 16); see Ast.BF16.
+            bits = 17;
+            i += 2;
+            endptr += 2;
         }
         if (allow_complex && i < len && ptr[i] == 'i') {
             endptr++;

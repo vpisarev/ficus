@@ -15275,34 +15275,47 @@ FX_EXTERN_C int
    _fx_copy_N14K_form__atom_t(&v_0.t0, &a_0);
    FX_COPY_PTR(v_0.t1, &code_1);
    FX_CALL(_fx_M6K_formFM13get_atom_ktypN14K_form__ktyp_t2N14K_form__atom_tR10Ast__loc_t(&a_0, &loc_0, &v_1, 0), _fx_cleanup);
-   if (FX_REC_VARIANT_TAG(v_1) == 5) {
+   int tag_0 = FX_REC_VARIANT_TAG(v_1);
+   bool res_0;
+   if (tag_0 == 5) {
       if (v_1->u.KTypFloat == 16) {
-         _fx_N14K_form__ktyp_t v_2 = 0;
-         _fx_N14K_form__kexp_t v_3 = 0;
-         int_ v_4;
-         FX_CALL(_fx_M3AstFM11curr_modulei1LN12Ast__scope_t(sc_0, &v_4, 0), _fx_catch_0);
-         FX_CALL(_fx_M6K_formFM9KTypFloatN14K_form__ktyp_t1i(32, &v_2), _fx_catch_0);
-         FX_CALL(
-            _fx_M6K_formFM8KExpCastN14K_form__kexp_t3N14K_form__atom_tN14K_form__ktyp_tR10Ast__loc_t(&a_0, v_2, &loc_0, &v_3),
-            _fx_catch_0);
-         fx_str_t slit_0 = FX_MAKE_STR("v");
-         FX_CALL(
-            _fx_M6K_formFM9kexp2atomT2N14K_form__atom_tLN14K_form__kexp_t5iSN14K_form__kexp_tBLN14K_form__kexp_t(v_4, &slit_0,
-               v_3, tref_0, code_1, fx_result, 0), _fx_catch_0);
-
-      _fx_catch_0: ;
-         if (v_3) {
-            _fx_free_N14K_form__kexp_t(&v_3);
-         }
-         if (v_2) {
-            _fx_free_N14K_form__ktyp_t(&v_2);
-         }
-         goto _fx_endmatch_0;
+         res_0 = true; goto _fx_endmatch_0;
       }
+   }
+   if (tag_0 == 5) {
+      if (v_1->u.KTypFloat == 17) {
+         res_0 = true; goto _fx_endmatch_0;
+      }
+   }
+   res_0 = false;
+
+_fx_endmatch_0: ;
+   FX_CHECK_EXN(_fx_cleanup);
+   if (res_0) {
+      _fx_N14K_form__ktyp_t v_2 = 0;
+      _fx_N14K_form__kexp_t v_3 = 0;
+      int_ v_4;
+      FX_CALL(_fx_M3AstFM11curr_modulei1LN12Ast__scope_t(sc_0, &v_4, 0), _fx_catch_0);
+      FX_CALL(_fx_M6K_formFM9KTypFloatN14K_form__ktyp_t1i(32, &v_2), _fx_catch_0);
+      FX_CALL(_fx_M6K_formFM8KExpCastN14K_form__kexp_t3N14K_form__atom_tN14K_form__ktyp_tR10Ast__loc_t(&a_0, v_2, &loc_0, &v_3),
+         _fx_catch_0);
+      fx_str_t slit_0 = FX_MAKE_STR("v");
+      FX_CALL(
+         _fx_M6K_formFM9kexp2atomT2N14K_form__atom_tLN14K_form__kexp_t5iSN14K_form__kexp_tBLN14K_form__kexp_t(v_4, &slit_0, v_3,
+            tref_0, code_1, fx_result, 0), _fx_catch_0);
+
+   _fx_catch_0: ;
+      if (v_3) {
+         _fx_free_N14K_form__kexp_t(&v_3);
+      }
+      if (v_2) {
+         _fx_free_N14K_form__ktyp_t(&v_2);
+      }
+      goto _fx_endmatch_1;
    }
    _fx_make_T2N14K_form__atom_tLN14K_form__kexp_t(&a_0, code_1, fx_result);
 
-_fx_endmatch_0: ;
+_fx_endmatch_1: ;
 
 _fx_cleanup: ;
    _fx_free_T2N14K_form__atom_tLN14K_form__kexp_t(&v_0);

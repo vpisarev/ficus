@@ -900,6 +900,7 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
     | CTypSInt b => (f"int{b}_t", noid)
     | CTypUInt b => (f"uint{b}_t", noid)
     | CTypFloat 16 => ("fx_f16", noid)
+    | CTypFloat 17 => ("fx_bf16", noid)
     | CTypFloat 32 => ("float", noid)
     | CTypFloat 64 => ("double", noid)
     | CTypFloat b => throw compile_err(loc, f"invalid type CTypFloat({b})")

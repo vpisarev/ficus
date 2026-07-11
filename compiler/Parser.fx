@@ -1913,6 +1913,7 @@ fun parse_atomic_typ_(ts: tklist_t): (tklist_t, typ_t)
             | "int64" => TypSInt(64)
             | "uint64" => TypUInt(64)
             | "fp16" => TypFloat(16)
+            | "bf16" => TypFloat(BF16)
             | "void" => TypVoid
             | "exn" => TypExn
             | "cptr" => TypCPointer

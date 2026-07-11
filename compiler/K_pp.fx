@@ -59,6 +59,7 @@ val pp_ = Ast.pp
     | KTypSInt b => pp.str(f"int{b}")
     | KTypUInt b => pp.str(f"uint{b}")
     | KTypFloat(16) => pp.str("fp16")
+    | KTypFloat(17) => pp.str("bf16")
     | KTypFloat(32) => pp.str("float")
     | KTypFloat(64) => pp.str("double")
     | KTypFloat b => throw compile_err(loc, f"K_pp: invalid type TypFloat({b})")

@@ -266,6 +266,12 @@ type interpolate_t =
 
 val max_zerobuf_size = 256
 
+// bf16 (bfloat16) reuses the float-type constructor with a distinct width
+// code 17 (fp16 is the real 16). 17/8 == 2 keeps the byte size correct.
+// Construct with TypFloat(BF16)/KTypFloat(BF16)... ; MATCH on the literal 17
+// (patterns cannot reference a val).
+val BF16 = 17
+
 type var_flags_t =
 {
     var_flag_class_from: int=0;
@@ -1354,6 +1360,7 @@ fun lit2str(c: lit_t) {
     | LitSInt(b, v) => f"{v}i{b}"
     | LitUInt(b, v) => f"{v}u{b}"
     | LitFloat(16, v) => add_dot(f"{float(v)}", "h")
+    | LitFloat(17, v) => add_dot(f"{float(v)}", "bf")
     | LitFloat(32, v) => add_dot(f"{float(v)}", "f")
     | LitFloat(_, v) => add_dot(string(v), "")
     | LitString(s) => s.escaped(quotes=true)
@@ -1389,6 +1396,7 @@ fun typ2str(t: typ_t): string {
     | TypFloat(n) =>
         match n {
         | 16 => "fp16"
+        | 17 => "bf16"
         | 32 => "float"
         | 64 => "double"
         | _ => throw compile_err(noloc, f"bad floating-point type TypFloat({n})")
