@@ -89,26 +89,16 @@ fun tanh(x: 't [+]): 't [+] = [for xi <- x {tanh(xi)}]
 
 @pure @nothrow fun isnan(x: float): bool
 @ccode {
-#ifndef __GNUC__
     fx_bits32_t u;
     u.f = x;
-    return ((u.i & 0x7fffffff) > 0x7f800000
-#else
-    return (__builtin_isnan(x)
-#endif
-    );
+    return ((u.i & 0x7fffffff) > 0x7f800000);
 }
 
 @pure @nothrow fun isinf(x: float): bool
 @ccode {
-#ifdef __GNUC__
     fx_bits32_t u;
     u.f = x;
-    return ((u.i & 0x7fffffff) == 0x7f800000
-#else
-    return (__builtin_isinf(x)
-#endif
-    );
+    return ((u.i & 0x7fffffff) == 0x7f800000);
 }
 
 @pure @nothrow fun isnan(x: double): bool

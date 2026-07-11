@@ -240,6 +240,30 @@ void fx_copy_ptr(const void* src, void* pdst);
 
 ///////////////////////////// Numbers ////////////////////////////
 
+FX_INLINE float fx_inff() {
+    fx_bits32_t u;
+    u.i = 0x7f800000;
+    return u.f;
+}
+
+FX_INLINE double fx_inf() {
+    fx_bits64_t u;
+    u.i = 0x7ff0000000000000LL;
+    return u.f;
+}
+
+FX_INLINE float fx_nanf() {
+    fx_bits32_t u;
+    u.i = 0x7fc00000;
+    return u.f;
+}
+
+FX_INLINE double fx_nan() {
+    fx_bits64_t u;
+    u.i = 0x7ff8000000000000LL;
+    return u.f;
+}
+
 FX_INLINE int_ fx_roundf2I(float x) {
     return (int_)lrintf(x);
 }

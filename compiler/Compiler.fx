@@ -466,7 +466,7 @@ fun k2c_all(kmods: kmodule_t list)
 fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
     val osinfo = Sys.osname(true)
     val opt_level = Options.opt.optimize_level
-    val opt_level_str = if opt_level <= 3 {string(opt_level)} else {"fast"}
+    val opt_level_str = if opt_level <= 3 {string(opt_level)} else {"3 -ffast-math"}
     val enable_openmp = Options.opt.enable_openmp
     val runtime_include_path = Filename.normalize(ficus_root, "runtime")
     val runtime_lib_path = Filename.normalize(ficus_root, "runtime/lib")

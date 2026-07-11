@@ -1409,9 +1409,10 @@ fun flt2str(v: double, suffix: string)
     val vstr = string(v)
     if vstr[0].isdigit() {vstr + suffix}
     else if vstr.contains("inf") || vstr.contains("INF") {
-        if vstr[0] == '-' {"-INFINITY"} else {"INFINITY"}
+        val sign = if vstr[0] == '-' {"-"} else {""}
+        f"{sign}fx_inf{suffix}()"
     } else if vstr.contains("nan") || vstr.contains("NAN") {
-        "NAN"
+        f"fx_nan{suffix}()"
     } else {
         vstr + suffix
     }
