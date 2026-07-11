@@ -229,9 +229,9 @@ type image_preprocess_params_t =
                         outptr[Cstep] = g;
                         outptr[Cstep*2] = b;
                     } else {
-                        outptr_f16[0] = FX_FLOAT16(r);
-                        outptr_f16[Cstep] = FX_FLOAT16(g);
-                        outptr_f16[Cstep*2] = FX_FLOAT16(b);
+                        outptr_f16[0] = FX_F32TOF16(r);
+                        outptr_f16[Cstep] = FX_F32TOF16(g);
+                        outptr_f16[Cstep*2] = FX_F32TOF16(b);
                     }
                 }
             }
@@ -304,7 +304,7 @@ fun normalize_image(image: uint8x3 [,], params: image_preprocess_params_t): Ast.
             data[ofs+planesize] = (g - mean.1)*scale.1
             data[ofs+planesize*2] = (b - mean.2)*scale.2
         }
-       
+
     Ast.nntensor_t {data=Ast.NN_Data_FP32(data),
         shape=Ast.nnshape_t {shape=[1,3,rows,cols],
         layout=Ast.NN_Layout_NCHW}}

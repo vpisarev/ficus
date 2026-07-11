@@ -179,10 +179,10 @@ static void _fx_gemm_pack##N##suffix( int_ m, int_ k, const void* A_, \
 #else
 
 #define _FX_GEMM_PACK_TO_FLOAT(src, dst, N) \
-    for (int k = 0; k < N; k++) (dst)[k] = FX_FLOAT((src)[k])
+    for (int k = 0; k < N; k++) (dst)[k] = FX_F16TOF32((src)[k])
 
 #define _FX_GEMM_PACK_TO_FLOAT16(src, dst, N) \
-    for (int k = 0; k < N; k++) (dst)[k] = FX_FLOAT16((src)[k])
+    for (int k = 0; k < N; k++) (dst)[k] = FX_F32TOF16((src)[k])
 
 #define _FX_GEMM_PACK_f16f32_8(src, dst) _FX_GEMM_PACK_TO_FLOAT((src), (dst), 8)
 #define _FX_GEMM_PACK_f16f32_12(src, dst) _FX_GEMM_PACK_TO_FLOAT((src), (dst), 12)
@@ -468,13 +468,13 @@ static int fx_gemm_thin(double alpha, double beta, int_ M, int_ N, int_ K,
                             c_i[j + k] = buf[k]*betaf;
                     }
                     for (; j < Nt; j++)
-                        c_i[j] = FX_FLOAT(cf16_i[j])*betaf;
+                        c_i[j] = FX_F16TOF32(cf16_i[j])*betaf;
                 } else if (betaf != 1.f) {
                     for( j = 0; j < Nt; j++ ) c_i[j] *= betaf;
                 }
                 for( k = 0; k < K; k++ ) {
                     float aval = alphaf*(a_typ == FX_F32 ? *((const float*)a_ + i*lda0 + k*lda1) :
-                                                 FX_FLOAT(*((const fx_f16*)a_ + i*lda0 + k*lda1)));
+                                                 FX_F16TOF32(*((const fx_f16*)a_ + i*lda0 + k*lda1)));
                     if (b_typ == FX_F32) {
                         const float* b_k = (const float*)b_ + k*ldb + j0;
                         for( j = 0; j < Nt; j++ )
@@ -510,7 +510,7 @@ static int fx_gemm_thin(double alpha, double beta, int_ M, int_ N, int_ K,
                         }
                     #endif
                         for (; j < Nt; j++) {
-                            float bval = FX_FLOAT(b_k[j]);
+                            float bval = FX_F16TOF32(b_k[j]);
                             c_i[j] += aval*bval;
                         }
                     }
@@ -521,7 +521,7 @@ static int fx_gemm_thin(double alpha, double beta, int_ M, int_ N, int_ K,
                         _FX_GEMM_PACK_f32f16_8(c_i + j, cf16_i + j);
                     }
                     for (; j < Nt; j++)
-                        cf16_i[j] = FX_FLOAT16(c_i[j]);
+                        cf16_i[j] = FX_F32TOF16(c_i[j]);
                 }
             }
         }
@@ -770,11 +770,11 @@ int fx_mpgemm( bool tA, bool tB, double alpha, double beta,
                 #endif
                     if (betaf == 0.f) {
                         for (; j < nc; j++)
-                            cf16_i[j] = FX_FLOAT16(c_i[j]);
+                            cf16_i[j] = FX_F32TOF16(c_i[j]);
                     } else {
                         for (; j < nc; j++) {
-                            float cval = FX_FLOAT(cf16_i[j])*betaf + c_i[j];
-                            cf16_i[j] = FX_FLOAT16(cval);
+                            float cval = FX_F16TOF32(cf16_i[j])*betaf + c_i[j];
+                            cf16_i[j] = FX_F32TOF16(cval);
                         }
                     }
                 }

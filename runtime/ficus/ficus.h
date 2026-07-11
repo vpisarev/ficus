@@ -76,6 +76,8 @@ typedef struct fx_f16 { uint16_t bits; } fx_f16;
 #endif
 #endif
 
+typedef struct fx_bf16 { uint16_t bits; } fx_bf16;
+
 typedef union fx_bits64_t {double f; int64_t i; uint64_t u;} fx_bits64_t;
 typedef union fx_bits32_t {float f; int i; unsigned u;} fx_bits32_t;
 typedef union fx_bits16_t {fx_f16 f; int16_t i; uint16_t u; } fx_bits16_t;
@@ -1272,21 +1274,21 @@ int fx_re_replace(const fx_cptr_t regex, const fx_str_t* str,
 //////////////////////////// FP16<=>FP32 conversion //////////////////////
 
 #if defined FX_SIMD_NEON && FX_SIMD_NEON
-#define FX_FLOAT(x) (float)(x)
-#define FX_FLOAT16(x) (__fp16)(x)
+#define FX_F16TOF32(x) (float)(x)
+#define FX_F32TOF16(x) (__fp16)(x)
 #elif defined FX_SIMD_AVX2 && FX_SIMD_AVX2
-FX_INLINE float FX_FLOAT(fx_f16 h) {
+FX_INLINE float FX_F16TOF32(fx_f16 h) {
     float f;
     _mm_store_ss(&f, _mm_cvtph_ps(_mm_cvtsi32_si128(h.bits)));
     return f;
 }
-FX_INLINE fx_f16 FX_FLOAT16(float f) {
+FX_INLINE fx_f16 FX_F32TOF16(float f) {
     fx_f16 h;
     h.bits = (uint16_t)_mm_cvtsi128_si32(_mm_cvtps_ph(_mm_set_ss(f), 0));
     return h;
 }
 #else
-static inline float FX_FLOAT(fx_f16 h) {
+static inline float FX_F16TOF32(fx_f16 h) {
     fx_bits32_t out;
     unsigned t = ((h.bits & 0x7fff) << 13) + 0x38000000;
     unsigned e = h.bits & 0x7c00;
@@ -1301,7 +1303,7 @@ static inline float FX_FLOAT(fx_f16 h) {
 
 // Slightly reshaped float->half by Fabian "ryg" Giesen:
 // https://gist.github.com/rygorous/2156668
-static inline fx_f16 FX_FLOAT16(float f)
+static inline fx_f16 FX_F32TOF16(float f)
 {
     fx_bits32_t u;
     fx_f16 h;
@@ -1327,6 +1329,21 @@ static inline fx_f16 FX_FLOAT16(float f)
     return h;
 }
 #endif
+
+static inline float FX_BF16TOF32(fx_bf16 h) {
+    fx_bits32_t out;
+    out.u = h.bits << 16;
+    return out.f;
+}
+
+static inline fx_bf16 FX_F32TOBF16(float f)
+{
+    fx_bits32_t in;
+    fx_bf16 out;
+    in.f = f;
+    out.bits = (uint16_t)((in.u + (((in.u & 0x7fffffffu) <= 0x7f7f7fffu) << 15)) >> 16);
+    return out;
+}
 
 #ifdef __cplusplus
 }

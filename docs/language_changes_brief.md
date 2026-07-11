@@ -94,7 +94,7 @@ losing the function's interface — session-2/LSP groundwork) and a future
 dividend for separate interface-only compilation. Not a language change for
 *users* — inference stays; the flag is a discipline knob.
 
-## 2. fold — imperative form — DECIDED & IMPLEMENTED (fold-1; see docs/fold1_report.md)
+## 2. fold — imperative form — DECIDED & IMPLEMENTED (fold-1, 2026-07-11)
 
 Body is a void expression; accumulators are scoped variables updated by named
 assignment; tuple assignment `(a, b) = (b, a+b)` has simultaneous semantics
@@ -104,6 +104,16 @@ assign outer accumulators; fold is sugar, erased by K-form. Migration is loud
 (old tuple bodies fail typecheck); acceptance = bitwise-identical K-form for
 migrated code. (Vadim has a worked design for the reform mechanics — to be
 written up for the Brief #3 session.)
+
+Shipped per spec via the __fold__ staging (now the standard keyword-reform
+playbook: temp keyword → per-module migration, ladder-green each batch →
+2-stage bootstrap flip). Census: 261 sites, W(closure-captures-acc)=0 —
+var-capture semantics changes no migrated site. Byproducts: simultaneous
+tuple assignment `(a,b)=(b,a+b)` (with `_` components) as a language feature;
+FB-023 latent C-gen soundness fix. Remaining in §2: writer accumulators
+(wave 2), reduction sugars → intrinsic (@parallel wave), scan question, and
+a follow-up: a dedicated "fold body must be void" primary error instead of
+warning+type-error.
 
 - `@parallel` on general fold is forbidden by design. Named reduction sugars
   instead: `sum`, `minmax` (one pass), `argmin`/`argmax`, `count`, `mean`,

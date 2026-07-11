@@ -312,21 +312,21 @@ _fx_winograd_accum_f16(const fx_f16* inwptr, const fx_f16* wptr,
                                      wptr += _FX_WINO_KBLOCK*_FX_WINO_ATOM_F16) {
             for (int i = 0; i < _FX_WINO_KBLOCK; i++) {
                 int i_ = i*_FX_WINO_ATOM_F16;
-                float w0 = FX_FLOAT(wptr[i_ + 0]), w1 = FX_FLOAT(wptr[i_ + 1]);
-                float w2 = FX_FLOAT(wptr[i_ + 2]), w3 = FX_FLOAT(wptr[i_ + 3]);
-                float w4 = FX_FLOAT(wptr[i_ + 4]), w5 = FX_FLOAT(wptr[i_ + 5]);
-                float w6 = FX_FLOAT(wptr[i_ + 6]), w7 = FX_FLOAT(wptr[i_ + 7]);
+                float w0 = FX_F16TOF32(wptr[i_ + 0]), w1 = FX_F16TOF32(wptr[i_ + 1]);
+                float w2 = FX_F16TOF32(wptr[i_ + 2]), w3 = FX_F16TOF32(wptr[i_ + 3]);
+                float w4 = FX_F16TOF32(wptr[i_ + 4]), w5 = FX_F16TOF32(wptr[i_ + 5]);
+                float w6 = FX_F16TOF32(wptr[i_ + 6]), w7 = FX_F16TOF32(wptr[i_ + 7]);
                 for (int j = 0; j < _FX_WINO_IBLOCK; j++) {
                     int j_ = j*_FX_WINO_ATOM_F16;
                     int ij_ = i_*_FX_WINO_IBLOCK + j_;
-                    float s0 = FX_FLOAT(inwptr[j_ + 0])*w0;
-                    float s1 = FX_FLOAT(inwptr[j_ + 1])*w1;
-                    float s2 = FX_FLOAT(inwptr[j_ + 2])*w2;
-                    float s3 = FX_FLOAT(inwptr[j_ + 3])*w3;
-                    float s4 = FX_FLOAT(inwptr[j_ + 4])*w4;
-                    float s5 = FX_FLOAT(inwptr[j_ + 5])*w5;
-                    float s6 = FX_FLOAT(inwptr[j_ + 6])*w6;
-                    float s7 = FX_FLOAT(inwptr[j_ + 7])*w7;
+                    float s0 = FX_F16TOF32(inwptr[j_ + 0])*w0;
+                    float s1 = FX_F16TOF32(inwptr[j_ + 1])*w1;
+                    float s2 = FX_F16TOF32(inwptr[j_ + 2])*w2;
+                    float s3 = FX_F16TOF32(inwptr[j_ + 3])*w3;
+                    float s4 = FX_F16TOF32(inwptr[j_ + 4])*w4;
+                    float s5 = FX_F16TOF32(inwptr[j_ + 5])*w5;
+                    float s6 = FX_F16TOF32(inwptr[j_ + 6])*w6;
+                    float s7 = FX_F16TOF32(inwptr[j_ + 7])*w7;
                     sumbuf[ij_ + 0] += s0;
                     sumbuf[ij_ + 1] += s1;
                     sumbuf[ij_ + 2] += s2;
@@ -341,14 +341,14 @@ _fx_winograd_accum_f16(const fx_f16* inwptr, const fx_f16* wptr,
         for (int ij = 0; ij < _FX_WINO_KBLOCK*_FX_WINO_IBLOCK; ij++) {
             int ij_ = ij*_FX_WINO_ATOM_F16;
             int ij_out = ij*_FX_WINO_AREA;
-            outbuf[ij_out + 0] = FX_FLOAT16(sumbuf[ij_ + 0]);
-            outbuf[ij_out + 1] = FX_FLOAT16(sumbuf[ij_ + 1]);
-            outbuf[ij_out + 2] = FX_FLOAT16(sumbuf[ij_ + 2]);
-            outbuf[ij_out + 3] = FX_FLOAT16(sumbuf[ij_ + 3]);
-            outbuf[ij_out + 4] = FX_FLOAT16(sumbuf[ij_ + 4]);
-            outbuf[ij_out + 5] = FX_FLOAT16(sumbuf[ij_ + 5]);
-            outbuf[ij_out + 6] = FX_FLOAT16(sumbuf[ij_ + 6]);
-            outbuf[ij_out + 7] = FX_FLOAT16(sumbuf[ij_ + 7]);
+            outbuf[ij_out + 0] = FX_F32TOF16(sumbuf[ij_ + 0]);
+            outbuf[ij_out + 1] = FX_F32TOF16(sumbuf[ij_ + 1]);
+            outbuf[ij_out + 2] = FX_F32TOF16(sumbuf[ij_ + 2]);
+            outbuf[ij_out + 3] = FX_F32TOF16(sumbuf[ij_ + 3]);
+            outbuf[ij_out + 4] = FX_F32TOF16(sumbuf[ij_ + 4]);
+            outbuf[ij_out + 5] = FX_F32TOF16(sumbuf[ij_ + 5]);
+            outbuf[ij_out + 6] = FX_F32TOF16(sumbuf[ij_ + 6]);
+            outbuf[ij_out + 7] = FX_F32TOF16(sumbuf[ij_ + 7]);
         }
     }
 #endif

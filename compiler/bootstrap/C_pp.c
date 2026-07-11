@@ -3183,7 +3183,7 @@ _fx_cleanup: ;
 
 FX_EXTERN_C int_ _fx_M4C_ppFM6lengthi1LN15C_form__cstmt_t(struct _fx_LN15C_form__cstmt_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -3192,21 +3192,21 @@ FX_EXTERN_C int_ _fx_M4C_ppFM6lengthi1LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form_
    struct _fx_LT3R9Ast__id_tN14C_form__ctyp_tLN19C_form__carg_attr_t_data_t* l,
    void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M4C_ppFM6lengthi1LN14C_form__ctyp_t(struct _fx_LN14C_form__ctyp_t_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
 
 FX_EXTERN_C int_ _fx_M4C_ppFM6lengthi1LS(struct _fx_LS_data_t* l, void* fx_fv)
 {
-   
+
 return fx_list_length(l);
 
 }
@@ -4244,7 +4244,7 @@ FX_EXTERN_C int _fx_M4C_ppFM8pp_cexp_v3R5PP__tN14C_form__cexp_ti(
             _fx_M6K_formFM9KLitFloatN14K_form__klit_t2id(32, vcase_2->t1, &v_5);
             FX_CALL(_fx_M6K_formFM8klit2strS3N14K_form__klit_tBR10Ast__loc_t(&v_5, true, loc_0, &v_6, 0), _fx_catch_5);
             FX_CALL(_fx_M4C_ppFM6stringS1S(&v_6, &v_7, 0), _fx_catch_5);
-            fx_str_t slit_4 = FX_MAKE_STR("FX_FLOAT16(");
+            fx_str_t slit_4 = FX_MAKE_STR("FX_F32TOF16(");
             fx_str_t slit_5 = FX_MAKE_STR(")");
             {
                const fx_str_t strs_3[] = { slit_4, v_7, slit_5 };
@@ -5836,4 +5836,3 @@ FX_EXTERN_C void fx_deinit_C_pp(void)
 {
 
 }
-

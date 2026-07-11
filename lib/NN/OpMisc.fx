@@ -101,7 +101,7 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                 double sq = 0;
 
                 for (int_ c = 0; c < C; c++) {
-                    float x = FX_FLOAT(inptr[c*plane_size]);
+                    float x = FX_F16TOF32(inptr[c*plane_size]);
                     sq += x*x;
                     inpbuf[c] = x;
                     sqsumbuf[c+1] = sq;
@@ -113,7 +113,7 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                         c1 = c1 <= C ? c1 : C;
                         float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
                         float x = bias + scale*sqsum;
-                        outptr[c*plane_size] = FX_FLOAT16((inpbuf[c]/x)*sqrtf(sqrtf(x)));
+                        outptr[c*plane_size] = FX_F32TOF16((inpbuf[c]/x)*sqrtf(sqrtf(x)));
                     }
                 } else {
                     for (int_ c = 0; c < C; c++) {
@@ -122,7 +122,7 @@ fun run_lrn_2d(inp: Ast.nntensor_t, out: Ast.nntensor_t,
                         c1 = c1 <= C ? c1 : C;
                         float sqsum = (float)(sqsumbuf[c1] - sqsumbuf[c0]);
                         float x = bias + scale*sqsum;
-                        outptr[c*plane_size] = FX_FLOAT16(inpbuf[c]*powf(x, -beta));
+                        outptr[c*plane_size] = FX_F32TOF16(inpbuf[c]*powf(x, -beta));
                     }
                 }
             }

@@ -246,7 +246,7 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
                 for(int_ j = 0; j < total; j++) {
                     fx_bits16_t u;
                     u.u = (uint16_t)(tensor->int32_data[j]);
-                    dst[j] = FX_FLOAT(u.f);
+                    dst[j] = FX_F16TOF32(u.f);
                 }
             }  else if (elemsize == 4 && tensor->raw_data.len == total*2) {
                 float* dst = (float*)result->data.arr.data;
@@ -254,7 +254,7 @@ static int onnx_parse_tensor(FicusOnnx__TensorProto* tensor, const fx_arr_t* ref
                     uint8_t* p = tensor->raw_data.data + j*2;
                     fx_bits16_t u;
                     u.u = (uint16_t)(p[0] | (p[1] << 8));
-                    dst[j] = FX_FLOAT(u.f);
+                    dst[j] = FX_F16TOF32(u.f);
                 }
             } else if (elemsize == 4 && tensor->raw_data.len == total*4) {
                 uint32_t* dst = (uint32_t*)result->data.arr.data;

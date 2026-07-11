@@ -123,7 +123,7 @@ fun run_nms(boxes: Ast.nntensor_t, scores: Ast.nntensor_t,
                 int_ best_label = 0;
                 bool multiclass = false;
                 for (int_ j = 1; j < C; j++) {
-                    float score_nij = scores_typ == FX_F32 ? scores_ni[j*B] : FX_FLOAT(scores_ni_f16[j*B]);
+                    float score_nij = scores_typ == FX_F32 ? scores_ni[j*B] : FX_F16TOF32(scores_ni_f16[j*B]);
                     //printf("%d. class=%d. score=%.2f\n", (int)i, (int)j, score_nij);
                     if (score_nij > best_score)
                     {
@@ -148,10 +148,10 @@ fun run_nms(boxes: Ast.nntensor_t, scores: Ast.nntensor_t,
                         box0[3] = boxptr[3];
                     } else {
                         const fx_f16* boxptr_f16 = (const fx_f16*)boxes_data + (n0*B + i)*4;
-                        box0[0] = FX_FLOAT(boxptr_f16[0]);
-                        box0[1] = FX_FLOAT(boxptr_f16[1]);
-                        box0[2] = FX_FLOAT(boxptr_f16[2]);
-                        box0[3] = FX_FLOAT(boxptr_f16[3]);
+                        box0[0] = FX_F16TOF32(boxptr_f16[0]);
+                        box0[1] = FX_F16TOF32(boxptr_f16[1]);
+                        box0[2] = FX_F16TOF32(boxptr_f16[2]);
+                        box0[3] = FX_F16TOF32(boxptr_f16[3]);
                     }
                     i0 = 0; i1 = C;
                     if (!multiclass) {

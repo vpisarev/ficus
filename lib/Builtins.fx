@@ -214,7 +214,7 @@ fun string(a: bool): string = if a {"true"} else {"false"}
 @ccode {
     char buf[32];
     fx_bits32_t u;
-    float f = FX_FLOAT(a);
+    float f = FX_F16TOF32(a);
     u.f = f;
     if ((u.i & 0x7f800000) != 0x7f800000)
         sprintf(buf, (f == (int)f ? "%.1f" : "%.4g"), f);
@@ -1014,7 +1014,7 @@ fun print(a: long): void = @ccode {
 @nothrow fun print(a: half): void
 @ccode {
     fx_bits32_t u;
-    float f = FX_FLOAT(a);
+    float f = FX_F16TOF32(a);
     u.f = f;
     if ((u.i & 0x7f800000) != 0x7f800000)
         printf((f == (int)f ? "%.1f" : "%.4g"), f);

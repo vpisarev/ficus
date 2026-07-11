@@ -63,12 +63,12 @@ fun run_gemm(A: Ast.nntensor_t, B: Ast.nntensor_t, C: Ast.nntensor_t,
                 const fx_f16* c_i = (const fx_f16*)c_i_;
                 float* out_i = (float*)out_i_;
                 for (int_ j = 0; j < ncols; j++)
-                    out_i[j] = FX_FLOAT(c_i[j]);
+                    out_i[j] = FX_F16TOF32(c_i[j]);
             } else if (C_typ == FX_F32 && out_typ == FX_F16) {
                 const float* c_i = (const float*)c_i_;
                 fx_f16* out_i = (fx_f16*)out_i_;
                 for (int_ j = 0; j < ncols; j++)
-                    out_i[j] = FX_FLOAT16(c_i[j]);
+                    out_i[j] = FX_F32TOF16(c_i[j]);
             } else {
                 return FX_SET_EXN_FAST(FX_EXN_NotImplementedError);
             }
@@ -169,7 +169,7 @@ fun run_qmatmul(A: Ast.nntensor_t, B: Ast.nntensor_t,
 
     {
     double out_sc0 = 1./(out_sc_typ == FX_F32 ? *(float*)out_sc_data->data :
-                                  FX_FLOAT(*(fx_f16*)out_sc_data->data));
+                                  FX_F16TOF32(*(fx_f16*)out_sc_data->data));
     int out_zp0 = out_zp_typ == FX_I8 ? *(int8_t*)out_zp_data->data + 128 :
                                         (int)*(uint8_t*)out_zp_data->data;
     float* A_sc_buf = (float*)alloca((M + N)*2*sizeof(A_sc_buf[0]));
@@ -178,7 +178,7 @@ fun run_qmatmul(A: Ast.nntensor_t, B: Ast.nntensor_t,
     int* B_zp_buf = A_zp_buf + M;
     if (A_nscales == 1) {
         float A_sc0 = A_sc_typ == FX_F32 ? *(float*)A_sc_data->data :
-                                  FX_FLOAT(*(fx_f16*)A_sc_data->data);
+                                  FX_F16TOF32(*(fx_f16*)A_sc_data->data);
         int A_zp0 = A_zp_typ == FX_I8 ? *(int8_t*)A_zp_data->data + 128 :
                                         (int)*(uint8_t*)A_zp_data->data;
         for (int_ i = 0; i < M; i++) {
@@ -188,7 +188,7 @@ fun run_qmatmul(A: Ast.nntensor_t, B: Ast.nntensor_t,
     } else {
         for (int_ i = 0; i < M; i++) {
             float A_sci = A_sc_typ == FX_F32 ? ((float*)A_sc_data->data)[i] :
-                                  FX_FLOAT(((fx_f16*)A_sc_data->data)[i]);
+                                  FX_F16TOF32(((fx_f16*)A_sc_data->data)[i]);
             int A_zpi = A_zp_typ == FX_I8 ? ((int8_t*)A_zp_data->data)[i] + 128 :
                                         (int)((uint8_t*)A_zp_data->data)[i];
             A_sc_buf[i] = A_sci;
@@ -197,7 +197,7 @@ fun run_qmatmul(A: Ast.nntensor_t, B: Ast.nntensor_t,
     }
     if (B_nscales == 1) {
         float B_sc0 = B_sc_typ == FX_F32 ? *(float*)B_sc_data->data :
-                                  FX_FLOAT(*(fx_f16*)B_sc_data->data);
+                                  FX_F16TOF32(*(fx_f16*)B_sc_data->data);
         int B_zp0 = B_zp_typ == FX_I8 ? *(int8_t*)B_zp_data->data + 128 :
                                         (int)*(uint8_t*)B_zp_data->data;
         for (int_ j = 0; j < N; j++) {
@@ -207,7 +207,7 @@ fun run_qmatmul(A: Ast.nntensor_t, B: Ast.nntensor_t,
     } else {
         for (int_ j = 0; j < N; j++) {
             float B_scj = B_sc_typ == FX_F32 ? ((float*)B_sc_data->data)[j] :
-                                  FX_FLOAT(((fx_f16*)B_sc_data->data)[j]);
+                                  FX_F16TOF32(((fx_f16*)B_sc_data->data)[j]);
             int B_zpj = B_zp_typ == FX_I8 ? ((int8_t*)B_zp_data->data)[j] + 128 :
                                         (int)((uint8_t*)B_zp_data->data)[j];
             B_sc_buf[j] = B_scj;

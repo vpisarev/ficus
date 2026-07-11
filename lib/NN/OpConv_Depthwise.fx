@@ -643,9 +643,9 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                                 int xi = xi_ + yxtab[k*2+1];
                                 float w = w_f32[k];
                                 if ((unsigned)xi < (unsigned)Wi) {
-                                    s_0 += FX_FLOAT(inptr[yi*Wi + xi])*w;
-                                    s_1 += FX_FLOAT(inptr[(yi+1)*Wi + xi])*w;
-                                    s_2 += FX_FLOAT(inptr[(yi+2)*Wi + xi])*w;
+                                    s_0 += FX_F16TOF32(inptr[yi*Wi + xi])*w;
+                                    s_1 += FX_F16TOF32(inptr[(yi+1)*Wi + xi])*w;
+                                    s_2 += FX_F16TOF32(inptr[(yi+2)*Wi + xi])*w;
                                 }
                             }
                             s_0 = s_0 <= maxval ? s_0 : maxval;
@@ -654,9 +654,9 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                             s_1 *= (s_1 < 0.f ? alpha : 1.f);
                             s_2 = s_2 <= maxval ? s_2 : maxval;
                             s_2 *= (s_2 < 0.f ? alpha : 1.f);
-                            outptr[x0] = FX_FLOAT16(s_0);
-                            outptr[x0 + W0] = FX_FLOAT16(s_1);
-                            outptr[x0 + W0*2] = FX_FLOAT16(s_2);
+                            outptr[x0] = FX_F32TOF16(s_0);
+                            outptr[x0 + W0] = FX_F32TOF16(s_1);
+                            outptr[x0 + W0*2] = FX_F32TOF16(s_2);
                         }
                     } else {
                         for (; x0 < x1; x0++) {
@@ -667,11 +667,11 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                                 int xi = xi_ + yxtab[k*2+1];
                                 float w = w_f32[k];
                                 if ((unsigned)xi < (unsigned)Wi)
-                                    s_0 += FX_FLOAT(inptr[yi*Wi + xi])*w;
+                                    s_0 += FX_F16TOF32(inptr[yi*Wi + xi])*w;
                             }
                             s_0 = s_0 <= maxval ? s_0 : maxval;
                             s_0 *= (s_0 < 0.f ? alpha : 1.f);
-                            outptr[x0] = FX_FLOAT16(s_0);
+                            outptr[x0] = FX_F32TOF16(s_0);
                         }
                     }
                     if (x0 >= W0)
@@ -909,9 +909,9 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                             for (int k = 0; k < ksize; k++) {
                                 int inp_ofs = ofstab[k];
                                 float w = w_f32[k];
-                                s_0 += FX_FLOAT(inptr_xi[inp_ofs])*w;
-                                s_1 += FX_FLOAT(inptr_xi[inp_ofs + Wi])*w;
-                                s_2 += FX_FLOAT(inptr_xi[inp_ofs + Wi*2])*w;
+                                s_0 += FX_F16TOF32(inptr_xi[inp_ofs])*w;
+                                s_1 += FX_F16TOF32(inptr_xi[inp_ofs + Wi])*w;
+                                s_2 += FX_F16TOF32(inptr_xi[inp_ofs + Wi*2])*w;
                             }
                             s_0 = s_0 <= maxval ? s_0 : maxval;
                             s_0 *= (s_0 < 0.f ? alpha : 1.f);
@@ -919,9 +919,9 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                             s_1 *= (s_1 < 0.f ? alpha : 1.f);
                             s_2 = s_2 <= maxval ? s_2 : maxval;
                             s_2 *= (s_2 < 0.f ? alpha : 1.f);
-                            outptr[x0] = FX_FLOAT16(s_0);
-                            outptr[x0 + W0] = FX_FLOAT16(s_1);
-                            outptr[x0 + W0*2] = FX_FLOAT16(s_2);
+                            outptr[x0] = FX_F32TOF16(s_0);
+                            outptr[x0 + W0] = FX_F32TOF16(s_1);
+                            outptr[x0 + W0*2] = FX_F32TOF16(s_2);
                         }
                     } else {
                         for (; x0 < x1; x0++) {
@@ -929,11 +929,11 @@ int _fx_depthwise_conv2d_f16(const _fx_depthwise2d_t* dw_ctx,
                             const fx_f16* inptr_xi = inptr + Wi*yi_ + xi_;
                             s_0 = biasval;
                             for (int k = k0; k < k1; k++) {
-                                s_0 += FX_FLOAT(inptr_xi[ofstab[k]])*w_f32[k];
+                                s_0 += FX_F16TOF32(inptr_xi[ofstab[k]])*w_f32[k];
                             }
                             s_0 = s_0 <= maxval ? s_0 : maxval;
                             s_0 *= (s_0 < 0.f ? alpha : 1.f);
-                            outptr[x0] = FX_FLOAT16(s_0);
+                            outptr[x0] = FX_F32TOF16(s_0);
                         }
                     }
                     x1 = W0;

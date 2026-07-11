@@ -88,7 +88,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
                 if (!is_scalar_scale && c0 + j >= C)
                     continue;
                 sc[j] = 1.f/(sc_typ == FX_F32 ? ((float*)sc_data->data)[sc_c] :
-                        FX_FLOAT(((fx_f16*)sc_data->data)[sc_c]));
+                        FX_F16TOF32(((fx_f16*)sc_data->data)[sc_c]));
                 zp[j] = !zp_data->data ? 0 :
                         zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + out_mask :
                                   (int)(((uint8_t*)zp_data->data)[sc_c]);
@@ -159,10 +159,10 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
                         v2 = ((float*)inptr2)[j];
                         v3 = ((float*)inptr3)[j];
                     } else {
-                        v0 = FX_FLOAT(((fx_f16*)inptr0)[j]);
-                        v1 = FX_FLOAT(((fx_f16*)inptr1)[j]);
-                        v2 = FX_FLOAT(((fx_f16*)inptr2)[j]);
-                        v3 = FX_FLOAT(((fx_f16*)inptr3)[j]);
+                        v0 = FX_F16TOF32(((fx_f16*)inptr0)[j]);
+                        v1 = FX_F16TOF32(((fx_f16*)inptr1)[j]);
+                        v2 = FX_F16TOF32(((fx_f16*)inptr2)[j]);
+                        v3 = FX_F16TOF32(((fx_f16*)inptr3)[j]);
                     }
                     int i0 = (int)lrintf(v0*sc[0]) + zp[0];
                     int i1 = (int)lrintf(v1*sc[1]) + zp[1];
@@ -207,7 +207,7 @@ fun run_quantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_t,
                     if (inp_typ == FX_F32) {
                         v0 = ((float*)inptr0)[j];
                     } else {
-                        v0 = FX_FLOAT(((fx_f16*)inptr0)[j]);
+                        v0 = FX_F16TOF32(((fx_f16*)inptr0)[j]);
                     }
                     int i0 = (int)lrintf(v0*sc[0]) + zp[0];
                     outptr[j] = (uint8_t)FX_SATURATE(i0, out_mask);
@@ -315,7 +315,7 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
                 if (!is_scalar_scale && c0 + j >= C)
                     continue;
                 sc[j] = sc_typ == FX_F32 ? ((float*)sc_data->data)[sc_c] :
-                        FX_FLOAT(((fx_f16*)sc_data->data)[sc_c]);
+                        FX_F16TOF32(((fx_f16*)sc_data->data)[sc_c]);
                 zp[j] = !zp_data->data ? inp_mask :
                         zp_typ == FX_I8 ? ((int8_t*)zp_data->data)[sc_c] + inp_mask :
                                   (int)(((uint8_t*)zp_data->data)[sc_c]);
@@ -401,10 +401,10 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
                     float v3 = ((inptr[j*4+3] ^ inp_mask) - zp[3])*sc[3];
                 #if _FX_NN_ENABLE_FP16
                     if (out_typ == FX_F16) {
-                        ((fx_f16*)outptr0)[j] = FX_FLOAT16(v0);
-                        ((fx_f16*)outptr1)[j] = FX_FLOAT16(v1);
-                        ((fx_f16*)outptr2)[j] = FX_FLOAT16(v2);
-                        ((fx_f16*)outptr3)[j] = FX_FLOAT16(v3);
+                        ((fx_f16*)outptr0)[j] = FX_F32TOF16(v0);
+                        ((fx_f16*)outptr1)[j] = FX_F32TOF16(v1);
+                        ((fx_f16*)outptr2)[j] = FX_F32TOF16(v2);
+                        ((fx_f16*)outptr3)[j] = FX_F32TOF16(v3);
                     } else
                 #endif
                     {
@@ -447,7 +447,7 @@ fun run_dequantize(inp: Ast.nntensor_t, scale: Ast.nntensor_t, zp: Ast.nntensor_
                 if (out_typ == FX_F16) {
                     for (; j < plane_size; j++) {
                         float v0 = ((inptr[j] ^ inp_mask) - zp[0])*sc[0];
-                        ((fx_f16*)outptr0)[j] = FX_FLOAT16(v0);
+                        ((fx_f16*)outptr0)[j] = FX_F32TOF16(v0);
                     }
                 } else
             #endif
@@ -677,11 +677,11 @@ fun run_qbinary(el_op_: Ast.nnelwise_t, inp1: Ast.nntensor_t,
     _fx_nn_qbinary_params_t params;
 
     params.sc1 = sc1_typ == FX_F32 ? *(float*)sc1_data->data :
-                            FX_FLOAT(*(fx_f16*)sc1_data->data);
+                            FX_F16TOF32(*(fx_f16*)sc1_data->data);
     params.sc2 = sc2_typ == FX_F32 ? *(float*)sc2_data->data :
-                            FX_FLOAT(*(fx_f16*)sc2_data->data);
+                            FX_F16TOF32(*(fx_f16*)sc2_data->data);
     params.sc = 1.f/(sc1_typ == FX_F32 ? *(float*)sc_data->data :
-                           FX_FLOAT(*(fx_f16*)sc_data->data));
+                           FX_F16TOF32(*(fx_f16*)sc_data->data));
     params.zp1 = zp1_data->data == 0 ? mask :
                  zp1_typ == FX_I8 ? *((int8_t*)zp1_data->data) + mask :
                                (int)*((uint8_t*)zp1_data->data);
@@ -831,9 +831,9 @@ fun run_qglobal_avgpool(inp: Ast.nntensor_t,
     }
 
     inp_scale0 = inp_sc_typ == FX_F32 ? *(float*)inp_sc_data->data :
-                            FX_FLOAT(*(fx_f16*)inp_sc_data->data);
+                            FX_F16TOF32(*(fx_f16*)inp_sc_data->data);
     out_scale0 = out_sc_typ == FX_F32 ? *(float*)out_sc_data->data :
-                            FX_FLOAT(*(fx_f16*)out_sc_data->data);
+                            FX_F16TOF32(*(fx_f16*)out_sc_data->data);
     inp_zp0 = inp_zp_data->data == 0 ? mask :
               inp_zp_typ == FX_I8 ? *((int8_t*)inp_zp_data->data) + mask :
                                (int)*((uint8_t*)inp_zp_data->data);
