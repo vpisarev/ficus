@@ -268,68 +268,61 @@ static int _fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(
                }
             }
          }
-         int_ __fold_result___0 = lo_2;
+         int_ i0_0 = lo_2;
          int_ n_0 = FX_LOOP_COUNT(lo_2, hi_2, 1);
          for (int_ j_0 = 0; j_0 < n_0; j_0++) {
             fx_str_t v_9 = {0};
             int_ j_1 = lo_2 + j_0 * 1;
-            int_ i0_0 = __fold_result___0;
             FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, j_1), _fx_catch_0);
             fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, j_1), &v_9);
             bool v_10;
             FX_CALL(lt_0->fp(&v_9, &p_1, &v_10, lt_0->fcv), _fx_catch_0);
-            int_ v_11;
             if (v_10) {
-               _fx_M8FilenameFM6_swap_v3A1Sii(arr_0, i0_0, j_1, 0); v_11 = i0_0 + 1;
+               _fx_M8FilenameFM6_swap_v3A1Sii(arr_0, i0_0, j_1, 0); i0_0 = i0_0 + 1;
             }
-            else {
-               v_11 = i0_0;
-            }
-            __fold_result___0 = v_11;
 
          _fx_catch_0: ;
             FX_FREE_STR(&v_9);
             FX_CHECK_EXN(_fx_catch_2);
          }
-         int_ i0_1 = __fold_result___0;
-         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, i0_1), _fx_catch_2);
-         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, i0_1), &a_1);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, i0_0), _fx_catch_2);
+         fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, i0_0), &a_1);
          FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
-         fx_str_t* v_12 = FX_PTR_1D(fx_str_t, *arr_0, hi_2);
+         fx_str_t* v_11 = FX_PTR_1D(fx_str_t, *arr_0, hi_2);
+         FX_FREE_STR(v_11);
+         fx_copy_str(&a_1, v_11);
+         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, i0_0), _fx_catch_2);
+         fx_str_t* v_12 = FX_PTR_1D(fx_str_t, *arr_0, i0_0);
          FX_FREE_STR(v_12);
-         fx_copy_str(&a_1, v_12);
-         FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, i0_1), _fx_catch_2);
-         fx_str_t* v_13 = FX_PTR_1D(fx_str_t, *arr_0, i0_1);
-         FX_FREE_STR(v_13);
-         fx_copy_str(&p_1, v_13);
+         fx_copy_str(&p_1, v_12);
          int_ i1_0 = hi_2;
-         int_ n_1 = FX_LOOP_COUNT(i0_1, hi_2, 1);
+         int_ n_1 = FX_LOOP_COUNT(i0_0, hi_2, 1);
          for (int_ j_2 = 0; j_2 < n_1; j_2++) {
-            fx_str_t v_14 = {0};
-            int_ j_3 = i0_1 + j_2 * 1;
-            int_ v_15 = j_3 + 1;
-            FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, v_15), _fx_catch_1);
-            fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, v_15), &v_14);
-            bool v_16;
-            FX_CALL(lt_0->fp(&p_1, &v_14, &v_16, lt_0->fcv), _fx_catch_1);
-            if (v_16) {
+            fx_str_t v_13 = {0};
+            int_ j_3 = i0_0 + j_2 * 1;
+            int_ v_14 = j_3 + 1;
+            FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, v_14), _fx_catch_1);
+            fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, v_14), &v_13);
+            bool v_15;
+            FX_CALL(lt_0->fp(&p_1, &v_13, &v_15, lt_0->fcv), _fx_catch_1);
+            if (v_15) {
                i1_0 = j_3; FX_BREAK(_fx_catch_1);
             }
 
          _fx_catch_1: ;
-            FX_FREE_STR(&v_14);
+            FX_FREE_STR(&v_13);
             FX_CHECK_BREAK();
             FX_CHECK_EXN(_fx_catch_2);
          }
-         if (i0_1 - lo_2 < hi_2 - i1_0) {
+         if (i0_0 - lo_2 < hi_2 - i1_0) {
             if (i1_0 < prefix_0) {
                FX_CALL(_fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(i1_0 + 1, hi_2, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
             }
             lo_1 = lo_2;
-            hi_1 = i0_1 - 1;
+            hi_1 = i0_0 - 1;
          }
          else {
-            FX_CALL(_fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(lo_2, i0_1 - 1, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
+            FX_CALL(_fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(lo_2, i0_0 - 1, arr_0, lt_0, prefix_0, 0), _fx_catch_2);
             if (i1_0 < prefix_0) {
                lo_1 = i1_0 + 1; hi_1 = hi_2;
             }
@@ -343,17 +336,17 @@ static int _fx_M8FilenameFM6qsort_v5iiA1SFPB2SSi(
          fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, lo_2), &a_2);
          FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
          fx_copy_str(FX_PTR_1D(fx_str_t, *arr_0, hi_2), &b_1);
-         bool v_17;
-         FX_CALL(lt_0->fp(&b_1, &a_2, &v_17, lt_0->fcv), _fx_catch_2);
-         if (v_17) {
+         bool v_16;
+         FX_CALL(lt_0->fp(&b_1, &a_2, &v_16, lt_0->fcv), _fx_catch_2);
+         if (v_16) {
             FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, hi_2), _fx_catch_2);
-            fx_str_t* v_18 = FX_PTR_1D(fx_str_t, *arr_0, hi_2);
-            FX_FREE_STR(v_18);
-            fx_copy_str(&a_2, v_18);
+            fx_str_t* v_17 = FX_PTR_1D(fx_str_t, *arr_0, hi_2);
+            FX_FREE_STR(v_17);
+            fx_copy_str(&a_2, v_17);
             FX_CHKIDX(FX_CHKIDX1(*arr_0, 0, lo_2), _fx_catch_2);
-            fx_str_t* v_19 = FX_PTR_1D(fx_str_t, *arr_0, lo_2);
-            FX_FREE_STR(v_19);
-            fx_copy_str(&b_1, v_19);
+            fx_str_t* v_18 = FX_PTR_1D(fx_str_t, *arr_0, lo_2);
+            FX_FREE_STR(v_18);
+            fx_copy_str(&b_1, v_18);
             FX_BREAK(_fx_catch_2);
          }
          else {
@@ -474,14 +467,17 @@ FX_EXTERN_C int _fx_M8FilenameFM5splitTa2S1S(fx_str_t* path_0, struct _fx_Ta2S* 
             FX_BREAK(_fx_catch_0);
          }
          else {
-            bool t_0;
+            bool v_8;
             if (pos_1 == 0) {
-               t_0 = true;
+               v_8 = true;
             }
             else {
-               int_ v_8 = pos_1 - 1; FX_STR_CHKIDX(path_2, v_8, _fx_catch_0); t_0 = FX_STR_ELEM(path_2, v_8) == (char_)58;
+               int_ v_9 = pos_1 - 1;
+               FX_STR_CHKIDX(path_2, v_9, _fx_catch_0);
+               char_ v_10 = FX_STR_ELEM(path_2, v_9);
+               v_8 = v_10 == (char_)58;
             }
-            if (t_0) {
+            if (v_8) {
                FX_CALL(fx_substr(&path_2, 0, pos_1 + 1, 1, 1, &v_1), _fx_catch_0);
                FX_CALL(fx_substr(&path_2, pos_1 + 1, 0, 1, 2, &v_2), _fx_catch_0);
                _fx_make_Ta2S(&v_1, &v_2, &result_3);

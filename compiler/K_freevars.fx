@@ -240,7 +240,8 @@ fun mutable_freevars2refs(kmods: kmodule_t list) {
 
             val subst_map_backup = if !fvars.empty() {subst_map.copy()} else {Hashmap.empty(1, noid, noid)}
 
-            val fold prologue = [] for fv <- fvars {
+            var prologue = []
+            for fv <- fvars {
                 val ref_fv = match ref_map.find_opt(fv) {
                     | Some ref_fv => ref_fv
                     | None => throw compile_err(kf_loc, f"free variable '{idk2str(fv, kf_loc)}' of function \
@@ -257,7 +258,7 @@ fun mutable_freevars2refs(kmods: kmodule_t list) {
                 val fv_proxy = dup_idk(m_idx, fv)
                 val deref_exp = KExpUnary(OpDeref, AtomId(ref_fv), (t, kf_loc))
                 subst_map.add(fv, fv_proxy)
-                create_kdefval(fv_proxy, t, kv_flags, Some(deref_exp), prologue, kf_loc)
+                prologue = create_kdefval(fv_proxy, t, kv_flags, Some(deref_exp), prologue, kf_loc)
             }
 
             val body_loc = get_kexp_loc(kf_body)

@@ -61,7 +61,7 @@ fun move_loop_invs(code: kcode_t)
         val saved_moved = curr_moved
         curr_inloop = declared(body::[], 256)
         val (outer_moved, new_e_idl_l, new_body) =
-            fold nested_elist = kexp2code(body), e_idl_l = [], body = KExpNop(loc)
+            fold nested_elist = kexp2code(body), acc_idl = [], body_acc = KExpNop(loc)
             for (pre_e, idl, idxl) <- e_idl_l.rev() {
                 val in_pre = declared([:: pre_e], 256)
                 for (i, _) <- idl { curr_inloop.add(i) }
@@ -71,12 +71,14 @@ fun move_loop_invs(code: kcode_t)
                 val new_elist = kexp2code(pre_e) + curr_moved.rev()
                 curr_inloop.union(in_pre)
                 val (e_idl_l, new_body) =
-                    match e_idl_l {
-                    | (_, prev_idl, prev_idxl) :: rest => ((nested_e, prev_idl, prev_idxl) :: rest, body)
+                    match acc_idl {
+                    | (_, prev_idl, prev_idxl) :: rest => ((nested_e, prev_idl, prev_idxl) :: rest, body_acc)
                     | _ => ([], nested_e)
                     }
                 val new_e_idl_l = (KExpNop(loc), idl, idxl) :: e_idl_l
-                (new_elist, new_e_idl_l, new_body)
+                nested_elist = new_elist
+                acc_idl = new_e_idl_l
+                body_acc = new_body
         }
         curr_inloop = saved_inloop
         curr_moved = saved_moved

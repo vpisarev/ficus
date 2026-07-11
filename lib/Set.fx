@@ -336,8 +336,9 @@ fun add_list(s: 't Set.t, l: 't list): 't Set.t
 {
     val cmp = s.cmp
     val fold new_root = s.root, size = s.size for x <- l {
-        val (new_root, dsz) = add_(new_root, x, cmp)
-        (new_root, size+dsz)
+        val (new_root_, dsz) = add_(new_root, x, cmp)
+        new_root = new_root_;
+        size += dsz
     }
     t {root=new_root, size=size, cmp=cmp}
 }

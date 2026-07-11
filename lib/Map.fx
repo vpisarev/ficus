@@ -333,7 +333,7 @@ fun add_list(m: ('k, 'd) Map.t, l: ('k, 'd) list): ('k, 'd) Map.t
 {
     val cmp = m.cmp
     val fold new_root=m.root for (xk, xd) <- l {
-        add_(new_root, xk, xd, cmp)
+        new_root = add_(new_root, xk, xd, cmp)
     }
     t {root=new_root, cmp=cmp}
 }

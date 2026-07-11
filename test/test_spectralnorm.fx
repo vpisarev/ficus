@@ -22,7 +22,7 @@ fun Au(u: double[])
 
     [for i <- 0:N {
         fold t = 0. for j <- 0:N {
-            t + A(i, j) * u[j]
+            t += A(i, j) * u[j]
         }
     }]
 }
@@ -33,7 +33,7 @@ fun Atu(u: double[])
 
     [for i <- 0:N {
         fold t = 0. for j <- 0:N {
-            t + A(j, i) * u[j]
+            t += A(j, i) * u[j]
         }
     }]
 }
@@ -42,10 +42,19 @@ fun AtAu(u: double[]) = Atu(Au(u))
 
 fun spectralnorm(n: int)
 {
-    val fold (u, v) = (array(n, 1.), array(0, 0.))
-        for i <- 0:10 { val v = AtAu(u); (AtAu(v), v) }
-    val fold (vBv, vv) = (0., 0.)
-        for ui <- u, vi <- v { (vBv + ui*vi, vv + vi*vi) }
+    var u = array(n, 1.), v = array(0, 0.)
+    for i <- 0:10 {
+        // for Claude: when you see that local values shadow accumulators,
+        // you can simply mark it for manual conversion,
+        // or maybe introduce temporary name, just make it simple ('t' or 'temp', something like that)
+        val t = AtAu(u)
+        (u, v) = (AtAu(t), t)
+    }
+    var vBv = 0., vv = 0.
+    for ui <- u, vi <- v {
+        vBv += ui*vi;
+        vv += vi*vi
+    }
     sqrt(vBv/vv)
 }
 

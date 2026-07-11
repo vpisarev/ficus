@@ -95,7 +95,7 @@ TEST("NN.Quantized.add", fun()
     val y_ref = [for n <- 0:N for c <- 0:C {
             val xsc = x_scale[0]
             val xzp = x_zp[0]
-            val fold s = 0. for i <- 0:H for j <- 0:W {s + (x[n, c, i, j] - xzp)*xsc}
+            val fold s = 0. for i <- 0:H for j <- 0:W {s += (x[n, c, i, j] - xzp)*xsc}
             sat_uint8(s/(y_scale[0]*H*W) + y_zp[0])
         }].reshape(N, C, 1, 1)
     val y = array(N*C, 0u8).reshape(N, C, 1, 1)

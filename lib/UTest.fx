@@ -396,7 +396,7 @@ fun test_run_all(opts: test_options_t): void
             (startswithstar && name.endswith(filter)) ||
             (endswithstar && name.startswith(filter)) ||
             (startswithstar && endswithstar && name.find(filter) != -1)
-        if (!matches ^ inverse_test) {failed}
+        if (!matches ^ inverse_test) {}
         else {
             nexecuted += 1
             println(f"{Green}[ RUN      ]{Normal} {name}")
@@ -420,7 +420,7 @@ fun test_run_all(opts: test_options_t): void
                           else {f"{Red}[     FAIL ]{Normal}"}
             val ts_diff_str = test_duration2str((ts_end - ts_start)*ts_scale)
             println(f"{ok_fail} {name} ({ts_diff_str})\n")
-            if ok {failed} else {name :: failed}
+            if !ok {failed = name :: failed}
         }
     }
     val ts0_end = Sys.tick_count()

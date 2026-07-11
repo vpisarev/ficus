@@ -1,0 +1,5 @@
+708_fold2_unused_accumulator.fx:6:14: warning: 'fold' accumulator 's' is never assigned in the body, so the fold has no effect. The body must UPDATE the accumulator (e.g. 's = <expr>' or 's += ...'); write 's = _' to silence
+ 6 | val s = fold s = 0 for x <- [1, 2, 3] { println(x) }
+   |              ^
+
+1 warning generated (treated as errors due to -Werror).

@@ -211,17 +211,22 @@ fun scalar2string(js: t): (string, bool)
                 val (str, printed) = scalar2string(x)
                 if !printed { throw Fail("scalar is expected here") }
                 val lstr = length(str)
-                val ofs = if ofs > l_newind && ofs + lstr > W1 {
+                val new_ofs = if ofs > l_newind && ofs + lstr > W1 {
                     printf(f"\n{newind}"); l_newind
                 } else { ofs }
                 printf(str)
-                val ofs = ofs + lstr
-                if i < n-1 {
-                    printf(",")
-                    if ofs+1 > W0 {
-                        printf(f"\n{newind}"); l_newind
-                    } else { printf(" "); ofs + 2 }
-                } else { printf(" "); ofs }
+                val new_ofs = new_ofs + lstr
+                ofs = if i < n-1 {
+                        printf(",")
+                        if new_ofs+1 > W0 {
+                            printf(f"\n{newind}"); l_newind
+                        }
+                        else {
+                            printf(" "); new_ofs + 2
+                        }
+                    } else {
+                        printf(" "); new_ofs
+                    }
             }
             printf("]"); ofs + 1
         } else {

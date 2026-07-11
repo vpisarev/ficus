@@ -367,7 +367,7 @@ fun read_labels(fname: string) =
             val fold maxk = 0 for (k, v) <- entries {
                 val ik = k.to_int().value_or(-1)
                 assert(ik >= 0)
-                max(maxk, ik)
+                maxk = max(maxk, ik)
             }
             val labels_arr = array(maxk + 1, "unknown")
             for (k, v) <- entries {

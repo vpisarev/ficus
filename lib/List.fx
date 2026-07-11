@@ -28,10 +28,10 @@ fun skip_nothrow(l: 't list, n: int): 't list =
     if n == 0 {l} else { match l { | a :: rest => skip_nothrow(rest, n-1) | _ => [] } }
 
 fun rev(l: 't list): 't list =
-    fold r=[] for a <- l {a :: r}
+    fold res=[] for a <- l {res = a :: res}
 
 fun foldl(l: 't list, f: ('t, 'r) -> 'r, res0: 'r): 'r =
-    fold res=res0 for a <- l {f(a, res)}
+    fold res=res0 for a <- l {res = f(a, res)}
 
 fun assoc(l: ('a, 'b) list, x: 'a): 'b =
     find(for (a, b) <- l {a == x}).1
@@ -67,7 +67,7 @@ fun find_opt(l: 't list, f: 't -> bool): 't? =
     find_opt(for a <- l {f(a)})
 
 fun concat(ll: 't list list): 't list =
-    fold s = ([]: 't list) for l <- rev(ll) {l + s}
+    fold s = ([]: 't list) for l <- rev(ll) {s = l + s}
 
 fun filter(l: 't list, f: 't -> bool): 't list =
     [:: for x <- l { if !f(x) {continue}; x }]

@@ -29,11 +29,14 @@ type arr_fuse_map_t = (id_t, id_t) Map.t
 
 fun fuse_loops(code: kcode_t)
 {
-    val fold nmaps = 0, nfors = 0 for e <- code {
-        | KDefVal(_, KExpMap _, _) => (nmaps + 1, nfors)
-        | KExpMap _ => (nmaps + 1, nfors)
-        | KExpFor _ => (nmaps, nfors + 1)
-        | _ => (nmaps, nfors)
+    var nmaps = 0, nfors = 0
+    for e <- code {
+        match e {
+        | KDefVal(_, KExpMap _, _) => nmaps += 1
+        | KExpMap _ => nmaps += 1
+        | KExpFor _ => nfors += 1
+        | _ => {}
+        }
     }
     if nmaps >= 1 && nmaps + nfors >= 2 {
         fuse_loops_(code)
@@ -102,15 +105,16 @@ fun fuse_loops_(code: kcode_t)
 
     fun fuse_for(idl: (id_t, dom_t) list, body: kexp_t, loc: loc_t)
     {
-        val fold arr_fuse_map = (Map.empty(cmp_id): arr_fuse_map_t), a2f = [] for (i, dom) <- idl {
+        val fold arr_fuse_map = (Map.empty(cmp_id): arr_fuse_map_t), a2f = []
+        for (i, dom) <- idl {
             match dom {
             | DomainElem(AtomId arr) =>
-                val arr_fuse_map = arr_fuse_map.add(arr, i)
+                arr_fuse_map = arr_fuse_map.add(arr, i)
                 match arrs_to_fuse.find_opt(arr) {
-                | Some ainfo => (arr_fuse_map, (arr, ainfo) :: a2f)
-                | _ => (arr_fuse_map, a2f)
+                | Some ainfo => a2f = (arr, ainfo) :: a2f
+                | _ => {}
                 }
-            | _ => (arr_fuse_map, a2f)
+            | _ => {}
             }
         }
 
@@ -143,38 +147,34 @@ fun fuse_loops_(code: kcode_t)
             also be the subject to fusion, and so we want to update information
             about this loop etc.
         */
-        val (new_idl, pbody, _) =
-        fold new_idl = [], pbody = [], arr_fuse_map = arr_fuse_map
+        var new_idl = [], pbody = [], arr_fuse_map = arr_fuse_map
         for (i, dom) <- idl {
             match dom {
             | DomainElem(AtomId arr) =>
                 match find_opt(for (arr2, _) <- a2f {arr == arr2}) {
                 | Some((_, ref {arr_idl, arr_body})) =>
-                    val fold new_idl2 = new_idl, pbody2 = pbody, new_fuse_map = arr_fuse_map
-                        for (nested_i, nested_dom) <- arr_idl {
+                    for (nested_i, nested_dom) <- arr_idl {
                         match nested_dom {
                         | DomainElem(AtomId nested_arr) =>
                             match arr_fuse_map.find_opt(nested_arr) {
                             | Some outer_i =>
                                 val t = get_idk_ktyp(outer_i, loc)
-                                val pbody2 = create_kdefval(nested_i, t, default_tempval_flags(),
-                                    Some(KExpAtom(AtomId(outer_i), (t, loc))), pbody2, loc)
-                                (new_idl2, pbody2, new_fuse_map)
+                                pbody = create_kdefval(nested_i, t, default_tempval_flags(),
+                                    Some(KExpAtom(AtomId(outer_i), (t, loc))), pbody, loc)
                             | _ =>
-                                val new_fuse_map = new_fuse_map.add(nested_arr, nested_i)
-                                ((nested_i, nested_dom) :: new_idl2, pbody2, new_fuse_map)
+                                arr_fuse_map = arr_fuse_map.add(nested_arr, nested_i)
+                                new_idl = (nested_i, nested_dom) :: new_idl
                             }
-                        | _ => ((nested_i, nested_dom) :: new_idl2, pbody2, new_fuse_map)
+                        | _ => new_idl = (nested_i, nested_dom) :: new_idl
                         }
                     }
                     val t = get_kexp_typ(arr_body)
-                    val pbody2 = create_kdefval(i, t, default_tempval_flags(), Some(arr_body), pbody2, loc)
-                    (new_idl2, pbody2, new_fuse_map)
+                    pbody = create_kdefval(i, t, default_tempval_flags(), Some(arr_body), pbody, loc)
                 | _ =>
-                    val arr_fuse_map = arr_fuse_map.add(arr, i)
-                    ((i, dom) :: new_idl, pbody, arr_fuse_map)
+                    arr_fuse_map = arr_fuse_map.add(arr, i)
+                    new_idl = (i, dom) :: new_idl
                 }
-            | _ => ((i, dom) :: new_idl, pbody, arr_fuse_map)
+            | _ => new_idl = (i, dom) :: new_idl
             }
         }
         val new_body = rcode2kexp(body :: pbody, loc)

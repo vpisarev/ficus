@@ -574,13 +574,13 @@ fun size(_: ('t*4)): int = 4
 fun size(_: ('t*5)): int = 5
 
 operator == (a: (...), b: (...)): bool =
-    fold f=true for aj <- a, bj <- b {if aj == bj {f} else {false}}
+    fold f=true for aj <- a, bj <- b {f &= (aj == bj)}
 operator <=> (a: (...), b: (...)): int =
-    fold d=0 for aj <- a, bj <- b {if d != 0 {d} else {aj <=> bj}}
+    fold d=0 for aj <- a, bj <- b {if d == 0 {d = aj <=> bj}}
 operator == (a: {...}, b: {...}): bool =
-    fold f=true for (_, aj) <- a, (_, bj) <- b {if aj == bj {f} else {false}}
+    fold f=true for (_, aj) <- a, (_, bj) <- b {f &= (aj == bj)}
 operator <=> (a: {...}, b: {...}): int =
-    fold d=0 for (_, aj) <- a, (_, bj) <- b {if d != 0 {d} else {aj <=> bj}}
+    fold d=0 for (_, aj) <- a, (_, bj) <- b {if d == 0 {d = aj <=> bj}}
 
 operator <=> (a: int, b: int): int = (a > b) - (a < b)
 operator <=> (a: int8, b: int8): int = (a > b) - (a < b)
@@ -666,7 +666,7 @@ operator * (a: ('t*4), b: ('t*4)): ('t*4) =
 
 // dot product
 fun dot(a: ('t...), b: ('t...)): 't =
-    fold s = a.0-a.0 for aj <- a, bj <- b {s + aj*bj}
+    fold s = a.0-a.0 for aj <- a, bj <- b {s += aj*bj}
 
 // cross product
 fun cross(a: ('t*2), b: ('t*2)): 't = a.0*b.1 - a.1*b.0
@@ -682,18 +682,18 @@ fun normL2sqr(a: 't): 't { val t = abs(a); t*t }
 fun normL2(a: 't): 't = abs(a)
 
 fun normInf(a: ('t...)): 't =
-    fold s = normInf(a.0) for aj <- a {max(s, normInf(aj))}
+    fold s = normInf(a.0) for aj <- a {s = max(s, normInf(aj))}
 fun normL1(a: ('t...)): 't3 =
-    fold s = normL1(a.0)*0.f for aj <- a {s + normL1(aj)}
+    fold s = normL1(a.0)*0.f for aj <- a {s += normL1(aj)}
 fun normL2sqr(a: ('t...)): 't3 =
-    fold s = normL1(a.0)*0.f for aj <- a {s + normL2sqr(aj)}
+    fold s = normL1(a.0)*0.f for aj <- a {s += normL2sqr(aj)}
 fun normL2(a: ('t...)): 't3 = __intrin_sqrt__(normL2sqr(a))
 fun normInf(a: ('t...), b: ('t...)): 't =
-    fold s = normInf(a.0, b.0) for aj <- a, bj <- b {max(s, normInf(aj, bj))}
+    fold s = normInf(a.0, b.0) for aj <- a, bj <- b {s = max(s, normInf(aj, bj))}
 fun normL1(a: ('t...), b: ('t...)): 't3 =
-    fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s + normL1(aj, bj)}
+    fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s += normL1(aj, bj)}
 fun normL2sqr(a: ('t...), b: ('t...)): 't3 =
-    fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s + normL2sqr(aj, bj)}
+    fold s = normL1(a.0)*0.f for aj <- a, bj <- b {s += normL2sqr(aj, bj)}
 fun normL2(a: ('t...), b: ('t...)): 't3 = __intrin_sqrt__(normL2sqr(a, b))
 
 fun norm(a: ('t...)): 't3 = normL2(a)
@@ -733,8 +733,8 @@ operator <=> (a: 't?, b: 't?): int {
     | _ => 0
 }
 
-fun all(a: (bool...)): bool = fold f=true for x <- a {f & x}
-fun exists(a: (bool...)): bool = fold f=false for x <- a {f | x}
+fun all(a: (bool...)): bool = fold f=true for x <- a {f &= x}
+fun exists(a: (bool...)): bool = fold f=false for x <- a {f |= x}
 
 @pure @nothrow operator == (a: string, b: string): bool = @ccode { return fx_streq(a, b); }
 
@@ -772,9 +772,9 @@ fun __fun_string__(a: 't): string
 @pure @nothrow operator === (a: string, b: string): bool = @ccode {return a->data == b->data}
 @pure @nothrow operator === (a: 't [+], b: 't [+]): bool = @ccode {return a->data == b->data}
 operator === (a: (...), b: (...)): bool =
-    fold f=true for aj<-a, bj<-b {f & (aj === bj)}
+    fold f=true for aj<-a, bj<-b {f &= (aj === bj)}
 operator === (a: {...}, b: {...}): bool =
-    fold f=true for (_, aj)<-a, (_, bj)<-b {f & (aj === bj)}
+    fold f=true for (_, aj)<-a, (_, bj)<-b {f &= (aj === bj)}
 operator === (a: 't?, b: 't?): bool {
     | (Some(a), Some(b)) => a === b
     | (None, None) => true
@@ -1167,14 +1167,14 @@ val FNV_1A_OFFSET: hash_t = 14695981039346656037u64
 
 fun hash(x: (...)): hash_t =
     fold h = FNV_1A_OFFSET for xj <- x {
-        val h = h ^ hash(xj)
-        h * FNV_1A_PRIME
+        h ^= hash(xj)
+        h *= FNV_1A_PRIME
     }
 
 fun hash(x: {...}): hash_t =
     fold h = FNV_1A_OFFSET for (_, xj) <- x {
-        val h = h ^ hash(xj)
-        h * FNV_1A_PRIME
+        h ^= hash(xj)
+        h *= FNV_1A_PRIME
     }
 
 @inline fun hash(x: int): uint64 = uint64(x) ^ FNV_1A_OFFSET

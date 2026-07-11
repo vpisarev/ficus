@@ -238,34 +238,32 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
         /* step 3. collect loop indices; we collect only those indices,
            for which we can optimize the access operations */
         val fold loop_idx = (Map.empty(cmp_id): loop_idx_map_t)
-            for (e, idl, idxl) <- for_clauses {
-            val fold arr_id = noid, loop_idx = loop_idx for (i, dom) <- idl {
+        for (e, idl, idxl) <- for_clauses {
+            var arr_id = noid
+            for (i, dom) <- idl {
                 match dom {
                 | DomainRange (a, b, delta)
                     when b != _ALitVoid &&
                     is_loop_invariant(a, inloop_vals, for_loc) &&
                     is_loop_invariant(b, inloop_vals, for_loc) &&
                     is_loop_invariant(delta, inloop_vals, for_loc) =>
-                    (arr_id, loop_idx.add(i, LoopOverRange(a, b, delta)))
+                    loop_idx = loop_idx.add(i, LoopOverRange(a, b, delta))
                 | DomainElem(AtomId i)
                     when (match get_idk_ktyp(i, for_loc) {
                         | KTypArray _ => true
                         | _ => false
                         }) &&
                     is_loop_invariant(AtomId(i), inloop_vals, for_loc) =>
-                    (i, loop_idx)
-                | _ => (arr_id, loop_idx)
+                    arr_id = i
+                | _ => {}
                 }
             }
-            val loop_idx =
             if arr_id == noid || idxl == [] {
-                loop_idx
             } else {
-                fold loop_idx = loop_idx for idx@i <- idxl {
-                    loop_idx.add(idx, LoopOverArr(arr_id, i))
+                for idx@i <- idxl {
+                    loop_idx = loop_idx.add(idx, LoopOverArr(arr_id, i))
                 }
             }
-            loop_idx
         }
 
         fun get_loop_idx_range(i: id_t,
@@ -410,11 +408,12 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
                 KExpIf(optimize_idx_kexp(c, callb), then_e, else_e, ctx)
             | KExpAt (AtomId arr, BorderNone, InterpNone, idxs, (t, loc))
                 when is_loop_invariant(AtomId(arr), inloop_vals, loc) =>
-                val fold have_ranges = false, have_slow = false for idx <- idxs {
+                var have_ranges = false, have_slow = false
+                for idx <- idxs {
                     match idx {
-                    | DomainRange _ => (true, have_slow)
-                    | DomainElem _ => (have_ranges, true)
-                    | _ => (have_ranges, have_slow)
+                    | DomainRange _ => have_ranges = true
+                    | DomainElem _ => have_slow = true
+                    | _ => {}
                     }
                 }
                 if have_ranges || !have_slow { e }
@@ -577,22 +576,23 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
             pre_for_code
         } else {
             fold pre_for_code = pre_for_code
-                for {aa_arr, aa_dim, aa_class} <- all_accesses {
+            for {aa_arr, aa_dim, aa_class} <- all_accesses {
                 match aa_class {
                 | IdxSimple (i, scale, shift) =>
-                    val (arrsz, pre_for_code) =
+                    val (arrsz, pre_for_code1) =
                         get_arrsz(aa_arr, aa_dim, pre_for_code)
+                    pre_for_code = pre_for_code1
                     if i == noid {
-                        KExpIntrin(IntrinCheckIdx, [:: AtomId(arrsz), shift],
+                        pre_for_code = KExpIntrin(IntrinCheckIdx, [:: AtomId(arrsz), shift],
                             (KTypVoid, for_loc)) :: pre_for_code
                     } else {
-                        val (a, b, delta, pre_for_code) =
+                        val (a, b, delta, pre_for_code1) =
                             get_loop_idx_range(i, pre_for_code, for_loc)
-                        KExpIntrin( IntrinCheckIdxRange,
+                        pre_for_code = KExpIntrin( IntrinCheckIdxRange,
                                     [:: AtomId(arrsz), a, b, delta, scale, shift],
-                                    (KTypVoid, for_loc) ) :: pre_for_code
+                                    (KTypVoid, for_loc) ) :: pre_for_code1
                     }
-                | _ => pre_for_code
+                | _ => {}
                 }
             }
         }
@@ -693,18 +693,18 @@ fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
                 when is_loop_invariant(AtomId(arr), inloop_vals, loc) &&
                      (match get_idk_ktyp(arr, loc) {KTypArray _ => true | _ => false}) =>
                 val ndims = idxs.length()
-                val fold have_ranges = false, have_slow = false,
-                         have_non_invariants = false, idx_atoms = []
-                    for idx@i <- idxs {
-                        match idx {
-                        | DomainRange _ => (true, have_slow, have_non_invariants, idx_atoms)
-                        | DomainElem(x) => (have_ranges, true, have_non_invariants, x :: idx_atoms)
-                        | DomainFast(x) =>
-                            (have_ranges, have_slow, have_non_invariants ||
-                                (i < ndims-1 && !is_loop_invariant(x, inloop_vals, loc)),
-                            x :: idx_atoms)
-                        }
+                var have_ranges = false, have_slow = false,
+                    have_non_invariants = false, idx_atoms = []
+                for idx@i <- idxs {
+                    match idx {
+                    | DomainRange _ => have_ranges = true
+                    | DomainElem(x) => have_slow = true; idx_atoms = x :: idx_atoms
+                    | DomainFast(x) =>
+                        have_non_invariants = have_non_invariants ||
+                            (i < ndims-1 && !is_loop_invariant(x, inloop_vals, loc))
+                        idx_atoms = x :: idx_atoms
                     }
+                }
                 //println(f"{loc}: idx={dom2str(idxs.hd())}, have_ranges={have_ranges}, have_slow={have_slow}, have_non_invariants={have_non_invariants}")
                 if have_ranges || have_slow || have_non_invariants { e }
                 else {

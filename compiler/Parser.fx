@@ -32,14 +32,14 @@ var parser_ctx = parser_ctx_t { m_idx=-1, filename="", deps=[], inc_dirs=[], def
 fun suggest_module(mname: string, inc_dirs: string list): string {
     val tlen = mname.length()
     val thresh = if tlen <= 4 { 1 } else { 2 }
-    val (best_d, best) =
-        fold (bd, b) = (thresh + 1, "") for d <- inc_dirs {
-            fold (bd, b) = (bd, b) for path <- Filename.glob(Filename.concat(d, "*.fx")) {
-                val nm = Filename.remove_extension(Filename.basename(path))
-                val dist = if nm == mname { bd + 1 } else { edit_distance(mname, nm) }
-                if dist < bd || (dist == bd && nm < b) { (dist, nm) } else { (bd, b) }
-            }
+    var best_d = thresh + 1, best = ""
+    for d <- inc_dirs {
+        for path <- Filename.glob(Filename.concat(d, "*.fx")) {
+            val nm = Filename.remove_extension(Filename.basename(path))
+            val dist = if nm == mname { best_d + 1 } else { edit_distance(mname, nm) }
+            if dist < best_d || (dist == best_d && nm < best) { best_d = dist; best = nm }
         }
+    }
     if tlen > 0 && best_d <= thresh && best != "" { f"; did you mean '{best}'?" } else { "" }
 }
 
@@ -127,9 +127,11 @@ fun plist2exp(pl: pat_t list, loc: loc_t): (pat_t list, exp_t)
             val param_id = gen_id(parser_ctx.m_idx, prefix)
             (PatAs(p, param_id, loc), make_ident(param_id, loc))
     }
-    val fold (plist, elist) = ([], []) for p <- pl {
+    var plist = [], elist = []
+    for p <- pl {
         val (p_, e_) = pat2exp_(p)
-        (p_ :: plist, e_ :: elist)
+        plist = p_ :: plist
+        elist = e_ :: elist
     }
     (plist.rev(), match elist { | [:: e] => e | _ => ExpMkTuple(elist.rev(), make_new_ctx(loc)) })
 }
@@ -160,12 +162,6 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
 
     val (fr_decl, new_body, fr_exp, global_flags) =
     match special {
-    | "" =>
-        val fr_decl = DefVal(PatIdent(fr_id, acc_loc), fold_init_exp, default_var_flags(), acc_loc)
-        val acc_decl = DefVal(fold_pat, fr_exp, default_tempval_flags(), acc_loc)
-        val update_fr = ExpAssign(fr_exp, fold_body, body_loc)
-        val new_body = ExpSeq([::acc_decl, update_fr], void_ctx)
-        (fr_decl, new_body, fr_exp, global_flags)
     | "all" | "exists" =>
         val is_all = special == "all"
         val fr_decl = DefVal(PatIdent(fr_id, acc_loc), ExpLit(LitBool(is_all),
@@ -220,16 +216,99 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
     // pack for back
     match global_flags.for_flag_make {
     | ForMakeNone =>
-        val fold for_exp = new_body for (pe_l, idxp, flags, loc) <- nested_fors {
-                ExpFor(pe_l, idxp, for_exp, flags.{for_flag_fold=true}, loc)
-            }
+        var for_exp = new_body
+        for (pe_l, idxp, flags, loc) <- nested_fors {
+            for_exp = ExpFor(pe_l, idxp, for_exp, flags.{for_flag_fold=true}, loc)
+        }
         ExpSeq([:: fr_decl, for_exp, fr_exp], make_new_ctx(fold_loc))
     | _ =>
-        val fold nd_map = [] for (pe_l, idxp, flags, loc) <- nested_fors {
-                (pe_l, idxp) :: nd_map
-            }
+        var nd_map = []
+        for (pe_l, idxp, flags, loc) <- nested_fors {
+            nd_map = (pe_l, idxp) :: nd_map
+        }
         ExpMap(nd_map, new_body, global_flags, make_new_ctx(fold_loc))
     }
+}
+
+// the accumulator pattern (a single ident or a tuple of idents, per
+// parse_fold_init_) as the value expression the new fold yields after the loop.
+fun fold_pat_to_exp(p: pat_t): exp_t =
+    match p {
+    | PatIdent(i, loc) => make_ident(i, loc)
+    | PatTyped(p, _, _) => fold_pat_to_exp(p)
+    | PatTuple(pl, loc) => ExpMkTuple([:: for pi <- pl {fold_pat_to_exp(pi)}], make_new_ctx(loc))
+    | _ => throw ParseError(get_pat_loc(p), "unsupported 'fold' accumulator pattern")
+    }
+
+// the accumulator names bound by the pattern (for the unused-accumulator check).
+fun fold_acc_ids(p: pat_t): id_t list =
+    match p {
+    | PatIdent(i, _) => i :: []
+    | PatTyped(p, _, _) => fold_acc_ids(p)
+    | PatAs(p, i, _) => i :: fold_acc_ids(p)
+    | PatTuple(pl, _) => fold acc = [] for pi <- pl { acc += fold_acc_ids(pi) }
+    | _ => []
+    }
+
+// The new (fold-1) imperative fold, a thin sugar over `for`:
+//   fold <acc> = <init> for <clauses> { body }
+//     ==>  { var <acc> = init; for <clauses> { body }; <acc> }
+// The accumulator is a real mutable var, visible and assignable in the body;
+// the whole-fold value is the accumulator after the loop. Multiple accumulators
+// become multiple vars via a tuple pattern. break/continue fall out for free
+// (it is an ordinary `for`). This is the desugar of the `fold` KEYWORD; the
+// named reduction sugars (all/exists/count/find/filter/vector) have their own
+// desugar in transform_fold_exp.
+fun transform_new_fold_exp(fold_pat: pat_t, fold_init_exp: exp_t,
+                           for_exp: exp_t, fold_loc: loc_t): exp_t
+{
+    val acc_loc = get_pat_loc(fold_pat)
+    val acc_ids = fold_acc_ids(fold_pat)
+
+    // Scan the body for updates to each accumulator, so we can warn about an
+    // accumulator that is never assigned (a likely mistake — the fold does
+    // nothing). `acc = _` is the deliberate no-op suppression: it counts as a
+    // mention and lowers to nothing. One walk_exp pass both records the
+    // assigned/suppressed accumulators and strips the `acc = _` markers.
+    var assigned: id_t list = [], suppressed: id_t list = []
+    fun scan_cb(e: exp_t, callb: ast_callb_t): exp_t =
+        match e {
+        | ExpAssign(ExpIdent(id, _), ExpIdent(rid, _), aloc)
+            when acc_ids.mem(id) && rid == dummyid =>
+            // `acc = _`: deliberate no-op suppression -> lowers to nothing.
+            if !suppressed.mem(id) { suppressed = id :: suppressed }
+            ExpNop(aloc)
+        | ExpAssign((ExpIdent(id, _) as lhs), rhs, aloc) when acc_ids.mem(id) =>
+            if !assigned.mem(id) { assigned = id :: assigned }
+            ExpAssign(lhs, check_n_walk_exp(rhs, callb), aloc)
+        | ExpBinary((OpAugBinary _) as bop, (ExpIdent(id, _) as lhs), rhs, ctx)
+            when acc_ids.mem(id) =>
+            if !assigned.mem(id) { assigned = id :: assigned }
+            ExpBinary(bop, lhs, check_n_walk_exp(rhs, callb), ctx)
+        | _ => walk_exp(e, callb)
+        }
+    val callb = ast_callb_t {ast_cb_typ=None, ast_cb_exp=Some(scan_cb), ast_cb_pat=None}
+    val for_exp = check_n_walk_exp(for_exp, callb)
+    for id <- acc_ids {
+        if !assigned.mem(id) && !suppressed.mem(id) {
+            compile_warning(acc_loc, f"'fold' accumulator '{pp(id)}' is never assigned \
+in the body, so the fold has no effect. The body must UPDATE the accumulator \
+(e.g. '{pp(id)} = <expr>' or '{pp(id)} += ...'); write '{pp(id)} = _' to silence")
+        }
+    }
+
+    // Emit SEPARATE `var a = e0, b = e1, …` rather than a destructuring
+    // `var (a,…) = (e0,…)`: the destructuring form leaves an unused local
+    // tuple temp (a literal init folds its fields away) that trips the
+    // unused-variable warning. parse_fold_init_ already tupled the per-
+    // accumulator pats/inits, so split them back apart here.
+    val var_decls = match (fold_pat, fold_init_exp) {
+        | (PatTuple(pl, _), ExpMkTuple(el, _)) when pl.length() == el.length() =>
+            [:: for p <- pl, e <- el { DefVal(p, e, default_var_flags(), get_pat_loc(p)) }]
+        | _ => [:: DefVal(fold_pat, fold_init_exp, default_var_flags(), acc_loc)]
+    }
+    val result_exp = fold_pat_to_exp(fold_pat)
+    ExpSeq(var_decls + [:: for_exp, result_exp], make_new_ctx(fold_loc))
 }
 
 fun parse_err(ts: tklist_t, msg: string): exn
@@ -364,7 +443,7 @@ fun parse_ident_list(ts: tklist_t, expect_comma: bool, dot_idents: bool, result:
 
 fun make_list_exp(el: exp_t list, l1: loc_t) =
     fold mklist_e = make_literal(LitEmpty, l1) for e <- el.rev() {
-        ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
+        mklist_e = ExpBinary(OpCons, e, mklist_e, make_new_ctx(get_exp_loc(e)))
     }
 
 fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
@@ -672,25 +751,25 @@ fun parse_exp(ts: tklist_t, ~allow_mkrecord: bool): (tklist_t, exp_t)
         | _ =>
             val chain = chain.rev()
             val nexp = chain.length()
-            val (result, _, code) =
-                fold (result, prev_e, code) = (ExpNop(noloc), chain.hd().1, [])
-                for ((cmpop, loc), e)@i <- chain.tl() {
-                    val (next_e, code) = if i == nexp-2 {(e, code)} else {
-                        match e {
-                        | ExpLit(_, _) | ExpIdent(_, _) => (e, code)
-                        | _ =>
-                            val e_loc = get_exp_loc(e)
-                            val tmp_id = gen_id(parser_ctx.m_idx, "t")
-                            val tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e,
-                                                  default_tempval_flags(), e_loc)
-                            (make_ident(tmp_id, e_loc), tmp_decl :: code)
-                        }
+            var result = ExpNop(noloc), prev_e = chain.hd().1, code = []
+            for ((cmpop, loc), e)@i <- chain.tl() {
+                val (next_e, code_new) = if i == nexp-2 {(e, code)} else {
+                    match e {
+                    | ExpLit(_, _) | ExpIdent(_, _) => (e, code)
+                    | _ =>
+                        val e_loc = get_exp_loc(e)
+                        val tmp_id = gen_id(parser_ctx.m_idx, "t")
+                        val tmp_decl = DefVal(PatIdent(tmp_id, e_loc), e,
+                                              default_tempval_flags(), e_loc)
+                        (make_ident(tmp_id, e_loc), tmp_decl :: code)
                     }
-                    val cmp_exp = ExpBinary(OpCmp(cmpop), prev_e, next_e, (TypBool, loc))
-                    val result = if i == 0 {cmp_exp}
-                        else { ExpBinary(OpBitwiseAnd, result, cmp_exp, (TypBool, loc)) }
-                    (result, next_e, code)
                 }
+                val cmp_exp = ExpBinary(OpCmp(cmpop), prev_e, next_e, (TypBool, loc))
+                result = if i == 0 {cmp_exp}
+                    else { ExpBinary(OpBitwiseAnd, result, cmp_exp, (TypBool, loc)) }
+                prev_e = next_e
+                code = code_new
+            }
             expseq2exp(code.rev() + [:: result], get_exp_loc(result))
         }
         (ts, result)
@@ -1020,20 +1099,27 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     val glob_loc = match nested_fors {| (_, _, loc) :: _ => loc | _ => noloc}
 
     // process the nested for.
-    val fold (glob_el, nested_fors) = ([], []) for (ppe_list, when_e, loc) <- nested_fors {
-        val fold (glob_el, for_cl_, idx_pat) = (glob_el, [], PatAny(loc)) for (p, idxp, e) <- ppe_list {
+    var glob_el = [], new_nested_fors = []
+    for (ppe_list, when_e, loc) <- nested_fors {
+        var for_cl_ = [], idx_pat = PatAny(loc)
+        for (p, idxp, e) <- ppe_list {
             val (p_, p_e) = plist2exp([:: p], get_pat_loc(p))
             val p = p_.hd()
             match (idxp, idx_pat) {
-            | (PatAny _, idx_pat) => (p_e :: glob_el, (p, e) :: for_cl_, idx_pat)
+            | (PatAny _, _) =>
+                glob_el = p_e :: glob_el
+                for_cl_ = (p, e) :: for_cl_
             | (_, PatAny _) =>
                 val (idxp, idxp_e) = plist2exp([:: idxp], get_pat_loc(idxp))
-                (idxp_e :: p_e :: glob_el, (p, e) :: for_cl_, idxp.hd())
+                glob_el = idxp_e :: p_e :: glob_el
+                for_cl_ = (p, e) :: for_cl_
+                idx_pat = idxp.hd()
             | _ => throw ParseError(get_pat_loc(idxp), "@ is used more than once, which does not make sence and is not supported")
             }
         }
-        (glob_el, (for_cl_.rev(), idx_pat, when_e, loc) :: nested_fors)
+        new_nested_fors = (for_cl_.rev(), idx_pat, when_e, loc) :: new_nested_fors
     }
+    val nested_fors = new_nested_fors
 
     val for_iter_exp = match glob_el.rev() { | [:: e] => e | el => make_tuple(el, glob_loc) }
     val (ts, body) = match vts {
@@ -1049,18 +1135,19 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
     val for_exp = match for_make
     {
     | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeVector =>
-        val fold pel_i_l=[], glob_when_e=ExpNop(noloc), loc = noloc
-            for (pe_l, idxp, when_e, loc) <- nested_fors {
-                val glob_when_e =
-                    match (glob_when_e, when_e) {
-                    | (_, None) => glob_when_e
-                    | (ExpNop(_), Some(e)) => e
-                    | (_, Some(e)) =>
-                        ExpBinary(OpLogicAnd, glob_when_e, e,
-                            (TypBool, get_exp_loc(glob_when_e)))
-                    }
-                ((pe_l, idxp) :: pel_i_l, glob_when_e, loc)
-            }
+        var pel_i_l = [], glob_when_e = ExpNop(noloc), last_loc = noloc
+        for (pe_l, idxp, when_e, loc) <- nested_fors {
+            glob_when_e =
+                match (glob_when_e, when_e) {
+                | (_, None) => glob_when_e
+                | (ExpNop(_), Some(e)) => e
+                | (_, Some(e)) =>
+                    ExpBinary(OpLogicAnd, glob_when_e, e,
+                        (TypBool, get_exp_loc(glob_when_e)))
+                }
+            pel_i_l = (pe_l, idxp) :: pel_i_l
+            last_loc = loc
+        }
         val body = match glob_when_e {
             | ExpNop _ => body
             | _ =>
@@ -1077,7 +1164,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
             for_flag_make=for_make,
             for_flag_parallel=is_parallel,
             for_flag_unzip=need_unzip},
-            make_new_ctx(loc))
+            make_new_ctx(last_loc))
     | _ =>
         val nfors = nested_fors.length()
         fold e = body for (pe_l, idxp, when_e, loc)@i <- nested_fors {
@@ -1092,7 +1179,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
                     expseq2exp([::check_e, e ], loc)
                 | _ => e
                 }
-            ExpFor(pe_l, idxp, body, flags, loc)
+            e = ExpFor(pe_l, idxp, body, flags, loc)
         }
     }
     (ts, for_exp, for_iter_exp)
@@ -1178,8 +1265,8 @@ fun parse_defvals(ts: tklist_t): (tklist_t, exp_t list)
     match ts {
     | (FOLD, l1) :: rest =>
         val (ts, p, e) = parse_fold_init_(rest, false, [], [])
-        val (ts, for_exp, for_iter_exp) = parse_for(ts, ForMakeNone)
-        val fold_exp = transform_fold_exp("", p, e, for_exp, for_iter_exp, l1)
+        val (ts, for_exp, _) = parse_for(ts, ForMakeNone)
+        val fold_exp = transform_new_fold_exp(p, e, for_exp, l1)
         (ts, [:: DefVal(p, fold_exp, flags, get_pat_loc(p))])
     | _ => extend_defvals_(ts, false, [])
     }
@@ -1345,8 +1432,8 @@ fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
         (ts, ExpMatch(e, cases, make_new_ctx(l1)))
     | (FOLD, l1) :: rest =>
         val (ts, p, e) = parse_fold_init_(rest, false, [], [])
-        val (ts, for_exp, for_iter_exp) = parse_for(ts, ForMakeNone)
-        val fold_exp = transform_fold_exp("", p, e, for_exp, for_iter_exp, l1)
+        val (ts, for_exp, _) = parse_for(ts, ForMakeNone)
+        val fold_exp = transform_new_fold_exp(p, e, for_exp, l1)
         (ts, fold_exp)
     | (FUN, _) :: _ => parse_lambda(ts)
     | _ =>
@@ -1477,6 +1564,46 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
     (ts, DefFun(df))
 }
 
+// Simultaneous tuple assignment (parse-time desugar; fold-1 Phase 0):
+//   (l0, l1, ..., ln) = rhs
+//     ==> { val __tup__ = rhs; <l0 = __tup__.0>; ...; <ln = __tup__.n> }
+// The RHS materializes ONCE into a temp before any store — that IS the
+// simultaneity (`(a, b) = (b, a + b)` swaps correctly); stores run
+// left-to-right. A '_' component emits no store: its projection is
+// side-effect-free (the temp already ran rhs in full), so the ExpIdent("_")
+// is simply dropped and never reaches the typechecker. Nested tuple
+// components recurse; a non-lvalue component is a targeted error.
+fun make_tuple_assign(lhs_elems: exp_t list, rhs: exp_t, loc: loc_t): exp_t
+{
+    val temp_id = gen_id(parser_ctx.m_idx, "__tup__")
+    // a natural temp val: the dealiaser scalarizes it where safe. Simultaneity
+    // for aliasing targets (swap) relies on C-gen NOT inlining the RHS memory
+    // reads past the stores -- see movement_unsafe_read in C_gen_code.fx (FB-023).
+    val temp_decl = DefVal(PatIdent(temp_id, loc), rhs, default_tempval_flags(), loc)
+    var stores = []
+    for elem@i <- lhs_elems {
+        val eloc = get_exp_loc(elem)
+        val field = ExpMem(make_ident(temp_id, eloc),
+                           make_literal(LitInt(int64(i)), eloc), make_new_ctx(eloc))
+        val store = match elem {
+            | ExpIdent(eid, _) when eid == dummyid => []
+            | ExpMkTuple(inner, _) => [:: make_tuple_assign(inner, field, eloc)]
+            | ExpUnary(OpDeref, _, _) | ExpIdent _ | ExpAt _ | ExpMem _ =>
+                [:: ExpAssign(elem, field, eloc)]
+            | _ => throw ParseError(eloc, "this element is not assignable in a tuple assignment")
+        }
+        stores += store
+    }
+    // when every component is '_', there are no stores and no aliasing concern:
+    // just evaluate rhs for its effects via a throwaway temp-flagged binding
+    // (temp vals are exempt from the "declared but not used" warning).
+    match stores {
+    | [] =>
+        val drop_id = gen_id(parser_ctx.m_idx, "__drop__")
+        DefVal(PatIdent(drop_id, loc), rhs, default_tempval_flags(), loc)
+    | _ => ExpSeq(temp_decl :: stores, make_new_ctx(loc))
+    }
+}
 
 fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
 {
@@ -1512,9 +1639,21 @@ fun parse_stmt(ts: tklist_t): (tklist_t, exp_t)
             | _ => false }
         match ts {
         | (EQUAL, l2) :: rest =>
-            if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
-            val (ts, e2) = parse_complex_exp(rest)
-            (ts, ExpAssign(e1, e2, l2))
+            match e1 {
+            | ExpMkTuple(lhs_elems, _) =>
+                val (ts, e2) = parse_complex_exp(rest)
+                (ts, make_tuple_assign(lhs_elems, e2, l2))
+            | ExpIdent(eid, _) when eid == dummyid =>
+                // bare `_ = expr`: evaluate the RHS for its side effects and
+                // discard the value via a throwaway temp binding (void, DCE'd).
+                val (ts, e2) = parse_complex_exp(rest)
+                val drop_id = gen_id(parser_ctx.m_idx, "__drop__")
+                (ts, DefVal(PatIdent(drop_id, l2), e2, default_tempval_flags(), l2))
+            | _ =>
+                if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
+                val (ts, e2) = parse_complex_exp(rest)
+                (ts, ExpAssign(e1, e2, l2))
+            }
         | (AUG_BINOP(binop), l2) :: rest =>
             if !lvalue_e1 { throw parse_err(ts, "left-hand-side of the assignment is not an l-value") }
             val (ts, e2) = parse_complex_exp(rest)
@@ -1620,7 +1759,7 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
             if simple {throw parse_err(ts, "list pattern cannot be used here")}
             val (ts, pl) = parse_pat_list(rest, false, [], simple, ']')
             (ts, fold tail = PatLit(LitEmpty, get_pat_loc(pl.hd()))
-                for p <- pl { PatCons(p, tail, loclist2loc([::get_pat_loc(p), get_pat_loc(tail)], noloc)) })
+                for p <- pl { tail = PatCons(p, tail, loclist2loc([::get_pat_loc(p), get_pat_loc(tail)], noloc)) })
         | (LBRACE, l1) :: rest =>
             val (ts, ipl) = parse_idpat_list(rest, false, [], simple)
             (ts, PatRecord(None, ipl, l1))
@@ -2543,17 +2682,28 @@ fun parse(m_idx: int, preamble: token_t list, inc_dirs: string list): bool
     var all_tokens: (Lexer.token_t, Ast.loc_t) list = []
     var prev_lineno = -1
     while true {
-        // The lexer returns a batch of tokens plus the batch's begin/end point
-        // locs (reform-prep-1); every token in the batch gets that span, so an
-        // AST node built from a single token already carries a true span
-        // ({line0,col0}..{line1,col1}), not a point.
-        val (more_tokens, (bline, bcol), (eline, ecol)) = lexer()
-        val loc = Ast.loc_t {m_idx=dm.dm_idx, line0=bline, col0=bcol, line1=eline, col1=ecol}
-        for (t, _) <- more_tokens {
+        // The lexer returns a batch of tokens (each carrying its own start
+        // point) plus the batch's begin/end. We post-process that here (the
+        // lexer is untouched): give each token its OWN span -- from its start
+        // to the NEXT token's start, and the batch end for the last token --
+        // instead of stamping the whole batch's span onto every token. A node
+        // built from a single token then carries that token's true span, which
+        // span-based source rewriting (the fold-1 migrator) and tight carets
+        // both rely on. reform-prep-1.
+        val (more_tokens, _, (eline, ecol)) = lexer()
+        fun stamp(toks: (Lexer.token_t, (int, int)) list): (Lexer.token_t, Ast.loc_t) list =
+            match toks {
+            | (t, (l0, c0)) :: (((_, (nl, nc)) :: _) as rest) =>
+                (t, Ast.loc_t {m_idx=dm.dm_idx, line0=l0, col0=c0, line1=nl, col1=nc}) :: stamp(rest)
+            | (t, (l0, c0)) :: [] =>
+                [:: (t, Ast.loc_t {m_idx=dm.dm_idx, line0=l0, col0=c0, line1=eline, col1=ecol})]
+            | [] => []
+            }
+        for (t, loc) <- stamp(more_tokens) {
             if Options.opt.print_tokens {
-                if bline != prev_lineno {
-                    print(f"\n{pp(fname_id)}:{bline}: ")
-                    prev_lineno = bline
+                if loc.line0 != prev_lineno {
+                    print(f"\n{pp(fname_id)}:{loc.line0}: ")
+                    prev_lineno = loc.line0
                 }
                 print(f"{Lexer.tok2str(t).0} ")
             }

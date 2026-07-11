@@ -29,7 +29,8 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
             val {kci_arg} = kf_closure
             val is_ccode_func = match kf_body { | KExpCCode _ => true | _ => false }
             val ctor = kf_flags.fun_flag_ctor
-            val fold args = [] for arg@idx <- kf_params {
+            var args = []
+            for arg@idx <- kf_params {
                 val {kv_typ=t} = get_kval(arg, kf_loc)
                 val arg = if arg.m == 0 {dup_idc(cm_idx, arg)} else {arg}
                 val cname = if is_ccode_func { pp(arg) }
@@ -47,7 +48,7 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                     (ctyp, [])
                 }
                 add_cf_arg(arg, ctyp, cname, kf_loc)
-                (arg, ctyp, arg_flags) :: args
+                args = (arg, ctyp, arg_flags) :: args
             }
             val {ktp_scalar=rt_scalar} = K_annotate.get_ktprops(rt, kf_loc)
             val crt = C_gen_types.ktyp2ctyp(rt, kf_loc)
@@ -93,8 +94,8 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                 val ctyp = C_gen_types.ktyp2ctyp(kt, kcv_loc)
                 val c_id = get_id(f"t{idx}")
                 val elem_exp = cexp_arrow(dst_exp, c_id, ctyp)
-                val free_ccode = C_gen_types.gen_free_code(elem_exp, ctyp, true, false, free_ccode, kcv_loc)
-                ((c_id, ctyp) :: relems, free_ccode)
+                relems = (c_id, ctyp) :: relems
+                free_ccode = C_gen_types.gen_free_code(elem_exp, ctyp, true, false, free_ccode, kcv_loc)
             }
             val (free_f, decl_free_f) =
             if free_ccode == [] {
@@ -305,8 +306,8 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
             val {ct_props={ctp_free=(_, free_f)}} = *ct
             val entry_ctyp = CTypName(get_id("fx_iface_entry_t"))
             val entries_ctyp = CTypRawArray([::CTypStatic], entry_ctyp)
-            var fold init_ccode = [], ids = [], pairs = [], all_ids = empty_idset
-                for (iname, methods) <- kvar_ifaces {
+            var init_ccode = [], ids = [], pairs = [], all_ids = empty_idset
+            for (iname, methods) <- kvar_ifaces {
                 // FB-001: an explicit (void*) cast on each method pointer -- C
                 // implicitly converts a function pointer to void*, but C++ (the
                 // -c++ backend) rejects it in the `const void* vtbl[]` initializer.
@@ -316,8 +317,8 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                 val vtbl_ctyp = CTypRawArray([::CTypStatic, CTypConst], std_CTypVoidPtr)
                 val vtbl_init_exp = CExpInit(mptrs, (vtbl_ctyp, kvar_loc))
                 val vtbl = gen_idc(cm_idx, "vtbl")
-                val (_, init_ccode) = create_cdefval(vtbl, vtbl_ctyp, default_tempval_flags(),
-                                             "", Some(vtbl_init_exp), init_ccode, kvar_loc)
+                (_, init_ccode) = create_cdefval(vtbl, vtbl_ctyp, default_tempval_flags(),
+                                                 "", Some(vtbl_init_exp), init_ccode, kvar_loc)
                 val iface = match get_kinterface_opt(KTypName(iname), kvar_loc) {
                     | Some(iface) => iface
                     | _ => throw compile_err(kvar_loc,
@@ -325,7 +326,9 @@ fun convert_all_fdecls(cm_idx: int, top_code: kcode_t)
                     }
                 val pair = CExpInit([::make_int_exp(0, kvar_loc),
                             make_id_exp(vtbl, kvar_loc)], (entry_ctyp, kvar_loc))
-                (init_ccode, iface->ki_id :: ids, pair :: pairs, all_ids.add(iface->ki_id))
+                ids = iface->ki_id :: ids
+                pairs = pair :: pairs
+                all_ids = all_ids.add(iface->ki_id)
             }
             // extend the set of pairs (interface_id, vtbl) to the parent interfaces
             for (iname, _) <- kvar_ifaces, pair <- pairs.rev() {

@@ -1274,7 +1274,7 @@ fun empty_arg() = nnarg_t {
     typ = Notype
 }
 
-fun total(shape: nnshape_t) = fold p=1 for sz <- shape.shape {p*sz}
+fun total(shape: nnshape_t) = fold p=1 for sz <- shape.shape {p *= sz}
 
 fun nnshape_t.copy() = nnshape_t {
     layout = self.layout,

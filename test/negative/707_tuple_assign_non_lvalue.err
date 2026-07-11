@@ -1,0 +1,3 @@
+707_tuple_assign_non_lvalue.fx:3:7: error: this element is not assignable in a tuple assignment
+ 3 | (a, b + 1) = (2, 3)
+   |       ^

@@ -237,6 +237,35 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
   follow-up would extend the DefVal recovery to poison the pattern regardless of
   RHS shape.
 
+## FB-023  single-use temp memory read inlined PAST an aliasing store  [FIXED — fold-1]
+- repro (via fold-1 tuple assignment): `(arr[i], arr[j]) = (arr[j], arr[i])`
+  desugars to `val __t = (arr[j], arr[i]); arr[i] = __t.0; arr[j] = __t.1`.
+  The dealiaser (`K_cfold_dealias`, `mktup_map`) flattens `__t.k` to its
+  component atoms `@temp val v = arr[k]`, and C-gen's single-use-temp inlining
+  (`find_single_use_vals`) folded each such read directly into its store. That
+  MOVED the read of `arr[i]` PAST the store `arr[i] = arr[j]`, so the second
+  store saw the mutated element: `arr[i]=arr[j]; arr[j]=arr[i];` → both got
+  `arr[j]`. Wrong at O0 and O3; `-pr-k0` was correct, so the hazard was purely
+  in the temp-inlining.
+- root cause: `find_single_use_vals` used `pure_kexp` (no side effects) as its
+  inline criterion, but purity ≠ movement-invariance. A *read of mutable
+  memory* (array element, ref-cell deref, mutable-record field) is pure yet
+  can change value if moved across an intervening store to an aliasing
+  location. `pure_kexp` is deliberately conservative for dead-code *removal*
+  (K_remove_unused.fx:89-92 notes this), but inlining *moves* code, a stronger
+  requirement. Normal code never exposes it (no read-write-read of one element
+  in a straight-line block); a simultaneous swap does exactly that.
+- fix (`C_gen_code.fx`): a `movement_unsafe_read` guard excludes such temps
+  from `find_single_use_vals` — `KExpAt` (arrays are mutable), `KExpUnary
+  OpDeref`, and `KExpMem` on an `is_mutable` base stay materialized (one named
+  C temp each, which the C compiler coalesces where legal). The desugar keeps
+  its natural temp-flagged tuple val, so the tuple still scalarizes where the
+  dealiaser can prove it safe (immutable component atoms). Churn: 35/55
+  bootstrap modules regenerate (memory-read temps are common) — all
+  behavior-preserving. Perf measured: spectralnorm N=5500 within noise;
+  compiler self-parse of fx.fx +0.3% (both < the ±2% budget), confirming the C
+  compiler recovers the inlining where it is actually safe.
+
 ## (non-compiler) NN.Quantized.dequantizeLinear  [FENCED — DL-engine bug]
 `lib/NN/OpQuantized.run_dequantize` int8 scalar path yields 0 on Linux/x86.
 Known DL-engine defect, unrelated to the compiler; fenced by commenting the

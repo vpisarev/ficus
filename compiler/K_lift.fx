@@ -285,7 +285,8 @@ fun lift_all(kmods: kmodule_t list)
                     val fvars_final = sort_freevars(fvars)
                     val m_idx = kf_name.m
                     val fcv_tn = gen_idk(m_idx, pp(kf_name) + "_closure")
-                    val fold fvars_wt = [] for fv@idx <- fvars_final {
+                    var fvars_wt = []
+                    for fv@idx <- fvars_final {
                         val {kv_typ, kv_flags, kv_loc} = get_kval(fv, kf_loc)
                         if is_mutable(fv, get_idk_loc(fv, noloc)){
                             throw compile_err(kf_loc,
@@ -298,7 +299,7 @@ fun lift_all(kmods: kmodule_t list)
                         // And so it must be in the same module as the analyzed function.
                         val new_fv = dup_idk(m_idx, fv)
                         val _ = create_kdefval(new_fv, kv_typ, kv_flags, None, [], kv_loc)
-                        (new_fv, kv_typ) :: fvars_wt
+                        fvars_wt = (new_fv, kv_typ) :: fvars_wt
                     }
                     val fcv_t = ref (kdefclosurevars_t {
                             kcv_name=fcv_tn,
@@ -524,7 +525,8 @@ fun lift_all(kmods: kmodule_t list)
                               information is not valid (should be KClosureVars ...)")
                         }
                     val {kcv_freevars, kcv_orig_freevars} = *kcv
-                    val fold prologue = [] for (fv, t)@idx <- kcv_freevars, fv_orig <- kcv_orig_freevars {
+                    var prologue = []
+                    for (fv, t)@idx <- kcv_freevars, fv_orig <- kcv_orig_freevars {
                         if !defined_so_far.mem(fv_orig) {
                             throw compile_err(kf_loc,
                                 f"free variable '{idk2str(fv_orig, kf_loc)}' of function \
@@ -543,7 +545,7 @@ fun lift_all(kmods: kmodule_t list)
                         val e = KExpMem(kci_arg, idx, (t, kf_loc))
                         curr_subst_env.add(fv_orig, (fv_proxy, None))
                         val new_kv_flags = kv_flags.{val_flag_tempref=true}
-                        create_kdefval(fv_proxy, t, new_kv_flags, Some(e), prologue, kf_loc)
+                        prologue = create_kdefval(fv_proxy, t, new_kv_flags, Some(e), prologue, kf_loc)
                     }
 
                     val prologue = if self_referencing_functions.mem(kf_name) {
@@ -610,13 +612,14 @@ fun lift_all(kmods: kmodule_t list)
             val e_idom_ll =
             [:: for (e, idom_l, at_ids) <- e_idom_ll {
                 val e = walk_kexp_n_lift_all(e, callb)
-                val fold idom_l = [] for (i, dom_i) <- idom_l {
+                var new_idom_l = []
+                for (i, dom_i) <- idom_l {
                     val dom_i = check_n_walk_dom(dom_i, eloc, callb)
                     defined_so_far.add(i)
-                    (i, dom_i) :: idom_l
+                    new_idom_l = (i, dom_i) :: new_idom_l
                 }
                 for i <- at_ids { defined_so_far.add(i) }
-                (e, idom_l.rev(), at_ids)
+                (e, new_idom_l.rev(), at_ids)
             } ]
             val body = walk_kexp_n_lift_all(body, callb)
             KExpMap(e_idom_ll, body, flags, kctx)

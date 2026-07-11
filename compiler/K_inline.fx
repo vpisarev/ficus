@@ -131,11 +131,11 @@ fun calc_exp_size(e: kexp_t)
                 1
             } else {
                 fold s = 0 for al <- args {
-                    fold s = s for (f, a) <- al { s + (if f { 10 } else { 1 }) }
+                    for (f, a) <- al { s += (if f { 10 } else { 1 }) }
                 }
             }
         | KExpMkVector (args, _) =>
-            fold s = 0 for (f, a) <- args { s + (if f { 10 } else { 1 }) }
+            fold s = 0 for (f, a) <- args { s += (if f { 10 } else { 1 }) }
         | KExpMkClosure (_, _, args, _) => args.length()
         | KExpCall (_, args, _) => 5 + args.length()
         | KExpICall (_, _, args, _) => 6 + args.length()
@@ -145,12 +145,12 @@ fun calc_exp_size(e: kexp_t)
         | KExpWhile _ | KExpDoWhile _ | KExpIf _ => 2
         | KExpMatch (cases, _) =>
             fold total = 0 for (checks, _) <- cases {
-                total + checks.length()
+                total += checks.length()
             }
         | KExpTryCatch _ => 10
         | KExpMap (e_idl_l, _, _, _) =>
             fold total = 0 for (_, idl, _) <- e_idl_l {
-                10 + total + idl.length()
+                total += 10 + idl.length()
             }
         | KExpFor (idl, _, _, _, _) => 10 + idl.length()
         }

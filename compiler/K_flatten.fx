@@ -82,11 +82,11 @@ from K_form import *
 }
 
 @private fun flatten(code: kcode_t, callb: k_callb_t) =
-    fold code = [] for e <- code {
+    fold res = [] for e <- code {
         val new_e = flatten_kexp_(e, callb)
-        match new_e {
-        | KExpSeq (nested_elist, _) => nested_elist.rev() + code
-        | _ => new_e :: code
+        res = match new_e {
+        | KExpSeq (nested_elist, _) => nested_elist.rev() + res
+        | _ => new_e :: res
         }
     }
 

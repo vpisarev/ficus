@@ -185,7 +185,10 @@ fun plot(a: float, b: float, f: float->float, w: int, h: int) {
     val step = (b - a)/w
     val tab = [for x <- 0:w {f(a + step*x)}]
     val v0 = tab[0]
-    val fold (minv, maxv)=(v0, v0) for y <- tab { (min(minv, y), max(maxv, y)) }
+    val fold minv = v0, maxv = v0 for y <- tab {
+        minv = min(minv, y)
+        maxv = max(maxv, y)
+    }
     val scale = (h-1)/(maxv - minv)
 
     val screen: char [,] = array((h, w), ' ')

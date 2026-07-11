@@ -116,35 +116,33 @@ fun clrmsg(clr: msgcolor_t, msg: string)
 val error = clrmsg(MsgRed, "error")
 
 fun get_preamble(mfname: string): Lexer.token_t list {
-    val preamble =
+    var preamble: Lexer.token_t list = []
     if Options.opt.use_preamble {
         val bare_name = Filename.remove_extension(Filename.basename(mfname))
-        val (preamble, _) = fold (preamble, found) = (([] : Lexer.token_t list), false)
-            for (mname, from_import) <- [:: ("Builtins", true), ("Math", true),
-                                            ("Complex", true),
-                                            ("Array", true), ("List", false),
-                                            ("Vector", false), ("Char", false),
-                                            ("String", false),
-                                        ] {
-            if found {
-                (preamble, found)
-            } else if bare_name == mname {
-                (preamble, true)
-            } else if from_import {
-                (preamble + [:: Lexer.FROM, Lexer.IDENT(true, mname), Lexer.IMPORT(false), Lexer.STAR(true), Lexer.SEMICOLON], false)
-            } else {
-                (preamble + [:: Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON], false)
+        for (mname, from_import) <- [:: ("Builtins", true), ("Math", true),
+                                        ("Complex", true),
+                                        ("Array", true), ("List", false),
+                                        ("Vector", false), ("Char", false),
+                                        ("String", false),] {
+            if bare_name == mname {
+                break
+            }
+            if from_import {
+                preamble += [:: Lexer.FROM, Lexer.IDENT(true, mname), Lexer.IMPORT(false),
+                                Lexer.STAR(true), Lexer.SEMICOLON]
+            }
+            else {
+                preamble += [:: Lexer.IMPORT(true), Lexer.IDENT(true, mname), Lexer.SEMICOLON]
             }
         }
-        preamble
-    } else { [] }
+    }
     fold p=preamble for (n, v) <- Options.opt.defines {
         val v = match v {
         | Options.OptBool(b) => Ast.LitBool(b)
         | Options.OptInt(i) => Ast.LitInt(int64(i))
         | Options.OptString(s) => Ast.LitString(s)
         }
-        Lexer.PP_DEFINE :: Lexer.IDENT(true, n) :: Lexer.LITERAL(v) :: p
+        p = Lexer.PP_DEFINE :: Lexer.IDENT(true, n) :: Lexer.LITERAL(v) :: p
     }
 }
 
@@ -616,10 +614,11 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         (is_cpp, recompiled, clibs, ok_j, obj_filename)
     }]
 
-    val fold (any_cpp, any_recompiled, all_clibs, ok, objs) = (false, false, ([] : string list), ok, [])
-        for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
-            (any_cpp | is_cpp, any_recompiled | is_recompiled, clibs_j + all_clibs, ok & ok_j, obj :: objs)
-        }
+    var any_cpp = false, any_recompiled = false, all_clibs = ([] : string list), ok = ok, objs = []
+    for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
+        any_cpp |= is_cpp; any_recompiled |= is_recompiled
+        all_clibs = clibs_j + all_clibs; ok &= ok_j; objs = obj :: objs
+    }
     if ok && !any_recompiled && Filename.exists(Options.opt.app_filename) {
         pr_verbose(f"{Options.opt.app_filename} is up-to-date\n")
         ok
@@ -673,7 +672,7 @@ fun print_all_compile_errs()
             | _ => ""
             }
         val key = match msg.find('\n') { | (-1) => msg | nl => msg[:nl] }
-        if key != "" && seen.mem(key) { acc }
+        acc = if key != "" && seen.mem(key) { acc }
         else { if key != "" { seen.add(key) }; e :: acc }
     }
     fun errkey(e: exn): (int, int, int) = match e {

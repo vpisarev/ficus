@@ -921,7 +921,7 @@ fun NCXHWCtoNCHW(inp_t: Ast.nntensor_t)
     }
     val inp_shape = inp_t.shape.shape
     val inp_ndims = inp_shape.size()
-    val fold plane_size = 1 for i <- 2:inp_ndims-1 {plane_size*inp_shape[i]}
+    val fold plane_size = 1 for i <- 2:inp_ndims-1 {plane_size *= inp_shape[i]}
     val N = inp_shape[0]
     val inp_C = inp_shape[1]
     val out_shape = [N, inp_C, \inp_shape[2:inp_ndims-1]]
