@@ -146,7 +146,7 @@ TEST("rand.array.fold", fun() {
         val rng = mk_rng(seed)
         val n = next_int(rng, 0, 50)
         val a = rand_iarray(rng, n, -1000, 1000)
-        val got = fold acc = 0 for x <- a {acc + x}
+        val got = fold acc = 0 for x <- a {acc += x}
         var rf = 0
         for x <- a {rf += x}
         if got != rf {println(f"  [repro] {name} case={i} seed={seed} n={n}")}

@@ -17,6 +17,8 @@ import test_mandelbrot
 import test_matrix
 import test_closure
 import test_ctrlflow
+import test_tuple_assign
+import test_fold2
 import test_re
 @ifdef HAVE_RE2
 import test_re2

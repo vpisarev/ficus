@@ -8,12 +8,8 @@ import Char
 import String
 val fold.s@g0: int =
    {
-      var fold.__fold_result__@g1: int = 0
-      for fold.x@g2 <- [1, 2, 3, 4, 5]
-         {
-            @temp val fold.acc@g3: int = <int>fold.__fold_result__@g1
-            <int>fold.__fold_result__@g1 = (<int>fold.acc@g3 + <int>fold.x@g2)
-         }
-      <int>fold.__fold_result__@g1
+      var fold.acc@g1: int = 0
+      for fold.x@g2 <- [1, 2, 3, 4, 5] { <int>fold.acc@g1 = (<int>fold.acc@g1 + <int>fold.x@g2) }
+      <int>fold.acc@g1
    }
-<(int -> void)>Builtins.println@g4(<int>fold.s@g0)
+<(int -> void)>Builtins.println@g3(<int>fold.s@g0)

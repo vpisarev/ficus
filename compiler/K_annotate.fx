@@ -30,11 +30,11 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
         | KTypCPointer | KTypExn | KTypErr | KTypModule => deps
         | KTypRawPointer(et) => get_ktyp_deps_(et, deps)
         | KTypFun (args, rt) =>
-            fold deps = deps for t <- rt :: args { get_ktyp_deps_(t, deps) }
+            fold deps = deps for t <- rt :: args { deps = get_ktyp_deps_(t, deps) }
         | KTypTuple tl =>
-            fold deps = deps for t <- tl { get_ktyp_deps_(t, deps) }
+            fold deps = deps for t <- tl { deps = get_ktyp_deps_(t, deps) }
         | KTypRecord (rn, relems) =>
-            fold deps = deps for (_, ti) <- relems { get_ktyp_deps_(ti, deps) }
+            fold deps = deps for (_, ti) <- relems { deps = get_ktyp_deps_(ti, deps) }
         | KTypName i => deps.add(i)
         | KTypArray (_, et) => get_ktyp_deps_(et, deps)
         | KTypList et => get_ktyp_deps_(et, deps)
@@ -44,11 +44,14 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
 
     match kinfo_(n, loc) {
     | KVariant (ref {kvar_cases, kvar_ifaces}) =>
-        val fold deps = empty_idset for (_, ti) <- kvar_cases { get_ktyp_deps_(ti, deps) }
-        fold deps = deps for (iname, _) <- kvar_ifaces { deps.add(iname) }
+        var deps = empty_idset
+        for (_, ti) <- kvar_cases { deps = get_ktyp_deps_(ti, deps) }
+        for (iname, _) <- kvar_ifaces { deps = deps.add(iname) }
+        deps
     | KTyp (ref {kt_typ}) => get_ktyp_deps_(kt_typ, empty_idset)
     | KInterface (ref {ki_base, ki_all_methods}) =>
-        val fold deps = empty_idset for (_, ti) <- ki_all_methods { get_ktyp_deps_(ti, deps) }
+        var deps = empty_idset
+        for (_, ti) <- ki_all_methods { deps = get_ktyp_deps_(ti, deps) }
         if ki_base == noid {deps} else {deps.add(ki_base)}
     | _ => throw compile_err(loc, f"the symbol '{idk2str(n, loc)}' is not a type")
     }

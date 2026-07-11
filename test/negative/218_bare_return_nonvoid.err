@@ -1,5 +1,5 @@
-218_bare_return_nonvoid.fx:5:41: error: the return statement type void is inconsistent with the previously deduced type int of function f
+218_bare_return_nonvoid.fx:5:43: error: the return statement type void is inconsistent with the previously deduced type int of function f
  5 | fun f(): int { for i <- 0:3 { if i == 1 { return } else {} }; 0 }
-   |                                         ^~~~~~~~~
+   |                                           ^~~~~~~
 
 1 errors occured during type checking.

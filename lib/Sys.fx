@@ -108,8 +108,10 @@ fun timeit(f: void -> void, ~updated_min: (void->void)?,
         | (true, Some(f)) => f()
         | _ => {}
         }
-        if iterations > 1 && i == 0 {(gmean, new_mintime)}
-        else { (gmean + log_t, new_mintime) }
+        if !(iterations > 1 && i == 0) {
+            gmean += log_t
+        }
+        mintime = new_mintime
     }
     val gmean = if nreal_iterations > 1 { exp(gmean/nreal_iterations)/batch } else {gmean/batch}
     (gmean, mintime/batch)

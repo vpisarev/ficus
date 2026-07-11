@@ -153,7 +153,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             assert(`typ_i == typ0`)
             out_shape[axis] = shape_i.shape[axis]
             assert(`out_shape == shape_i.shape`)
-            out_shape_a + shape_i.shape[axis]
+            out_shape_a += shape_i.shape[axis]
         }
         out_shape[axis] = out_shape_a
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=shape0.layout,
@@ -276,10 +276,10 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                         (typ0 == Type_F32 && typ_i == Type_F16)`)
             }
             if enable_broadcast {
-                out_shape.broadcast(shape_i)
+                out_shape = out_shape.broadcast(shape_i)
             } else {
                 assert(`shape0.shape == shape_i.shape`)
-                out_shape.{layout = Ast.coerce_layouts(out_shape.layout, shape_i.layout)}
+                out_shape = out_shape.{layout = Ast.coerce_layouts(out_shape.layout, shape_i.layout)}
             }
         }
         val out_typ = match el_op {
@@ -306,7 +306,11 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val ndims = shape.shape.size()
         val axis = Ast.normalize_axis(axis, ndims)
         val fold sz1 = 1, sz2 = 1 for sz@i <- shape.shape {
-            if i < axis {(sz1*sz, sz2)} else {(sz1, sz2*sz)}
+            if i < axis {
+                sz1 *= sz
+            } else {
+                sz2 *= sz
+            }
         }
         [argshapeinfo_t {idx=t_out, shape=Ast.nnshape_t {layout=Ast.NN_Layout_ND,
             shape=[sz1, sz2]}, typ=typ, dynamic=false}]
@@ -637,18 +641,21 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
         val (sshape, _) = get_shape_typ(t_shape)
         assert(`sshape.shape.size() == 1 || sshape.shape.size() == 0`)
         val new_shape = int(model.get_tensor(t_shape))
-        val fold old_total = 1 for sz <- shape.shape {old_total*sz}
+        val fold old_total = 1 for sz <- shape.shape {old_total *= sz}
         val fold new_total=1, havem1=false for sz@i <- new_shape {
             if sz == -1 {
                 if havem1 {throw Ast.NNError(f"shape inference: {name} (op={opname}): the new shape contains more than one -1")}
-                (new_total, true)
+                havem1 = true
             } else if sz == 0 {
-                if allowzero {(new_total, havem1)}
+                if allowzero {
+                }
                 else {
                     val sz = shape.shape[i]
-                    (new_total*sz, havem1)
+                    new_total *= sz
                 }
-            } else {(new_total*sz, havem1)}
+            } else {
+                new_total *= sz1
+            }
         }
         val m1sz = if havem1 {
             if old_total % new_total != 0 {
@@ -827,8 +834,8 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
             if shape.shape[axis] == 1 {
                 assert(`out_shape_0[axis] >= 0`)
                 out_shape_0[axis] = -1
-                out_ndims - 1
-            } else {out_ndims}
+                out_ndims -= 1
+            }
         }
         var j = 0
         val out_shape = array(out_ndims, 0)

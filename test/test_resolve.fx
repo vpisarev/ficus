@@ -101,7 +101,7 @@ check("fb007.s2_cplx_times_int", c->re + c->im, 4)
 // in miniature.) The true deferral of under-constrained calls is still
 // session-2 scope; TypVarCollection removes this particular collision class.
 fun build(l: int list): int list {
-    val fold prog = [] for x <- l { [:: x*x] + prog }
+    val fold prog = [] for x <- l { prog = [:: x*x] + prog }
     prog.rev()
 }
 check("fb007.s3_free_accumulator", build([:: 1, 2, 3]).hd(), 1)

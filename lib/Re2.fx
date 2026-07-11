@@ -340,7 +340,7 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
             fold filtered = [] for piece <- pieces_list
             {
                 val ok = match piece { | RPString simple_piece => simple_piece.length()!=0 | RPInt sub_num => true}
-                if (ok) {piece::filtered} else {filtered}
+                if (ok) {filtered = piece::filtered}
             }
         }
         else
@@ -352,8 +352,8 @@ fun compile_replace_pattern(rewrite: string): replace_pattern_t
     {
         match piece
         {
-            | RPString simple_piece => max_sub
-            | RPInt sub_num => max(max_sub, sub_num)
+            | RPString simple_piece => {}
+            | RPInt sub_num => max_sub = max(max_sub, sub_num)
         }
     }
     replace_pattern_t {pieces = piece_lst, max_subnum = max_sub}
@@ -973,10 +973,10 @@ fun compose_replacement(cloth: string, french_curve: replace_pattern_t, found_su
         {
             match piece
             {
-                | RPString simple_piece => simple_piece::rlist
+                | RPString simple_piece => rlist = simple_piece::rlist
                 | RPInt sub_num =>
                     val (sub_start, sub_end) = found_subs[sub_num]
-                    cloth[sub_start:sub_end]::rlist
+                    rlist = cloth[sub_start:sub_end]::rlist
             }
         }
     join("", List.rev(rlist))

@@ -78,14 +78,14 @@ fun app(d: 't Deque.t, f: 't -> void, ~in_order:bool=true): void
 
 fun foldl(d: 't Deque.t, f: ('t, 'acc) -> 'acc, res0: 'acc): 'acc
 {
-    val fold res=res0 for x <- d.head {f(x, res)}
-    fold res=res for x <- d.tail.rev() {f(x, res)}
+    val fold res=res0 for x <- d.head {res = f(x, res)}
+    fold res=res for x <- d.tail.rev() {res = f(x, res)}
 }
 
 fun foldr(d: 't Deque.t, f: ('t, 'acc) -> 'acc, res0: 'acc): 'acc
 {
-    val fold res=res0 for x <- d.tail {f(x, res)}
-    fold res=res for x <- d.head.rev() {f(x, res)}
+    val fold res=res0 for x <- d.tail {res = f(x, res)}
+    fold res=res for x <- d.head.rev() {res = f(x, res)}
 }
 
 fun all(d: 't Deque.t, f: 't -> bool): bool = d.head.all(f) && d.tail.all(f)

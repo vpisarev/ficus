@@ -129,8 +129,9 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
         name: id_t, sc: scope_t list): (string, string)
     {
         val nargs = targs.length()
-        val fold result = [] for targ <- targs {
-            mangle_ktyp_(targ, result)
+        var result: string list = []
+        for targ <- targs {
+            result = mangle_ktyp_(targ, result)
         }
         val (prefix, suffix) =
             if nargs == 0 { (prefix, "") }
@@ -228,7 +229,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             val result = mangle_ktyp_(rt, "FP" :: result)
             val result = string(args.length()) :: result
             fold result = result for a <- args {
-                mangle_ktyp_(a, result)
+                result = mangle_ktyp_(a, result)
             }
         | KTypTuple elems =>
             val nelems = elems.length()
@@ -239,7 +240,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
                     mangle_ktyp_(t0, nstr :: "Ta" :: result)
                 } else {
                     fold result = nstr :: "T" :: result for t <- elems {
-                        mangle_ktyp_(t, result)
+                        result = mangle_ktyp_(t, result)
                     }
                 }
             | _ => throw compile_err(loc, "the tuple has 0 elements")

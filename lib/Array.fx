@@ -20,7 +20,7 @@ fun size(a: 't [,,]): (int, int, int) = (__intrin_size__(a, 0), __intrin_size__(
 fun size(a: 't [,,,]): (int, int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
                          __intrin_size__(a, 2), __intrin_size__(a, 3))
 
-fun total(a: 't [+]): int = fold p = 1 for szj <- size(a) {p*szj}
+fun total(a: 't [+]): int = fold p = 1 for szj <- size(a) { p*= szj }
 fun total(a: 't []): int = size(a)
 
 @nothrow fun empty(a: 't [+]):bool
@@ -231,35 +231,35 @@ fun clip(a: 't [+], minv_arr: 't [+], maxv_arr: 't [+]): 't [+] =
     [for x <- a, minv <- minv_arr, maxv <- maxv_arr {min(max(x, minv), maxv)}]
 
 fun sum(a: 't [+]): double =
-    fold s = ((0 :> 't) :> double) for aj <- a {s + aj}
+    fold s = ((0 :> 't) :> double) for aj <- a {s += aj}
 
 fun sum(a: 't [+], v0: 's): 's =
-    fold s = v0 for aj <- a {s + aj}
+    fold s = v0 for aj <- a {s += aj}
 
 fun product(a: 't [+], v0: 's): 's =
-    fold p = v0 for aj <- a {p * aj}
+    fold p = v0 for aj <- a {p *= aj}
 
 fun mean(a: 't [+]): double = sum(a)/(max(total(a), 1) :> double)
 
 fun normInf(a: 't [+]): 't =
-    fold s = normInf(0 :> 't) for aj <- a {max(s, normInf(aj))}
+    fold s = normInf(0 :> 't) for aj <- a {s = max(s, normInf(aj))}
 
 fun normL1(a: 't [+]): double =
-    fold s = 0. for aj <- a {s + normL1(aj)}
+    fold s = 0. for aj <- a {s += normL1(aj)}
 
 fun normL2sqr(a: 't [+]): double =
-    fold s = 0. for aj <- a {s + normL2sqr(aj)}
+    fold s = 0. for aj <- a {s += normL2sqr(aj)}
 
 fun normL2(a: 't [+]): double = sqrt(normL2sqr(a))
 
 fun normInf(a: 't [+], b: 't [+]): 't =
-    fold s = normInf(0 :> 't) for aj <- a, bj <- b {max(s, normInf(aj, bj))}
+    fold s = normInf(0 :> 't) for aj <- a, bj <- b {s = max(s, normInf(aj, bj))}
 
 fun normL1(a: 't [+], b: 't [+]): double =
-    fold s = 0. for aj <- a, bj <- b {s + normL1(aj, bj)}
+    fold s = 0. for aj <- a, bj <- b {s += normL1(aj, bj)}
 
 fun normL2sqr(a: 't [+], b: 't [+]): double =
-    fold s = 0. for aj <- a, bj <- b {s + normL2sqr(aj, bj)}
+    fold s = 0. for aj <- a, bj <- b {s += normL2sqr(aj, bj)}
 
 fun normL2(a: 't [+], b: 't [+]): double = sqrt(normL2sqr(a, b))
 
@@ -267,8 +267,11 @@ fun minindex(a: 't []): ('t, int) =
     if a == [] {
         (0 :> 't, -1)
     } else {
-        fold (minv, mini) = (a[0], 0) for x@i <- a {
-            if x < minv {(x, i)} else {(minv, mini)}
+        fold minv = a[0], mini = 0 for x@i <- a {
+            if x < minv {
+                minv = x
+                mini = i
+            }
         }
     }
 
@@ -276,8 +279,11 @@ fun maxindex(a: 't []): ('t, int) =
     if a == [] {
         (0 :> 't, -1)
     } else {
-        fold (maxv, maxi) = (a[0], 0) for x@i <- a {
-            if x > maxv {(x, i)} else {(maxv, maxi)}
+        fold maxv = a[0], maxi = 0 for x@i <- a {
+            if x > maxv {
+                maxv = x
+                maxi = i
+            }
         }
     }
 
@@ -403,24 +409,24 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int): void
                 } else {
                     if lt(a, p) {arr[lo]=p; a} else if lt(b, p) {p} else {arr[m]=p; b}
                 }
-            val i0 =
-                if __is_scalar__(p) {
-                    fold i0 = lo for j <- lo:hi {
-                        val b = arr[j]
-                        if lt(b, p) {
-                            val a = arr[i0]
-                            arr[i0] = b; arr[j] = a;
-                            i0 + 1
-                        } else {i0}
-                    }
-                } else {
-                    fold i0 = lo for j <- lo:hi {
-                        if lt(arr[j], p) {
-                            _swap_(arr, i0, j)
-                            i0 + 1
-                        } else {i0}
+            var i0 = lo
+            if __is_scalar__(p) {
+                for j <- lo:hi {
+                    val b = arr[j]
+                    if lt(b, p) {
+                        val a = arr[i0]
+                        arr[i0] = b; arr[j] = a;
+                        i0 += 1
                     }
                 }
+            } else {
+                for j <- lo:hi {
+                    if lt(arr[j], p) {
+                        _swap_(arr, i0, j)
+                        i0 += 1
+                    }
+                }
+            }
             val a = arr[i0]
             arr[hi] = a; arr[i0] = p
             var i1 = hi
@@ -660,5 +666,5 @@ fun det(a: double [,]): double =
 fun trace(a: 't [,]): double
 {
     val (m, n) = size(a)
-    fold s = 0. for i <- 0:min(m, n) {s + a[i, i]}
+    fold s = 0. for i <- 0:min(m, n) {s += a[i, i]}
 }

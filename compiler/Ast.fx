@@ -76,7 +76,7 @@ fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
         val {m_idx=loci_m_idx,
             line0=loci_line0, col0=loci_col0,
             line1=loci_line1, col1=loci_col1} = loci
-        if m_idx != loci_m_idx {
+        loc = if m_idx != loci_m_idx {
             if m_idx <= 0 { loci } else { loc }
         } else {
             loc_t
@@ -1021,7 +1021,7 @@ fun get_numeric_typ_size(t: typ_t, allow_tuples: bool): int =
         else {
             fold sz=0 for t<-tl {
                 val szj = get_numeric_typ_size(t, true)
-                if szj < 0 || sz < 0 {-1} else {sz + szj}
+                sz = if szj < 0 || sz < 0 {-1} else {sz + szj}
             }
         }
     | _ => -1

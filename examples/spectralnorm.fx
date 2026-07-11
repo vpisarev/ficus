@@ -14,7 +14,7 @@ fun Au(u: double[], res: double [])
 
     @parallel for i <- 0:N {
         res[i] = fold t = 0. for uj@j <- u {
-            t + uj / A(i, j)
+            t += uj / A(i, j)
         }
     }
 }
@@ -25,7 +25,7 @@ fun Atu(u: double[], res: double [])
 
     @parallel for i <- 0:N {
         res[i] = fold t = 0. for uj@j <- u {
-            t + uj / A(j, i)
+            t += uj / A(j, i)
         }
     }
 }
@@ -40,8 +40,8 @@ fun spectralnorm(n: int)
     val temp = array(n, 0.)
     val u = array(n, 1.), v = array(n, 0.)
     for i <- 0:10 { AtAu(u, v, temp); AtAu(v, u, temp) }
-    val fold vBv=0., vv = 0.
-        for ui <- u, vi <- v { (vBv + ui*vi, vv + vi*vi) }
+    var vBv=0., vv = 0.
+    for ui <- u, vi <- v { vBv += ui*vi; vv += vi*vi }
     sqrt(vBv/vv)
 }
 

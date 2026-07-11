@@ -409,23 +409,26 @@ fun remove_unused_by_main(kmods: kmodule_t list)
         if km_main {
             km // retain everything in the main module
         } else {
-            val fold new_top = [] for e <- km_top {
+            var new_top = []
+            for e <- km_top {
+                match e {
                 | KDefVal (n, _, _) =>
-                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                    if all_main_deps.mem(n) { new_top = e :: new_top }
                 | KDefFun (ref {kf_name=n}) =>
-                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                    if all_main_deps.mem(n) { new_top = e :: new_top }
                 | KDefTyp (ref {kt_name=n}) =>
-                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                    if all_main_deps.mem(n) { new_top = e :: new_top }
                 | KDefVariant (ref {kvar_name=n}) =>
-                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                    if all_main_deps.mem(n) { new_top = e :: new_top }
                 | KDefInterface (ref {ki_name=n}) =>
-                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                    if all_main_deps.mem(n) { new_top = e :: new_top }
                 | KDefClosureVars (ref {kcv_name=n}) =>
-                    if all_main_deps.mem(n) { e :: new_top } else { new_top }
+                    if all_main_deps.mem(n) { new_top = e :: new_top }
                 | KDefExn (ref {ke_name=n}) =>
                     // always include all the exceptions
-                    e :: new_top
-                | _ => e :: new_top
+                    new_top = e :: new_top
+                | _ => new_top = e :: new_top
+                }
             }
             km.{km_top = new_top.rev()}
         }

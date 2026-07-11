@@ -18,17 +18,6 @@ typedef struct _fx_Nt6option1i {
    } u;
 } _fx_Nt6option1i;
 
-typedef struct _fx_T3LSiB {
-   struct _fx_LS_data_t* t0;
-   int_ t1;
-   bool t2;
-} _fx_T3LSiB;
-
-typedef struct _fx_T2LSi {
-   struct _fx_LS_data_t* t0;
-   int_ t1;
-} _fx_T2LSi;
-
 typedef struct _fx_T2SB {
    fx_str_t t0;
    bool t1;
@@ -52,42 +41,6 @@ static void _fx_free_LS(struct _fx_LS_data_t** dst)
 static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, struct _fx_LS_data_t** fx_result)
 {
    FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
-}
-
-static void _fx_free_T3LSiB(struct _fx_T3LSiB* dst)
-{
-   _fx_free_LS(&dst->t0);
-}
-
-static void _fx_copy_T3LSiB(struct _fx_T3LSiB* src, struct _fx_T3LSiB* dst)
-{
-   FX_COPY_PTR(src->t0, &dst->t0);
-   dst->t1 = src->t1;
-   dst->t2 = src->t2;
-}
-
-static void _fx_make_T3LSiB(struct _fx_LS_data_t* t0, int_ t1, bool t2, struct _fx_T3LSiB* fx_result)
-{
-   FX_COPY_PTR(t0, &fx_result->t0);
-   fx_result->t1 = t1;
-   fx_result->t2 = t2;
-}
-
-static void _fx_free_T2LSi(struct _fx_T2LSi* dst)
-{
-   _fx_free_LS(&dst->t0);
-}
-
-static void _fx_copy_T2LSi(struct _fx_T2LSi* src, struct _fx_T2LSi* dst)
-{
-   FX_COPY_PTR(src->t0, &dst->t0);
-   dst->t1 = src->t1;
-}
-
-static void _fx_make_T2LSi(struct _fx_LS_data_t* t0, int_ t1, struct _fx_T2LSi* fx_result)
-{
-   FX_COPY_PTR(t0, &fx_result->t0);
-   fx_result->t1 = t1;
 }
 
 static void _fx_free_T2SB(struct _fx_T2SB* dst)
@@ -318,28 +271,21 @@ FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
    struct _fx_LS_data_t** fx_result,
    void* fx_fv)
 {
-   _fx_T3LSiB __fold_result___0 = {0};
-   fx_str_t s_1 = {0};
-   _fx_T3LSiB v_0 = {0};
    _fx_LS sl_0 = 0;
-   _fx_LS v_1 = 0;
-   fx_str_t v_2 = {0};
-   _fx_LS __fold_result___1 = 0;
+   fx_str_t s_1 = {0};
+   _fx_LS sl_1 = 0;
+   _fx_LS v_0 = 0;
+   fx_str_t v_1 = {0};
+   _fx_LS res_0 = 0;
    int fx_status = 0;
-   _fx_make_T3LSiB(0, 0, true, &__fold_result___0);
+   int_ start_0 = 0;
+   bool sep_0 = true;
    fx_copy_str(s_0, &s_1);
    int_ len_0 = FX_STR_LENGTH(s_1);
    for (int_ i_0 = 0; i_0 < len_0; i_0++) {
-      _fx_T3LSiB v_3 = {0};
-      _fx_LS sl_1 = 0;
-      _fx_T3LSiB v_4 = {0};
-      _fx_LS v_5 = 0;
-      fx_str_t v_6 = {0};
+      _fx_LS v_2 = 0;
+      fx_str_t v_3 = {0};
       char_ ci_0 = s_1.data[i_0];
-      _fx_copy_T3LSiB(&__fold_result___0, &v_3);
-      FX_COPY_PTR(v_3.t0, &sl_1);
-      int_ start_0 = v_3.t1;
-      bool sep_0 = v_3.t2;
       if (ci_0 == c_0) {
          bool t_0;
          if (sep_0) {
@@ -349,13 +295,16 @@ FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
             t_0 = false;
          }
          if (t_0) {
-            FX_COPY_PTR(sl_1, &v_5);
+            FX_COPY_PTR(sl_0, &v_2);
          }
          else {
-            FX_CALL(fx_substr(s_0, start_0, i_0, 1, 0, &v_6), _fx_catch_0);
-            FX_CALL(_fx_cons_LS(&v_6, sl_1, true, &v_5), _fx_catch_0);
+            FX_CALL(fx_substr(s_0, start_0, i_0, 1, 0, &v_3), _fx_catch_0);
+            FX_CALL(_fx_cons_LS(&v_3, sl_0, true, &v_2), _fx_catch_0);
          }
-         _fx_make_T3LSiB(v_5, i_0 + 1, true, &v_4);
+         _fx_free_LS(&sl_0);
+         FX_COPY_PTR(v_2, &sl_0);
+         start_0 = i_0 + 1;
+         sep_0 = true;
       }
       else {
          int_ t_1;
@@ -365,63 +314,56 @@ FX_EXTERN_C int _fx_M6StringFM5splitLS3SCB(
          else {
             t_1 = start_0;
          }
-         _fx_make_T3LSiB(sl_1, t_1, false, &v_4);
+         start_0 = t_1;
+         sep_0 = false;
       }
-      _fx_free_T3LSiB(&__fold_result___0);
-      _fx_copy_T3LSiB(&v_4, &__fold_result___0);
 
    _fx_catch_0: ;
-      FX_FREE_STR(&v_6);
-      if (v_5) {
-         _fx_free_LS(&v_5);
+      FX_FREE_STR(&v_3);
+      if (v_2) {
+         _fx_free_LS(&v_2);
       }
-      _fx_free_T3LSiB(&v_4);
-      if (sl_1) {
-         _fx_free_LS(&sl_1);
-      }
-      _fx_free_T3LSiB(&v_3);
       FX_CHECK_EXN(_fx_cleanup);
    }
-   _fx_copy_T3LSiB(&__fold_result___0, &v_0);
-   FX_COPY_PTR(v_0.t0, &sl_0);
-   int_ start_1 = v_0.t1;
-   bool sep_1 = v_0.t2;
+   FX_COPY_PTR(sl_0, &sl_1);
+   int_ start_1 = start_0;
+   bool sep_1 = sep_0;
    if (sep_1) {
-      FX_COPY_PTR(sl_0, &v_1);
+      FX_COPY_PTR(sl_1, &v_0);
    }
    else {
-      FX_CALL(fx_substr(s_0, start_1, 0, 1, 2, &v_2), _fx_cleanup); FX_CALL(_fx_cons_LS(&v_2, sl_0, true, &v_1), _fx_cleanup);
+      FX_CALL(fx_substr(s_0, start_1, 0, 1, 2, &v_1), _fx_cleanup); FX_CALL(_fx_cons_LS(&v_1, sl_1, true, &v_0), _fx_cleanup);
    }
-   _fx_LS lst_0 = v_1;
+   _fx_LS lst_0 = v_0;
    for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_LS r_0 = 0;
+      _fx_LS v_4 = 0;
       fx_str_t* a_0 = &lst_0->hd;
-      FX_COPY_PTR(__fold_result___1, &r_0);
-      FX_CALL(_fx_cons_LS(a_0, r_0, false, &r_0), _fx_catch_1);
-      _fx_free_LS(&__fold_result___1);
-      FX_COPY_PTR(r_0, &__fold_result___1);
+      FX_CALL(_fx_cons_LS(a_0, res_0, true, &v_4), _fx_catch_1);
+      _fx_free_LS(&res_0);
+      FX_COPY_PTR(v_4, &res_0);
 
    _fx_catch_1: ;
-      if (r_0) {
-         _fx_free_LS(&r_0);
+      if (v_4) {
+         _fx_free_LS(&v_4);
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
-   FX_COPY_PTR(__fold_result___1, fx_result);
+   FX_COPY_PTR(res_0, fx_result);
 
 _fx_cleanup: ;
-   _fx_free_T3LSiB(&__fold_result___0);
-   FX_FREE_STR(&s_1);
-   _fx_free_T3LSiB(&v_0);
    if (sl_0) {
       _fx_free_LS(&sl_0);
    }
-   if (v_1) {
-      _fx_free_LS(&v_1);
+   FX_FREE_STR(&s_1);
+   if (sl_1) {
+      _fx_free_LS(&sl_1);
    }
-   FX_FREE_STR(&v_2);
-   if (__fold_result___1) {
-      _fx_free_LS(&__fold_result___1);
+   if (v_0) {
+      _fx_free_LS(&v_0);
+   }
+   FX_FREE_STR(&v_1);
+   if (res_0) {
+      _fx_free_LS(&res_0);
    }
    return fx_status;
 }
@@ -465,15 +407,13 @@ FX_EXTERN_C int _fx_M6StringFM10num_suffixS1i(int_ n_0, fx_str_t* fx_result, voi
 FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s_0, bool quotes_0, fx_str_t* fx_result, void* fx_fv)
 {
    fx_str_t q_0 = {0};
-   _fx_LS v_0 = 0;
-   _fx_T2LSi __fold_result___0 = {0};
-   fx_str_t s_1 = {0};
-   _fx_T2LSi v_1 = {0};
    _fx_LS ll_0 = 0;
-   fx_str_t v_2 = {0};
-   _fx_LS v_3 = 0;
-   _fx_LS __fold_result___1 = 0;
-   _fx_LS v_4 = 0;
+   fx_str_t s_1 = {0};
+   _fx_LS ll_1 = 0;
+   fx_str_t v_0 = {0};
+   _fx_LS v_1 = 0;
+   _fx_LS res_0 = 0;
+   _fx_LS v_2 = 0;
    int fx_status = 0;
    if (quotes_0) {
       fx_str_t slit_0 = FX_MAKE_STR("\""); fx_copy_str(&slit_0, &q_0);
@@ -481,23 +421,17 @@ FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s_0, bool quotes_0, fx_str_
    else {
       fx_str_t slit_1 = FX_MAKE_STR(""); fx_copy_str(&slit_1, &q_0);
    }
-   FX_CALL(_fx_cons_LS(&q_0, 0, true, &v_0), _fx_cleanup);
-   _fx_make_T2LSi(v_0, 0, &__fold_result___0);
+   FX_CALL(_fx_cons_LS(&q_0, 0, true, &ll_0), _fx_cleanup);
+   int_ verb_0 = 0;
    fx_copy_str(s_0, &s_1);
    int_ len_0 = FX_STR_LENGTH(s_1);
    for (int_ i_0 = 0; i_0 < len_0; i_0++) {
-      _fx_T2LSi v_5 = {0};
-      _fx_LS ll_1 = 0;
-      _fx_T2LSi v_6 = {0};
-      _fx_T2SB v_7 = {0};
+      _fx_T2SB v_3 = {0};
       fx_str_t esc_s_0 = {0};
-      _fx_LS v_8 = 0;
-      fx_str_t v_9 = {0};
-      _fx_LS ll_2 = 0;
+      _fx_LS v_4 = 0;
+      fx_str_t v_5 = {0};
+      _fx_LS v_6 = 0;
       char_ c_0 = s_1.data[i_0];
-      _fx_copy_T2LSi(&__fold_result___0, &v_5);
-      FX_COPY_PTR(v_5.t0, &ll_1);
-      int_ verb_0 = v_5.t1;
       int_ code_0;
       FX_CALL(_fx_F3ordi1C(c_0, &code_0, 0), _fx_catch_0);
       bool t_0;
@@ -507,117 +441,102 @@ FX_EXTERN_C int _fx_M6StringFM7escapedS2SB(fx_str_t* s_0, bool quotes_0, fx_str_
       else {
          t_0 = false;
       }
-      if (t_0) {
-         _fx_make_T2LSi(ll_1, verb_0, &v_6);
-      }
-      else {
+      if (!t_0) {
          if (code_0 == 10) {
-            fx_str_t slit_2 = FX_MAKE_STR("\\n"); _fx_make_T2SB(&slit_2, true, &v_7);
+            fx_str_t slit_2 = FX_MAKE_STR("\\n"); _fx_make_T2SB(&slit_2, true, &v_3);
          }
          else if (code_0 == 13) {
-            fx_str_t slit_3 = FX_MAKE_STR("\\r"); _fx_make_T2SB(&slit_3, true, &v_7);
+            fx_str_t slit_3 = FX_MAKE_STR("\\r"); _fx_make_T2SB(&slit_3, true, &v_3);
          }
          else if (code_0 == 9) {
-            fx_str_t slit_4 = FX_MAKE_STR("\\t"); _fx_make_T2SB(&slit_4, true, &v_7);
+            fx_str_t slit_4 = FX_MAKE_STR("\\t"); _fx_make_T2SB(&slit_4, true, &v_3);
          }
          else if (code_0 == 39) {
-            fx_str_t slit_5 = FX_MAKE_STR("\\\'"); _fx_make_T2SB(&slit_5, true, &v_7);
+            fx_str_t slit_5 = FX_MAKE_STR("\\\'"); _fx_make_T2SB(&slit_5, true, &v_3);
          }
          else if (code_0 == 34) {
-            fx_str_t slit_6 = FX_MAKE_STR("\\\""); _fx_make_T2SB(&slit_6, true, &v_7);
+            fx_str_t slit_6 = FX_MAKE_STR("\\\""); _fx_make_T2SB(&slit_6, true, &v_3);
          }
          else if (code_0 == 92) {
-            fx_str_t slit_7 = FX_MAKE_STR("\\\\"); _fx_make_T2SB(&slit_7, true, &v_7);
+            fx_str_t slit_7 = FX_MAKE_STR("\\\\"); _fx_make_T2SB(&slit_7, true, &v_3);
          }
          else if (code_0 == 0) {
-            fx_str_t slit_8 = FX_MAKE_STR("\\0"); _fx_make_T2SB(&slit_8, true, &v_7);
+            fx_str_t slit_8 = FX_MAKE_STR("\\0"); _fx_make_T2SB(&slit_8, true, &v_3);
          }
          else {
-            fx_str_t slit_9 = FX_MAKE_STR("\\0"); _fx_make_T2SB(&slit_9, false, &v_7);
+            fx_str_t slit_9 = FX_MAKE_STR("\\0"); _fx_make_T2SB(&slit_9, false, &v_3);
          }
          FX_CHECK_EXN(_fx_catch_0);
-         fx_copy_str(&v_7.t0, &esc_s_0);
-         bool esc_0 = v_7.t1;
+         fx_copy_str(&v_3.t0, &esc_s_0);
+         bool esc_0 = v_3.t1;
          if (esc_0) {
             if (i_0 > verb_0) {
-               FX_CALL(fx_substr(s_0, verb_0, i_0, 1, 0, &v_9), _fx_catch_0);
-               FX_CALL(_fx_cons_LS(&v_9, ll_1, true, &v_8), _fx_catch_0);
+               FX_CALL(fx_substr(s_0, verb_0, i_0, 1, 0, &v_5), _fx_catch_0);
+               FX_CALL(_fx_cons_LS(&v_5, ll_0, true, &v_4), _fx_catch_0);
             }
             else {
-               FX_COPY_PTR(ll_1, &v_8);
+               FX_COPY_PTR(ll_0, &v_4);
             }
-            FX_CALL(_fx_cons_LS(&esc_s_0, v_8, true, &ll_2), _fx_catch_0);
-            _fx_make_T2LSi(ll_2, i_0 + 1, &v_6);
-         }
-         else {
-            _fx_make_T2LSi(ll_1, verb_0, &v_6);
+            FX_CALL(_fx_cons_LS(&esc_s_0, v_4, true, &v_6), _fx_catch_0);
+            _fx_free_LS(&ll_0);
+            FX_COPY_PTR(v_6, &ll_0);
+            verb_0 = i_0 + 1;
          }
       }
-      _fx_free_T2LSi(&__fold_result___0);
-      _fx_copy_T2LSi(&v_6, &__fold_result___0);
 
    _fx_catch_0: ;
-      if (ll_2) {
-         _fx_free_LS(&ll_2);
+      if (v_6) {
+         _fx_free_LS(&v_6);
       }
-      FX_FREE_STR(&v_9);
-      if (v_8) {
-         _fx_free_LS(&v_8);
+      FX_FREE_STR(&v_5);
+      if (v_4) {
+         _fx_free_LS(&v_4);
       }
       FX_FREE_STR(&esc_s_0);
-      _fx_free_T2SB(&v_7);
-      _fx_free_T2LSi(&v_6);
-      if (ll_1) {
-         _fx_free_LS(&ll_1);
-      }
-      _fx_free_T2LSi(&v_5);
+      _fx_free_T2SB(&v_3);
       FX_CHECK_EXN(_fx_cleanup);
    }
-   _fx_copy_T2LSi(&__fold_result___0, &v_1);
-   FX_COPY_PTR(v_1.t0, &ll_0);
-   int_ verb_1 = v_1.t1;
-   FX_CALL(fx_substr(s_0, verb_1, 0, 1, 2, &v_2), _fx_cleanup);
-   FX_CALL(_fx_cons_LS(&v_2, ll_0, true, &v_3), _fx_cleanup);
-   FX_CALL(_fx_cons_LS(&q_0, v_3, false, &v_3), _fx_cleanup);
-   _fx_LS lst_0 = v_3;
+   FX_COPY_PTR(ll_0, &ll_1);
+   int_ verb_1 = verb_0;
+   FX_CALL(fx_substr(s_0, verb_1, 0, 1, 2, &v_0), _fx_cleanup);
+   FX_CALL(_fx_cons_LS(&v_0, ll_1, true, &v_1), _fx_cleanup);
+   FX_CALL(_fx_cons_LS(&q_0, v_1, false, &v_1), _fx_cleanup);
+   _fx_LS lst_0 = v_1;
    for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_LS r_0 = 0;
+      _fx_LS v_7 = 0;
       fx_str_t* a_0 = &lst_0->hd;
-      FX_COPY_PTR(__fold_result___1, &r_0);
-      FX_CALL(_fx_cons_LS(a_0, r_0, false, &r_0), _fx_catch_1);
-      _fx_free_LS(&__fold_result___1);
-      FX_COPY_PTR(r_0, &__fold_result___1);
+      FX_CALL(_fx_cons_LS(a_0, res_0, true, &v_7), _fx_catch_1);
+      _fx_free_LS(&res_0);
+      FX_COPY_PTR(v_7, &res_0);
 
    _fx_catch_1: ;
-      if (r_0) {
-         _fx_free_LS(&r_0);
+      if (v_7) {
+         _fx_free_LS(&v_7);
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
-   FX_COPY_PTR(__fold_result___1, &v_4);
+   FX_COPY_PTR(res_0, &v_2);
    fx_str_t slit_10 = FX_MAKE_STR("");
-   FX_CALL(_fx_F4joinS2SLS(&slit_10, v_4, fx_result, 0), _fx_cleanup);
+   FX_CALL(_fx_F4joinS2SLS(&slit_10, v_2, fx_result, 0), _fx_cleanup);
 
 _fx_cleanup: ;
    FX_FREE_STR(&q_0);
-   if (v_0) {
-      _fx_free_LS(&v_0);
-   }
-   _fx_free_T2LSi(&__fold_result___0);
-   FX_FREE_STR(&s_1);
-   _fx_free_T2LSi(&v_1);
    if (ll_0) {
       _fx_free_LS(&ll_0);
    }
-   FX_FREE_STR(&v_2);
-   if (v_3) {
-      _fx_free_LS(&v_3);
+   FX_FREE_STR(&s_1);
+   if (ll_1) {
+      _fx_free_LS(&ll_1);
    }
-   if (__fold_result___1) {
-      _fx_free_LS(&__fold_result___1);
+   FX_FREE_STR(&v_0);
+   if (v_1) {
+      _fx_free_LS(&v_1);
    }
-   if (v_4) {
-      _fx_free_LS(&v_4);
+   if (res_0) {
+      _fx_free_LS(&res_0);
+   }
+   if (v_2) {
+      _fx_free_LS(&v_2);
    }
    return fx_status;
 }

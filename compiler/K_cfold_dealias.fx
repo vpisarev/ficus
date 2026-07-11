@@ -418,7 +418,9 @@ fun cfold_dealias(kmods: kmodule_t list)
                 | _ => a :: res_al
                 }
 
-            val fold res_al = [] for a <- al {
+            var res_al = []
+            for a <- al {
+                res_al = match a {
                 | AtomId n =>
                     match concat_map.find_opt(n) {
                     | Some(a :: rest) => rest.rev() + try_cfold_str_concat(a, res_al)
@@ -426,6 +428,7 @@ fun cfold_dealias(kmods: kmodule_t list)
                     }
                 | _ => try_cfold_str_concat(a, res_al)
                 }
+            }
 
             match res_al {
             | ([:: a]) when (match get_atom_ktyp(a, loc) { | KTypString => true | _ => false }) =>

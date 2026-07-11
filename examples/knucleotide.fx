@@ -71,7 +71,7 @@ fun find_seq(seq: uint8 [], substr: string)
 {
     val length = substr.length()
     val (_, freq) = frequency(seq, length)
-    val fold key = 0i64 for c <- substr {key*4 + encrypt_char(c)}
+    val fold key = 0i64 for c <- substr {key = key*4 + encrypt_char(c)}
     val idx = freq.find_idx(key)
     val freq = if idx >= 0 {freq.table[idx].data} else {0}
     f"{freq}\t{substr.toupper()}"

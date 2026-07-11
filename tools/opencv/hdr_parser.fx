@@ -136,7 +136,7 @@ fun parse_err(self: hdr_parser_t, msg: string)
 }
 
 fun batch_replace(s0: string, pairs: (string, string) list) =
-    fold s=s0 for (f, t) <- pairs {s.replace(f, t)}
+    fold s=s0 for (f, t) <- pairs {s = s.replace(f, t)}
 
 /*
 Finds the next token from the 'tlist' in the input 's', starting from position 'p'.
@@ -145,7 +145,11 @@ Returns the first occurred token and its position, or ("", len(s)) when no token
 fun hdr_parser_t.find_next_token(s: string, tlist: string list, pos0: int): (string, int) =
     fold token="", tpos=length(s) for t <- tlist {
         val pos = s.find(t, pos0)
-        if 0 <= pos < tpos {(t, pos)} else {(token, tpos)}
+        if 0 <= pos < tpos {
+            token = t;
+            tpos = pos
+        }
+        // for Claude { token = token; tpos = tpos } is simply removed
     }
 
 /*
@@ -360,8 +364,8 @@ fun parse(hname: string, ~wrap_mode:bool=true)
                 }
                 if block_type == BlockNamespace {
                     val fold nested = [] for b <- self.block_stack {
-                        | {block_type=BlockNamespace, block_name} => block_name :: nested
-                        | _ => nested
+                        | {block_type=BlockNamespace, block_name} => nested = block_name :: nested
+                        | _ => {}
                         }
                     self.namespaces.add(".".join((name :: nested).rev()))
                 }

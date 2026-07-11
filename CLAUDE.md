@@ -89,9 +89,18 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
 - Border access: mode before the bracket — `a.clip[i]`, `a.wrap[i]`,
   `a.zero[i]` (arrays, Vector, strings).
 - Comprehensions: 1D `[for i <- 0:n {..}]`; 2D `[for i <- 0:m for j <- 0:n
-  {..}]`; zip is comma; index binding `for x@i <- a` / `for x@(i,j) <- m`;
-  fold `fold acc=init for x <- a {..}`. Lists: `[:: 1, 2, 3]`, cons `::`,
-  list-comp `[:: for x <- l {..}]`.
+  {..}]`; zip is comma; index binding `for x@i <- a` / `for x@(i,j) <- m`.
+  Lists: `[:: 1, 2, 3]`, cons `::`, list-comp `[:: for x <- l {..}]`.
+- **fold (fold-1 reform)** is now imperative: `fold acc=init for x <- a {acc +=
+  x}` desugars to `{ var acc=init; for x <- a {..}; acc }`. The accumulator is a
+  real mutable **var**, ASSIGNED in the body (`acc = f(acc,x)` / `acc += x`), not
+  yielded as the tail value (that was the OLD form — it now warns "accumulator
+  never assigned"). Multiple accumulators: `fold a=0, b=1 for ..` (each its own
+  var; a tuple pattern also works). `break`/`continue`/`return` are legal in the
+  body (it is a plain `for`). Simultaneous tuple assignment `(a,b)=(b,a+b)` is a
+  language feature (parse-time desugar via a temp; the Fibonacci/swap idiom).
+  Named reduction sugars (`all`/`exists`/`count`/`find`/`filter`/`vector`,
+  spelled `name(for ...)`) are a SEPARATE construct, unchanged by the reform.
 - Strings are UTF-32: `s.length()` counts chars, `s[i]` is a `char`,
   `s[i:j]` a substring; `string([for c <- cs {c}])` builds from chars.
 - Use `String.fx` / `Re.fx` instead of hand-rolling string processing.
@@ -103,9 +112,9 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
 - `break`/`continue`/`return` (bare or with a value) are legal as a
   `match`-arm / `if`-branch value, exactly like `throw` (pseudo-type `TypErr`
   unifies with valued siblings; lowering unchanged, cleanup runs). Legality
-  is positional-agnostic: they need an enclosing loop; rejected inside `fold`
-  and `@parallel` bodies; bare `return` in a non-void function is a
-  return-type mismatch.
+  is positional-agnostic: they need an enclosing loop; legal inside a `fold`
+  body (post-fold-1 it is a plain `for`), rejected inside `@parallel` bodies;
+  bare `return` in a non-void function is a return-type mismatch.
 - Shift count must be `int`: write `x >> int(n)`.
 - **Overload resolution: the least-generic viable candidate wins**, regardless
   of declaration/import order. No unique winner at a fully-determined call =

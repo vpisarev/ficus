@@ -58,7 +58,10 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
 
                     val fold best_class=0, pmax=data_i[idx, CLS0] for k <- 1:nclasses {
                         val p = data_i[idx, k+CLS0]
-                        if p > pmax {(k, p)} else {(best_class, pmax)}
+                        if p > pmax {
+                            best_class = k;
+                            pmax = p
+                        }
                     }
                     val score = max(obj_conf, 0.f)*max(pmax, 0.f)
                     if score <= score_threshold {continue}
@@ -134,7 +137,10 @@ fun nms(bboxes: yolo_detection_t [], iou_threshold: float,
         for k <- 0:niters {
             val fold ibest = -1, pmax = 0.f for i <- i0:i1 {
                 val p = sorted_boxes[i].4
-                if sorted_boxes[i].5 == cls && p > pmax {(i, p)} else {(ibest, pmax)}
+                if sorted_boxes[i].5 == cls && p > pmax {
+                    ibest = i;
+                    pmax = p
+                }
             }
             ignore(pmax)
             if ibest < 0 {break}

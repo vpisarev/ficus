@@ -696,8 +696,9 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
         } else {
             KExpMkArray(false,
                 [:: for row <- elems {
-                    val fold new_row = [] for (f, a) <- row {
-                        (f, walk_atom_(a, loc)) :: new_row
+                    var new_row = []
+                    for (f, a) <- row {
+                        new_row = (f, walk_atom_(a, loc)) :: new_row
                     }
                     new_row.rev() }
                 ], walk_kctx_(ctx))

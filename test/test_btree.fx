@@ -34,7 +34,7 @@ val report = [ @parallel for i <- 0 : (max_depth - min_depth) / 2 + 1
     val d = min_depth + i * 2
     val niter = 1 << (max_depth - d + min_depth)
     val fold c = 0 for i <- 0:niter {
-        c + check(make(d))
+        c += check(make(d))
     }
     (niter, d, c)
 }]

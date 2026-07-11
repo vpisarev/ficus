@@ -1009,7 +1009,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 unsupported_ops.add(node.op)
                 []
             }
-            rev_more_ops + prog
+            prog = rev_more_ops + prog
         }
         Ast.NN_Graph {
             name = onnx_graph.name,

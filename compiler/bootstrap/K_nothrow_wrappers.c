@@ -3087,6 +3087,7 @@ FX_EXTERN_C int _fx_M18K_nothrow_wrappersFM25make_wrappers_for_nothrowLR17K_form
    _fx_R17K_form__k_callb_t callb_0 = {0};
    int fx_status = 0;
    FX_CALL(_fx_make_ri(-1, &curr_m_idx_ref_0), _fx_cleanup);
+   int_* curr_m_idx_0 = &curr_m_idx_ref_0->data;
    _fx_M18K_nothrow_wrappersFM7make_fpFPN14K_form__kexp_t2N14K_form__kexp_tR17K_form__k_callb_t1ri(curr_m_idx_ref_0,
       &wrapf_kexp__0);
    _fx_FPN14K_form__ktyp_t3N14K_form__ktyp_tR10Ast__loc_tR17K_form__k_callb_t wrapf_ktyp__fp_0 =
@@ -3117,7 +3118,7 @@ FX_EXTERN_C int _fx_M18K_nothrow_wrappersFM25make_wrappers_for_nothrowLR17K_form
       _fx_R17K_form__kmodule_t* km_0 = &lst_0->hd;
       int_ km_idx_0 = km_0->km_idx;
       FX_COPY_PTR(km_0->km_top, &km_top_0);
-      curr_m_idx_ref_0->data = km_idx_0;
+      *curr_m_idx_0 = km_idx_0;
       FX_CALL(
          _fx_M6K_formFM9code2kexpN14K_form__kexp_t2LN14K_form__kexp_tR10Ast__loc_t(km_top_0, &_fx_g10Ast__noloc, &top_kexp_0,
             0), _fx_catch_0);

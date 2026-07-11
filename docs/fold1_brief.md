@@ -56,9 +56,7 @@ old `fold` until removal.
    - **`_` is legal as an LHS component** (Vadim): `(q, _) = divmod(a, b)` —
      no store is emitted for a `_` component, but the RHS temp is still
      evaluated in full (side effects preserved). Degenerate all-`_`
-     (`(_, _) = f()`) is legal = evaluate for effects. A BARE `_ = expr`
-     outside a tuple LHS is NOT introduced (out of scope — that's a separate
-     discard-assignment feature; expression-statements cover it).
+     (`(_, _) = f()`), as well as `_ = f()`, are legal = evaluate for effects.
    - Directed tests: Fibonacci `(a, b) = (b, a + b)` with exact values
      asserted; the classic swap `(arr[i], arr[j]) = (arr[j], arr[i])`;
      nested; tuple-returning call RHS; `(q, _) = ...` incl. an RHS whose

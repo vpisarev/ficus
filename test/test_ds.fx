@@ -39,7 +39,7 @@ TEST("ds.set", fun()
     EXPECT_EQ(`i12.list()`, [:: -2, -1, 4 ])
     EXPECT_EQ(`i12.size`, 3)
 
-    val fold sum0 = 0 for i <- u12.list() {sum0 + i}
+    val fold sum0 = 0 for i <- u12.list() {sum0 += i}
     val sum1 = u12.foldl(fun (i, s) {s + i}, 0)
     val sum2 = u12.foldr(fun (i, s) {s + i}, 0)
     EXPECT_EQ(`sum1`, sum0)
@@ -88,7 +88,7 @@ TEST("ds.map", fun()
 
     val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
     val fold wcounter = (Map.empty(scmp) : si_map) for w <- words {
-        wcounter.add(w, wcounter.find(w, 0)+1)
+        wcounter = wcounter.add(w, wcounter.find(w, 0)+1)
     }
 
     val ll = [:: ("A", 12), ("Christmas", 12), ("Eight", 5), ("Eleven", 2),
@@ -109,7 +109,7 @@ TEST("ds.map", fun()
     // An alternative, faster way to increment word counters is to use Map.update() function,
     // where we search for each word just once
     val fold wcounter2 = (Map.empty(scmp) : si_map) for w <- words {
-            wcounter2.update(w,
+            wcounter2 = wcounter2.update(w,
                 fun (_: string, ci_opt: int?)
                 {
                     | (_, Some(ci)) => ci + 1
@@ -119,14 +119,18 @@ TEST("ds.map", fun()
 
     EXPECT_EQ(`wcounter2.list()`, ll)
 
-    val total_words_ref = fold c=0 for (_, ci) <- ll {c+ci}
+    val total_words_ref = fold c=0 for (_, ci) <- ll {c+=ci}
     val total_words = wcounter.foldl(fun (_, ci, c) {c + ci}, 0)
 
     EXPECT_EQ(`total_words`, total_words_ref)
 
     val fold wcounter_odd=wcounter, ll_odd=[] for (w, c) <- ll {
-            if c % 2 == 0 {(wcounter_odd.remove(w), ll_odd)}
-            else {(wcounter_odd, (w, c) :: ll_odd)}
+            if c % 2 == 0 {
+                wcounter_odd = wcounter_odd.remove(w)
+            }
+            else {
+                ll_odd = (w, c) :: ll_odd
+            }
         }
 
     EXPECT_EQ(`wcounter_odd.list()`, `ll_odd.rev()`)
@@ -202,7 +206,7 @@ TEST("ds.tuple_hash", fun()
     val m = Hashmap.empty(16, (0, 0), -1)
     for i <- 0:200 {m.add((i, i+1), i*1000)}
     val nbad = fold nbad = 0 for i <- 0:200 {
-        nbad + (if m.find_opt((i, i+1)).value_or(-1) == i*1000 {0} else {1})
+        nbad += (if m.find_opt((i, i+1)).value_or(-1) == i*1000 {0} else {1})
     }
     EXPECT_EQ(`nbad`, 0)
     EXPECT_EQ(`m.size()`, 200)

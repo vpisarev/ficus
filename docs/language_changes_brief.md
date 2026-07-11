@@ -94,7 +94,7 @@ losing the function's interface — session-2/LSP groundwork) and a future
 dividend for separate interface-only compilation. Not a language change for
 *users* — inference stays; the flag is a discipline knob.
 
-## 2. fold — imperative form — DECIDED (spec ready for Brief #3)
+## 2. fold — imperative form — DECIDED & IMPLEMENTED (fold-1; see docs/fold1_report.md)
 
 Body is a void expression; accumulators are scoped variables updated by named
 assignment; tuple assignment `(a, b) = (b, a+b)` has simultaneous semantics

@@ -1,10 +1,6 @@
-@global var _fx_g21fold____fold_result__: int = 0
+@global var _fx_g9fold__acc: int = 0
 @temp val v@g0: int [] = [ 1, 2, 3, 4, 5 ]
-for x@g1 <- v@g0 {
-   @temp val acc@g2: int = _fx_g21fold____fold_result__
-   @temp val v@g3: int = acc@g2 + x@g1
-   _fx_g21fold____fold_result__ = v@g3
-}
-@global val _fx_g7fold__s: int = _fx_g21fold____fold_result__
+for x@g1 <- v@g0 { @temp val v@g2: int = _fx_g9fold__acc + x@g1; _fx_g9fold__acc = v@g2 }
+@global val _fx_g7fold__s: int = _fx_g9fold__acc
 _fx_F5printv1i(_fx_g7fold__s)
 _fx_F12print_stringv1S("\n")

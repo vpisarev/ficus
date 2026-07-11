@@ -16,4 +16,4 @@ fun div3(x: 't): 't = x/(3.0 :> 't)
 fun add_scaled(a: float [+], b: float [+], scale: float): float [+] =
     [for x <- a, y <- b {x + y*scale}]
 
-fun sum_arr(arr: 't [+]): 't = fold s=(0:>'t) for x <- arr {s+x}
+fun sum_arr(arr: 't [+]): 't = fold s=(0:>'t) for x <- arr {s+=x}

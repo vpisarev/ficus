@@ -465,15 +465,14 @@ fun convert_all_typs(kmods: kmodule_t list)
             val {kt_typ, kt_loc} = *kt
             match kt_typ {
             | KTypTuple telems =>
-                val (free_code, copy_code, make_code, relems, make_args) =
-                fold free_code = [], copy_code = [], make_code = [],
-                        relems = [], make_args = [] for kti@i <- telems {
+                val fold free_code = [], copy_code = [], make_code = [], relems = [], make_args = []
+                for kti@i <- telems {
                     val ni = get_id(f"t{i}")
                     val cti = ktyp2ctyp(kti, kt_loc)
                     val selem = CExpArrow(src_exp, ni, (cti, loc))
                     val delem = CExpArrow(dst_exp, ni, (cti, loc))
-                    val free_code = gen_free_code(delem, cti, false, false, free_code, kt_loc)
-                    val copy_code = gen_copy_code(selem, delem, cti, copy_code, kt_loc)
+                    free_code = gen_free_code(delem, cti, false, false, free_code, kt_loc)
+                    copy_code = gen_copy_code(selem, delem, cti, copy_code, kt_loc)
                     val {ktp_pass_by_ref} = K_annotate.get_ktprops(kti, kt_loc)
                     val selem2 = make_id_exp(ni, loc)
                     val (cti_arg, cti_arg_flags, selem2) =
@@ -483,9 +482,9 @@ fun convert_all_typs(kmods: kmodule_t list)
                         (cti, [], selem2)
                     }
                     val delem2 = CExpArrow(fx_result_exp, ni, (cti, loc))
-                    val make_code = gen_copy_code(selem2, delem2, cti, make_code, kt_loc)
-                    (free_code, copy_code, make_code, (ni, cti) :: relems,
-                    (ni, cti_arg, cti_arg_flags) :: make_args)
+                    make_code = gen_copy_code(selem2, delem2, cti, make_code, kt_loc)
+                    relems = (ni, cti) :: relems
+                    make_args = (ni, cti_arg, cti_arg_flags) :: make_args
                 }
                 val mktupl =
                 if ktp.ktp_complex {
@@ -514,14 +513,14 @@ fun convert_all_typs(kmods: kmodule_t list)
                     ct_typ=CTypStruct(Some(tn), relems.rev()),
                     ct_props=ct_props.{ctp_make=mktupl}
                     }
-            | KTypRecord (_, relems) =>
-                val fold free_code = [], copy_code = [], make_code = [],
-                    relems = [], make_args = [] for (ni, kti) <- relems {
+            | KTypRecord (_, relems_) =>
+                val fold free_code = [], copy_code = [], make_code = [], relems = [], make_args = []
+                for (ni, kti) <- relems_ {
                     val cti = ktyp2ctyp(kti, loc)
                     val selem = CExpArrow(src_exp, ni, (cti, kt_loc))
                     val delem = CExpArrow(dst_exp, ni, (cti, kt_loc))
-                    val free_code = gen_free_code(delem, cti, false, false, free_code, kt_loc)
-                    val copy_code = gen_copy_code(selem, delem, cti, copy_code, kt_loc)
+                    free_code = gen_free_code(delem, cti, false, false, free_code, kt_loc)
+                    copy_code = gen_copy_code(selem, delem, cti, copy_code, kt_loc)
                     val {ktp_pass_by_ref} = K_annotate.get_ktprops(kti, kt_loc)
                     val arg_ni = get_id("r_" + pp(ni))
                     val selem2 = make_id_exp(arg_ni, loc)
@@ -532,9 +531,9 @@ fun convert_all_typs(kmods: kmodule_t list)
                         (cti, [], selem2)
                     }
                     val delem2 = CExpArrow(fx_result_exp, ni, (cti, loc))
-                    val make_code = gen_copy_code(selem2, delem2, cti, make_code, kt_loc)
-                    (free_code, copy_code, make_code, (ni, cti) :: relems,
-                    (arg_ni, cti_arg, cti_arg_flags) :: make_args)
+                    make_code = gen_copy_code(selem2, delem2, cti, make_code, kt_loc)
+                    relems = (ni, cti) :: relems
+                    make_args = (arg_ni, cti_arg, cti_arg_flags) :: make_args
                 }
 
                 val mkrecl = if ktp.ktp_complex {
@@ -706,7 +705,7 @@ fun convert_all_typs(kmods: kmodule_t list)
                 for (ni, kt)@i <- kvar_cases {
                     val label_i = i+1
                     match kt {
-                    | KTypVoid => (free_cases, copy_cases, uelems)
+                    | KTypVoid => {}
                     | _ =>
                         val ti = ktyp2ctyp(kt, loc)
                         val ni_clean = get_orig_id(ni)
@@ -714,17 +713,18 @@ fun convert_all_typs(kmods: kmodule_t list)
                         val delem_i = CExpMem(dst_u_exp, ni_clean, (ti, kvar_loc))
                         val switch_label_i_exps = [:: make_int_exp(label_i, kvar_loc) ]
                         val free_code_i = gen_free_code(delem_i, ti, false, false, [], kvar_loc)
-                        val free_cases= match free_code_i {
-                                        | [] => free_cases
-                                        | _ => (switch_label_i_exps, free_code_i) :: free_cases
-                                        }
+                        free_cases =
+                            match free_code_i {
+                            | [] => free_cases
+                            | _ => (switch_label_i_exps, free_code_i) :: free_cases
+                            }
                         val copy_code_i = gen_copy_code(selem_i, delem_i, ti, [], kvar_loc)
-                        val copy_cases =
+                        copy_cases =
                             match copy_code_i {
                             | [:: CExp(CExpBinary (COpAssign, _, _, _))] => copy_cases
                             | _ => (switch_label_i_exps, copy_code_i) :: copy_cases
                             }
-                        (free_cases, copy_cases, (ni_clean, ti) :: uelems)
+                        uelems = (ni_clean, ti) :: uelems
                     }
                 }
             val free_code =
@@ -1002,10 +1002,9 @@ fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
     }
 
     update_used_ids(used_ids)
-    val fold ctypes_ccode = []
-        for s <- all_ctypes_fwd_decl + (all_ctypes_decl + all_ctypes_fun_decl) {
-            if is_used_decl(s, used_ids, true) { s :: ctypes_ccode }
-            else { ctypes_ccode }
-        }
+    var ctypes_ccode = []
+    for s <- all_ctypes_fwd_decl + (all_ctypes_decl + all_ctypes_fun_decl) {
+        if is_used_decl(s, used_ids, true) { ctypes_ccode = s :: ctypes_ccode }
+    }
     ctypes_ccode.rev()
 }

@@ -551,19 +551,26 @@ FX_EXTERN_C int _fx_M2PPFM13make_pprinterRM1t4iFPv1SFPLS0i(
    FX_CALL(_fx_make_rR11PP__state_t(&v_4, &v_5), _fx_cleanup);
    _fx_make_R5PP__t(margin_0, default_indent_0, print_f_0, get_f_0, v_5, &pp_0);
    FX_COPY_PTR(pp_0.r, &v_6);
-   v_6->data.space = pp_0.margin;
+   _fx_R11PP__state_t* v_14 = &v_6->data;
+   v_14->space = pp_0.margin;
    FX_COPY_PTR(pp_0.r, &v_7);
-   v_7->data.left = 0;
+   _fx_R11PP__state_t* v_15 = &v_7->data;
+   v_15->left = 0;
    FX_COPY_PTR(pp_0.r, &v_8);
-   v_8->data.right = 0;
+   _fx_R11PP__state_t* v_16 = &v_8->data;
+   v_16->right = 0;
    FX_COPY_PTR(pp_0.r, &v_9);
-   v_9->data.top = 0;
+   _fx_R11PP__state_t* v_17 = &v_9->data;
+   v_17->top = 0;
    FX_COPY_PTR(pp_0.r, &v_10);
-   v_10->data.bottom = 0;
+   _fx_R11PP__state_t* v_18 = &v_10->data;
+   v_18->bottom = 0;
    FX_COPY_PTR(pp_0.r, &v_11);
-   v_11->data.emptystack = true;
+   _fx_R11PP__state_t* v_19 = &v_11->data;
+   v_19->emptystack = true;
    FX_COPY_PTR(pp_0.r, &v_12);
-   v_12->data.pp_top = 0;
+   _fx_R11PP__state_t* v_20 = &v_12->data;
+   v_20->pp_top = 0;
    _fx_copy_R5PP__t(&pp_0, fx_result);
 
 _fx_cleanup: ;
@@ -616,9 +623,9 @@ FX_EXTERN_C int _fx_M2PPFM21pprint_to_string_listRM1t2ii(
    int fx_status = 0;
    FX_CALL(_fx_make_rLS(0, &lines_ref_0), _fx_cleanup);
    FX_CALL(_fx_make_ri(100, &capacity_ref_0), _fx_cleanup);
+   int_* capacity_0 = &capacity_ref_0->data;
    FX_CALL(_fx_make_ri(0, &bufsize_ref_0), _fx_cleanup);
    char_* dstptr_0 = 0;
-   int_* capacity_0 = &capacity_ref_0->data;
    int_ n_0 = *capacity_0;
    {
       const int_ shape_0[] = { n_0 };
@@ -683,14 +690,15 @@ static int _fx_M2PPFM7print_fv1S(fx_str_t* s_0, void* fx_fv)
       char_ c_0 = s_0->data[i_0];
       int_ v_5 = bufsz_0 + i_0;
       FX_CHKIDX(FX_CHKIDX1(*curr_0, 0, v_5), _fx_catch_1);
-      *FX_PTR_1D(char_, *curr_0, v_5) = c_0;
+      char_* v_6 = FX_PTR_1D(char_, *curr_0, v_5);
+      *v_6 = c_0;
 
    _fx_catch_1: ;
       FX_CHECK_EXN(_fx_cleanup);
    }
    *bufsize_0 = bufsz_0 + strsize_0;
-   bool v_6 = _fx_M6StringFM8endswithB2SC(s_0, (char_)10, 0);
-   if (v_6) {
+   bool v_7 = _fx_M6StringFM8endswithB2SC(s_0, (char_)10, 0);
+   if (v_7) {
       {
          const int_ ranges_0[] = { 1, 0, *bufsize_0, 1 };
          FX_CALL(fx_subarr(curr_0, ranges_0, &v_0), _fx_cleanup);
@@ -734,16 +742,17 @@ static int _fx_M2PPFM5get_fLS0(struct _fx_LS_data_t** fx_result, void* fx_fv)
    fx_str_t v_1 = {0};
    fx_str_t v_2 = {0};
    _fx_LS v_3 = 0;
-   _fx_LS __fold_result___0 = 0;
+   _fx_LS res_0 = 0;
    _fx_LS lines_0 = 0;
    int fx_status = 0;
    _fx_M2PPFM5get_fLS0_cldata_t* cv_0 = (_fx_M2PPFM5get_fLS0_cldata_t*)fx_fv;
    int_* bufsize_0 = &cv_0->t0->data;
+   fx_arr_t* curr_0 = &cv_0->t1->data;
    _fx_LS* lines_1 = &cv_0->t2->data;
    if (*bufsize_0 > 0) {
       {
          const int_ ranges_0[] = { 1, 0, *bufsize_0, 1 };
-         FX_CALL(fx_subarr(&cv_0->t1->data, ranges_0, &v_0), _fx_cleanup);
+         FX_CALL(fx_subarr(curr_0, ranges_0, &v_0), _fx_cleanup);
       }
       FX_CALL(_fx_F6stringS1A1C(&v_0, &v_1, 0), _fx_cleanup);
       FX_CALL(_fx_M6StringFM5stripS1S(&v_1, &v_2, 0), _fx_cleanup);
@@ -754,20 +763,19 @@ static int _fx_M2PPFM5get_fLS0(struct _fx_LS_data_t** fx_result, void* fx_fv)
    FX_COPY_PTR(*lines_1, &lines_0);
    _fx_LS lst_0 = lines_0;
    for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_LS r_0 = 0;
+      _fx_LS v_4 = 0;
       fx_str_t* a_0 = &lst_0->hd;
-      FX_COPY_PTR(__fold_result___0, &r_0);
-      FX_CALL(_fx_cons_LS(a_0, r_0, false, &r_0), _fx_catch_0);
-      _fx_free_LS(&__fold_result___0);
-      FX_COPY_PTR(r_0, &__fold_result___0);
+      FX_CALL(_fx_cons_LS(a_0, res_0, true, &v_4), _fx_catch_0);
+      _fx_free_LS(&res_0);
+      FX_COPY_PTR(v_4, &res_0);
 
    _fx_catch_0: ;
-      if (r_0) {
-         _fx_free_LS(&r_0);
+      if (v_4) {
+         _fx_free_LS(&v_4);
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
-   FX_COPY_PTR(__fold_result___0, fx_result);
+   FX_COPY_PTR(res_0, fx_result);
 
 _fx_cleanup: ;
    FX_FREE_ARR(&v_0);
@@ -776,8 +784,8 @@ _fx_cleanup: ;
    if (v_3) {
       _fx_free_LS(&v_3);
    }
-   if (__fold_result___0) {
-      _fx_free_LS(&__fold_result___0);
+   if (res_0) {
+      _fx_free_LS(&res_0);
    }
    if (lines_0) {
       _fx_free_LS(&lines_0);
@@ -857,7 +865,8 @@ FX_EXTERN_C int _fx_M2PPFM5flushv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv)
    int fx_status = 0;
    FX_CALL(fx_check_stack(), _fx_cleanup);
    FX_COPY_PTR(pp_0->r, &v_0);
-   if (!v_0->data.emptystack) {
+   _fx_R11PP__state_t* v_1 = &v_0->data;
+   if (!v_1->emptystack) {
       FX_CALL(_fx_M2PPFM11check_stackv2RM1ti(pp_0, 0, 0), _fx_cleanup);
       int_ res_0;
       FX_CALL(_fx_M2PPFM12advance_lefti1RM1t(pp_0, &res_0, 0), _fx_cleanup);
@@ -928,41 +937,52 @@ FX_EXTERN_C int _fx_M2PPFM5beginv3RM1tiN13PP__ppstyle_t(
    _fx_rR11PP__state_t v_12 = 0;
    int fx_status = 0;
    FX_COPY_PTR(pp_0->r, &v_0);
+   _fx_R11PP__state_t* v_13 = &v_0->data;
    int_ right_0;
-   if (v_0->data.emptystack) {
+   if (v_13->emptystack) {
       FX_COPY_PTR(pp_0->r, &v_1);
-      v_1->data.lefttotal = 1;
+      _fx_R11PP__state_t* v_14 = &v_1->data;
+      v_14->lefttotal = 1;
       FX_COPY_PTR(pp_0->r, &v_2);
-      v_2->data.righttotal = 1;
+      _fx_R11PP__state_t* v_15 = &v_2->data;
+      v_15->righttotal = 1;
       FX_COPY_PTR(pp_0->r, &v_3);
-      v_3->data.left = 0;
+      _fx_R11PP__state_t* v_16 = &v_3->data;
+      v_16->left = 0;
       FX_COPY_PTR(pp_0->r, &v_4);
-      v_4->data.right = 0;
+      _fx_R11PP__state_t* v_17 = &v_4->data;
+      v_17->right = 0;
       right_0 = 0;
    }
    else {
       FX_COPY_PTR(pp_0->r, &v_5);
+      _fx_R11PP__state_t* v_18 = &v_5->data;
       FX_COPY_PTR(pp_0->r, &v_6);
-      fx_copy_arr(&v_6->data.q, &v_7);
-      int_ v_13 = FX_ARR_SIZE(v_7, 0);
-      FX_CHECK_DIV_BY_ZERO(v_13, _fx_cleanup);
-      int_ right_1 = (v_5->data.right + 1) % v_13;
+      _fx_R11PP__state_t* v_19 = &v_6->data;
+      fx_copy_arr(&v_19->q, &v_7);
+      int_ v_20 = FX_ARR_SIZE(v_7, 0);
+      FX_CHECK_DIV_BY_ZERO(v_20, _fx_cleanup);
+      int_ right_1 = (v_18->right + 1) % v_20;
       FX_COPY_PTR(pp_0->r, &v_8);
-      v_8->data.right = right_1;
+      _fx_R11PP__state_t* v_21 = &v_8->data;
+      v_21->right = right_1;
       FX_COPY_PTR(pp_0->r, &v_9);
-      if (right_1 == v_9->data.left) {
+      _fx_R11PP__state_t* v_22 = &v_9->data;
+      if (right_1 == v_22->left) {
          FX_THROW(&_fx_E19PP__PPQueueOverflowv, false, _fx_cleanup);
       }
       right_0 = right_1;
    }
    _fx_M2PPFM7PPBeginN11PP__pptok_t2iN13PP__ppstyle_t(indent_0, style_0, &tk_0);
    FX_COPY_PTR(pp_0->r, &v_10);
-   _fx_make_T2N11PP__pptok_ti(&tk_0, -v_10->data.righttotal, &v_11);
+   _fx_R11PP__state_t* v_23 = &v_10->data;
+   _fx_make_T2N11PP__pptok_ti(&tk_0, -v_23->righttotal, &v_11);
    FX_COPY_PTR(pp_0->r, &v_12);
-   FX_CHKIDX(FX_CHKIDX1(v_12->data.q, 0, right_0), _fx_cleanup);
-   _fx_T2N11PP__pptok_ti* v_14 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_12->data.q, right_0);
-   _fx_free_T2N11PP__pptok_ti(v_14);
-   _fx_copy_T2N11PP__pptok_ti(&v_11, v_14);
+   _fx_R11PP__state_t* v_24 = &v_12->data;
+   FX_CHKIDX(FX_CHKIDX1(v_24->q, 0, right_0), _fx_cleanup);
+   _fx_T2N11PP__pptok_ti* v_25 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_24->q, right_0);
+   _fx_free_T2N11PP__pptok_ti(v_25);
+   _fx_copy_T2N11PP__pptok_ti(&v_11, v_25);
    FX_CALL(_fx_M2PPFM9scan_pushv2RM1ti(pp_0, right_0, 0), _fx_cleanup);
 
 _fx_cleanup: ;
@@ -1017,28 +1037,34 @@ FX_EXTERN_C int _fx_M2PPFM3endv1RM1t(struct _fx_R5PP__t* pp_0, void* fx_fv)
    _fx_rR11PP__state_t v_7 = 0;
    int fx_status = 0;
    FX_COPY_PTR(pp_0->r, &v_0);
-   if (v_0->data.emptystack) {
+   _fx_R11PP__state_t* v_8 = &v_0->data;
+   if (v_8->emptystack) {
       FX_CALL(_fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(pp_0, &_fx_g9PP__PPEnd, 0, 0), _fx_cleanup);
    }
    else {
       FX_COPY_PTR(pp_0->r, &v_1);
+      _fx_R11PP__state_t* v_9 = &v_1->data;
       FX_COPY_PTR(pp_0->r, &v_2);
-      fx_copy_arr(&v_2->data.q, &v_3);
-      int_ v_8 = FX_ARR_SIZE(v_3, 0);
-      FX_CHECK_DIV_BY_ZERO(v_8, _fx_cleanup);
-      int_ right_0 = (v_1->data.right + 1) % v_8;
+      _fx_R11PP__state_t* v_10 = &v_2->data;
+      fx_copy_arr(&v_10->q, &v_3);
+      int_ v_11 = FX_ARR_SIZE(v_3, 0);
+      FX_CHECK_DIV_BY_ZERO(v_11, _fx_cleanup);
+      int_ right_0 = (v_9->right + 1) % v_11;
       FX_COPY_PTR(pp_0->r, &v_4);
-      v_4->data.right = right_0;
+      _fx_R11PP__state_t* v_12 = &v_4->data;
+      v_12->right = right_0;
       FX_COPY_PTR(pp_0->r, &v_5);
-      if (right_0 == v_5->data.left) {
+      _fx_R11PP__state_t* v_13 = &v_5->data;
+      if (right_0 == v_13->left) {
          FX_THROW(&_fx_E19PP__PPQueueOverflowv, false, _fx_cleanup);
       }
       _fx_make_T2N11PP__pptok_ti(&_fx_g9PP__PPEnd, -1, &v_6);
       FX_COPY_PTR(pp_0->r, &v_7);
-      FX_CHKIDX(FX_CHKIDX1(v_7->data.q, 0, right_0), _fx_cleanup);
-      _fx_T2N11PP__pptok_ti* v_9 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_7->data.q, right_0);
-      _fx_free_T2N11PP__pptok_ti(v_9);
-      _fx_copy_T2N11PP__pptok_ti(&v_6, v_9);
+      _fx_R11PP__state_t* v_14 = &v_7->data;
+      FX_CHKIDX(FX_CHKIDX1(v_14->q, 0, right_0), _fx_cleanup);
+      _fx_T2N11PP__pptok_ti* v_15 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_14->q, right_0);
+      _fx_free_T2N11PP__pptok_ti(v_15);
+      _fx_copy_T2N11PP__pptok_ti(&v_6, v_15);
       FX_CALL(_fx_M2PPFM9scan_pushv2RM1ti(pp_0, right_0, 0), _fx_cleanup);
    }
 
@@ -1086,29 +1112,38 @@ FX_EXTERN_C int _fx_M2PPFM2brv4RM1tiiC(struct _fx_R5PP__t* pp_0, int_ spaces_0, 
    _fx_rR11PP__state_t v_14 = 0;
    int fx_status = 0;
    FX_COPY_PTR(pp_0->r, &v_0);
+   _fx_R11PP__state_t* v_15 = &v_0->data;
    int_ right_0;
-   if (v_0->data.emptystack) {
+   if (v_15->emptystack) {
       FX_COPY_PTR(pp_0->r, &v_1);
-      v_1->data.lefttotal = 1;
+      _fx_R11PP__state_t* v_16 = &v_1->data;
+      v_16->lefttotal = 1;
       FX_COPY_PTR(pp_0->r, &v_2);
-      v_2->data.righttotal = 1;
+      _fx_R11PP__state_t* v_17 = &v_2->data;
+      v_17->righttotal = 1;
       FX_COPY_PTR(pp_0->r, &v_3);
-      v_3->data.left = 0;
+      _fx_R11PP__state_t* v_18 = &v_3->data;
+      v_18->left = 0;
       FX_COPY_PTR(pp_0->r, &v_4);
-      v_4->data.right = 0;
+      _fx_R11PP__state_t* v_19 = &v_4->data;
+      v_19->right = 0;
       right_0 = 0;
    }
    else {
       FX_COPY_PTR(pp_0->r, &v_5);
+      _fx_R11PP__state_t* v_20 = &v_5->data;
       FX_COPY_PTR(pp_0->r, &v_6);
-      fx_copy_arr(&v_6->data.q, &v_7);
-      int_ v_15 = FX_ARR_SIZE(v_7, 0);
-      FX_CHECK_DIV_BY_ZERO(v_15, _fx_cleanup);
-      int_ right_1 = (v_5->data.right + 1) % v_15;
+      _fx_R11PP__state_t* v_21 = &v_6->data;
+      fx_copy_arr(&v_21->q, &v_7);
+      int_ v_22 = FX_ARR_SIZE(v_7, 0);
+      FX_CHECK_DIV_BY_ZERO(v_22, _fx_cleanup);
+      int_ right_1 = (v_20->right + 1) % v_22;
       FX_COPY_PTR(pp_0->r, &v_8);
-      v_8->data.right = right_1;
+      _fx_R11PP__state_t* v_23 = &v_8->data;
+      v_23->right = right_1;
       FX_COPY_PTR(pp_0->r, &v_9);
-      if (right_1 == v_9->data.left) {
+      _fx_R11PP__state_t* v_24 = &v_9->data;
+      if (right_1 == v_24->left) {
          FX_THROW(&_fx_E19PP__PPQueueOverflowv, false, _fx_cleanup);
       }
       right_0 = right_1;
@@ -1117,15 +1152,19 @@ FX_EXTERN_C int _fx_M2PPFM2brv4RM1tiiC(struct _fx_R5PP__t* pp_0, int_ spaces_0, 
    FX_CALL(_fx_M2PPFM9scan_pushv2RM1ti(pp_0, right_0, 0), _fx_cleanup);
    _fx_M2PPFM7PPBreakN11PP__pptok_t3iiC(spaces_0, offset_0, sep_0, &tk_0);
    FX_COPY_PTR(pp_0->r, &v_10);
-   _fx_make_T2N11PP__pptok_ti(&tk_0, -v_10->data.righttotal, &v_11);
+   _fx_R11PP__state_t* v_25 = &v_10->data;
+   _fx_make_T2N11PP__pptok_ti(&tk_0, -v_25->righttotal, &v_11);
    FX_COPY_PTR(pp_0->r, &v_12);
-   FX_CHKIDX(FX_CHKIDX1(v_12->data.q, 0, right_0), _fx_cleanup);
-   _fx_T2N11PP__pptok_ti* v_16 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_12->data.q, right_0);
-   _fx_free_T2N11PP__pptok_ti(v_16);
-   _fx_copy_T2N11PP__pptok_ti(&v_11, v_16);
+   _fx_R11PP__state_t* v_26 = &v_12->data;
+   FX_CHKIDX(FX_CHKIDX1(v_26->q, 0, right_0), _fx_cleanup);
+   _fx_T2N11PP__pptok_ti* v_27 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_26->q, right_0);
+   _fx_free_T2N11PP__pptok_ti(v_27);
+   _fx_copy_T2N11PP__pptok_ti(&v_11, v_27);
    FX_COPY_PTR(pp_0->r, &v_13);
+   _fx_R11PP__state_t* v_28 = &v_13->data;
    FX_COPY_PTR(pp_0->r, &v_14);
-   v_14->data.righttotal = v_13->data.righttotal + spaces_0;
+   _fx_R11PP__state_t* v_29 = &v_14->data;
+   v_29->righttotal = v_28->righttotal + spaces_0;
 
 _fx_cleanup: ;
    if (v_0) {
@@ -1262,31 +1301,39 @@ FX_EXTERN_C int _fx_M2PPFM3strv2RM1tS(struct _fx_R5PP__t* pp_0, fx_str_t* s_0, v
    _fx_M2PPFM8PPStringN11PP__pptok_t1S(s_0, &tk_0);
    int_ l_0 = FX_STR_LENGTH(*s_0);
    FX_COPY_PTR(pp_0->r, &v_0);
-   if (v_0->data.emptystack) {
+   _fx_R11PP__state_t* v_10 = &v_0->data;
+   if (v_10->emptystack) {
       FX_CALL(_fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(pp_0, &tk_0, l_0, 0), _fx_cleanup);
    }
    else {
       _fx_make_T2N11PP__pptok_ti(&tk_0, l_0, &v_1);
       FX_COPY_PTR(pp_0->r, &v_2);
+      _fx_R11PP__state_t* v_11 = &v_2->data;
       FX_COPY_PTR(pp_0->r, &v_3);
+      _fx_R11PP__state_t* v_12 = &v_3->data;
       FX_COPY_PTR(pp_0->r, &v_4);
-      fx_copy_arr(&v_4->data.q, &v_5);
-      int_ v_10 = FX_ARR_SIZE(v_5, 0);
-      FX_CHECK_DIV_BY_ZERO(v_10, _fx_cleanup);
-      int_ right_0 = (v_3->data.right + 1) % v_10;
+      _fx_R11PP__state_t* v_13 = &v_4->data;
+      fx_copy_arr(&v_13->q, &v_5);
+      int_ v_14 = FX_ARR_SIZE(v_5, 0);
+      FX_CHECK_DIV_BY_ZERO(v_14, _fx_cleanup);
+      int_ right_0 = (v_12->right + 1) % v_14;
       FX_COPY_PTR(pp_0->r, &v_6);
-      v_6->data.right = right_0;
+      _fx_R11PP__state_t* v_15 = &v_6->data;
+      v_15->right = right_0;
       FX_COPY_PTR(pp_0->r, &v_7);
-      if (right_0 == v_7->data.left) {
+      _fx_R11PP__state_t* v_16 = &v_7->data;
+      if (right_0 == v_16->left) {
          FX_THROW(&_fx_E19PP__PPQueueOverflowv, false, _fx_cleanup);
       }
-      FX_CHKIDX(FX_CHKIDX1(v_2->data.q, 0, right_0), _fx_cleanup);
-      _fx_T2N11PP__pptok_ti* v_11 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_2->data.q, right_0);
-      _fx_free_T2N11PP__pptok_ti(v_11);
-      _fx_copy_T2N11PP__pptok_ti(&v_1, v_11);
+      FX_CHKIDX(FX_CHKIDX1(v_11->q, 0, right_0), _fx_cleanup);
+      _fx_T2N11PP__pptok_ti* v_17 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_11->q, right_0);
+      _fx_free_T2N11PP__pptok_ti(v_17);
+      _fx_copy_T2N11PP__pptok_ti(&v_1, v_17);
       FX_COPY_PTR(pp_0->r, &v_8);
+      _fx_R11PP__state_t* v_18 = &v_8->data;
       FX_COPY_PTR(pp_0->r, &v_9);
-      v_9->data.righttotal = v_8->data.righttotal + l_0;
+      _fx_R11PP__state_t* v_19 = &v_9->data;
+      v_19->righttotal = v_18->righttotal + l_0;
       FX_CALL(_fx_M2PPFM12check_streamv1RM1t(pp_0, 0), _fx_cleanup);
    }
 
@@ -1347,52 +1394,69 @@ FX_EXTERN_C int _fx_M2PPFM12check_streamv1RM1t(struct _fx_R5PP__t* pp_0, void* f
       _fx_rR11PP__state_t v_16 = 0;
       _fx_copy_R5PP__t(&pp_1, &pp_2);
       FX_COPY_PTR(pp_2.r, &v_0);
+      _fx_R11PP__state_t* v_17 = &v_0->data;
       FX_COPY_PTR(pp_2.r, &v_1);
+      _fx_R11PP__state_t* v_18 = &v_1->data;
       FX_COPY_PTR(pp_2.r, &v_2);
-      if (v_0->data.righttotal - v_1->data.lefttotal > v_2->data.space) {
+      _fx_R11PP__state_t* v_19 = &v_2->data;
+      if (v_17->righttotal - v_18->lefttotal > v_19->space) {
          FX_COPY_PTR(pp_2.r, &v_3);
-         bool t_0;
-         if (!v_3->data.emptystack) {
+         _fx_R11PP__state_t* v_20 = &v_3->data;
+         bool v_21;
+         if (!v_20->emptystack) {
             FX_COPY_PTR(pp_2.r, &v_4);
+            _fx_R11PP__state_t* v_22 = &v_4->data;
             FX_COPY_PTR(pp_2.r, &v_5);
+            _fx_R11PP__state_t* v_23 = &v_5->data;
             FX_COPY_PTR(pp_2.r, &v_6);
-            int_ v_17 = v_6->data.bottom;
-            FX_CHKIDX(FX_CHKIDX1(v_5->data.stack, 0, v_17), _fx_catch_0);
-            t_0 = v_4->data.left == *FX_PTR_1D(int_, v_5->data.stack, v_17);
+            _fx_R11PP__state_t* v_24 = &v_6->data;
+            int_ v_25 = v_24->bottom;
+            FX_CHKIDX(FX_CHKIDX1(v_23->stack, 0, v_25), _fx_catch_0);
+            int_ v_26 = *FX_PTR_1D(int_, v_23->stack, v_25);
+            v_21 = v_22->left == v_26;
          }
          else {
-            t_0 = false;
+            v_21 = false;
          }
-         if (t_0) {
+         if (v_21) {
             FX_COPY_PTR(pp_2.r, &v_7);
+            _fx_R11PP__state_t* v_27 = &v_7->data;
             FX_COPY_PTR(pp_2.r, &v_8);
-            if (v_8->data.emptystack) {
+            _fx_R11PP__state_t* v_28 = &v_8->data;
+            if (v_28->emptystack) {
                FX_THROW(&_fx_E16PP__PPEmptyStackv, false, _fx_catch_0);
             }
             FX_COPY_PTR(pp_2.r, &v_9);
-            int_ bottom_0 = v_9->data.bottom;
+            _fx_R11PP__state_t* v_29 = &v_9->data;
+            int_ bottom_0 = v_29->bottom;
             FX_COPY_PTR(pp_2.r, &v_10);
-            FX_CHKIDX(FX_CHKIDX1(v_10->data.stack, 0, bottom_0), _fx_catch_0);
-            int_ x_0 = *FX_PTR_1D(int_, v_10->data.stack, bottom_0);
+            _fx_R11PP__state_t* v_30 = &v_10->data;
+            FX_CHKIDX(FX_CHKIDX1(v_30->stack, 0, bottom_0), _fx_catch_0);
+            int_ x_0 = *FX_PTR_1D(int_, v_30->stack, bottom_0);
             FX_COPY_PTR(pp_2.r, &v_11);
-            if (bottom_0 == v_11->data.top) {
-               FX_COPY_PTR(pp_2.r, &v_12); v_12->data.emptystack = true;
+            _fx_R11PP__state_t* v_31 = &v_11->data;
+            if (bottom_0 == v_31->top) {
+               FX_COPY_PTR(pp_2.r, &v_12); _fx_R11PP__state_t* v_32 = &v_12->data; v_32->emptystack = true;
             }
             else {
                FX_COPY_PTR(pp_2.r, &v_13);
-               fx_copy_arr(&v_13->data.stack, &v_14);
-               int_ v_18 = FX_ARR_SIZE(v_14, 0);
-               FX_CHECK_DIV_BY_ZERO(v_18, _fx_catch_0);
+               _fx_R11PP__state_t* v_33 = &v_13->data;
+               fx_copy_arr(&v_33->stack, &v_14);
+               int_ v_34 = FX_ARR_SIZE(v_14, 0);
+               FX_CHECK_DIV_BY_ZERO(v_34, _fx_catch_0);
                FX_COPY_PTR(pp_2.r, &v_15);
-               v_15->data.bottom = (bottom_0 + 1) % v_18;
+               _fx_R11PP__state_t* v_35 = &v_15->data;
+               v_35->bottom = (bottom_0 + 1) % v_34;
             }
-            FX_CHKIDX(FX_CHKIDX1(v_7->data.q, 0, x_0), _fx_catch_0);
-            FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_7->data.q, x_0)->t1 = 1000000;
+            FX_CHKIDX(FX_CHKIDX1(v_27->q, 0, x_0), _fx_catch_0);
+            _fx_T2N11PP__pptok_ti* v_36 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_27->q, x_0);
+            v_36->t1 = 1000000;
          }
          int_ left_0;
          FX_CALL(_fx_M2PPFM12advance_lefti1RM1t(&pp_2, &left_0, 0), _fx_catch_0);
          FX_COPY_PTR(pp_2.r, &v_16);
-         if (left_0 != v_16->data.right) {
+         _fx_R11PP__state_t* v_37 = &v_16->data;
+         if (left_0 != v_37->right) {
             _fx_free_R5PP__t(&pp_1); _fx_copy_R5PP__t(&pp_2, &pp_1);
          }
          else {
@@ -1476,27 +1540,36 @@ FX_EXTERN_C int _fx_M2PPFM9scan_pushv2RM1ti(struct _fx_R5PP__t* pp_0, int_ i_0, 
    _fx_rR11PP__state_t v_8 = 0;
    int fx_status = 0;
    FX_COPY_PTR(pp_0->r, &v_0);
-   if (!v_0->data.emptystack) {
+   _fx_R11PP__state_t* v_9 = &v_0->data;
+   if (!v_9->emptystack) {
       FX_COPY_PTR(pp_0->r, &v_1);
+      _fx_R11PP__state_t* v_10 = &v_1->data;
       FX_COPY_PTR(pp_0->r, &v_2);
-      fx_copy_arr(&v_2->data.stack, &v_3);
-      int_ v_9 = FX_ARR_SIZE(v_3, 0);
-      FX_CHECK_DIV_BY_ZERO(v_9, _fx_cleanup);
-      int_ top_0 = (v_1->data.top + 1) % v_9;
+      _fx_R11PP__state_t* v_11 = &v_2->data;
+      fx_copy_arr(&v_11->stack, &v_3);
+      int_ v_12 = FX_ARR_SIZE(v_3, 0);
+      FX_CHECK_DIV_BY_ZERO(v_12, _fx_cleanup);
+      int_ top_0 = (v_10->top + 1) % v_12;
       FX_COPY_PTR(pp_0->r, &v_4);
-      v_4->data.top = top_0;
+      _fx_R11PP__state_t* v_13 = &v_4->data;
+      v_13->top = top_0;
       FX_COPY_PTR(pp_0->r, &v_5);
-      if (top_0 == v_5->data.bottom) {
+      _fx_R11PP__state_t* v_14 = &v_5->data;
+      if (top_0 == v_14->bottom) {
          FX_THROW(&_fx_E19PP__PPStackOverflowv, false, _fx_cleanup);
       }
    }
    FX_COPY_PTR(pp_0->r, &v_6);
+   _fx_R11PP__state_t* v_15 = &v_6->data;
    FX_COPY_PTR(pp_0->r, &v_7);
-   int_ v_10 = v_7->data.top;
-   FX_CHKIDX(FX_CHKIDX1(v_6->data.stack, 0, v_10), _fx_cleanup);
-   *FX_PTR_1D(int_, v_6->data.stack, v_10) = i_0;
+   _fx_R11PP__state_t* v_16 = &v_7->data;
+   int_ v_17 = v_16->top;
+   FX_CHKIDX(FX_CHKIDX1(v_15->stack, 0, v_17), _fx_cleanup);
+   int_* v_18 = FX_PTR_1D(int_, v_15->stack, v_17);
+   *v_18 = i_0;
    FX_COPY_PTR(pp_0->r, &v_8);
-   v_8->data.emptystack = false;
+   _fx_R11PP__state_t* v_19 = &v_8->data;
+   v_19->emptystack = false;
 
 _fx_cleanup: ;
    if (v_0) {
@@ -1539,25 +1612,31 @@ FX_EXTERN_C int _fx_M2PPFM8scan_popi1RM1t(struct _fx_R5PP__t* pp_0, int_* fx_res
    _fx_rR11PP__state_t v_7 = 0;
    int fx_status = 0;
    FX_COPY_PTR(pp_0->r, &v_0);
-   if (v_0->data.emptystack) {
+   _fx_R11PP__state_t* v_8 = &v_0->data;
+   if (v_8->emptystack) {
       FX_THROW(&_fx_E16PP__PPEmptyStackv, false, _fx_cleanup);
    }
    FX_COPY_PTR(pp_0->r, &v_1);
-   int_ top_0 = v_1->data.top;
+   _fx_R11PP__state_t* v_9 = &v_1->data;
+   int_ top_0 = v_9->top;
    FX_COPY_PTR(pp_0->r, &v_2);
-   FX_CHKIDX(FX_CHKIDX1(v_2->data.stack, 0, top_0), _fx_cleanup);
-   int_ x_0 = *FX_PTR_1D(int_, v_2->data.stack, top_0);
+   _fx_R11PP__state_t* v_10 = &v_2->data;
+   FX_CHKIDX(FX_CHKIDX1(v_10->stack, 0, top_0), _fx_cleanup);
+   int_ x_0 = *FX_PTR_1D(int_, v_10->stack, top_0);
    FX_COPY_PTR(pp_0->r, &v_3);
-   if (top_0 == v_3->data.bottom) {
-      FX_COPY_PTR(pp_0->r, &v_4); v_4->data.emptystack = true;
+   _fx_R11PP__state_t* v_11 = &v_3->data;
+   if (top_0 == v_11->bottom) {
+      FX_COPY_PTR(pp_0->r, &v_4); _fx_R11PP__state_t* v_12 = &v_4->data; v_12->emptystack = true;
    }
    else {
       FX_COPY_PTR(pp_0->r, &v_5);
-      fx_copy_arr(&v_5->data.stack, &v_6);
+      _fx_R11PP__state_t* v_13 = &v_5->data;
+      fx_copy_arr(&v_13->stack, &v_6);
       int_ stacksize_0 = FX_ARR_SIZE(v_6, 0);
       FX_CHECK_DIV_BY_ZERO(stacksize_0, _fx_cleanup);
       FX_COPY_PTR(pp_0->r, &v_7);
-      v_7->data.top = (top_0 + stacksize_0 - 1) % stacksize_0;
+      _fx_R11PP__state_t* v_14 = &v_7->data;
+      v_14->top = (top_0 + stacksize_0 - 1) % stacksize_0;
    }
    *fx_result = x_0;
 
@@ -1607,12 +1686,14 @@ FX_EXTERN_C int _fx_M2PPFM12advance_lefti1RM1t(struct _fx_R5PP__t* pp_0, int_* f
       _fx_rR11PP__state_t v_7 = 0;
       _fx_copy_R5PP__t(&pp_1, &pp_2);
       FX_COPY_PTR(pp_2.r, &v_0);
-      int_ left_0 = v_0->data.left;
+      _fx_R11PP__state_t* v_8 = &v_0->data;
+      int_ left_0 = v_8->left;
       FX_COPY_PTR(pp_2.r, &v_1);
-      FX_CHKIDX(FX_CHKIDX1(v_1->data.q, 0, left_0), _fx_catch_0);
-      _fx_T2N11PP__pptok_ti* v_8 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_1->data.q, left_0);
-      _fx_copy_N11PP__pptok_t(&v_8->t0, &tk_0);
-      int_ len_0 = v_8->t1;
+      _fx_R11PP__state_t* v_9 = &v_1->data;
+      FX_CHKIDX(FX_CHKIDX1(v_9->q, 0, left_0), _fx_catch_0);
+      _fx_T2N11PP__pptok_ti* v_10 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_9->q, left_0);
+      _fx_copy_N11PP__pptok_t(&v_10->t0, &tk_0);
+      int_ len_0 = v_10->t1;
       if (len_0 >= 0) {
          FX_CALL(_fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(&pp_2, &tk_0, len_0, 0), _fx_catch_0);
          int tag_0 = tk_0.tag;
@@ -1628,16 +1709,21 @@ FX_EXTERN_C int _fx_M2PPFM12advance_lefti1RM1t(struct _fx_R5PP__t* pp_0, int_* f
          }
          FX_CHECK_EXN(_fx_catch_0);
          FX_COPY_PTR(pp_2.r, &v_2);
+         _fx_R11PP__state_t* v_11 = &v_2->data;
          FX_COPY_PTR(pp_2.r, &v_3);
-         v_3->data.lefttotal = v_2->data.lefttotal + spaces_0;
+         _fx_R11PP__state_t* v_12 = &v_3->data;
+         v_12->lefttotal = v_11->lefttotal + spaces_0;
          FX_COPY_PTR(pp_2.r, &v_4);
-         if (left_0 != v_4->data.right) {
+         _fx_R11PP__state_t* v_13 = &v_4->data;
+         if (left_0 != v_13->right) {
             FX_COPY_PTR(pp_2.r, &v_5);
-            fx_copy_arr(&v_5->data.q, &v_6);
-            int_ v_9 = FX_ARR_SIZE(v_6, 0);
-            FX_CHECK_DIV_BY_ZERO(v_9, _fx_catch_0);
+            _fx_R11PP__state_t* v_14 = &v_5->data;
+            fx_copy_arr(&v_14->q, &v_6);
+            int_ v_15 = FX_ARR_SIZE(v_6, 0);
+            FX_CHECK_DIV_BY_ZERO(v_15, _fx_catch_0);
             FX_COPY_PTR(pp_2.r, &v_7);
-            v_7->data.left = (left_0 + 1) % v_9;
+            _fx_R11PP__state_t* v_16 = &v_7->data;
+            v_16->left = (left_0 + 1) % v_15;
             _fx_free_R5PP__t(&pp_1);
             _fx_copy_R5PP__t(&pp_2, &pp_1);
          }
@@ -1700,28 +1786,35 @@ FX_EXTERN_C int _fx_M2PPFM11check_stackv2RM1ti(struct _fx_R5PP__t* pp_0, int_ k_
       _fx_copy_R5PP__t(&pp_1, &pp_2);
       int_ k_2 = k_1;
       FX_COPY_PTR(pp_2.r, &v_0);
-      if (!v_0->data.emptystack) {
+      _fx_R11PP__state_t* v_4 = &v_0->data;
+      if (!v_4->emptystack) {
          FX_COPY_PTR(pp_2.r, &v_1);
+         _fx_R11PP__state_t* v_5 = &v_1->data;
          FX_COPY_PTR(pp_2.r, &v_2);
-         int_ v_4 = v_2->data.top;
-         FX_CHKIDX(FX_CHKIDX1(v_1->data.stack, 0, v_4), _fx_catch_3);
-         int_ x_0 = *FX_PTR_1D(int_, v_1->data.stack, v_4);
+         _fx_R11PP__state_t* v_6 = &v_2->data;
+         int_ v_7 = v_6->top;
+         FX_CHKIDX(FX_CHKIDX1(v_5->stack, 0, v_7), _fx_catch_3);
+         int_ x_0 = *FX_PTR_1D(int_, v_5->stack, v_7);
          FX_COPY_PTR(pp_2.r, &v_3);
-         FX_CHKIDX(FX_CHKIDX1(v_3->data.q, 0, x_0), _fx_catch_3);
-         _fx_T2N11PP__pptok_ti* v_5 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_3->data.q, x_0);
-         _fx_copy_N11PP__pptok_t(&v_5->t0, &tk_0);
-         int_ len_0 = v_5->t1;
+         _fx_R11PP__state_t* v_8 = &v_3->data;
+         FX_CHKIDX(FX_CHKIDX1(v_8->q, 0, x_0), _fx_catch_3);
+         _fx_T2N11PP__pptok_ti* v_9 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_8->q, x_0);
+         _fx_copy_N11PP__pptok_t(&v_9->t0, &tk_0);
+         int_ len_0 = v_9->t1;
          int tag_0 = tk_0.tag;
          if (tag_0 == 3) {
-            _fx_rR11PP__state_t v_6 = 0;
-            _fx_rR11PP__state_t v_7 = 0;
+            _fx_rR11PP__state_t v_10 = 0;
+            _fx_rR11PP__state_t v_11 = 0;
             if (k_2 > 0) {
                int_ res_0;
                FX_CALL(_fx_M2PPFM8scan_popi1RM1t(&pp_2, &res_0, 0), _fx_catch_0);
-               FX_COPY_PTR(pp_2.r, &v_6);
-               FX_COPY_PTR(pp_2.r, &v_7);
-               FX_CHKIDX(FX_CHKIDX1(v_7->data.q, 0, x_0), _fx_catch_0);
-               FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_7->data.q, x_0)->t1 = len_0 + v_6->data.righttotal;
+               FX_COPY_PTR(pp_2.r, &v_10);
+               _fx_R11PP__state_t* v_12 = &v_10->data;
+               FX_COPY_PTR(pp_2.r, &v_11);
+               _fx_R11PP__state_t* v_13 = &v_11->data;
+               FX_CHKIDX(FX_CHKIDX1(v_13->q, 0, x_0), _fx_catch_0);
+               _fx_T2N11PP__pptok_ti* v_14 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_13->q, x_0);
+               v_14->t1 = len_0 + v_12->righttotal;
                _fx_free_R5PP__t(&pp_1);
                _fx_copy_R5PP__t(&pp_2, &pp_1);
                k_1 = k_2 - 1;
@@ -1731,38 +1824,43 @@ FX_EXTERN_C int _fx_M2PPFM11check_stackv2RM1ti(struct _fx_R5PP__t* pp_0, int_ k_
             }
 
          _fx_catch_0: ;
-            if (v_7) {
-               _fx_free_rR11PP__state_t(&v_7);
+            if (v_11) {
+               _fx_free_rR11PP__state_t(&v_11);
             }
-            if (v_6) {
-               _fx_free_rR11PP__state_t(&v_6);
+            if (v_10) {
+               _fx_free_rR11PP__state_t(&v_10);
             }
          }
          else if (tag_0 == 4) {
-            _fx_rR11PP__state_t v_8 = 0;
+            _fx_rR11PP__state_t v_15 = 0;
             int_ res_1;
             FX_CALL(_fx_M2PPFM8scan_popi1RM1t(&pp_2, &res_1, 0), _fx_catch_1);
-            FX_COPY_PTR(pp_2.r, &v_8);
-            FX_CHKIDX(FX_CHKIDX1(v_8->data.q, 0, x_0), _fx_catch_1);
-            FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_8->data.q, x_0)->t1 = 1;
+            FX_COPY_PTR(pp_2.r, &v_15);
+            _fx_R11PP__state_t* v_16 = &v_15->data;
+            FX_CHKIDX(FX_CHKIDX1(v_16->q, 0, x_0), _fx_catch_1);
+            _fx_T2N11PP__pptok_ti* v_17 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_16->q, x_0);
+            v_17->t1 = 1;
             _fx_free_R5PP__t(&pp_1);
             _fx_copy_R5PP__t(&pp_2, &pp_1);
             k_1 = k_2 + 1;
 
          _fx_catch_1: ;
-            if (v_8) {
-               _fx_free_rR11PP__state_t(&v_8);
+            if (v_15) {
+               _fx_free_rR11PP__state_t(&v_15);
             }
          }
          else {
-            _fx_rR11PP__state_t v_9 = 0;
-            _fx_rR11PP__state_t v_10 = 0;
+            _fx_rR11PP__state_t v_18 = 0;
+            _fx_rR11PP__state_t v_19 = 0;
             int_ res_2;
             FX_CALL(_fx_M2PPFM8scan_popi1RM1t(&pp_2, &res_2, 0), _fx_catch_2);
-            FX_COPY_PTR(pp_2.r, &v_9);
-            FX_COPY_PTR(pp_2.r, &v_10);
-            FX_CHKIDX(FX_CHKIDX1(v_10->data.q, 0, x_0), _fx_catch_2);
-            FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_10->data.q, x_0)->t1 = len_0 + v_9->data.righttotal;
+            FX_COPY_PTR(pp_2.r, &v_18);
+            _fx_R11PP__state_t* v_20 = &v_18->data;
+            FX_COPY_PTR(pp_2.r, &v_19);
+            _fx_R11PP__state_t* v_21 = &v_19->data;
+            FX_CHKIDX(FX_CHKIDX1(v_21->q, 0, x_0), _fx_catch_2);
+            _fx_T2N11PP__pptok_ti* v_22 = FX_PTR_1D(_fx_T2N11PP__pptok_ti, v_21->q, x_0);
+            v_22->t1 = len_0 + v_20->righttotal;
             if (k_2 > 0) {
                _fx_free_R5PP__t(&pp_1); _fx_copy_R5PP__t(&pp_2, &pp_1); k_1 = k_2;
             }
@@ -1771,11 +1869,11 @@ FX_EXTERN_C int _fx_M2PPFM11check_stackv2RM1ti(struct _fx_R5PP__t* pp_0, int_ k_
             }
 
          _fx_catch_2: ;
-            if (v_10) {
-               _fx_free_rR11PP__state_t(&v_10);
+            if (v_19) {
+               _fx_free_rR11PP__state_t(&v_19);
             }
-            if (v_9) {
-               _fx_free_rR11PP__state_t(&v_9);
+            if (v_18) {
+               _fx_free_rR11PP__state_t(&v_18);
             }
          }
          FX_CHECK_EXN(_fx_catch_3);
@@ -1818,40 +1916,49 @@ FX_EXTERN_C int _fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(
    int fx_status = 0;
    FX_CALL(fx_check_stack(), _fx_cleanup);
    FX_COPY_PTR(pp_0->r, &v_0);
-   int_ top_0 = v_0->data.pp_top;
+   _fx_R11PP__state_t* v_1 = &v_0->data;
+   int_ top_0 = v_1->pp_top;
    int tag_0 = x_0->tag;
    if (tag_0 == 3) {
-      _fx_rR11PP__state_t v_1 = 0;
       _fx_rR11PP__state_t v_2 = 0;
       _fx_rR11PP__state_t v_3 = 0;
       _fx_rR11PP__state_t v_4 = 0;
+      _fx_rR11PP__state_t v_5 = 0;
       _fx_T2iN13PP__ppstyle_t* vcase_0 = &x_0->u.PPBegin;
-      FX_COPY_PTR(pp_0->r, &v_1);
+      FX_COPY_PTR(pp_0->r, &v_2);
+      _fx_R11PP__state_t* v_6 = &v_2->data;
       _fx_T2iN13PP__ppstyle_t x_1;
-      if (len_0 > v_1->data.space) {
-         FX_COPY_PTR(pp_0->r, &v_2);
-         int_ sp_0 = fx_maxi(fx_mini(v_2->data.space - vcase_0->t0, pp_0->margin), 10);
-         _fx_N13PP__ppstyle_t v_5;
+      if (len_0 > v_6->space) {
+         FX_COPY_PTR(pp_0->r, &v_3);
+         _fx_R11PP__state_t* v_7 = &v_3->data;
+         int_ sp_0 = fx_maxi(fx_mini(v_7->space - vcase_0->t0, pp_0->margin), 10);
+         _fx_N13PP__ppstyle_t v_8;
          if (vcase_0->t1.tag == 3) {
-            v_5 = _fx_g14PP__Consistent;
+            v_8 = _fx_g14PP__Consistent;
          }
          else {
-            v_5 = _fx_g8PP__Auto;
+            v_8 = _fx_g8PP__Auto;
          }
          FX_CHECK_EXN(_fx_catch_0);
-         _fx_T2iN13PP__ppstyle_t tup_0 = { sp_0, v_5 };
+         _fx_T2iN13PP__ppstyle_t tup_0 = { sp_0, v_8 };
          x_1 = tup_0;
       }
       else {
          _fx_T2iN13PP__ppstyle_t tup_1 = { pp_0->margin, _fx_g8PP__Fits }; x_1 = tup_1;
       }
-      FX_COPY_PTR(pp_0->r, &v_3);
-      FX_CHKIDX(FX_CHKIDX1(v_3->data.pp_stack, 0, top_0), _fx_catch_0);
-      *FX_PTR_1D(_fx_T2iN13PP__ppstyle_t, v_3->data.pp_stack, top_0) = x_1;
       FX_COPY_PTR(pp_0->r, &v_4);
-      v_4->data.pp_top = top_0 + 1;
+      _fx_R11PP__state_t* v_9 = &v_4->data;
+      FX_CHKIDX(FX_CHKIDX1(v_9->pp_stack, 0, top_0), _fx_catch_0);
+      _fx_T2iN13PP__ppstyle_t* v_10 = FX_PTR_1D(_fx_T2iN13PP__ppstyle_t, v_9->pp_stack, top_0);
+      *v_10 = x_1;
+      FX_COPY_PTR(pp_0->r, &v_5);
+      _fx_R11PP__state_t* v_11 = &v_5->data;
+      v_11->pp_top = top_0 + 1;
 
    _fx_catch_0: ;
+      if (v_5) {
+         _fx_free_rR11PP__state_t(&v_5);
+      }
       if (v_4) {
          _fx_free_rR11PP__state_t(&v_4);
       }
@@ -1861,192 +1968,203 @@ FX_EXTERN_C int _fx_M2PPFM6pprintv3RM1tN11PP__pptok_ti(
       if (v_2) {
          _fx_free_rR11PP__state_t(&v_2);
       }
-      if (v_1) {
-         _fx_free_rR11PP__state_t(&v_1);
-      }
    }
    else if (tag_0 == 4) {
-      _fx_rR11PP__state_t v_6 = 0;
+      _fx_rR11PP__state_t v_12 = 0;
       if (top_0 > 0) {
-         FX_COPY_PTR(pp_0->r, &v_6); v_6->data.pp_top = top_0 - 1;
+         FX_COPY_PTR(pp_0->r, &v_12); _fx_R11PP__state_t* v_13 = &v_12->data; v_13->pp_top = top_0 - 1;
       }
-      if (v_6) {
-         _fx_free_rR11PP__state_t(&v_6);
+      if (v_12) {
+         _fx_free_rR11PP__state_t(&v_12);
       }
    }
    else if (tag_0 == 2) {
-      _fx_rR11PP__state_t v_7 = 0;
+      _fx_rR11PP__state_t v_14 = 0;
       _fx_T3iiC* vcase_1 = &x_0->u.PPBreak;
       char_ c_0 = vcase_1->t2;
       int_ offset_0 = vcase_1->t1;
       int_ spaces_0 = vcase_1->t0;
-      _fx_T2iN13PP__ppstyle_t v_8;
+      _fx_T2iN13PP__ppstyle_t v_15;
       if (top_0 > 0) {
-         FX_COPY_PTR(pp_0->r, &v_7);
-         int_ v_9 = top_0 - 1;
-         FX_CHKIDX(FX_CHKIDX1(v_7->data.pp_stack, 0, v_9), _fx_catch_4);
-         v_8 = *FX_PTR_1D(_fx_T2iN13PP__ppstyle_t, v_7->data.pp_stack, v_9);
+         FX_COPY_PTR(pp_0->r, &v_14);
+         _fx_R11PP__state_t* v_16 = &v_14->data;
+         int_ v_17 = top_0 - 1;
+         FX_CHKIDX(FX_CHKIDX1(v_16->pp_stack, 0, v_17), _fx_catch_4);
+         v_15 = *FX_PTR_1D(_fx_T2iN13PP__ppstyle_t, v_16->pp_stack, v_17);
       }
       else {
-         _fx_T2iN13PP__ppstyle_t tup_2 = { 0, _fx_g8PP__Auto }; v_8 = tup_2;
+         _fx_T2iN13PP__ppstyle_t tup_2 = { 0, _fx_g8PP__Auto }; v_15 = tup_2;
       }
-      int_ block_offset_0 = v_8.t0;
-      _fx_N13PP__ppstyle_t style_0 = v_8.t1;
+      int_ block_offset_0 = v_15.t0;
+      _fx_N13PP__ppstyle_t style_0 = v_15.t1;
       int tag_1 = style_0.tag;
       if (tag_1 == 2) {
-         _fx_rR11PP__state_t v_10 = 0;
-         _fx_rR11PP__state_t v_11 = 0;
-         fx_str_t v_12 = {0};
-         fx_str_t v_13 = {0};
-         fx_str_t v_14 = {0};
-         FX_COPY_PTR(pp_0->r, &v_10);
-         FX_COPY_PTR(pp_0->r, &v_11);
-         v_11->data.space = v_10->data.space - spaces_0;
+         _fx_rR11PP__state_t v_18 = 0;
+         _fx_rR11PP__state_t v_19 = 0;
+         fx_str_t v_20 = {0};
+         fx_str_t v_21 = {0};
+         fx_str_t v_22 = {0};
+         FX_COPY_PTR(pp_0->r, &v_18);
+         _fx_R11PP__state_t* v_23 = &v_18->data;
+         FX_COPY_PTR(pp_0->r, &v_19);
+         _fx_R11PP__state_t* v_24 = &v_19->data;
+         v_24->space = v_23->space - spaces_0;
          if (c_0 == (char_)0) {
-            FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0, &v_12, 0), _fx_catch_1);
+            FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0, &v_20, 0), _fx_catch_1);
             _fx_FPv1S* f_0 = &pp_0->print_f;
-            FX_CALL(f_0->fp(&v_12, f_0->fcv), _fx_catch_1);
+            FX_CALL(f_0->fp(&v_20, f_0->fcv), _fx_catch_1);
          }
          else {
-            FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0 - 1, &v_13, 0), _fx_catch_1);
+            FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0 - 1, &v_21, 0), _fx_catch_1);
             {
-               const fx_str_t strs_0[] = { FX_MAKE_VAR_STR1(c_0), v_13 };
-               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_14), _fx_catch_1);
+               const fx_str_t strs_0[] = { FX_MAKE_VAR_STR1(c_0), v_21 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_22), _fx_catch_1);
             }
             _fx_FPv1S* f_1 = &pp_0->print_f;
-            FX_CALL(f_1->fp(&v_14, f_1->fcv), _fx_catch_1);
+            FX_CALL(f_1->fp(&v_22, f_1->fcv), _fx_catch_1);
          }
 
       _fx_catch_1: ;
-         FX_FREE_STR(&v_14);
-         FX_FREE_STR(&v_13);
-         FX_FREE_STR(&v_12);
-         if (v_11) {
-            _fx_free_rR11PP__state_t(&v_11);
-         }
-         if (v_10) {
-            _fx_free_rR11PP__state_t(&v_10);
-         }
-      }
-      else if (tag_1 == 3) {
-         _fx_rR11PP__state_t v_15 = 0;
-         _fx_rR11PP__state_t v_16 = 0;
-         fx_str_t v_17 = {0};
-         _fx_rR11PP__state_t v_18 = 0;
-         _fx_rR11PP__state_t v_19 = 0;
-         FX_COPY_PTR(pp_0->r, &v_15);
-         v_15->data.space = fx_mini(block_offset_0 - offset_0, pp_0->margin);
-         FX_COPY_PTR(pp_0->r, &v_16);
-         _fx_FPv1S* f_2 = &pp_0->print_f;
-         fx_str_t slit_0 = FX_MAKE_STR("\n");
-         FX_CALL(f_2->fp(&slit_0, f_2->fcv), _fx_catch_2);
-         FX_CALL(_fx_F7__mul__S2Ci((char_)32, pp_0->margin - v_16->data.space, &v_17, 0), _fx_catch_2);
-         _fx_FPv1S* f_3 = &pp_0->print_f;
-         FX_CALL(f_3->fp(&v_17, f_3->fcv), _fx_catch_2);
-         FX_COPY_PTR(pp_0->r, &v_18);
-         FX_COPY_PTR(pp_0->r, &v_19);
-         v_19->data.space = fx_maxi(v_18->data.space, 10);
-
-      _fx_catch_2: ;
+         FX_FREE_STR(&v_22);
+         FX_FREE_STR(&v_21);
+         FX_FREE_STR(&v_20);
          if (v_19) {
             _fx_free_rR11PP__state_t(&v_19);
          }
          if (v_18) {
             _fx_free_rR11PP__state_t(&v_18);
          }
-         FX_FREE_STR(&v_17);
-         if (v_16) {
-            _fx_free_rR11PP__state_t(&v_16);
+      }
+      else if (tag_1 == 3) {
+         _fx_rR11PP__state_t v_25 = 0;
+         _fx_rR11PP__state_t v_26 = 0;
+         fx_str_t v_27 = {0};
+         _fx_rR11PP__state_t v_28 = 0;
+         _fx_rR11PP__state_t v_29 = 0;
+         FX_COPY_PTR(pp_0->r, &v_25);
+         _fx_R11PP__state_t* v_30 = &v_25->data;
+         v_30->space = fx_mini(block_offset_0 - offset_0, pp_0->margin);
+         FX_COPY_PTR(pp_0->r, &v_26);
+         _fx_R11PP__state_t* v_31 = &v_26->data;
+         _fx_FPv1S* f_2 = &pp_0->print_f;
+         fx_str_t slit_0 = FX_MAKE_STR("\n");
+         FX_CALL(f_2->fp(&slit_0, f_2->fcv), _fx_catch_2);
+         FX_CALL(_fx_F7__mul__S2Ci((char_)32, pp_0->margin - v_31->space, &v_27, 0), _fx_catch_2);
+         _fx_FPv1S* f_3 = &pp_0->print_f;
+         FX_CALL(f_3->fp(&v_27, f_3->fcv), _fx_catch_2);
+         FX_COPY_PTR(pp_0->r, &v_28);
+         _fx_R11PP__state_t* v_32 = &v_28->data;
+         FX_COPY_PTR(pp_0->r, &v_29);
+         _fx_R11PP__state_t* v_33 = &v_29->data;
+         v_33->space = fx_maxi(v_32->space, 10);
+
+      _fx_catch_2: ;
+         if (v_29) {
+            _fx_free_rR11PP__state_t(&v_29);
          }
-         if (v_15) {
-            _fx_free_rR11PP__state_t(&v_15);
+         if (v_28) {
+            _fx_free_rR11PP__state_t(&v_28);
+         }
+         FX_FREE_STR(&v_27);
+         if (v_26) {
+            _fx_free_rR11PP__state_t(&v_26);
+         }
+         if (v_25) {
+            _fx_free_rR11PP__state_t(&v_25);
          }
       }
       else {
-         _fx_rR11PP__state_t v_20 = 0;
-         _fx_rR11PP__state_t v_21 = 0;
-         _fx_rR11PP__state_t v_22 = 0;
-         fx_str_t v_23 = {0};
-         _fx_rR11PP__state_t v_24 = 0;
-         _fx_rR11PP__state_t v_25 = 0;
-         fx_str_t v_26 = {0};
-         fx_str_t v_27 = {0};
-         fx_str_t v_28 = {0};
-         FX_COPY_PTR(pp_0->r, &v_20);
-         if (len_0 > v_20->data.space) {
-            FX_COPY_PTR(pp_0->r, &v_21);
-            v_21->data.space = block_offset_0 - offset_0;
-            FX_COPY_PTR(pp_0->r, &v_22);
+         _fx_rR11PP__state_t v_34 = 0;
+         _fx_rR11PP__state_t v_35 = 0;
+         _fx_rR11PP__state_t v_36 = 0;
+         fx_str_t v_37 = {0};
+         _fx_rR11PP__state_t v_38 = 0;
+         _fx_rR11PP__state_t v_39 = 0;
+         fx_str_t v_40 = {0};
+         fx_str_t v_41 = {0};
+         fx_str_t v_42 = {0};
+         FX_COPY_PTR(pp_0->r, &v_34);
+         _fx_R11PP__state_t* v_43 = &v_34->data;
+         if (len_0 > v_43->space) {
+            FX_COPY_PTR(pp_0->r, &v_35);
+            _fx_R11PP__state_t* v_44 = &v_35->data;
+            v_44->space = block_offset_0 - offset_0;
+            FX_COPY_PTR(pp_0->r, &v_36);
+            _fx_R11PP__state_t* v_45 = &v_36->data;
             _fx_FPv1S* f_4 = &pp_0->print_f;
             fx_str_t slit_1 = FX_MAKE_STR("\n");
             FX_CALL(f_4->fp(&slit_1, f_4->fcv), _fx_catch_3);
-            FX_CALL(_fx_F7__mul__S2Ci((char_)32, pp_0->margin - v_22->data.space, &v_23, 0), _fx_catch_3);
+            FX_CALL(_fx_F7__mul__S2Ci((char_)32, pp_0->margin - v_45->space, &v_37, 0), _fx_catch_3);
             _fx_FPv1S* f_5 = &pp_0->print_f;
-            FX_CALL(f_5->fp(&v_23, f_5->fcv), _fx_catch_3);
+            FX_CALL(f_5->fp(&v_37, f_5->fcv), _fx_catch_3);
          }
          else {
-            FX_COPY_PTR(pp_0->r, &v_24);
-            FX_COPY_PTR(pp_0->r, &v_25);
-            v_25->data.space = v_24->data.space - spaces_0;
+            FX_COPY_PTR(pp_0->r, &v_38);
+            _fx_R11PP__state_t* v_46 = &v_38->data;
+            FX_COPY_PTR(pp_0->r, &v_39);
+            _fx_R11PP__state_t* v_47 = &v_39->data;
+            v_47->space = v_46->space - spaces_0;
             if (c_0 == (char_)0) {
-               FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0, &v_26, 0), _fx_catch_3);
+               FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0, &v_40, 0), _fx_catch_3);
                _fx_FPv1S* f_6 = &pp_0->print_f;
-               FX_CALL(f_6->fp(&v_26, f_6->fcv), _fx_catch_3);
+               FX_CALL(f_6->fp(&v_40, f_6->fcv), _fx_catch_3);
             }
             else {
-               FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0 - 1, &v_27, 0), _fx_catch_3);
+               FX_CALL(_fx_F7__mul__S2Ci((char_)32, spaces_0 - 1, &v_41, 0), _fx_catch_3);
                {
-                  const fx_str_t strs_1[] = { FX_MAKE_VAR_STR1(c_0), v_27 };
-                  FX_CALL(fx_strjoin(0, 0, 0, strs_1, 2, &v_28), _fx_catch_3);
+                  const fx_str_t strs_1[] = { FX_MAKE_VAR_STR1(c_0), v_41 };
+                  FX_CALL(fx_strjoin(0, 0, 0, strs_1, 2, &v_42), _fx_catch_3);
                }
                _fx_FPv1S* f_7 = &pp_0->print_f;
-               FX_CALL(f_7->fp(&v_28, f_7->fcv), _fx_catch_3);
+               FX_CALL(f_7->fp(&v_42, f_7->fcv), _fx_catch_3);
             }
          }
 
       _fx_catch_3: ;
-         FX_FREE_STR(&v_28);
-         FX_FREE_STR(&v_27);
-         FX_FREE_STR(&v_26);
-         if (v_25) {
-            _fx_free_rR11PP__state_t(&v_25);
+         FX_FREE_STR(&v_42);
+         FX_FREE_STR(&v_41);
+         FX_FREE_STR(&v_40);
+         if (v_39) {
+            _fx_free_rR11PP__state_t(&v_39);
          }
-         if (v_24) {
-            _fx_free_rR11PP__state_t(&v_24);
+         if (v_38) {
+            _fx_free_rR11PP__state_t(&v_38);
          }
-         FX_FREE_STR(&v_23);
-         if (v_22) {
-            _fx_free_rR11PP__state_t(&v_22);
+         FX_FREE_STR(&v_37);
+         if (v_36) {
+            _fx_free_rR11PP__state_t(&v_36);
          }
-         if (v_21) {
-            _fx_free_rR11PP__state_t(&v_21);
+         if (v_35) {
+            _fx_free_rR11PP__state_t(&v_35);
          }
-         if (v_20) {
-            _fx_free_rR11PP__state_t(&v_20);
+         if (v_34) {
+            _fx_free_rR11PP__state_t(&v_34);
          }
       }
       FX_CHECK_EXN(_fx_catch_4);
 
    _fx_catch_4: ;
-      if (v_7) {
-         _fx_free_rR11PP__state_t(&v_7);
+      if (v_14) {
+         _fx_free_rR11PP__state_t(&v_14);
       }
    }
    else if (tag_0 == 1) {
-      _fx_rR11PP__state_t v_29 = 0;
-      _fx_rR11PP__state_t v_30 = 0;
-      FX_COPY_PTR(pp_0->r, &v_29);
-      FX_COPY_PTR(pp_0->r, &v_30);
-      v_30->data.space = fx_maxi(v_29->data.space - len_0, 0);
+      _fx_rR11PP__state_t v_48 = 0;
+      _fx_rR11PP__state_t v_49 = 0;
+      FX_COPY_PTR(pp_0->r, &v_48);
+      _fx_R11PP__state_t* v_50 = &v_48->data;
+      FX_COPY_PTR(pp_0->r, &v_49);
+      _fx_R11PP__state_t* v_51 = &v_49->data;
+      v_51->space = fx_maxi(v_50->space - len_0, 0);
       _fx_FPv1S* f_8 = &pp_0->print_f;
       FX_CALL(f_8->fp(&x_0->u.PPString, f_8->fcv), _fx_catch_5);
 
    _fx_catch_5: ;
-      if (v_30) {
-         _fx_free_rR11PP__state_t(&v_30);
+      if (v_49) {
+         _fx_free_rR11PP__state_t(&v_49);
       }
-      if (v_29) {
-         _fx_free_rR11PP__state_t(&v_29);
+      if (v_48) {
+         _fx_free_rR11PP__state_t(&v_48);
       }
    }
    else if (tag_0 == 5) {

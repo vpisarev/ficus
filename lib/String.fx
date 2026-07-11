@@ -261,11 +261,13 @@
 
 fun tokens(s: string, f: char->bool): string list
 {
-    val fold (sl, start, sep) = ([], 0, true) for c@i <- s {
+    val fold sl: string list = [], start = 0, sep = true for c@i <- s {
         if f(c) {
-            (if sep {sl} else {s[start:i] :: sl}, start, true)
+            sl = if sep {sl} else {s[start:i] :: sl}
+            sep = true
         } else {
-            (sl, if sep {i} else {start}, false)
+            start = if sep {i} else {start}
+            sep = false
         }
     }
     (if sep {sl} else {s[start:] :: sl}).rev()
@@ -273,11 +275,14 @@ fun tokens(s: string, f: char->bool): string list
 
 fun split(s: string, c: char, ~allow_empty:bool): string list
 {
-    val fold (sl, start, sep) = ([], 0, true) for ci@i <- s {
+    val fold sl: string list = [], start = 0, sep = true for ci@i <- s {
         if ci == c {
-            (if sep && !allow_empty {sl} else {s[start:i] :: sl}, i+1, true)
+            sl = if sep && !allow_empty {sl} else {s[start:i] :: sl}
+            start = i+1
+            sep = true
         } else {
-            (sl, if sep {i} else {start}, false)
+            start = if sep {i} else {start}
+            sep = false
         }
     }
     (if sep {sl} else {s[start:] :: sl}).rev()
@@ -328,25 +333,25 @@ fun escaped(s: string, ~quotes: bool=true): string
     val sn = "\\n", sr = "\\r", st = "\\t",
         ssq = "\\\'", sdq = "\\\"", ss = "\\\\", sz = "\\0"
     val q = if quotes {"\""} else {""}
-    val fold (ll, verb) = ([:: q], 0) for c@i <- s {
+    val fold ll = [:: q], verb = 0 for c@i <- s {
         val code = ord(c)
-        if code >= 40 && code != 92 { (ll, verb) }
+        if code >= 40 && code != 92 {
+        }
         else {
             val (esc_s, esc) = match code {
-            | 10 => (sn, true)
-            | 13 => (sr, true)
-            | 9 => (st, true)
-            | 39 => (ssq, true)
-            | 34 => (sdq, true)
-            | 92 => (ss, true)
-            | 0 => (sz, true)
-            | _ => (sz, false)
+                | 10 => (sn, true)
+                | 13 => (sr, true)
+                | 9 => (st, true)
+                | 39 => (ssq, true)
+                | 34 => (sdq, true)
+                | 92 => (ss, true)
+                | 0 => (sz, true)
+                | _ => (sz, false)
             }
             if esc {
-                val ll = esc_s :: (if i > verb {s[verb:i] :: ll} else {ll})
-                (ll, i+1)
+                ll = esc_s :: (if i > verb {s[verb:i] :: ll} else {ll})
+                verb = i + 1
             }
-            else { (ll, verb) }
         }
     }
     Builtins.join("", (q :: s[verb:] :: ll).rev())

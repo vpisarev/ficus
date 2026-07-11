@@ -145,9 +145,7 @@ TEST("array.bounding_box", fun() {
         val fold minx = 1000000, maxx = -1, miny = 1000000, maxy = -1
             for pix@(y, x) <- image {
                 if pix != 0 {
-                    (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
-                } else {
-                    (minx, maxx, miny, maxy)
+                    (minx, maxx, miny, maxy) = (min(minx, x), max(maxx, x), min(miny, y), max(maxy, y))
                 }
             }
         if maxx >= 0 { (minx, miny, maxx-minx+1, maxy-miny+1) }
@@ -161,6 +159,6 @@ TEST("array.bounding_box", fun() {
         0, 0, 0, 0, 0, 0, 0, 0;
         0, 0, 0, 1, 0, 0, 0, 0
         ])
-    
+
     EXPECT_EQ(bounding_box(img), (2, 1, 5, 4))
 })

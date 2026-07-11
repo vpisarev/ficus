@@ -2696,7 +2696,7 @@ static int
    _fx_FPN15C_form__cstmt_t2N15C_form__cstmt_tR17C_form__c_callb_t adjust_cstmt_0 = {0};
    _fx_LN15C_form__cstmt_t saved_decls_0 = 0;
    _fx_LN15C_form__cstmt_t sseq_1 = 0;
-   _fx_LN15C_form__cstmt_t __fold_result___0 = 0;
+   _fx_LN15C_form__cstmt_t res_0 = 0;
    _fx_LN15C_form__cstmt_t local_decls_0 = 0;
    _fx_LN15C_form__cstmt_t v_0 = 0;
    _fx_LN15C_form__cstmt_t sseq_2 = 0;
@@ -2714,36 +2714,35 @@ static int
    _fx_LN15C_form__cstmt_t lstend_0 = 0;
    _fx_LN15C_form__cstmt_t lst_0 = sseq_0;
    for (; lst_0; lst_0 = lst_0->tl) {
-      _fx_N15C_form__cstmt_t res_0 = 0;
+      _fx_N15C_form__cstmt_t res_1 = 0;
       _fx_N15C_form__cstmt_t s_0 = lst_0->hd;
-      FX_CALL(adjust_cstmt_0.fp(s_0, callb_0, &res_0, adjust_cstmt_0.fcv), _fx_catch_0);
+      FX_CALL(adjust_cstmt_0.fp(s_0, callb_0, &res_1, adjust_cstmt_0.fcv), _fx_catch_0);
       _fx_LN15C_form__cstmt_t node_0 = 0;
-      FX_CALL(_fx_cons_LN15C_form__cstmt_t(res_0, 0, false, &node_0), _fx_catch_0);
+      FX_CALL(_fx_cons_LN15C_form__cstmt_t(res_1, 0, false, &node_0), _fx_catch_0);
       FX_LIST_APPEND(sseq_1, lstend_0, node_0);
 
    _fx_catch_0: ;
-      if (res_0) {
-         _fx_free_N15C_form__cstmt_t(&res_0);
+      if (res_1) {
+         _fx_free_N15C_form__cstmt_t(&res_1);
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
    FX_COPY_PTR(*local_decls_1, &local_decls_0);
    _fx_LN15C_form__cstmt_t lst_1 = local_decls_0;
    for (; lst_1; lst_1 = lst_1->tl) {
-      _fx_LN15C_form__cstmt_t r_0 = 0;
+      _fx_LN15C_form__cstmt_t v_1 = 0;
       _fx_N15C_form__cstmt_t a_0 = lst_1->hd;
-      FX_COPY_PTR(__fold_result___0, &r_0);
-      FX_CALL(_fx_cons_LN15C_form__cstmt_t(a_0, r_0, false, &r_0), _fx_catch_1);
-      _fx_free_LN15C_form__cstmt_t(&__fold_result___0);
-      FX_COPY_PTR(r_0, &__fold_result___0);
+      FX_CALL(_fx_cons_LN15C_form__cstmt_t(a_0, res_0, true, &v_1), _fx_catch_1);
+      _fx_free_LN15C_form__cstmt_t(&res_0);
+      FX_COPY_PTR(v_1, &res_0);
 
    _fx_catch_1: ;
-      if (r_0) {
-         _fx_free_LN15C_form__cstmt_t(&r_0);
+      if (v_1) {
+         _fx_free_LN15C_form__cstmt_t(&v_1);
       }
       FX_CHECK_EXN(_fx_cleanup);
    }
-   FX_COPY_PTR(__fold_result___0, &v_0);
+   FX_COPY_PTR(res_0, &v_0);
    if (v_0 == 0) {
       FX_COPY_PTR(sseq_1, &sseq_2);
    }
@@ -2751,23 +2750,23 @@ static int
       FX_COPY_PTR(v_0, &sseq_2);
    }
    else {
-      _fx_LN15C_form__cstmt_t v_1 = 0;
+      _fx_LN15C_form__cstmt_t v_2 = 0;
       _fx_LN15C_form__cstmt_t lstend_1 = 0;
       _fx_LN15C_form__cstmt_t lst_2 = v_0;
       for (; lst_2; lst_2 = lst_2->tl) {
          _fx_N15C_form__cstmt_t x_0 = lst_2->hd;
          _fx_LN15C_form__cstmt_t node_1 = 0;
          FX_CALL(_fx_cons_LN15C_form__cstmt_t(x_0, 0, false, &node_1), _fx_catch_2);
-         FX_LIST_APPEND(v_1, lstend_1, node_1);
+         FX_LIST_APPEND(v_2, lstend_1, node_1);
 
       _fx_catch_2: ;
          FX_CHECK_EXN(_fx_catch_3);
       }
-      _fx_M19C_post_adjust_declsFM5link2LN15C_form__cstmt_t2LN15C_form__cstmt_tLN15C_form__cstmt_t(v_1, sseq_1, &sseq_2, 0);
+      _fx_M19C_post_adjust_declsFM5link2LN15C_form__cstmt_t2LN15C_form__cstmt_tLN15C_form__cstmt_t(v_2, sseq_1, &sseq_2, 0);
 
    _fx_catch_3: ;
-      if (v_1) {
-         _fx_free_LN15C_form__cstmt_t(&v_1);
+      if (v_2) {
+         _fx_free_LN15C_form__cstmt_t(&v_2);
       }
    }
    FX_CHECK_EXN(_fx_cleanup);
@@ -2783,8 +2782,8 @@ _fx_cleanup: ;
    if (sseq_1) {
       _fx_free_LN15C_form__cstmt_t(&sseq_1);
    }
-   if (__fold_result___0) {
-      _fx_free_LN15C_form__cstmt_t(&__fold_result___0);
+   if (res_0) {
+      _fx_free_LN15C_form__cstmt_t(&res_0);
    }
    if (local_decls_0) {
       _fx_free_LN15C_form__cstmt_t(&local_decls_0);
@@ -2937,15 +2936,16 @@ _fx_endmatch_0: ;
       _fx_LN15C_form__cstmt_t new_cf_body_0 = 0;
       _fx_R17C_form__cdeffun_t v_6 = {0};
       _fx_rR17C_form__cdeffun_t cf_0 = s_0->u.CDefFun;
-      FX_COPY_PTR(cf_0->data.cf_body, &cf_body_0);
+      _fx_R17C_form__cdeffun_t* v_7 = &cf_0->data;
+      FX_COPY_PTR(v_7->cf_body, &cf_body_0);
       FX_CALL(adjust_sseq_0.fp(cf_body_0, callb_0, local_decls_ref_0, local_have_ops_ref_0, &new_cf_body_0, adjust_sseq_0.fcv),
          _fx_catch_1);
-      _fx_R17C_form__cdeffun_t* v_7 = &cf_0->data;
-      _fx_make_R17C_form__cdeffun_t(&v_7->cf_name, &v_7->cf_cname, v_7->cf_args, v_7->cf_rt, new_cf_body_0, &v_7->cf_flags,
-         v_7->cf_scope, &v_7->cf_loc, &v_6);
       _fx_R17C_form__cdeffun_t* v_8 = &cf_0->data;
-      _fx_free_R17C_form__cdeffun_t(v_8);
-      _fx_copy_R17C_form__cdeffun_t(&v_6, v_8);
+      _fx_make_R17C_form__cdeffun_t(&v_8->cf_name, &v_8->cf_cname, v_8->cf_args, v_8->cf_rt, new_cf_body_0, &v_8->cf_flags,
+         v_8->cf_scope, &v_8->cf_loc, &v_6);
+      _fx_R17C_form__cdeffun_t* v_9 = &cf_0->data;
+      _fx_free_R17C_form__cdeffun_t(v_9);
+      _fx_copy_R17C_form__cdeffun_t(&v_6, v_9);
       *local_have_ops_0 = false;
       FX_COPY_PTR(s_0, fx_result);
 
