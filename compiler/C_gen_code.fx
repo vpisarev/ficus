@@ -475,6 +475,23 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             (i_exp, ccode)
         }
 
+    /* construct an ALLOCATED mutable vector with size 0 and the given CAPACITY
+       (fx_make_vec(0, cap_exp, elemsize, free, copy, 0, &dst)), elemsize/free/copy
+       taken from the element type. cap_exp==0 gives an empty vector (`[]`); a
+       positive capacity pre-reserves the buffer for a vector comprehension, whose
+       elements are then appended (size grows to capacity, no realloc). Constructs
+       into the provided dst (in-place) or a registered temp (get_dstexp) — never
+       leaks; the destination is expected to start NULL (zeroed at block prologue). */
+    fun make_vec(cap_exp: cexp_t, et: ktyp_t, dstexp_r: cexp_t? ref, ccode: ccode_t, loc: loc_t) {
+        val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
+        val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
+        val (dst_exp, ccode) = get_dstexp(dstexp_r, "zvec", CTypVector(elem_ctyp), ccode, loc)
+        val call = make_call(std_fx_make_vec,
+            [:: make_int_exp(0, loc), cap_exp, elemsize_exp, free_f_exp, copy_f_exp,
+                make_nullptr(loc), cexp_get_addr(dst_exp) ], CTypCInt, loc)
+        (dst_exp, CExp(call) :: ccode)
+    }
+
     fun get_struct(cexp: cexp_t)
     {
         val (ctyp, cloc) = get_cexp_ctx(cexp)
@@ -654,12 +671,17 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 create_cdefval(gen_idc(cm_idx, "slit"), CTypString, default_tempval_flags(), "", Some(e0), ccode, loc)
             | KLitNil ktyp =>
                 match deref_ktyp(ktyp, loc) {
-                | KTypList _ | KTypCPointer | KTypRawPointer _ | KTypVector _ =>
-                    // the mutable vector follows the cptr model: an empty/default
-                    // vector is a NULL pointer (safe to free during a block's
-                    // exception cleanup). size/reads are NULL-aware; explicit
-                    // constructors allocate, expecting *fx_result to start NULL.
+                | KTypList _ | KTypCPointer | KTypRawPointer _ =>
                     (make_nullptr(loc), ccode)
+                | KTypVector et =>
+                    // an explicit `[]` for the mutable vector is a real ALLOCATED
+                    // empty vector (so `val v: int vector = []; v.push_back(5)`
+                    // works), distinct from the NULL default a variable gets when
+                    // zero-initialized at block start. get_dstexp gives a registered
+                    // temp (zeroed in the block prologue, freed in cleanup) so this
+                    // atom context (call arg / operand) does not leak; the in-place
+                    // initialization path is handled dst-aware in kexp2cexp.
+                    make_vec(make_int_exp(0, loc), et, ref None, ccode, loc)
                 | KTypRRBVec et =>
                     val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
                     val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
@@ -1487,6 +1509,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val lbl = curr_block_label(kloc)
             val ret_exp = CExp(make_call(get_id("FX_RETURN"), [:: lbl], CTypVoid, kloc))
             (false, dummy_exp, ret_exp :: ccode)
+        | KExpAtom (AtomLit(KLitNil _), _)
+            when (match deref_ktyp(ktyp, kloc) { | KTypVector _ => true | _ => false }) =>
+            // `val v: T vector = []` — construct the empty vector in place (into
+            // the destination), no temp/copy, distinct from `v = []` assignment.
+            val et = match deref_ktyp(ktyp, kloc) { | KTypVector et => et | _ => KTypVoid }
+            val (dst_exp, ccode) = make_vec(make_int_exp(0, kloc), et, dstexp_r, ccode, kloc)
+            (false, dst_exp, ccode)
         | KExpAtom (a, _) => val (e, ccode) = atom2cexp(a, ccode, kloc)
                              val e = fix_nil(e, ktyp)
                              (true, e, ccode)
@@ -3319,7 +3348,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val saved_cleanup = bctx->bctx_cleanup
                     bctx->bctx_cleanup = []
                     val assign_e2 = match (ktp_complex, e2) {
-                                    | (true, KExpAtom (AtomLit(KLitNil _), _)) => false
+                                    | (true, KExpAtom (AtomLit(KLitNil _), (nil_ktyp, _))) =>
+                                        /* for an inline-struct container (array/rrbvec) the zeroed
+                                           default IS a valid empty, so no assignment is needed. The
+                                           pointer-based vector defaults to NULL, which is NOT an
+                                           allocated empty — force the `[]` make-empty assignment. */
+                                        (match deref_ktyp(nil_ktyp, kloc) {
+                                        | KTypVector _ => true | _ => false })
                                     | _ => true
                                     }
                     val (flags, e0_opt, assign_e2) =

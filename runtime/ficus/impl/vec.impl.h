@@ -80,9 +80,9 @@ int fx_make_vec( int_ size, int_ capacity, size_t elemsize,
     vec->info.free_elem = free_elem;
     vec->data = data;
 
-    if(free_elem)
+    if(free_elem && size > 0)
         memset(vec->data, 0, (size_t)size * elemsize);
-    if(elems)
+    if(elems && size > 0)
         fx_copy_arr_elems(elems, vec->data, size, elemsize, copy_elem);
     *vec_ = vec;
     return FX_OK;
