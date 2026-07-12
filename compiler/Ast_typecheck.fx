@@ -2484,6 +2484,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val mstr =  match deref_typ(r_t) {
                             | TypList _ => "List"
                             | TypRRBVec _ => "Rrbvec"
+                            | TypVector _ => "Vector"
                             | TypString => "String"
                             | TypChar => "Char"
                             | TypArray _ => "Array"
@@ -2628,6 +2629,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | (1, 1, TypRRBVec et) => unify(etyp, TypRRBVec(et), new_aloc,
                 "incorrect type of the rrbvec range access operation; \
                 it gives '{typ2str(TypRRBVec(et))}', but '{typ2str(etyp)}' is expected")
+            | (1, 0, TypVector et) => unify(etyp, et, new_aloc,
+                "incorrect type of the vector element access operation; \
+                it gives '{typ2str(et)}', but '{typ2str(etyp)}' is expected")
             | _ =>
                 val et = make_new_typ()
                 unify(new_atyp, TypArray(ndims, et), new_aloc,

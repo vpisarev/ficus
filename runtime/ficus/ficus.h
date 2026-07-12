@@ -1046,17 +1046,20 @@ typedef struct fx_vechdr_t
     void* data;
 } fx_vechdr_t, *fx_vec_t;
 
+// an empty vector is a NULL pointer (cptr model); all accessors treat NULL as size 0
 #define FX_VEC_SIZE(vec) ((vec) ? (vec)->size : 0)
 #define FX_VEC_CHKIDX(vec, idx, catch_label) \
-    if((size_t)(idx) < (size_t)(vec)->size) ; \
+    if((vec) && (size_t)(idx) < (size_t)(vec)->size) ; \
     else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
 #define FX_VEC_PTR(typ, vec, idx) \
     ((typ*)(vec)->data + (idx))
+// value access: pair FX_VEC_ELEM with FX_VEC_CHKIDX (the border variants are self-checked)
+#define FX_VEC_ELEM(typ, vec, idx) (*FX_VEC_PTR(typ, vec, idx))
 
 #define FX_VEC_PTR_CLIP(typ, vec, idx) \
     ({ \
         fx_vec_t __vec__ = (vec); \
-        int __idx__ = (idx), __sz0__ = __vec__->size; \
+        int __idx__ = (idx), __sz0__ = __vec__ ? (int)__vec__->size : 0; \
         ((size_t)__idx__ < (size_t)__sz0__) ? FX_VEC_PTR(typ, __vec__, __idx__) : \
         __sz0__ == 0 ? (typ*)fx_zerobuf : FX_VEC_PTR(typ, __vec__, (__idx__ < 0 ? 0 : __sz0__ - 1)); \
     })
@@ -1064,17 +1067,21 @@ typedef struct fx_vechdr_t
 #define FX_VEC_PTR_ZERO(typ, vec, idx) \
     ({ \
         fx_vec_t __vec__ = (vec); \
-        int __idx__ = (idx), __sz0__ = __vec__->size; \
+        int __idx__ = (idx), __sz0__ = __vec__ ? (int)__vec__->size : 0; \
         (size_t)__idx__ < (size_t)__sz0__ ? FX_VEC_PTR(typ, __vec__, __idx__) : (typ*)fx_zerobuf; \
     })
 
 #define FX_VEC_PTR_WRAP(typ, vec, idx) \
     ({ \
         fx_vec_t __vec__ = (vec); \
-        int __idx__ = (idx), __sz0__ = __vec__->size; \
+        int __idx__ = (idx), __sz0__ = __vec__ ? (int)__vec__->size : 0; \
         ((size_t)__idx__ < (size_t)__sz0__) ? FX_VEC_PTR(typ, __vec__, __idx__) : \
         __sz0__ == 0 ? (typ*)fx_zerobuf : FX_VEC_PTR(typ, __vec__, ((__idx__ % __sz0__) + __sz0__) % __sz0__); \
     })
+
+#define FX_VEC_ELEM_CLIP(typ, vec, idx) (*FX_VEC_PTR_CLIP(typ, vec, idx))
+#define FX_VEC_ELEM_ZERO(typ, vec, idx) (*FX_VEC_PTR_ZERO(typ, vec, idx))
+#define FX_VEC_ELEM_WRAP(typ, vec, idx) (*FX_VEC_PTR_WRAP(typ, vec, idx))
 
 void fx_free_vec(fx_vec_t* vec);
 // pvec is fx_vec_t* (the address of the fx_vec_t variable), matching the

@@ -2468,6 +2468,30 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing rrbvec (should be a single scalar index or range)")
                 }
+            | CTypVector _ =>
+                match idxs {
+                | [:: DomainFast(i)] =>
+                    val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
+                    val get_elem_exp = make_call(get_id("FX_VEC_ELEM"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
+                    (true, get_elem_exp, ccode)
+                | [:: DomainElem(i)] =>
+                    val (i_exp, ccode) = atom2cexp_(i, true, ccode, kloc)
+                    val (get_elem_exp, ccode) =
+                    match border {
+                    | BorderNone =>
+                        val chk_exp = make_call(get_id("FX_VEC_CHKIDX"), [:: arr_exp, i_exp, lbl ], CTypVoid, kloc)
+                        val get_elem_exp = make_call(get_id("FX_VEC_ELEM"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
+                        (get_elem_exp, CExp(chk_exp) :: ccode)
+                    | BorderClip =>
+                        (make_call(get_id("FX_VEC_ELEM_CLIP"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
+                    | BorderWrap =>
+                        (make_call(get_id("FX_VEC_ELEM_WRAP"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
+                    | BorderZero =>
+                        (make_call(get_id("FX_VEC_ELEM_ZERO"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
+                    }
+                    (true, get_elem_exp, ccode)
+                | _ => throw compile_err(kloc, "cgen: vector slicing is not supported yet (step 3)")
+                }
             | CTypArray _ =>
                 val need_subarr = exists(for d <- idxs { | DomainRange _ => true | _ => false })
                 val need_flatten = need_subarr &&

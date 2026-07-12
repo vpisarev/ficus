@@ -8,6 +8,30 @@
 
 from UTest import *
 import Vec
+import Vector
+
+TEST("fcvector.access", fun()
+{
+    val v: int vector = []
+    EXPECT_EQ(`size(v)`, 0)
+    EXPECT_EQ(`empty(v)`, true)
+    for i <- 0:5 { v.push_back(i*i) }
+    EXPECT_EQ(`size(v)`, 5)
+    EXPECT_EQ(`empty(v)`, false)
+    for i <- 0:5 { EXPECT_EQ(`v[i]`, i*i) }
+    EXPECT_EQ(`v.clip[100]`, 16)
+    EXPECT_EQ(`v.clip[-100]`, 0)
+    EXPECT_EQ(`v.zero[100]`, 0)
+    EXPECT_EQ(`v.wrap[-1]`, 16)
+    var sink = 0
+    EXPECT_THROWS(fun() {sink = v[5]}, OutOfRangeError)
+    ignore(sink)
+
+    val s: string vector = []
+    s.push_back("a"); s.push_back("bc"); s.push_back("def")
+    EXPECT_EQ(`size(s)`, 3)
+    EXPECT_EQ(`s[2]`, "def")
+})
 
 TEST("rrbvec.simple", fun()
 {

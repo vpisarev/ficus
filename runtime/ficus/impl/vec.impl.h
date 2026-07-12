@@ -104,8 +104,11 @@ int fx_vec_reserve(fx_vec_t vec, int_ new_capacity)
     if (!data)
         FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
     // regardless of whether the data is complex or POD,
-    // we 'move' it, so no need to invoke copy-constructors
-    memcpy(data, vec->data, (size_t)vec->size*esz);
+    // we 'move' it, so no need to invoke copy-constructors.
+    // guard against vec->data==NULL (an empty vector grown for the first time):
+    // memcpy(dst, NULL, 0) is undefined behaviour.
+    if (vec->size > 0)
+        memcpy(data, vec->data, (size_t)vec->size*esz);
     // make it a little bit more atomic
     // more robust implementation should use CAS (atomic compare-and-swap)
     FX_SWAP(data, vec->data, temp);
