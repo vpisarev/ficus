@@ -148,13 +148,17 @@ cursor. A naive "cache `data`+`size`" iterator → use-after-free / out-of-bound
 **read-lock** on the shared header for its duration; a *structural* mutation of a
 locked vector throws.
 
-- **Header field:** add `int_ nlocks` to `fx_vechdr_t` (`rc` stays first).
-- **Loop brackets:** at loop setup `v->nlocks++` (`FX_VEC_START_READ`), in the
-  loop's **cleanup section** `v->nlocks--` (`FX_VEC_END_READ`) — the decrement
-  must run on *every* exit: normal, `break`, `continue`, `return`, exception.
-  Model on RRB's `fx_rrb_start_read`/read-protocol + Ficus block cleanup (which
-  already frees locals on all paths). Nested/aliased reads just stack the
-  counter.
+- **Header field:** add an **atomic** `int_ nlocks` to `fx_vechdr_t` (`rc` stays
+  first; `nlocks` follows the same atomic discipline as `rc`). Its own integrity
+  is the guarantee — cross-thread *data*-race semantics stay out of scope, as for
+  arrays.
+- **Loop brackets:** at loop setup `FX_INCREF(v->nlocks)` (`FX_VEC_START_READ`),
+  in the loop's **cleanup section** `FX_DECREF(v->nlocks)` (`FX_VEC_END_READ`) —
+  **atomic** ops, so concurrently iterating the same vector (e.g. an `@parallel`
+  read) is safe; cost is **once per loop, not per iteration**. The decrement must
+  run on *every* exit: normal, `break`, `continue`, `return`, exception. Model on
+  RRB's `fx_rrb_start_read` read-protocol + Ficus block cleanup (which already
+  frees locals on all paths). Nested/aliased reads just stack the counter.
 - **Hot path = array speed.** Because no realloc/shrink can happen while locked,
   the loop hoists `data`+`size` at entry and binds `x = copy(data[i])` (INCREF)
   with **no per-iteration check**. The check lives in the mutators, which the
@@ -187,42 +191,32 @@ locked vector throws.
   loop never does the UAF/OOB a naive iterator would; pair with reference-checked
   values (over-reads may not trap). Add a `test/rand/` push/pop/set/iterate fuzz.
 
-## Step 5 — bounds-check elimination for sequential vector access
+## Step 5 — keep `K_fast_idx` away from vectors (guard, not optimization)
 
-After comprehensions (Step 4), extend the range-check hoisting pass
-(`compiler/K_fast_idx.fx`, 796 LoC) to the new vector. Today it optimizes
-**arrays**: for affine indices `alpha*i + beta` (loop-invariant `alpha`/`beta`,
-loop index `i`) accessed unconditionally in a `for`/comprehension body, it drops
-the per-iteration `CHECK_IDX` and instead checks the index range endpoints once
-before the loop — e.g. `for i <- 1:n-1 { dst[i] = (src[i-1]+src[i]+src[i+1])/3.f }`
-becomes one pre-loop check on `dst`/`src` bounds, then an unchecked hot loop.
+**REVISED (Vadim + review): `K_fast_idx.fx` does NOT extend to the new vector.**
+The range-check hoisting pass keys on `CTypArray`; when the vector type flows
+through, add **one arm: `CTypVector` → no hoist** so the optimizer never rewrites
+vector index checks. (Do this together with the type work, Steps 2/4, so vectors
+never accidentally get hoisted.)
 
-**Soundness hinges on Step 4's read-lock (the mutable twist).** For arrays the
-hoist is unconditionally safe — `size` and `data` never change. For a **mutable
-vector** the pre-loop check and the cached `data` base are only valid if the
-vector cannot be reallocated or shrunk during the loop. That is exactly the
-read-lock invariant (variant D), so:
+**Why not hoist.** Hoisting a vector's check safely would require the optimizer
+to *insert a read-lock* around the loop (the only thing that keeps `size`/`data`
+stable for a mutable container). But **the optimizer must never change observable
+behavior**: an optimizer-inserted lock would make a mutate-during-loop program
+**throw at -O3 but not at -O0** — exactly the O0/O3 divergence the T2 corpus
+differential forbids by construction, and morally an optimizer bug. So locks are
+placed by **semantics only** (`for x <- v` iteration, Step 4), never by the pass.
 
-- **▸ Поправка (Claude):** when the pass hoists a vector's check out of a loop,
-  it must **read-lock that vector for the loop's duration** (the same
-  `nlocks`/`FX_VEC_START_READ`/`END_READ` brackets as `for x <- v`). Under the
-  lock, structural mutation (`push_back`/`resize`/…) throws, so hoisted `size`
-  stays valid and the cached `data` base cannot dangle — the optimized loop
-  reads `v->data` once, like the array path. This generalizes D from "iterating
-  a vector" to "any loop from which a vector's range check was hoisted."
-- `dst[i] = …` writes are still fine under the read-lock (`set` doesn't
-  lock-check — it changes neither `size` nor the buffer), so the stencil/scatter
-  pattern above optimizes fully.
-- The pass must **distinguish container kind**: `CTypArray` → hoist, no lock
-  (fixed size); new `CTypVector` → hoist **+ lock**; `CTypRRBVec` is a tree, not
-  affine-indexable in O(1) — leave as-is.
-- **Fallback:** if locking a given loop is not expressible (e.g. the vector isn't
-  a simple loop-invariant binding the pass can bracket), skip the hoist for that
-  vector and keep per-iteration checks — correctness over speed.
+**Where the speed comes from instead.** The fast path already lives *inside the
+iterator*: under the Step-4 semantic lock, `data`/`size` are hoisted at loop
+entry with zero per-iteration checks — no separate optimization needed for the
+`for x <- v` form. The manual index loop `for i <- 0:size(v) { … v[i] … }` keeps
+its per-iteration bounds checks; that is the documented price of the unlocked
+escape hatch.
 
-Verify: the stencil example produces identical results checked vs. hoisted (T2
-corpus O0-vs-O3 already exercises `K_fast_idx`); a structural mutation inside a
-hoisted loop throws (as Step 4); ASan clean (no dangling `data` base).
+Verify: a mutate-during-loop vector program behaves **identically at -O0 and
+-O3** (T2 differential); `K_fast_idx` leaves vector accesses untouched (IR
+snapshot / `-pr-k`).
 
 ## Decision log (all resolved)
 
@@ -237,3 +231,7 @@ hoisted loop throws (as Step 4); ASan clean (no dangling `data` base).
 4. ~~Scope of Step 2's op set~~ — **RESOLVED (Vadim):** `size`/`empty`
    (`__intrin_size__`) and `==`/`<=>`/`string`/`print` (stdlib loops over
    `v[i]`/`v.size()`) are in-scope for the same PR as the 7 core ops.
+5. ~~Bounds-check elimination for vectors~~ — **RESOLVED (Vadim):** do NOT
+   extend `K_fast_idx` to vectors (optimizer-inserted locks would diverge
+   O0/O3); locks are semantic-only (Step 4). Pass gains one `CTypVector → no
+   hoist` arm.
