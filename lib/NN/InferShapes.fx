@@ -654,7 +654,7 @@ fun infer(model: Ast.nnmodel_t, op: Ast.nnop_t): argshapeinfo_t []
                     new_total *= sz
                 }
             } else {
-                new_total *= sz1
+                new_total *= sz
             }
         }
         val m1sz = if havem1 {

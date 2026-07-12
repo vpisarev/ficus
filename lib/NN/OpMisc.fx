@@ -153,7 +153,7 @@ fun run_range(out: Ast.nntensor_t,
         for i <- 0:nelems {data[i] = int32(start + i*delta)}
     | Ast.NN_Data_I64 data =>
         val start = int64(start), delta = int64(delta)
-        for i <- 0:nelems {data[i] = int32(start + i*delta)}
+        for i <- 0:nelems {data[i] = int64(start + i*delta)}
     | _ => throw Ast.NNError("run_range: unsupported type `out_data.elemtype()`")
     }
 }
