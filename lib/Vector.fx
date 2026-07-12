@@ -122,6 +122,8 @@ fun pop_back(v: 't vector): void
 @ccode {
     if (!v)
         FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    if (v->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     int_ size = v->size;
     if (size == 0)
         FX_FAST_THROW_RET(FX_EXN_SizeError);

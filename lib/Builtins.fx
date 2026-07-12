@@ -43,6 +43,7 @@ exception SizeError
 exception SizeMismatchError
 exception StackOverflowError
 exception TypeMismatchError
+exception VecModifiedError
 exception ZeroStepError
 
 type scalar_t =

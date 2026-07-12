@@ -148,6 +148,7 @@ extern int FX_EXN_SysContinue;
 extern int FX_EXN_SysReturn;
 extern int FX_EXN_RangeError;
 extern int FX_EXN_TypeMismatchError;
+extern int FX_EXN_VecModifiedError;
 extern int FX_EXN_UnknownExnError;
 extern int FX_EXN_ZeroStepError;
 
@@ -1044,7 +1045,17 @@ typedef struct fx_vechdr_t
     fx_vecinfo_t info;
     int_ size, capacity;
     void* data;
+    int_ nlocks; // read-lock counter: >0 while the vector is being iterated
+                 // (for x <- v). Structural mutators throw VecModifiedError when
+                 // it is nonzero. Atomic, so concurrent (@parallel) reads are safe.
 } fx_vechdr_t, *fx_vec_t;
+
+// `for x <- v` brackets the loop with these; NULL (empty) vectors are not locked.
+#define FX_VEC_START_READ(vec) if(!(vec)) ; else FX_INCREF((vec)->nlocks)
+#define FX_VEC_END_READ(vec) if(!(vec)) ; else FX_DECREF((vec)->nlocks)
+// a structural mutator calls this first; throws if the vector is being iterated
+#define FX_VEC_CHECK_UNLOCKED(vec, catch_label) \
+    if(!(vec) || (vec)->nlocks == 0) ; else FX_FAST_THROW(FX_EXN_VecModifiedError, catch_label)
 
 // an empty vector is a NULL pointer (cptr model); all accessors treat NULL as size 0
 #define FX_VEC_SIZE(vec) ((vec) ? (vec)->size : 0)

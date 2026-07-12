@@ -79,6 +79,7 @@ int fx_make_vec( int_ size, int_ capacity, size_t elemsize,
     vec->info.copy_elem = copy_elem;
     vec->info.free_elem = free_elem;
     vec->data = data;
+    vec->nlocks = 0;
 
     if(free_elem && size > 0)
         memset(vec->data, 0, (size_t)size * elemsize);
@@ -96,6 +97,8 @@ int fx_compose_vec( size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
 
 int fx_vec_reserve(fx_vec_t vec, int_ new_capacity)
 {
+    if (vec->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     if (new_capacity <= vec->capacity)
         return FX_OK;
     size_t esz = vec->info.elemsize;
@@ -119,6 +122,8 @@ int fx_vec_reserve(fx_vec_t vec, int_ new_capacity)
 
 int fx_vec_resize(fx_vec_t vec, int_ new_size, const void* fillelem)
 {
+    if (vec->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     if (new_size < 0)
         FX_FAST_THROW_RET(FX_EXN_SizeError);
     if (new_size > vec->capacity) {
@@ -149,6 +154,8 @@ int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems)
 {
     if (nelems == 0)
         return FX_OK;
+    if (vec->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     if (nelems < 0)
         FX_FAST_THROW_RET(FX_EXN_SizeError);
     size_t elemsize = vec->info.elemsize;
