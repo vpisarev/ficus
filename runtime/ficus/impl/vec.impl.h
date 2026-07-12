@@ -221,8 +221,6 @@ int fx_vec_slice(fx_vec_t vec, int_ start, int_ end, int_ delta, int mask, fx_ve
     int_ newsize = end - start;
     if (delta != 1)
         newsize = FX_LOOP_COUNT(start, end, delta);
-    printf("start=%d, end=%d, delta=%d, mask=%d, newsize=%zu\n",
-            (int)start, (int)end, (int)delta, mask, (size_t)newsize);
     int fx_status = fx_make_vec(newsize, newsize, elemsize, free_f, copy_f,
                                 delta == 1 ? (char*)vec->data + start*elemsize : 0, subvec_);
     if (fx_status < 0) {
