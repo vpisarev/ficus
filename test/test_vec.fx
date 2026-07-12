@@ -51,6 +51,40 @@ TEST("fcvector.write", fun()
     EXPECT_EQ(`s[1]`, "world")
 })
 
+TEST("fcvector.ops", fun()
+{
+    val v = Vector.make(3, 7)
+    EXPECT_EQ(`size(v)`, 3)
+    EXPECT_EQ(`Vector.capacity(v) >= 3`, true)
+    EXPECT_EQ(`Vector.array(v)`, [7, 7, 7])
+    v.push_back(9)
+    v.resize(6, 0)
+    EXPECT_EQ(`Vector.array(v)`, [7, 7, 7, 9, 0, 0])
+    EXPECT_EQ(`v.back()`, 0)
+    v.pop_back()
+    EXPECT_EQ(`Vector.array(v)`, [7, 7, 7, 9, 0])
+    v.clear()
+    EXPECT_EQ(`size(v)`, 0)
+    EXPECT_EQ(`empty(v)`, true)
+
+    val a = Vector.make([1, 2, 3])
+    val b = Vector.make([1, 2, 3])
+    val c = Vector.make([1, 2, 4])
+    EXPECT_EQ(`a == b`, true)
+    EXPECT_EQ(`a == c`, false)
+    EXPECT_EQ(`a <=> c`, -1)
+    EXPECT_EQ(`string(a)`, "[1, 2, 3]")
+
+    // complex-element resize (grow with fill, shrink freeing elements) — ASan
+    val s = Vector.make(2, "ab")
+    s.push_back("cd")
+    s.resize(5, "zz")
+    EXPECT_EQ(`size(s)`, 5)
+    EXPECT_EQ(`s[4]`, "zz")
+    s.resize(2, "")
+    EXPECT_EQ(`Vector.array(s)`, ["ab", "ab"])
+})
+
 TEST("rrbvec.simple", fun()
 {
     val N = 10
