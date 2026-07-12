@@ -14744,6 +14744,9 @@ static int
          else if (tag_2 == 18) {
             FX_COPY_PTR(v_7->u.KTypRRBVec, &ptyp_0);
          }
+         else if (tag_2 == 19) {
+            FX_COPY_PTR(v_7->u.KTypVector, &ptyp_0);
+         }
          else if (tag_2 == 10) {
             FX_COPY_PTR(_fx_g21K_normalize__KTypChar, &ptyp_0);
          }

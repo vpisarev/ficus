@@ -1273,9 +1273,47 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     ([], i_exps, n_exps, for_checks, incr_exp :: incr_exps,
                     init_checks, init_ccode, pre_body_ccode,
                     (iter_val_i, get_vec_elem, elem_flags) :: body_elems, post_checks)
+                | KTypVector (et) =>
+                    /* contiguous, so iterate by index into a cached data pointer
+                       (the read-lock, taken by the caller, keeps data/size stable):
+                        int_ n = FX_VEC_SIZE(vec);
+                        typ* ptr = vec ? (typ*)vec->data : 0;   // NULL vector => n==0
+                        for(int i = 0; i < n; i++) { ... ptr[i] ... }
+                    */
+                    val calc_n_exp = make_call(get_id("FX_VEC_SIZE"), [:: col_exp], CTypInt, for_loc)
+                    val (i_exps, n_exps, init_checks, init_ccode) =
+                    if n_exps == [] {
+                        val (n_exp, init_ccode) = add_local(gen_idc(cm_idx, "n"),
+                            CTypInt, default_tempval_flags(), Some(calc_n_exp), init_ccode, for_loc)
+                        val i_id = get_iter_id(0, at_ids, for_letters.nth(dims_ofs))
+                        val (i_exp, _) = add_local(i_id, CTypInt,
+                            default_tempvar_flags(), None, [], for_loc)
+                        (i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
+                    } else {
+                        val prev_n = n_exps.hd()
+                        val init_check = CExpBinary(COpCmp(CmpEQ), prev_n, calc_n_exp, (CTypBool, for_loc))
+                        (i_exps, n_exps, init_check :: init_checks, init_ccode)
+                    }
+                    val c_et = C_gen_types.ktyp2ctyp(et, for_loc)
+                    val c_et_ptr = make_ptr(c_et)
+                    val colname = pp(col_)
+                    val data_ptr = CExpCast(cexp_arrow(col_exp, get_id("data"), std_CTypVoidPtr), c_et_ptr, for_loc)
+                    val nullp = CExpCast(make_nullptr(for_loc), c_et_ptr, for_loc)
+                    val ptr_init = CExpTernary(col_exp, data_ptr, nullp, (c_et_ptr, for_loc))
+                    val ptr_id = gen_idc(cm_idx, "ptr_" + colname)
+                    val (ptr_exp, init_ccode) = create_cdefval(ptr_id, c_et_ptr,
+                        default_tempval_flags(), "", Some(ptr_init), init_ccode, for_loc)
+                    val inner_idx = i_exps.rev().hd()
+                    val get_vec_elem = CExpBinary(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc))
+                    val elem_flags =
+                        if is_ktyp_scalar(et) { default_tempvar_flags() }
+                        else { default_tempref_flags() }
+                    ([], i_exps, n_exps, for_checks, incr_exps,
+                    init_checks, init_ccode, pre_body_ccode,
+                    (iter_val_i, get_vec_elem, elem_flags) :: body_elems, post_checks)
                 | _ =>
                     throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
-                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, rrbvec or string"))
+                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, rrbvec, vector or string"))
                 }
             | _ => throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
                         "unsupported type of the for loop iteration domain"))

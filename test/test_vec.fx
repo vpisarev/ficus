@@ -156,6 +156,30 @@ TEST("fcvector.comprehension", fun()
     EXPECT_EQ(`array(stopped)`, [0, 10, 20])
 })
 
+TEST("fcvector.iteration", fun()
+{
+    val v = vector(for i <- 0:5 {i*i})
+    var s = 0
+    for x <- v { s += x }
+    EXPECT_EQ(`s`, 0 + 1 + 4 + 9 + 16)
+    // index binding
+    var chk = true
+    for x@i <- v { if x != i*i {chk = false} }
+    EXPECT_EQ(`chk`, true)
+    // comprehension with a vector source (read + write)
+    EXPECT_EQ(`array(vector(for x <- v {x + 1}))`, [1, 2, 5, 10, 17])
+    // iterating an empty vector does nothing
+    val e: int vector = []
+    var cnt = 0
+    for x <- e { cnt += 1 }
+    EXPECT_EQ(`cnt`, 0)
+    // reads and set are fine during iteration; post-loop mutation works
+    for x@i <- v { if i < 2 {v[i] = x + 100} }
+    EXPECT_EQ(`array(v)`, [100, 101, 4, 9, 16])
+    v.push_back(25)
+    EXPECT_EQ(`size(v)`, 6)
+})
+
 TEST("fcvector.str", fun()
 {
     val vecstr: string vector = []

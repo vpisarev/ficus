@@ -28947,6 +28947,9 @@ static int
    else if (FX_REC_VARIANT_TAG(etyp_1) == 17) {
       _fx_make_T2N10Ast__typ_ti(etyp_1->u.TypRRBVec, 1, &v_22);
    }
+   else if (FX_REC_VARIANT_TAG(etyp_1) == 18) {
+      _fx_make_T2N10Ast__typ_ti(etyp_1->u.TypVector, 1, &v_22);
+   }
    else if (FX_REC_VARIANT_TAG(etyp_1) == 11) {
       _fx_make_T2N10Ast__typ_ti(_fx_g22Ast_typecheck__TypChar, 1, &v_22);
    }

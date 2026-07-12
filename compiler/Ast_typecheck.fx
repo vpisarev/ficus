@@ -1657,6 +1657,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 }
                 (et, 1)
             | (_, TypRRBVec(et)) => (et, 1)
+            | (_, TypVector(et)) => (et, 1)
             | (_, TypString) => (TypChar, 1)
             | _ => throw compile_err(eloc, "unsupported iteration domain; \
                 it should be a range, array, list, string, tuple or a record")

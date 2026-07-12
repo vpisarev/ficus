@@ -144,6 +144,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 | KTypArray(_, et) => et
                 | KTypList(et) => et
                 | KTypRRBVec(et) => et
+                | KTypVector(et) => et
                 | KTypString => KTypChar
                 | _ => throw compile_err(eloc, "unsupported type of the domain expression in for loop")
                 }
