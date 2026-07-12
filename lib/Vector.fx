@@ -135,9 +135,6 @@ fun pop_back(v: 't vector): void
 
 // ------------------------- conversion / compare / print -------------------------
 
-// copy the vector's elements into a plain array
-fun array(v: 't vector): 't [] { val n = size(v); [for i <- 0:n {v[i]}] }
-
 operator == (a: 't vector, b: 't vector): bool
 {
     val n = size(a)

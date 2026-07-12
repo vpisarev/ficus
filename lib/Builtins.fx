@@ -1173,6 +1173,7 @@ fun array((m: int, n: int, n2: int), x: 't): 't [,,] = [for i <- 0:m for j <- 0:
 fun array((m: int, n: int, n2: int, n3: int), x: 't): 't [,,,] = [for i <- 0:m for j <- 0:n for k <- 0:n2 for l <- 0:n3 {x}]
 fun array(l: 't list): 't [] = [for x <- l {x}]
 fun array(v: 't rrbvec): 't [] = [for x <- v {x}]
+fun array(v: 't vector): 't [] { val n = size(v); [for i <- 0:n {v[i]}] }
 fun array(s: string): char [] = [for x <- s {x}]
 
 // basically, this is violation of the type system; use with care

@@ -38,7 +38,7 @@ TEST("fcvector.write", fun()
     val v: int vector = []
     for i <- 0:5 { v.push_back(i) }
     v[0] = 100; v[2] = 300; v[4] = 500
-    EXPECT_EQ(`Vector.array(v)`, [100, 1, 300, 3, 500])
+    EXPECT_EQ(`array(v)`, [100, 1, 300, 3, 500])
     var sink = 0
     EXPECT_THROWS(fun() {v[5] = 9; sink = v[5]}, OutOfRangeError)
     ignore(sink)
@@ -56,13 +56,13 @@ TEST("fcvector.ops", fun()
     val v = Vector.make(3, 7)
     EXPECT_EQ(`size(v)`, 3)
     EXPECT_EQ(`Vector.capacity(v) >= 3`, true)
-    EXPECT_EQ(`Vector.array(v)`, [7, 7, 7])
+    EXPECT_EQ(`array(v)`, [7, 7, 7])
     v.push_back(9)
     v.resize(6, 0)
-    EXPECT_EQ(`Vector.array(v)`, [7, 7, 7, 9, 0, 0])
+    EXPECT_EQ(`array(v)`, [7, 7, 7, 9, 0, 0])
     EXPECT_EQ(`v.back()`, 0)
     v.pop_back()
-    EXPECT_EQ(`Vector.array(v)`, [7, 7, 7, 9, 0])
+    EXPECT_EQ(`array(v)`, [7, 7, 7, 9, 0])
     v.clear()
     EXPECT_EQ(`size(v)`, 0)
     EXPECT_EQ(`empty(v)`, true)
@@ -82,32 +82,32 @@ TEST("fcvector.ops", fun()
     EXPECT_EQ(`size(s)`, 5)
     EXPECT_EQ(`s[4]`, "zz")
     s.resize(2, "")
-    EXPECT_EQ(`Vector.array(s)`, ["ab", "ab"])
+    EXPECT_EQ(`array(s)`, ["ab", "ab"])
 })
 
 TEST("fcvector.slice", fun()
 {
     val v: int vector = []
     for i <- 0:10 { v.push_back(i) }
-    EXPECT_EQ(`Vector.array(v[2:5])`, [2, 3, 4])
-    EXPECT_EQ(`Vector.array(v[:3])`, [0, 1, 2])
-    EXPECT_EQ(`Vector.array(v[7:])`, [7, 8, 9])
-    EXPECT_EQ(`Vector.array(v[:])`, Vector.array(v))      // flatten = full copy
-    EXPECT_EQ(`Vector.array(v[::-1])`, [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
-    EXPECT_EQ(`Vector.array(v[::2])`, [0, 2, 4, 6, 8])
-    EXPECT_EQ(`Vector.array(v[1:8:3])`, [1, 4, 7])        // arbitrary stride
+    EXPECT_EQ(`array(v[2:5])`, [2, 3, 4])
+    EXPECT_EQ(`array(v[:3])`, [0, 1, 2])
+    EXPECT_EQ(`array(v[7:])`, [7, 8, 9])
+    EXPECT_EQ(`array(v[:])`, array(v))      // flatten = full copy
+    EXPECT_EQ(`array(v[::-1])`, [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+    EXPECT_EQ(`array(v[::2])`, [0, 2, 4, 6, 8])
+    EXPECT_EQ(`array(v[1:8:3])`, [1, 4, 7])        // arbitrary stride
 
     // a slice / flatten is a COPY: mutating it must not touch the source
     val s = v[2:5]
     s[0] = 999
-    EXPECT_EQ(`Vector.array(s)`, [999, 3, 4])
-    EXPECT_EQ(`Vector.array(v[2:5])`, [2, 3, 4])
+    EXPECT_EQ(`array(s)`, [999, 3, 4])
+    EXPECT_EQ(`array(v[2:5])`, [2, 3, 4])
 
     // complex elements copied on slice
     val w: string vector = []
     for x <- ["a", "b", "c", "d"] { w.push_back(x) }
-    EXPECT_EQ(`Vector.array(w[1:3])`, ["b", "c"])
-    EXPECT_EQ(`Vector.array(w[::-1])`, ["d", "c", "b", "a"])
+    EXPECT_EQ(`array(w[1:3])`, ["b", "c"])
+    EXPECT_EQ(`array(w[::-1])`, ["d", "c", "b", "a"])
 })
 
 TEST("rrbvec.simple", fun()
