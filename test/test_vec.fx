@@ -148,6 +148,12 @@ TEST("fcvector.comprehension", fun()
     val vv = vector(for i <- 0:3 {vector(for j <- 0:i {j})})
     EXPECT_EQ(`size(vv)`, 3)
     EXPECT_EQ(`array(vv[2])`, [0, 1])
+
+    // break / continue: the size is trimmed to the count actually written
+    val odds_skipped = vector(for i <- 0:10 { if i % 2 == 1 {continue}; i })
+    EXPECT_EQ(`array(odds_skipped)`, [0, 2, 4, 6, 8])
+    val stopped = vector(for i <- 0:10 { if i == 3 {break}; i*10 })
+    EXPECT_EQ(`array(stopped)`, [0, 10, 20])
 })
 
 TEST("fcvector.str", fun()
