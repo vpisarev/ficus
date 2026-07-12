@@ -270,3 +270,29 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
 `lib/NN/OpQuantized.run_dequantize` int8 scalar path yields 0 on Linux/x86.
 Known DL-engine defect, unrelated to the compiler; fenced by commenting the
 TEST block in `test/test_nn_quant.fx`.
+
+## FB-024  order-dependent generic-return inference pollution  [OPEN — fenced]
+A generic stdlib function whose return type is bound only through a closure
+argument (`Vec.map`/`mapi : ('t,int)->'r ... -> 'r vector`, `foldl`) can have its
+return-type inference *polluted* by an earlier, unrelated instantiation of a
+sibling generic in the same module, so a later call fails to unify the element
+type. Minimal repro:
+```
+import Vector
+fun t1(): void { val v: int vector = []; v.push_back(1); v[0] = 2 }
+fun t2(): void {
+    val last: float vector = []
+    val curr = last.mapi(fun(x, j) { if j == 0 {1.f} else {last[j-1] + last[j]} })
+    ignore(size(curr))
+}
+t1(); t2()   // ERROR at t2: "if() expression should have the same type as its
+             // branches" (1.f : float vs last[j] : <polluted>)
+```
+- **Order-dependent**: swapping to `t2(); t1()` type-checks cleanly. So it is not
+  a real type error — an earlier generic instantiation leaves a shared type var
+  in a state the later inference wrongly reuses (the "inferred/free return steals
+  under-constrained sites" class, CLAUDE.md — here *across* definitions).
+- **Workaround (used in `test/test_vec.fx` fcvector.binomial)**: annotate the
+  result — `val curr: float vector = last.mapi(...)` — which pins the return type
+  before the polluted var is consulted. Not fixed (out of scope for newvec-1;
+  `map`/`mapi`/`foldl` are themselves temporary until vector comprehensions).

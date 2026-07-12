@@ -135,6 +135,36 @@ fun pop_back(v: 't vector): void
 
 // ------------------------- conversion / compare / print -------------------------
 
+// TEMPORARY (until vector comprehensions, Step 4): map/mapi/foldl. Once
+// `vector(for x <- v {...})` exists these become one-liners / disappear.
+
+// map each element through f into a fresh vector
+fun map(v: 't vector, f: 't -> 'r): 'r vector
+{
+    val n = size(v)
+    val res: 'r vector = []
+    reserve(res, n)
+    for i <- 0:n { res.push_back(f(v[i])) }
+    res
+}
+
+// map each (element, index) through f into a fresh vector
+fun mapi(v: 't vector, f: ('t, int) -> 'r): 'r vector
+{
+    val n = size(v)
+    val res: 'r vector = []
+    reserve(res, n)
+    for i <- 0:n { res.push_back(f(v[i], i)) }
+    res
+}
+
+// left fold: res = f(v[n-1], ... f(v[1], f(v[0], init)))
+fun foldl(v: 't vector, f: ('t, 'r) -> 'r, init: 'r): 'r
+{
+    val n = size(v)
+    fold res = init for i <- 0:n { res = f(v[i], res) }
+}
+
 operator == (a: 't vector, b: 't vector): bool
 {
     val n = size(a)
