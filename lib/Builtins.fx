@@ -1263,3 +1263,19 @@ fun hash(x: {...}): hash_t =
         }
     }
 }
+
+fun __any_element__(): 't
+{
+    fun __any_element__(a: 't []): 't
+    @ccode {
+        fx_copy_t copy_f = a->copy_elem;
+        size_t elemsize = a->elemsize;
+        if (!copy_f) {
+            memcpy(fx_result, fx_zerobuf, elemsize);
+        } else {
+            fx_copy_arr_elems(fx_zerobuf, fx_result, 1, elemsize, copy_f);
+        }
+        return FX_OK;
+    }
+    __any_element__([] : 't [])
+}

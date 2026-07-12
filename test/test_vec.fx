@@ -7,6 +7,7 @@
 // comprehensions, iteration, element and slice extraction, concatentation
 
 from UTest import *
+import Vec
 
 TEST("vector.simple", fun()
 {
@@ -96,4 +97,40 @@ TEST("vector.find", fun()
         EXPECT_EQ(`simple_vec.wrap[big_idx]`, `simple_vec[wrap_idx]`)
         EXPECT_EQ(`simple_vec.zero[big_idx]`, `if big_idx == clip_idx {big_idx} else {0}`)
     }
+})
+
+TEST("vec.binomial", fun()
+{
+    val emptyvec: float Vec.t = Vec.make(0)
+    val myvecs: (float Vec.t) Vec.t = Vec.make(0)
+    for i <- 1:10 {
+        val last = if myvecs.empty() {emptyvec} else {myvecs.back()}
+        val curr = last.mapi(fun(x, i) {
+            if i == 0 {1.f} else {last.at(i-1) + last.at(i)}
+        })
+        curr.push_back(1.f)
+        myvecs.push_back(curr)
+    }
+
+    fun sum(v: 't Vec.t, v0: 'r): 'r = v.foldl(fun (x, s) {x + s}, v0)
+    for i <- 0:myvecs.size() {
+        val expected_sum = double(1 << i)
+        EXPECT_EQ(`sum(myvecs.at(i), 0.)`, expected_sum)
+    }
+})
+
+TEST("vec.str", fun()
+{
+    val vecstr : string Vec.t = Vec.make(0)
+    vecstr.push_back("a")
+    vecstr.push_back("bc")
+    vecstr.push_back("def")
+    vecstr.push_back("ghij")
+    vecstr.push_back("klmno")
+    vecstr.push_back("pqrstu")
+    vecstr.push_back("vwxyz")
+    EXPECT_EQ(Vec.array(vecstr.slicefrom(0,2)), ["a", "def", "klmno", "vwxyz"])
+    EXPECT_EQ(vecstr.slicefrom(0,2), Vec.make(["a", "def", "klmno", "vwxyz"]))
+    EXPECT_EQ(Vec.array(vecstr.rev()), ["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"])
+    EXPECT_EQ(vecstr.rev(), Vec.make(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
 })

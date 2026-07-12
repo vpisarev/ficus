@@ -774,4 +774,5 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/system.impl.h"
 #include "ficus/impl/gemm.impl.h"
 #include "ficus/impl/rrbvec.impl.h"
+#include "ficus/impl/vec.impl.h"
 #include "ficus/impl/rpmalloc.impl.h"

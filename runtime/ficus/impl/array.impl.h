@@ -153,22 +153,44 @@ void fx_arr_nextiter(fx_arriter_t* it)
     }
 }
 
-static void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_t free_f)
+void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_t free_f)
 {
-    char* elems = (char*)elems_;
-    for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
+    if (free_f) {
+        char* elems = (char*)elems_;
+        for(int_ i = 0; i < nelems; i++) free_f(elems + i*elemsize);
+    }
 }
 
-static void fx_copy_arr_elems(const void* src_, void* dst_, int_ nelems, size_t elemsize, fx_copy_t copy_f)
+void fx_copy_arr_elems(const void* src_, void* dst_, int_ nelems, size_t elemsize, fx_copy_t copy_f)
 {
-    if(!copy_f)
+    if (nelems <= 0)
+        return;
+    if(!copy_f) {
+        //printf("fx_copy_arr_elems: copying %zu bytes to %p\n", nelems*elemsize, dst_);
         memcpy(dst_, src_, nelems*elemsize);
+    }
     else if(copy_f == fx_copy_ptr) {
         fx_ref_simple_t *src = (fx_ref_simple_t*)src_, *dst = (fx_ref_simple_t*)dst_;
         for(int_ i = 0; i < nelems; i++) FX_COPY_PTR(src[i], dst+i);
     } else {
         char *src = (char*)src_, *dst = (char*)dst_;
         for(int_ i = 0; i < nelems; i++) copy_f(src + i*elemsize, dst + i*elemsize);
+    }
+}
+
+void fx_set_arr_elems(const void* elem_, void* dst_, int_ nelems, size_t elemsize, fx_copy_t copy_f)
+{
+    if(!elem_) {
+        memset(dst_, 0, nelems*elemsize);
+    } else if (!copy_f) {
+        for (int_ i = 0; i < nelems; i++)
+            memcpy((char*)dst_ + i*elemsize, elem_, elemsize);
+    } else if(copy_f == fx_copy_ptr) {
+        fx_ref_simple_t elem = (fx_ref_simple_t)elem_, *dst = (fx_ref_simple_t*)dst_;
+        for(int_ i = 0; i < nelems; i++) FX_COPY_PTR(elem, dst+i);
+    } else {
+        char *elem = (char*)elem_, *dst = (char*)dst_;
+        for(int_ i = 0; i < nelems; i++) copy_f(elem, dst + i*elemsize);
     }
 }
 
@@ -312,6 +334,8 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
 {
     if (ndims <= 0 || ndims > FX_MAX_DIMS)
         FX_FAST_THROW_RET(FX_EXN_DimError);
+    if (elemsize > FX_ZEROBUF_MAX_SIZE)
+        FX_FAST_THROW_RET(FX_EXN_SizeError);
     if ((copy_elem != 0) != (free_elem != 0))
         FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
     size_t netw = elemsize;
@@ -354,6 +378,7 @@ int fx_make_arr( int ndims, const int_* size, size_t elemsize,
     arr->ndims = ndims;
     arr->free_elem = free_elem;
     arr->copy_elem = copy_elem;
+    arr->elemsize = elemsize;
 
     return FX_OK;
 }
@@ -523,6 +548,7 @@ int fx_subarr(const fx_arr_t* arr, const int_* ranges, fx_arr_t* subarr)
     subarr->flags = arr->flags & (!need_copy && state > 1 ? ~FX_ARR_CONTINUOUS : -1);
     subarr->free_elem = arr->free_elem;
     subarr->copy_elem = arr->copy_elem;
+    subarr->elemsize = arr->elemsize;
 
     if (total == 0 && subarr->ndims == 0) {
         subarr->rc = 0;
