@@ -3,7 +3,7 @@ from Math import *
 from Complex import *
 from Array import *
 import List
-import Vector
+import Rrbvec
 import Char
 import String
 fun tailrec.fact@g0(tailrec.n@g1: int, tailrec.acc@g2: int): ((int, int) -> int) =

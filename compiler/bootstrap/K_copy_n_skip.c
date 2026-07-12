@@ -718,7 +718,7 @@ typedef struct _fx_N10Ast__typ_t_data_t {
       int_ TypFloat;
       struct _fx_T2LN10Ast__typ_tN10Ast__typ_t TypFun;
       struct _fx_N10Ast__typ_t_data_t* TypList;
-      struct _fx_N10Ast__typ_t_data_t* TypVector;
+      struct _fx_N10Ast__typ_t_data_t* TypRRBVec;
       struct _fx_LN10Ast__typ_t_data_t* TypTuple;
       struct _fx_N10Ast__typ_t_data_t* TypRef;
       struct _fx_T2iN10Ast__typ_t TypArray;
@@ -1256,7 +1256,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t KTypRecord;
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
-      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -3250,7 +3250,7 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
       case 16:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRRBVec); break;
       case 18:
          _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
@@ -4844,7 +4844,7 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 17:
          _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
       case 20:

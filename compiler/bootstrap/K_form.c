@@ -727,7 +727,7 @@ typedef struct _fx_N10Ast__typ_t_data_t {
       int_ TypFloat;
       struct _fx_T2LN10Ast__typ_tN10Ast__typ_t TypFun;
       struct _fx_N10Ast__typ_t_data_t* TypList;
-      struct _fx_N10Ast__typ_t_data_t* TypVector;
+      struct _fx_N10Ast__typ_t_data_t* TypRRBVec;
       struct _fx_LN10Ast__typ_t_data_t* TypTuple;
       struct _fx_N10Ast__typ_t_data_t* TypRef;
       struct _fx_T2iN10Ast__typ_t TypArray;
@@ -1368,7 +1368,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t KTypRecord;
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
-      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -3194,7 +3194,7 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
       case 16:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRRBVec); break;
       case 18:
          _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
@@ -4920,7 +4920,7 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 17:
          _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
       case 20:
@@ -6979,13 +6979,13 @@ FX_EXTERN_C int _fx_M6K_formFM9KTypArrayN14K_form__ktyp_t2iN14K_form__ktyp_t(
    return 0;
 }
 
-FX_EXTERN_C int _fx_M6K_formFM10KTypVectorN14K_form__ktyp_t1N14K_form__ktyp_t(
+FX_EXTERN_C int _fx_M6K_formFM10KTypRRBVecN14K_form__ktyp_t1N14K_form__ktyp_t(
    struct _fx_N14K_form__ktyp_t_data_t* arg0,
    struct _fx_N14K_form__ktyp_t_data_t** fx_result)
 {
    FX_MAKE_RECURSIVE_VARIANT_IMPL_START(_fx_N14K_form__ktyp_t);
    v->tag = 18;
-   FX_COPY_PTR(arg0, &v->u.KTypVector);
+   FX_COPY_PTR(arg0, &v->u.KTypRRBVec);
    return 0;
 }
 
@@ -10407,9 +10407,9 @@ FX_EXTERN_C int _fx_M6K_formFM9walk_ktypN14K_form__ktyp_t3N14K_form__ktyp_tR10As
    if (tag_0 == 18) {
       _fx_N14K_form__ktyp_t v_22 = 0;
       FX_CALL(
-         _fx_M6K_formFM10walk_ktyp_N14K_form__ktyp_t3N14K_form__ktyp_tRM9k_callb_tR10Ast__loc_t(t_0->u.KTypVector, callb_0,
+         _fx_M6K_formFM10walk_ktyp_N14K_form__ktyp_t3N14K_form__ktyp_tRM9k_callb_tR10Ast__loc_t(t_0->u.KTypRRBVec, callb_0,
             loc_0, &v_22, 0), _fx_catch_15);
-      FX_CALL(_fx_M6K_formFM10KTypVectorN14K_form__ktyp_t1N14K_form__ktyp_t(v_22, fx_result), _fx_catch_15);
+      FX_CALL(_fx_M6K_formFM10KTypRRBVecN14K_form__ktyp_t1N14K_form__ktyp_t(v_22, fx_result), _fx_catch_15);
 
    _fx_catch_15: ;
       if (v_22) {
@@ -13198,7 +13198,7 @@ FX_EXTERN_C int _fx_M6K_formFM9fold_ktypv3N14K_form__ktyp_tR10Ast__loc_tRM14k_fo
    }
    if (tag_0 == 18) {
       FX_CALL(
-         _fx_M6K_formFM10fold_ktyp_v3N14K_form__ktyp_tRM14k_fold_callb_tR10Ast__loc_t(t_0->u.KTypVector, callb_0, loc_0, 0),
+         _fx_M6K_formFM10fold_ktyp_v3N14K_form__ktyp_tRM14k_fold_callb_tR10Ast__loc_t(t_0->u.KTypRRBVec, callb_0, loc_0, 0),
          _fx_catch_13);
 
    _fx_catch_13: ;
@@ -16377,8 +16377,8 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
    }
    if (tag_0 == 18) {
       fx_str_t v_8 = {0};
-      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypVector, true, &v_8, 0), _fx_catch_11);
-      fx_str_t slit_27 = FX_MAKE_STR(" vector");
+      FX_CALL(_fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(t_0->u.KTypRRBVec, true, &v_8, 0), _fx_catch_11);
+      fx_str_t slit_27 = FX_MAKE_STR(" rrbvec");
       {
          const fx_str_t strs_8[] = { v_8, slit_27 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_8, 2, fx_result), _fx_catch_11);

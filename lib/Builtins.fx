@@ -367,9 +367,9 @@ fun string(l: 't list): string = join_embrace("[", "]", ", ", [for x <- l {repr(
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
-fun string(v: 't vector): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+fun string(v: 't rrbvec): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
-@pure fun string(v: char vector): string
+@pure fun string(v: char rrbvec): string
 @ccode {
     int_ i, size = v->size;
     int fx_status = fx_make_str(0, size, fx_result);
@@ -405,7 +405,7 @@ fun string(typ: scalar_t): string
     | Type_Char => "Char"
 }
 
-fun repr(v: char vector): string =
+fun repr(v: char rrbvec): string =
     join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 type format_t =
@@ -508,8 +508,8 @@ fun string(a: 't [,,], fmt: format_t): string
 
 fun string(l: 't list, fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- l {string(x, fmt)}])
 fun string(a: char [], fmt: format_t): string = string(string(a), fmt)
-fun string(v: 't vector, fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
-fun string(v: char vector, fmt: format_t): string = string(string(v), fmt)
+fun string(v: 't rrbvec, fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
+fun string(v: char rrbvec, fmt: format_t): string = string(string(v), fmt)
 
 @pure operator * (c: char, n: int): string
 @ccode {
@@ -555,13 +555,13 @@ operator <=> (a: 't list, b: 't list): int
     | _ => 0
 }
 
-operator == (a: 't vector, b: 't vector): bool
+operator == (a: 't rrbvec, b: 't rrbvec): bool
 {
     size(a) == size(b) &&
     all(for xa <- a, xb <- b {xa == xb})
 }
 
-operator <=> (a: 't vector, b: 't vector): int
+operator <=> (a: 't rrbvec, b: 't rrbvec): int
 {
     val na = size(a), nb = size(b)
     val n = min(na, nb)
@@ -1124,7 +1124,7 @@ fun print(l: 't list): void
     print("]")
 }
 
-fun print(v: 't vector): void
+fun print(v: 't rrbvec): void
 {
     print("[")
     for x@i <- v {
@@ -1164,7 +1164,7 @@ fun println(a: 't): void { print(a); print("\n") }
 
 fun list(a: 't []): 't list = [:: for x <- a {x}]
 fun list(s: string): char list = [:: for x <- s {x}]
-fun list(v: 't vector): 't list = [:: for x <- v {x}]
+fun list(v: 't rrbvec): 't list = [:: for x <- v {x}]
 
 fun array(): 't [] = []
 fun array(n: int, x: 't): 't [] = [for i <- 0:n {x}]
@@ -1172,7 +1172,7 @@ fun array((m: int, n: int), x: 't): 't [,] = [for i <- 0:m for j <- 0:n {x}]
 fun array((m: int, n: int, n2: int), x: 't): 't [,,] = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
 fun array((m: int, n: int, n2: int, n3: int), x: 't): 't [,,,] = [for i <- 0:m for j <- 0:n for k <- 0:n2 for l <- 0:n3 {x}]
 fun array(l: 't list): 't [] = [for x <- l {x}]
-fun array(v: 't vector): 't [] = [for x <- v {x}]
+fun array(v: 't rrbvec): 't [] = [for x <- v {x}]
 fun array(s: string): char [] = [for x <- s {x}]
 
 // basically, this is violation of the type system; use with care
@@ -1181,12 +1181,12 @@ fun array(s: string): char [] = [for x <- s {x}]
     fx_copy_arr(x, fx_result);
 }
 
-fun vector(): 't vector = []
-fun vector(l: 't list): 't vector = vector(for x <- l {x})
-fun vector(a: 't [+]): 't vector = vector(for x <- a {x})
-fun vector(s: string): char vector = vector(for x <- s {x})
+fun rrbvec(): 't rrbvec = []
+fun rrbvec(l: 't list): 't rrbvec = rrbvec(for x <- l {x})
+fun rrbvec(a: 't [+]): 't rrbvec = rrbvec(for x <- a {x})
+fun rrbvec(s: string): char rrbvec = rrbvec(for x <- s {x})
 
-fun size(a: 't vector): int = __intrin_size__(a)
+fun size(a: 't rrbvec): int = __intrin_size__(a)
 
 @ccode {
 

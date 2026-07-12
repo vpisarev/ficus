@@ -3,7 +3,7 @@ from Math import *
 from Complex import *
 from Array import *
 import List
-import Vector
+import Rrbvec
 import Char
 import String
 fun comprehension.sqr@g0(comprehension.x@g1: int): (int -> int) = { (<int>comprehension.x@g1 * <int>comprehension.x@g1) }

@@ -611,7 +611,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t KTypRecord;
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
-      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -2024,7 +2024,7 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 17:
          _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
       case 20:
@@ -4096,10 +4096,10 @@ FX_EXTERN_C int _fx_M8K_mangleFM15__eq_variants__B2N14K_form__ktyp_tN14K_form__k
       }
       if (FX_REC_VARIANT_TAG(b_2) == 18) {
          if (FX_REC_VARIANT_TAG(a_2) == 18) {
-            _fx_N14K_form__ktyp_t* a0_1 = &a_2->u.KTypVector;
+            _fx_N14K_form__ktyp_t* a0_1 = &a_2->u.KTypRRBVec;
             _fx_free_N14K_form__ktyp_t(&a_1);
             FX_COPY_PTR(*a0_1, &a_1);
-            _fx_N14K_form__ktyp_t* b0_1 = &b_2->u.KTypVector;
+            _fx_N14K_form__ktyp_t* b0_1 = &b_2->u.KTypRRBVec;
             _fx_free_N14K_form__ktyp_t(&b_1);
             FX_COPY_PTR(*b0_1, &b_1);
             goto _fx_endmatch_0;
@@ -6518,9 +6518,9 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
       }
       if (tag_0 == 18) {
          _fx_LS v_22 = 0;
-         fx_str_t slit_33 = FX_MAKE_STR("V");
+         fx_str_t slit_33 = FX_MAKE_STR("W");
          FX_CALL(_fx_cons_LS(&slit_33, result_3, true, &v_22), _fx_catch_35);
-         _fx_N14K_form__ktyp_t* t_7 = &t_2->u.KTypVector;
+         _fx_N14K_form__ktyp_t* t_7 = &t_2->u.KTypRRBVec;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*t_7, &t_1);
          _fx_free_LS(&result_2);

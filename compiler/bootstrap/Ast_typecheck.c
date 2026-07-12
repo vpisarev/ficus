@@ -669,7 +669,7 @@ typedef struct _fx_N10Ast__typ_t_data_t {
       int_ TypFloat;
       struct _fx_T2LN10Ast__typ_tN10Ast__typ_t TypFun;
       struct _fx_N10Ast__typ_t_data_t* TypList;
-      struct _fx_N10Ast__typ_t_data_t* TypVector;
+      struct _fx_N10Ast__typ_t_data_t* TypRRBVec;
       struct _fx_LN10Ast__typ_t_data_t* TypTuple;
       struct _fx_N10Ast__typ_t_data_t* TypRef;
       struct _fx_T2iN10Ast__typ_t TypArray;
@@ -2999,7 +2999,7 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
       case 16:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRRBVec); break;
       case 18:
          _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
@@ -6702,7 +6702,7 @@ FX_EXTERN_C int
    struct _fx_T2N10Ast__typ_tR10Ast__loc_t*,
    struct _fx_N10Ast__exp_t_data_t**);
 
-FX_EXTERN_C int _fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(
+FX_EXTERN_C int _fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(
    struct _fx_N10Ast__typ_t_data_t*,
    struct _fx_N10Ast__typ_t_data_t**);
 
@@ -8313,10 +8313,10 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM15__eq_variants__B2N10Ast__typ_tN10Ast__ty
       }
       if (FX_REC_VARIANT_TAG(b_2) == 17) {
          if (FX_REC_VARIANT_TAG(a_2) == 17) {
-            _fx_N10Ast__typ_t* a0_2 = &a_2->u.TypVector;
+            _fx_N10Ast__typ_t* a0_2 = &a_2->u.TypRRBVec;
             _fx_free_N10Ast__typ_t(&a_1);
             FX_COPY_PTR(*a0_2, &a_1);
-            _fx_N10Ast__typ_t* b0_2 = &b_2->u.TypVector;
+            _fx_N10Ast__typ_t* b0_2 = &b_2->u.TypRRBVec;
             _fx_free_N10Ast__typ_t(&b_1);
             FX_COPY_PTR(*b0_2, &b_1);
             goto _fx_endmatch_0;
@@ -10971,7 +10971,7 @@ static int _fx_M13Ast_typecheckFM6occursB2rNt6option1N10Ast__typ_tN10Ast__typ_t(
       if (tag_0 == 17) {
          _fx_free_rNt6option1N10Ast__typ_t(&r1_1);
          FX_COPY_PTR(r1_2, &r1_1);
-         _fx_N10Ast__typ_t* t2__1 = &t2_2->u.TypVector;
+         _fx_N10Ast__typ_t* t2__1 = &t2_2->u.TypRRBVec;
          _fx_free_N10Ast__typ_t(&t2_1);
          FX_COPY_PTR(*t2__1, &t2_1);
          goto _fx_endmatch_0;
@@ -11455,10 +11455,10 @@ static int _fx_M13Ast_typecheckFM12maybe_unify_B3N10Ast__typ_tN10Ast__typ_tR10As
       }
       if (FX_REC_VARIANT_TAG(t2_2) == 17) {
          if (FX_REC_VARIANT_TAG(t1_2) == 17) {
-            _fx_N10Ast__typ_t* et1_1 = &t1_2->u.TypVector;
+            _fx_N10Ast__typ_t* et1_1 = &t1_2->u.TypRRBVec;
             _fx_free_N10Ast__typ_t(&t1_1);
             FX_COPY_PTR(*et1_1, &t1_1);
-            _fx_N10Ast__typ_t* et2_1 = &t2_2->u.TypVector;
+            _fx_N10Ast__typ_t* et2_1 = &t2_2->u.TypRRBVec;
             _fx_free_N10Ast__typ_t(&t2_1);
             FX_COPY_PTR(*et2_1, &t2_1);
             loc_1 = loc_2;
@@ -22752,7 +22752,7 @@ FX_EXTERN_C int
             FX_CALL(_fx_M13Ast_typecheckFM6stringS1S(&v_134, &v_135, 0), _fx_catch_58);
             FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(etyp1_6, &v_136, 0), _fx_catch_58);
             FX_CALL(_fx_M13Ast_typecheckFM6stringS1S(&v_136, &v_137, 0), _fx_catch_58);
-            fx_str_t slit_45 = FX_MAKE_STR("the type of vector concatenation result \'");
+            fx_str_t slit_45 = FX_MAKE_STR("the type of rrbvec concatenation result \'");
             fx_str_t slit_46 = FX_MAKE_STR("\' is different from operands\' type \'");
             fx_str_t slit_47 = FX_MAKE_STR("\'");
             {
@@ -24198,7 +24198,7 @@ FX_EXTERN_C int
                goto _fx_endmatch_20;
             }
             fx_exn_t v_242 = {0};
-            fx_str_t slit_105 = FX_MAKE_STR("the argument of __intrin_size__ must be a string, a vector or an array");
+            fx_str_t slit_105 = FX_MAKE_STR("the argument of __intrin_size__ must be a string, a rrbvec or an array");
             FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_105, &v_242, 0), _fx_catch_90);
             FX_THROW(&v_242, false, _fx_catch_90);
 
@@ -24878,7 +24878,7 @@ FX_EXTERN_C int
                         fx_str_t slit_114 = FX_MAKE_STR("List"); fx_copy_str(&slit_114, &mstr_0);
                      }
                      else if (tag_10 == 17) {
-                        fx_str_t slit_115 = FX_MAKE_STR("Vector"); fx_copy_str(&slit_115, &mstr_0);
+                        fx_str_t slit_115 = FX_MAKE_STR("Rrbvec"); fx_copy_str(&slit_115, &mstr_0);
                      }
                      else if (tag_10 == 11) {
                         fx_str_t slit_116 = FX_MAKE_STR("String"); fx_copy_str(&slit_116, &mstr_0);
@@ -25113,11 +25113,11 @@ FX_EXTERN_C int
                               _fx_N10Ast__typ_t v_303 = 0;
                               _fx_LN10Ast__exp_t v_304 = 0;
                               _fx_N10Ast__exp_t result_36 = 0;
-                              FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(v_300->u.TypVector, &v_303),
+                              FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(v_300->u.TypRRBVec, &v_303),
                                  _fx_catch_119);
                               fx_str_t slit_124 =
                                  FX_MAKE_STR(
-                                    "the result of flatten operation ([:]) applied to vector must be a vector of the same type");
+                                    "the result of flatten operation ([:]) applied to rrbvec must be a rrbvec of the same type");
                               FX_CALL(
                                  _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tS(etyp_0, v_303, &eloc_0,
                                     &slit_124, 0), _fx_catch_119);
@@ -25369,9 +25369,9 @@ FX_EXTERN_C int
                if (FX_REC_VARIANT_TAG(v_324) == 17) {
                   fx_str_t slit_130 =
                      FX_MAKE_STR(
-                        "incorrect type of the vector element access operation; it gives \'{typ2str(et)}\', but \'{typ2str(etyp)}\' is expected");
+                        "incorrect type of the rrbvec element access operation; it gives \'{typ2str(et)}\', but \'{typ2str(etyp)}\' is expected");
                   FX_CALL(
-                     _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tS(etyp_0, v_324->u.TypVector,
+                     _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tS(etyp_0, v_324->u.TypRRBVec,
                         &new_aloc_0, &slit_130, 0), _fx_catch_128);
 
                _fx_catch_128: ;
@@ -25384,10 +25384,10 @@ FX_EXTERN_C int
                _fx_N10Ast__typ_t v_325 = v_307.t2;
                if (FX_REC_VARIANT_TAG(v_325) == 17) {
                   _fx_N10Ast__typ_t v_326 = 0;
-                  FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(v_325->u.TypVector, &v_326), _fx_catch_129);
+                  FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(v_325->u.TypRRBVec, &v_326), _fx_catch_129);
                   fx_str_t slit_131 =
                      FX_MAKE_STR(
-                        "incorrect type of the vector range access operation; it gives \'{typ2str(TypVector(et))}\', but \'{typ2str(etyp)}\' is expected");
+                        "incorrect type of the rrbvec range access operation; it gives \'{typ2str(TypRRBVec(et))}\', but \'{typ2str(etyp)}\' is expected");
                   FX_CALL(
                      _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tS(etyp_0, v_326, &new_aloc_0,
                         &slit_131, 0), _fx_catch_129);
@@ -26123,7 +26123,7 @@ FX_EXTERN_C int
             fx_str_t slit_152 = FX_MAKE_STR("tuple"); fx_copy_str(&slit_152, &coll_name_0);
          }
          else if (make_vector_0) {
-            fx_str_t slit_153 = FX_MAKE_STR("vector"); fx_copy_str(&slit_153, &coll_name_0);
+            fx_str_t slit_153 = FX_MAKE_STR("rrbvec"); fx_copy_str(&slit_153, &coll_name_0);
          }
          else {
             fx_str_t slit_154 = FX_MAKE_STR("array"); fx_copy_str(&slit_154, &coll_name_0);
@@ -26235,7 +26235,7 @@ FX_EXTERN_C int
                FX_COPY_PTR(l_exp_0, &mk_struct_exp_0);
             }
             else if (make_vector_0) {
-               FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(elem_typ_0, &v_362), _fx_catch_157);
+               FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(elem_typ_0, &v_362), _fx_catch_157);
                _fx_make_T2N10Ast__typ_tR10Ast__loc_t(v_362, &eloc_0, &v_363);
                FX_CALL(
                   _fx_M3AstFM11ExpMkVectorN10Ast__exp_t2LN10Ast__exp_tT2N10Ast__typ_tRM5loc_t(elems_0, &v_363,
@@ -27154,8 +27154,8 @@ FX_EXTERN_C int
                      }
                   }
                   if (tag_13 == 17) {
-                     fx_str_t slit_193 = FX_MAKE_STR("vector");
-                     _fx_make_T2SN10Ast__typ_t(&slit_193, v_452->u.TypVector, &v_453);
+                     fx_str_t slit_193 = FX_MAKE_STR("rrbvec");
+                     _fx_make_T2SN10Ast__typ_t(&slit_193, v_452->u.TypRRBVec, &v_453);
                      goto _fx_endmatch_33;
                   }
                   if (tag_13 == 16) {
@@ -27235,7 +27235,7 @@ FX_EXTERN_C int
             FX_CALL(_fx_M3AstFM11get_exp_ctxT2N10Ast__typ_tRM5loc_t1N10Ast__exp_t(elem_1, &v_461, 0), _fx_catch_176);
             FX_COPY_PTR(v_461.t0, &elemtyp1_3);
             _fx_R10Ast__loc_t eloc1_11 = v_461.t1;
-            fx_str_t slit_199 = FX_MAKE_STR("all the scalar elements of the vector should have the same type");
+            fx_str_t slit_199 = FX_MAKE_STR("all the scalar elements of the rrbvec should have the same type");
             FX_CALL(
                _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tS(elemtyp_2, elemtyp1_3, &eloc1_11,
                   &slit_199, 0), _fx_catch_176);
@@ -27265,10 +27265,10 @@ FX_EXTERN_C int
             FX_CHECK_EXN(_fx_catch_178);
          }
          FX_COPY_PTR(elems_acc_0, &elems_2);
-         FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(elemtyp_2, &vectyp_0), _fx_catch_178);
+         FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(elemtyp_2, &vectyp_0), _fx_catch_178);
          fx_str_t slit_200 =
             FX_MAKE_STR(
-               "the constructed vector has type \'{typ2str(vectype)}\', but is expected to have type \'{typ2str(etyp)}\'");
+               "the constructed rrbvec has type \'{typ2str(vectype)}\', but is expected to have type \'{typ2str(etyp)}\'");
          FX_CALL(
             _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tS(vectyp_0, etyp_0, &eloc_0, &slit_200, 0),
             _fx_catch_178);
@@ -28814,7 +28814,7 @@ static int
    _fx_catch_10: ;
    }
    else if (FX_REC_VARIANT_TAG(etyp_1) == 17) {
-      _fx_make_T2N10Ast__typ_ti(etyp_1->u.TypVector, 1, &v_22);
+      _fx_make_T2N10Ast__typ_ti(etyp_1->u.TypRRBVec, 1, &v_22);
    }
    else if (FX_REC_VARIANT_TAG(etyp_1) == 11) {
       _fx_make_T2N10Ast__typ_ti(_fx_g22Ast_typecheck__TypChar, 1, &v_22);
@@ -30946,8 +30946,8 @@ static int _fx_M13Ast_typecheckFM13check_map_typv7N10Ast__typ_tN10Ast__typ_tiR10
       }
    }
    else if (make_vector_0) {
-      FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(elem_typ_0, &v_7), _fx_cleanup);
-      FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(elem_typ_0, &v_8), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(elem_typ_0, &v_7), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(elem_typ_0, &v_8), _fx_cleanup);
       FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(v_8, &v_9, 0), _fx_cleanup);
       FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(coll_typ_0, &v_10, 0), _fx_cleanup);
       fx_str_t slit_7 = FX_MAKE_STR("the result ");

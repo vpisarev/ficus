@@ -3,7 +3,7 @@ from Math import *
 from Complex import *
 from Array import *
 import List
-import Vector
+import Rrbvec
 import Char
 import String
 fun higher_order.apply2@g0(higher_order.f@g1: (int -> int), higher_order.x@g2: int): (((int -> int), int) -> int) =

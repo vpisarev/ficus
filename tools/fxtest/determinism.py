@@ -34,7 +34,7 @@ import sys
 # into `builtin_ids`, which init_all() iterates) and shifts the global id space,
 # which is what makes it a valid FB-008 perturbation.  A plain unused function
 # would be DCE'd and change nothing.
-_ANCHOR = 'val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)'
+_ANCHOR = 'val (std__Rrbvec__, builtin_ids) = std_id("Rrbvec", builtin_ids)'
 _PROBE = 'val (std__detprobe__, builtin_ids) = std_id("__detprobe__", builtin_ids)'
 
 _C = {"g": "\033[32;1m", "r": "\033[31;1m", "y": "\033[33;1m", "0": "\033[0m"}

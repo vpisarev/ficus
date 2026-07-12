@@ -175,7 +175,7 @@ fun is_prime(n: int)
     }
 }
 
-println(f"primes <100: {vector(for i <- 0:100 when is_prime(i) {i})}")
+println(f"primes <100: {rrbvec(for i <- 0:100 when is_prime(i) {i})}")
 
 val a = ['🥚', '🐔']
 a.sort((<))

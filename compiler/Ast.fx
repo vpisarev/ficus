@@ -121,7 +121,7 @@ type typ_t =
     | TypVarTuple: typ_t?
     | TypVarArray: typ_t
     | TypVarRecord
-    /* "some collection" (list, vector or array), element type yet unknown.
+    /* "some collection" (list, rrbvec or array), element type yet unknown.
        This is the type of the empty-collection literal []: unlike a plain
        free TypVar it refuses to unify with scalars, records, functions etc.,
        so `val n: int = []` or `[] + 3.14` fail in the type checker, and an
@@ -139,7 +139,7 @@ type typ_t =
     | TypVoid
     | TypFun: (typ_t list, typ_t)
     | TypList: typ_t
-    | TypVector: typ_t
+    | TypRRBVec: typ_t
     | TypTuple: typ_t list
     | TypRef: typ_t
     | TypArray: (int, typ_t)
@@ -1421,7 +1421,7 @@ fun typ2str(t: typ_t): string {
             }])
     | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
     | TypList(t) => f"{typ2str(t)} list"
-    | TypVector(t) => f"{typ2str(t)} vector"
+    | TypRRBVec(t) => f"{typ2str(t)} rrbvec"
     | TypRef(t) => f"{typ2str(t)} ref"
     | TypExn => "exn"
     | TypErr => "<err>"
@@ -1501,7 +1501,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypVoid => t
     | TypFun(args, rt) => TypFun(check_n_walk_tlist(args, callb), check_n_walk_typ(rt, callb))
     | TypList(t) => TypList(check_n_walk_typ(t, callb))
-    | TypVector(t) => TypVector(check_n_walk_typ(t, callb))
+    | TypRRBVec(t) => TypRRBVec(check_n_walk_typ(t, callb))
     | TypTuple(tl) => TypTuple(check_n_walk_tlist(tl, callb))
     | TypVarTuple(t_opt) =>
         TypVarTuple(match t_opt { | Some(t) => Some(check_n_walk_typ(t, callb)) | _ => None})
@@ -1765,7 +1765,7 @@ val (std__List__, builtin_ids) = std_id("List", builtin_ids)
 val (std__String__, builtin_ids) = std_id("String", builtin_ids)
 val (std__Char__, builtin_ids) = std_id("Char", builtin_ids)
 val (std__Array__, builtin_ids) = std_id("Array", builtin_ids)
-val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)
+val (std__Rrbvec__, builtin_ids) = std_id("Rrbvec", builtin_ids)
 
 fun init_all(): void
 {

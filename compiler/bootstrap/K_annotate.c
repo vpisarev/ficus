@@ -604,7 +604,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t KTypRecord;
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
-      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -2059,7 +2059,7 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 17:
          _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
       case 20:
@@ -4413,7 +4413,7 @@ FX_EXTERN_C int _fx_M10K_annotateFM14get_ktyp_deps_Rt6Set__t1R9Ast__id_t2N14K_fo
          goto _fx_endmatch_1;
       }
       if (tag_0 == 18) {
-         _fx_N14K_form__ktyp_t* et_3 = &t_2->u.KTypVector;
+         _fx_N14K_form__ktyp_t* et_3 = &t_2->u.KTypRRBVec;
          _fx_free_N14K_form__ktyp_t(&t_1);
          FX_COPY_PTR(*et_3, &t_1);
          _fx_free_Rt6Set__t1R9Ast__id_t(&deps_1);
@@ -5196,7 +5196,7 @@ static int _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp
       _fx_R17K_form__ktprops_t v_3;
       FX_CALL(
          _fx_M10K_annotateFM12get_ktprops_R17K_form__ktprops_t3N14K_form__ktyp_tR10Ast__loc_trRt6Set__t1R9Ast__id_t(
-            t_0->u.KTypVector, loc_0, visited_ref_0, &v_3, 0), _fx_catch_5);
+            t_0->u.KTypRRBVec, loc_0, visited_ref_0, &v_3, 0), _fx_catch_5);
       bool have_complex_3 = v_3.ktp_complex;
       _fx_R17K_form__ktprops_t rec_8 = { true, false, false, true, have_complex_3, false };
       *fx_result = rec_8;

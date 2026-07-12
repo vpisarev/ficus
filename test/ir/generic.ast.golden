@@ -3,7 +3,7 @@ from Math import *
 from Complex import *
 from Array import *
 import List
-import Vector
+import Rrbvec
 import Char
 import String
 template<'t> fun generic.ident@g0(x: 't): ('t -> <auto>) = { <<auto>>x }

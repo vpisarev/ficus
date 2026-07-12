@@ -683,7 +683,7 @@ typedef struct _fx_N10Ast__typ_t_data_t {
       int_ TypFloat;
       struct _fx_T2LN10Ast__typ_tN10Ast__typ_t TypFun;
       struct _fx_N10Ast__typ_t_data_t* TypList;
-      struct _fx_N10Ast__typ_t_data_t* TypVector;
+      struct _fx_N10Ast__typ_t_data_t* TypRRBVec;
       struct _fx_LN10Ast__typ_t_data_t* TypTuple;
       struct _fx_N10Ast__typ_t_data_t* TypRef;
       struct _fx_T2iN10Ast__typ_t TypArray;
@@ -1250,7 +1250,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t KTypRecord;
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
-      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -3374,7 +3374,7 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
       case 16:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRRBVec); break;
       case 18:
          _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
@@ -5071,7 +5071,7 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 17:
          _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
       case 20:
@@ -7499,7 +7499,7 @@ FX_EXTERN_C int _fx_M6K_formFM9KTypArrayN14K_form__ktyp_t2iN14K_form__ktyp_t(
    struct _fx_N14K_form__ktyp_t_data_t*,
    struct _fx_N14K_form__ktyp_t_data_t**);
 
-FX_EXTERN_C int _fx_M6K_formFM10KTypVectorN14K_form__ktyp_t1N14K_form__ktyp_t(
+FX_EXTERN_C int _fx_M6K_formFM10KTypRRBVecN14K_form__ktyp_t1N14K_form__ktyp_t(
    struct _fx_N14K_form__ktyp_t_data_t*,
    struct _fx_N14K_form__ktyp_t_data_t**);
 
@@ -10427,9 +10427,9 @@ static int _fx_M11K_normalizeFM9typ2ktyp_N14K_form__ktyp_t3N10Ast__typ_trLR9Ast_
          _fx_N14K_form__ktyp_t v_8 = 0;
          _fx_N14K_form__ktyp_t result_8 = 0;
          FX_CALL(
-            _fx_M11K_normalizeFM9typ2ktyp_N14K_form__ktyp_t3N10Ast__typ_trLR9Ast__id_tR10Ast__loc_t(t_3->u.TypVector,
+            _fx_M11K_normalizeFM9typ2ktyp_N14K_form__ktyp_t3N10Ast__typ_trLR9Ast__id_tR10Ast__loc_t(t_3->u.TypRRBVec,
                id_stack_ref_0, loc_0, &v_8, 0), _fx_catch_21);
-         FX_CALL(_fx_M6K_formFM10KTypVectorN14K_form__ktyp_t1N14K_form__ktyp_t(v_8, &result_8), _fx_catch_21);
+         FX_CALL(_fx_M6K_formFM10KTypRRBVecN14K_form__ktyp_t1N14K_form__ktyp_t(v_8, &result_8), _fx_catch_21);
          _fx_free_N14K_form__ktyp_t(&result_0);
          FX_COPY_PTR(result_8, &result_0);
          FX_BREAK(_fx_catch_21);
@@ -10467,7 +10467,7 @@ static int _fx_M11K_normalizeFM9typ2ktyp_N14K_form__ktyp_t3N10Ast__typ_trLR9Ast_
          fx_exn_t v_11 = {0};
          fx_str_t slit_4 =
             FX_MAKE_STR(
-               "[] denotes an empty collection (list, vector or array), but which one cannot be inferenced here; please, use explicit type annotation");
+               "[] denotes an empty collection (list, rrbvec or array), but which one cannot be inferenced here; please, use explicit type annotation");
          FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_4, &v_11, 0), _fx_catch_24);
          FX_THROW(&v_11, false, _fx_catch_24);
 
@@ -10855,7 +10855,7 @@ FX_EXTERN_C int _fx_M11K_normalizeFM8lit2klitN14K_form__klit_t3N10Ast__lit_tN14K
          _fx_M6K_formFM7KLitNilN14K_form__klit_t1N14K_form__ktyp_t(ktyp_0, fx_result); goto _fx_endmatch_0;
       }
       fx_exn_t v_0 = {0};
-      fx_str_t slit_0 = FX_MAKE_STR("[] is misused. It can only denote an empty collection (list, vector or array)");
+      fx_str_t slit_0 = FX_MAKE_STR("[] is misused. It can only denote an empty collection (list, rrbvec or array)");
       FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_0, 0), _fx_catch_0);
       FX_THROW(&v_0, false, _fx_catch_0);
 
@@ -12116,7 +12116,7 @@ FX_EXTERN_C int
       _fx_N14K_form__kexp_t v_102 = 0;
       _fx_LN10Ast__exp_t elems_1 = e_0->u.ExpMkVector.t0;
       if (elems_1 == 0) {
-         fx_str_t slit_5 = FX_MAKE_STR("empty vector literals are not supported");
+         fx_str_t slit_5 = FX_MAKE_STR("empty rrbvec literals are not supported");
          FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_5, &v_100, 0), _fx_catch_36);
          FX_THROW(&v_100, false, _fx_catch_36);
       }
@@ -14709,7 +14709,7 @@ static int
             FX_COPY_PTR(v_7->u.KTypList, &ptyp_0);
          }
          else if (tag_2 == 18) {
-            FX_COPY_PTR(v_7->u.KTypVector, &ptyp_0);
+            FX_COPY_PTR(v_7->u.KTypRRBVec, &ptyp_0);
          }
          else if (tag_2 == 10) {
             FX_COPY_PTR(_fx_g21K_normalize__KTypChar, &ptyp_0);

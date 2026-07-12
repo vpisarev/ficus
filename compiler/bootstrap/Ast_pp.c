@@ -497,7 +497,7 @@ typedef struct _fx_N10Ast__typ_t_data_t {
       int_ TypFloat;
       struct _fx_T2LN10Ast__typ_tN10Ast__typ_t TypFun;
       struct _fx_N10Ast__typ_t_data_t* TypList;
-      struct _fx_N10Ast__typ_t_data_t* TypVector;
+      struct _fx_N10Ast__typ_t_data_t* TypRRBVec;
       struct _fx_LN10Ast__typ_t_data_t* TypTuple;
       struct _fx_N10Ast__typ_t_data_t* TypRef;
       struct _fx_T2iN10Ast__typ_t TypArray;
@@ -2015,7 +2015,7 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
       case 16:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRRBVec); break;
       case 18:
          _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
@@ -4389,9 +4389,9 @@ static int _fx_M6Ast_ppFM7pptype_v5N10Ast__typ_tN16Ast_pp__typ_pr_tBR10Ast__loc_
          goto _fx_endmatch_1;
       }
       if (tag_0 == 17) {
-         fx_str_t slit_20 = FX_MAKE_STR("vector");
+         fx_str_t slit_20 = FX_MAKE_STR("rrbvec");
          FX_CALL(
-            _fx_M6Ast_ppFM8pptypsufv7N10Ast__typ_tSBR10Ast__loc_tN16Ast_pp__typ_pr_tR5PP__tN16Ast_pp__typ_pr_t(t_2->u.TypVector,
+            _fx_M6Ast_ppFM8pptypsufv7N10Ast__typ_tSBR10Ast__loc_tN16Ast_pp__typ_pr_tR5PP__tN16Ast_pp__typ_pr_t(t_2->u.TypRRBVec,
                &slit_20, brief_0, loc_0, &p1_2, pp_0, &prec_0, 0), _fx_catch_19);
          FX_BREAK(_fx_catch_19);
 
@@ -6125,7 +6125,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
       if (tag_1 == 15) {
          _fx_LN10Ast__exp_t elems_0 = 0;
          FX_CALL(_fx_M2PPFM5beginv1RM1t(pp_0, 0), _fx_catch_69);
-         fx_str_t slit_99 = FX_MAKE_STR("vector [");
+         fx_str_t slit_99 = FX_MAKE_STR("rrbvec [");
          FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_99, 0), _fx_catch_69);
          int_ i_14 = 0;
          FX_COPY_PTR(e_0->u.ExpMkVector.t0, &elems_0);
@@ -6351,7 +6351,7 @@ static int _fx_M6Ast_ppFM5ppexpv2N10Ast__exp_tR5PP__t(
             _fx_make_Ta2S(&slit_118, &slit_119, &v_44);
          }
          else if (tag_5 == 4) {
-            fx_str_t slit_120 = FX_MAKE_STR("vector [");
+            fx_str_t slit_120 = FX_MAKE_STR("rrbvec [");
             fx_str_t slit_121 = FX_MAKE_STR("]");
             _fx_make_Ta2S(&slit_120, &slit_121, &v_44);
          }

@@ -656,10 +656,10 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 match deref_ktyp(ktyp, loc) {
                 | KTypList _ | KTypCPointer | KTypRawPointer _ =>
                     (make_nullptr(loc), ccode)
-                | KTypVector et =>
+                | KTypRRBVec et =>
                     val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
                     val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
-                    val (vec_exp, ccode) = create_cdefval(gen_idc(cm_idx, "zvec"), CTypVector(elem_ctyp),
+                    val (vec_exp, ccode) = create_cdefval(gen_idc(cm_idx, "zvec"), CTypRRBVec(elem_ctyp),
                         default_tempval_flags(), "", None, ccode, loc)
                     val call_make_empty = make_call(get_id("fx_rrb_make_empty"),
                         [:: elemsize_exp, free_f_exp, copy_f_exp, cexp_get_addr(vec_exp) ],
@@ -759,9 +759,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         val vec_ctyp = get_cexp_typ(vec_exp)
         val elem_ctyp =
             match vec_ctyp {
-            | CTypVector elem_ctyp =>
+            | CTypRRBVec elem_ctyp =>
                 elem_ctyp
-            | _ => throw compile_err(loc, "cgen: invalid output type of vector construction expression")
+            | _ => throw compile_err(loc, "cgen: invalid output type of rrbvec construction expression")
             }
         val ccode = []
         val (data_exp, ccode) =
@@ -1192,7 +1192,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val get_arr_elem = CExpBinary(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc))
                     ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode, pre_body_ccode,
                     (iter_val_i, get_arr_elem, default_tempvar_flags()) :: body_elems, post_checks)
-                | KTypVector (et) =>
+                | KTypRRBVec (et) =>
                     /*
                         // either save the size or check it
                         int_ n = FX_RRB_SIZE(vec);
@@ -1249,7 +1249,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (iter_val_i, get_vec_elem, elem_flags) :: body_elems, post_checks)
                 | _ =>
                     throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
-                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, vector or string"))
+                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, rrbvec or string"))
                 }
             | _ => throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
                         "unsupported type of the for loop iteration domain"))
@@ -1584,7 +1584,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val f_exp = get_id("fx_streq")
                     val call_streq = make_call(f_exp, [:: cexp_get_addr(ce1), cexp_get_addr(ce2) ], CTypBool, kloc)
                     (true, call_streq, ccode)
-                | (COpAdd, CTypVector _) =>
+                | (COpAdd, CTypRRBVec _) =>
                     val (dst_exp, ccode) = get_dstexp(dstexp_r, "v", ctyp, ccode, kloc)
                     val call_concat = make_call(get_id("fx_rrb_concat"),
                         [:: cexp_get_addr(ce1), cexp_get_addr(ce2), cexp_get_addr(dst_exp) ], CTypCInt, kloc)
@@ -1804,7 +1804,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     match get_atom_ktyp(arr_or_str, kloc) {
                     | KTypString => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
                     | KTypArray _ => make_call(get_id("FX_ARR_SIZE"), [:: arr_exp, make_int_exp(0, kloc) ], CTypInt, kloc)
-                    | KTypVector _ => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | KTypRRBVec _ => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | ktyp =>
                         throw compile_err( kloc,
                             f"cgen: unsupported container type {ktyp} of {atom2str(arr_or_str)} in KExpIntrin(IntrinGetSize...)")
@@ -1815,7 +1815,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val c_e =
                     match (get_atom_ktyp(arr_or_str, kloc), i) {
                     | (KTypString, 0i64) => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
-                    | (KTypVector _, 0i64) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | (KTypRRBVec _, 0i64) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | (KTypArray (ndims, _), i) =>
                         if !(0i64 <= i && i < int64(ndims)) {
                             throw compile_err(kloc, f"array dimension index {i}i is beyond dimensionality {ndims}")
@@ -2143,8 +2143,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             match deref_ktyp(elem_ktyp, kloc) {
                             | KTypArray (d, _) => (d, cexp_get_addr(e))
                             | KTypList _ => (100, e)
-                            | KTypVector _ => (110, cexp_get_addr(e))
-                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, vector or list")
+                            | KTypRRBVec _ => (110, cexp_get_addr(e))
+                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, rrbvec or list")
                             }
                             tags_data = make_int_exp(tag, kloc) :: tags_data
                             arr_data = elem_ptr :: arr_data
@@ -2234,8 +2234,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (vec_exp, ccode) = get_dstexp(dstexp_r, "vec", ctyp, ccode, kloc)
                 val elem_ctyp =
                     match ctyp {
-                    | CTypVector elem_ctyp => elem_ctyp
-                    | _ => throw compile_err(kloc, "cgen: invalid output type of vector construction expression")
+                    | CTypRRBVec elem_ctyp => elem_ctyp
+                    | _ => throw compile_err(kloc, "cgen: invalid output type of rrbvec construction expression")
                     }
                 val scalars_id = gen_idc(cm_idx, "scalars")
                 val scalars_exp = make_id_t_exp(scalars_id, make_ptr(elem_ctyp), kloc)
@@ -2249,8 +2249,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             match deref_ktyp(elem_ktyp, kloc) {
                             | KTypArray (d, _) => (d, cexp_get_addr(e))
                             | KTypList _ => (100, e)
-                            | KTypVector _ => (110, cexp_get_addr(e))
-                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, vector or list")
+                            | KTypRRBVec _ => (110, cexp_get_addr(e))
+                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, rrbvec or list")
                             }
                             tags_data = make_int_exp(tag, kloc) :: tags_data
                             vec_data = elem_ptr :: vec_data
@@ -2380,7 +2380,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (false, substr_exp, add_fx_call(call_substr, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
                 }
-            | CTypVector _ =>
+            | CTypRRBVec _ =>
                 match idxs {
                 | [:: DomainFast(i)] =>
                     val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
@@ -2423,7 +2423,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | AtomLit(KLitNil _) | AtomLit(KLitInt 1i64) => 1
                     | AtomLit(KLitInt(-1i64)) => -1
                     | _ =>
-                        throw compile_err(kloc, "cgen: vector slicing only supports stride == ±1")
+                        throw compile_err(kloc, "cgen: rrbvec slicing only supports stride == ±1")
                     }
                     val (slice_exp, ccode) = get_dstexp(dstexp_r, "slice", ctyp, ccode, kloc)
                     val call_slice = make_call(get_id("fx_rrb_slice"),
@@ -2431,7 +2431,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                          make_int_exp(mask, kloc), cexp_get_addr(slice_exp)],
                         ctyp, kloc)
                     (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
-                | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing vector (should be a single scalar index or range)")
+                | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing rrbvec (should be a single scalar index or range)")
                 }
             | CTypArray _ =>
                 val need_subarr = exists(for d <- idxs { | DomainRange _ => true | _ => false })
@@ -2536,7 +2536,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 }
             | _ =>
                 throw compile_err(kloc,
-                    "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypVector _ or CTypString")
+                    "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypRRBVec _ or CTypString")
             }
         | KExpMem (a1, n, _) =>
             val (ce1, ccode) = id2cexp(a1, false, ccode, kloc)
@@ -2815,7 +2815,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         dst_data = (coll_ctyp, elemtyp, dst_exp, dst_ptr, make_dummy_exp(for_loc)) :: dst_data
                         ccode = ccode2
                     }
-                | (ForMakeVector, CTypVector (elemtyp), KTypVector _) =>
+                | (ForMakeVector, CTypRRBVec (elemtyp), KTypRRBVec _) =>
                     val (dst_exp, ccode1) =
                         if unzip_mode {
                             add_local(gen_idc(cm_idx, "vec"), coll_ctyp, default_tempval_flags(), None, ccode, for_loc)
@@ -2997,7 +2997,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             because it will _always_ do nothing, except for the exceptional situations)
                         3. (optional: we need to extend _fx_cons_L...() implementation:
                             add `bool move_hd` parameter), otherwise we could use this 'move' trick
-                            only with array and vector comprehensions.
+                            only with array and rrbvec comprehensions.
                     */
                     var body_ccode = body_ccode
                     for (coll_ctyp, elemtyp, dst_exp, dst_ptr, iter)@j <- dst_data {

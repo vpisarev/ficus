@@ -90,7 +90,7 @@ check("fb007.s2_cplx_times_int", c->re + c->im, 4)
 
 // FB-007 S3-shape, UNFENCED by resolve-2 (TypVarCollection). The fold
 // accumulator `prog` is initialized with `[]`, whose type is now
-// TypVarCollection ("some list/vector/array") instead of a fully free var.
+// TypVarCollection ("some list/rrbvec/array") instead of a fully free var.
 // At `[:: x*x] + prog` the over-general `+('t, 't cplx)` (CplxHelper,
 // mimicking lib/Complex.fx) dies at the viability trial -- a collection-var
 // cannot become `'t cplx` -- so only the list-concat `+('t list, 't list)`

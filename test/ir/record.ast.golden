@@ -3,7 +3,7 @@ from Math import *
 from Complex import *
 from Array import *
 import List
-import Vector
+import Rrbvec
 import Char
 import String
 /*record.pt_t@g0*/@record type record.pt_t@g0 = | record.pt_t@g1:  { x: int; y: int }

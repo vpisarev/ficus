@@ -70,7 +70,7 @@ type ktyp_t =
     | KTypRecord: (id_t, (id_t, ktyp_t) list)
     | KTypName: id_t
     | KTypArray: (int, ktyp_t)
-    | KTypVector: ktyp_t
+    | KTypRRBVec: ktyp_t
     | KTypList: ktyp_t
     | KTypRef: ktyp_t
     | KTypExn
@@ -611,7 +611,7 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
             [:: for (ni, ti) <- relems { (walk_id_(ni), walk_ktyp_(ti)) } ])
     | KTypName(k) => KTypName(walk_id_(k))
     | KTypArray(d, t) => KTypArray(d, walk_ktyp_(t))
-    | KTypVector(t) => KTypVector(walk_ktyp_(t))
+    | KTypRRBVec(t) => KTypRRBVec(walk_ktyp_(t))
     | KTypList(t) => KTypList(walk_ktyp_(t))
     | KTypRef(t) => KTypRef(walk_ktyp_(t))
     }
@@ -930,7 +930,7 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
     | KTypName(n) => fold_id_(n)
     | KTypArray(d, t) => fold_ktyp_(t)
     | KTypList(t) => fold_ktyp_(t)
-    | KTypVector(t) => fold_ktyp_(t)
+    | KTypRRBVec(t) => fold_ktyp_(t)
     | KTypRef(t) => fold_ktyp_(t)
     }
 }
@@ -1396,7 +1396,7 @@ fun string(t: ktyp_t): string
         | KTypName(n) => idk2str(n, noloc)
         | KTypArray(d, t) =>
             val commas = ','*(d-1); f"{ktyp2str_(t, true)} [{commas}]"
-        | KTypVector(t) => f"{ktyp2str_(t, true)} vector"
+        | KTypRRBVec(t) => f"{ktyp2str_(t, true)} rrbvec"
         | KTypList(t) => f"{ktyp2str_(t, true)} list"
         | KTypRef(t) => f"{ktyp2str_(t, true)} ref"
         | KTypExn => "exn"

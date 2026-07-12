@@ -860,7 +860,7 @@ typedef struct _fx_N10Ast__typ_t_data_t {
       int_ TypFloat;
       struct _fx_T2LN10Ast__typ_tN10Ast__typ_t TypFun;
       struct _fx_N10Ast__typ_t_data_t* TypList;
-      struct _fx_N10Ast__typ_t_data_t* TypVector;
+      struct _fx_N10Ast__typ_t_data_t* TypRRBVec;
       struct _fx_LN10Ast__typ_t_data_t* TypTuple;
       struct _fx_N10Ast__typ_t_data_t* TypRef;
       struct _fx_T2iN10Ast__typ_t TypArray;
@@ -3216,7 +3216,7 @@ static void _fx_free_N10Ast__typ_t(struct _fx_N10Ast__typ_t_data_t** dst)
       case 16:
          _fx_free_N10Ast__typ_t(&(*dst)->u.TypList); break;
       case 17:
-         _fx_free_N10Ast__typ_t(&(*dst)->u.TypVector); break;
+         _fx_free_N10Ast__typ_t(&(*dst)->u.TypRRBVec); break;
       case 18:
          _fx_free_LN10Ast__typ_t(&(*dst)->u.TypTuple); break;
       case 19:
@@ -7095,13 +7095,13 @@ FX_EXTERN_C int _fx_M3AstFM7TypListN10Ast__typ_t1N10Ast__typ_t(
    return 0;
 }
 
-FX_EXTERN_C int _fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(
+FX_EXTERN_C int _fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(
    struct _fx_N10Ast__typ_t_data_t* arg0,
    struct _fx_N10Ast__typ_t_data_t** fx_result)
 {
    FX_MAKE_RECURSIVE_VARIANT_IMPL_START(_fx_N10Ast__typ_t);
    v->tag = 17;
-   FX_COPY_PTR(arg0, &v->u.TypVector);
+   FX_COPY_PTR(arg0, &v->u.TypRRBVec);
    return 0;
 }
 
@@ -24251,8 +24251,8 @@ FX_EXTERN_C int _fx_M3AstFM7typ2strS1N10Ast__typ_t(struct _fx_N10Ast__typ_t_data
       if (tag_0 == 17) {
          fx_str_t v_27 = {0};
          fx_str_t result_12 = {0};
-         FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(t_2->u.TypVector, &v_27, 0), _fx_catch_32);
-         fx_str_t slit_43 = FX_MAKE_STR(" vector");
+         FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(t_2->u.TypRRBVec, &v_27, 0), _fx_catch_32);
+         fx_str_t slit_43 = FX_MAKE_STR(" rrbvec");
          {
             const fx_str_t strs_12[] = { v_27, slit_43 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_12, 2, &result_12), _fx_catch_32);
@@ -24911,9 +24911,9 @@ FX_EXTERN_C int _fx_M3AstFM8walk_typN10Ast__typ_t2N10Ast__typ_tRM11ast_callb_t(
    }
    else if (tag_0 == 17) {
       _fx_N10Ast__typ_t v_7 = 0;
-      FX_CALL(_fx_M3AstFM16check_n_walk_typN10Ast__typ_t2N10Ast__typ_tRM11ast_callb_t(t_0->u.TypVector, callb_0, &v_7, 0),
+      FX_CALL(_fx_M3AstFM16check_n_walk_typN10Ast__typ_t2N10Ast__typ_tRM11ast_callb_t(t_0->u.TypRRBVec, callb_0, &v_7, 0),
          _fx_catch_4);
-      FX_CALL(_fx_M3AstFM9TypVectorN10Ast__typ_t1N10Ast__typ_t(v_7, fx_result), _fx_catch_4);
+      FX_CALL(_fx_M3AstFM9TypRRBVecN10Ast__typ_t1N10Ast__typ_t(v_7, fx_result), _fx_catch_4);
 
    _fx_catch_4: ;
       if (v_7) {
@@ -28064,7 +28064,7 @@ FX_EXTERN_C int fx_init_Ast(void)
    fx_str_t slit_25 = FX_MAKE_STR("Array");
    FX_CALL(_fx_M3AstFM6std_idT2RM4id_tT2LSi2ST2LSi(&slit_25, &_fx_g19Ast__builtin_ids17_, &_fx_g9Ast__v17_, 0), _fx_cleanup);
    _fx_copy_T2LSi(&_fx_g9Ast__v17_.t1, &_fx_g19Ast__builtin_ids18_);
-   fx_str_t slit_26 = FX_MAKE_STR("Vector");
+   fx_str_t slit_26 = FX_MAKE_STR("Rrbvec");
    FX_CALL(_fx_M3AstFM6std_idT2RM4id_tT2LSi2ST2LSi(&slit_26, &_fx_g19Ast__builtin_ids18_, &_fx_g9Ast__v18_, 0), _fx_cleanup);
    _fx_copy_T2LSi(&_fx_g9Ast__v18_.t1, &_fx_g19Ast__builtin_ids19_);
 

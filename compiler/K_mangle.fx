@@ -252,7 +252,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             val result = string(dims) :: "A" :: result
             mangle_ktyp_(t, result)
         | KTypList t => mangle_ktyp_(t, "L" :: result)
-        | KTypVector t => mangle_ktyp_(t, "V" :: result)
+        | KTypRRBVec t => mangle_ktyp_(t, "W" :: result)
         | KTypRef t => mangle_ktyp_(t, "r" :: result)
         | KTypExn  => "E" :: result
         | KTypErr  => throw compile_err(loc, "KTypErr cannot be mangled")
@@ -298,7 +298,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
         | KTypFun _ => if final_mode {create_gen_typ(t, "fun", loc)} else {t}
         | KTypTuple _ => if final_mode {create_gen_typ(t, "tup", loc)} else {t}
         | KTypArray _ => t
-        | KTypVector _ => t
+        | KTypRRBVec _ => t
         | KTypList _ => if final_mode {create_gen_typ(t, "lst", loc)} else {t}
         | KTypRef _ => if final_mode {create_gen_typ(t, "ref", loc)} else {t}
         }

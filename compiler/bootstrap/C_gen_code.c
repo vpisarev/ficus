@@ -810,7 +810,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_T2R9Ast__id_tLT2R9Ast__id_tN14K_form__ktyp_t KTypRecord;
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
-      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -1222,7 +1222,7 @@ typedef struct _fx_N14C_form__ctyp_t_data_t {
       struct _fx_T2LN19C_form__ctyp_attr_tN14C_form__ctyp_t CTypRawPtr;
       struct _fx_T2LN19C_form__ctyp_attr_tN14C_form__ctyp_t CTypRawArray;
       struct _fx_T2iN14C_form__ctyp_t CTypArray;
-      struct _fx_N14C_form__ctyp_t_data_t* CTypVector;
+      struct _fx_N14C_form__ctyp_t_data_t* CTypRRBVec;
       struct _fx_R9Ast__id_t CTypName;
    } u;
 } _fx_N14C_form__ctyp_t_data_t, *_fx_N14C_form__ctyp_t;
@@ -3702,7 +3702,7 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 17:
          _fx_free_T2iN14K_form__ktyp_t(&(*dst)->u.KTypArray); break;
       case 18:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
       case 20:
@@ -5014,7 +5014,7 @@ static void _fx_free_N14C_form__ctyp_t(struct _fx_N14C_form__ctyp_t_data_t** dst
       case 19:
          _fx_free_T2iN14C_form__ctyp_t(&(*dst)->u.CTypArray); break;
       case 20:
-         _fx_free_N14C_form__ctyp_t(&(*dst)->u.CTypVector); break;
+         _fx_free_N14C_form__ctyp_t(&(*dst)->u.CTypRRBVec); break;
       default:
          ;
       }
@@ -8189,7 +8189,7 @@ FX_EXTERN_C int _fx_M11C_gen_typesFM9ktyp2ctypN14C_form__ctyp_t2N14K_form__ktyp_
    struct _fx_N14C_form__ctyp_t_data_t**,
    void*);
 
-FX_EXTERN_C int _fx_M6C_formFM10CTypVectorN14C_form__ctyp_t1N14C_form__ctyp_t(
+FX_EXTERN_C int _fx_M6C_formFM10CTypRRBVecN14C_form__ctyp_t1N14C_form__ctyp_t(
    struct _fx_N14C_form__ctyp_t_data_t*,
    struct _fx_N14C_form__ctyp_t_data_t**);
 
@@ -9763,10 +9763,10 @@ FX_EXTERN_C int _fx_M10C_gen_codeFM15__eq_variants__B2N14C_form__ctyp_tN14C_form
       }
       if (FX_REC_VARIANT_TAG(b_2) == 20) {
          if (FX_REC_VARIANT_TAG(a_2) == 20) {
-            _fx_N14C_form__ctyp_t* a0_2 = &a_2->u.CTypVector;
+            _fx_N14C_form__ctyp_t* a0_2 = &a_2->u.CTypRRBVec;
             _fx_free_N14C_form__ctyp_t(&a_1);
             FX_COPY_PTR(*a0_2, &a_1);
-            _fx_N14C_form__ctyp_t* b0_2 = &b_2->u.CTypVector;
+            _fx_N14C_form__ctyp_t* b0_2 = &b_2->u.CTypRRBVec;
             _fx_free_N14C_form__ctyp_t(&b_1);
             FX_COPY_PTR(*b0_2, &b_1);
             goto _fx_endmatch_4;
@@ -16156,7 +16156,7 @@ static int
             _fx_N15C_form__cstmt_t v_13 = 0;
             _fx_LN15C_form__cstmt_t v_14 = 0;
             FX_CALL(
-               _fx_M11C_gen_typesFM9ktyp2ctypN14C_form__ctyp_t2N14K_form__ktyp_tR10Ast__loc_t(v_5->u.KTypVector, loc_0,
+               _fx_M11C_gen_typesFM9ktyp2ctypN14C_form__ctyp_t2N14K_form__ktyp_tR10Ast__loc_t(v_5->u.KTypRRBVec, loc_0,
                   &elem_ctyp_0, 0), _fx_catch_2);
             FX_CALL(
                _fx_M10C_gen_codeFM23get_elem_size_free_copyTa3N14C_form__cexp_t2N14C_form__ctyp_tR10Ast__loc_t(elem_ctyp_0,
@@ -16167,7 +16167,7 @@ static int
             _fx_R9Ast__id_t v_15;
             fx_str_t slit_2 = FX_MAKE_STR("zvec");
             FX_CALL(_fx_M6C_formFM7gen_idcR9Ast__id_t2iS(*km_idx_0, &slit_2, &v_15, 0), _fx_catch_2);
-            FX_CALL(_fx_M6C_formFM10CTypVectorN14C_form__ctyp_t1N14C_form__ctyp_t(elem_ctyp_0, &v_8), _fx_catch_2);
+            FX_CALL(_fx_M6C_formFM10CTypRRBVecN14C_form__ctyp_t1N14C_form__ctyp_t(elem_ctyp_0, &v_8), _fx_catch_2);
             FX_CALL(_fx_M3AstFM21default_tempval_flagsRM11val_flags_t0(&v_9, 0), _fx_catch_2);
             fx_str_t slit_3 = FX_MAKE_STR("");
             FX_CALL(
@@ -16755,11 +16755,11 @@ static int
    int fx_status = 0;
    FX_CALL(_fx_M6C_formFM12get_cexp_typN14C_form__ctyp_t1N14C_form__cexp_t(vec_exp_0, &vec_ctyp_0, 0), _fx_cleanup);
    if (FX_REC_VARIANT_TAG(vec_ctyp_0) == 20) {
-      FX_COPY_PTR(vec_ctyp_0->u.CTypVector, &elem_ctyp_0);
+      FX_COPY_PTR(vec_ctyp_0->u.CTypRRBVec, &elem_ctyp_0);
    }
    else {
       fx_exn_t v_8 = {0};
-      fx_str_t slit_0 = FX_MAKE_STR("cgen: invalid output type of vector construction expression");
+      fx_str_t slit_0 = FX_MAKE_STR("cgen: invalid output type of rrbvec construction expression");
       FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_8, 0), _fx_catch_0);
       FX_THROW(&v_8, false, _fx_catch_0);
 
@@ -18753,7 +18753,7 @@ static int
             _fx_LN14C_form__cexp_t v_187 = 0;
             _fx_T3R9Ast__id_tN14C_form__cexp_tR16Ast__val_flags_t v_188 = {0};
             _fx_LT3R9Ast__id_tN14C_form__cexp_tR16Ast__val_flags_t v_189 = 0;
-            _fx_N14K_form__ktyp_t et_1 = v_88->u.KTypVector;
+            _fx_N14K_form__ktyp_t et_1 = v_88->u.KTypRRBVec;
             _fx_R9Ast__id_t v_190;
             fx_str_t slit_16 = FX_MAKE_STR("FX_RRB_SIZE");
             FX_CALL(_fx_M3AstFM6get_idRM4id_t1S(&slit_16, &v_190, 0), _fx_catch_22);
@@ -19012,7 +19012,7 @@ static int
             FX_CALL(_fx_M6K_formFM6stringS1N14K_form__ktyp_t(ktyp_0, &v_198, 0), _fx_catch_23);
             fx_str_t slit_25 = FX_MAKE_STR("cannot iterate over \'");
             fx_str_t slit_26 = FX_MAKE_STR("\' of type \'");
-            fx_str_t slit_27 = FX_MAKE_STR("\'; it needs to be array, list, vector or string");
+            fx_str_t slit_27 = FX_MAKE_STR("\'; it needs to be array, list, rrbvec or string");
             {
                const fx_str_t strs_4[] = { slit_25, v_197, slit_26, v_198, slit_27 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_4, 5, &v_199), _fx_catch_23);
@@ -26228,7 +26228,7 @@ static int
                      FX_CALL(_fx_M6K_formFM8atom2strS1N14K_form__atom_t(&a_4, &v_557, 0), _fx_catch_114);
                      FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_557, &v_558, 0), _fx_catch_114);
                      fx_str_t slit_130 = FX_MAKE_STR("cgen: the expanded structure ");
-                     fx_str_t slit_131 = FX_MAKE_STR(" is not an array, vector or list");
+                     fx_str_t slit_131 = FX_MAKE_STR(" is not an array, rrbvec or list");
                      {
                         const fx_str_t strs_28[] = { slit_130, v_558, slit_131 };
                         FX_CALL(fx_strjoin(0, 0, 0, strs_28, 3, &v_559), _fx_catch_114);
@@ -26908,11 +26908,11 @@ static int
          FX_COPY_PTR(v_574.t0, &vec_exp_0);
          FX_COPY_PTR(v_574.t1, &ccode_90);
          if (FX_REC_VARIANT_TAG(ctyp_0) == 20) {
-            FX_COPY_PTR(ctyp_0->u.CTypVector, &elem_ctyp_2);
+            FX_COPY_PTR(ctyp_0->u.CTypRRBVec, &elem_ctyp_2);
          }
          else {
             fx_exn_t v_595 = {0};
-            fx_str_t slit_140 = FX_MAKE_STR("cgen: invalid output type of vector construction expression");
+            fx_str_t slit_140 = FX_MAKE_STR("cgen: invalid output type of rrbvec construction expression");
             FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kloc_0, &slit_140, &v_595, 0), _fx_catch_128);
             FX_THROW(&v_595, false, _fx_catch_128);
 
@@ -26995,7 +26995,7 @@ static int
                   FX_CALL(_fx_M6K_formFM8atom2strS1N14K_form__atom_t(&a_6, &v_608, 0), _fx_catch_131);
                   FX_CALL(_fx_M10C_gen_codeFM6stringS1S(&v_608, &v_609, 0), _fx_catch_131);
                   fx_str_t slit_142 = FX_MAKE_STR("cgen: the expanded structure ");
-                  fx_str_t slit_143 = FX_MAKE_STR(" is not an array, vector or list");
+                  fx_str_t slit_143 = FX_MAKE_STR(" is not an array, rrbvec or list");
                   {
                      const fx_str_t strs_29[] = { slit_142, v_609, slit_143 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_29, 3, &v_610), _fx_catch_131);
@@ -28177,7 +28177,7 @@ static int
                      }
                   }
                   fx_exn_t v_708 = {0};
-                  fx_str_t slit_159 = FX_MAKE_STR("cgen: vector slicing only supports stride == ±1");
+                  fx_str_t slit_159 = FX_MAKE_STR("cgen: rrbvec slicing only supports stride == ±1");
                   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kloc_0, &slit_159, &v_708, 0), _fx_catch_164);
                   FX_THROW(&v_708, false, _fx_catch_164);
 
@@ -28268,7 +28268,7 @@ static int
          }
          fx_exn_t v_710 = {0};
          fx_str_t slit_162 =
-            FX_MAKE_STR("cgen: unexpected index type when accessing vector (should be a single scalar index or range)");
+            FX_MAKE_STR("cgen: unexpected index type when accessing rrbvec (should be a single scalar index or range)");
          FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kloc_0, &slit_162, &v_710, 0), _fx_catch_166);
          FX_THROW(&v_710, false, _fx_catch_166);
 
@@ -29028,7 +29028,7 @@ static int
          fx_exn_t v_773 = {0};
          fx_str_t slit_170 =
             FX_MAKE_STR(
-               "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypVector _ or CTypString");
+               "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypRRBVec _ or CTypString");
          FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kloc_0, &slit_170, &v_773, 0), _fx_catch_184);
          FX_THROW(&v_773, false, _fx_catch_184);
 
@@ -30642,7 +30642,7 @@ static int
                   _fx_LT5N14C_form__ctyp_tN14C_form__ctyp_tN14C_form__cexp_tN14C_form__cexp_tN14C_form__cexp_t v_938 = 0;
                   _fx_N15C_form__cstmt_t v_939 = 0;
                   _fx_LN15C_form__cstmt_t v_940 = 0;
-                  _fx_N14C_form__ctyp_t elemtyp_1 = coll_ctyp_0->u.CTypVector;
+                  _fx_N14C_form__ctyp_t elemtyp_1 = coll_ctyp_0->u.CTypRRBVec;
                   if (unzip_mode_0) {
                      _fx_R9Ast__id_t v_941;
                      fx_str_t slit_201 = FX_MAKE_STR("vec");

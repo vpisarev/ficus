@@ -122,7 +122,7 @@ fun get_preamble(mfname: string): Lexer.token_t list {
         for (mname, from_import) <- [:: ("Builtins", true), ("Math", true),
                                         ("Complex", true),
                                         ("Array", true), ("List", false),
-                                        ("Vector", false), ("Char", false),
+                                        ("Rrbvec", false), ("Char", false),
                                         ("String", false),] {
             if bare_name == mname {
                 break
