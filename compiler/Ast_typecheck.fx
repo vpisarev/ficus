@@ -2562,6 +2562,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     "the result of flatten operation ([:]) applied to rrbvec \
                     must be a rrbvec of the same type")
                 ExpAt(new_arr, BorderNone, InterpNone, [:: new_idx], ctx)
+            | TypVector(et) =>
+                unify(etyp, TypVector(et), eloc,
+                    "the result of flatten operation ([:]) applied to a vector \
+                    must be a vector of the same type")
+                ExpAt(new_arr, BorderNone, InterpNone, [:: new_idx], ctx)
             | TypString =>
                 unify(etyp, TypString, eloc, "the result of flatten operation ([:]) \
                       applied to a string must be string")
@@ -2632,6 +2637,9 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | (1, 0, TypVector et) => unify(etyp, et, new_aloc,
                 "incorrect type of the vector element access operation; \
                 it gives '{typ2str(et)}', but '{typ2str(etyp)}' is expected")
+            | (1, 1, TypVector et) => unify(etyp, TypVector(et), new_aloc,
+                "incorrect type of the vector range access operation; \
+                it gives '{typ2str(TypVector(et))}', but '{typ2str(etyp)}' is expected")
             | _ =>
                 val et = make_new_typ()
                 unify(new_atyp, TypArray(ndims, et), new_aloc,

@@ -2490,7 +2490,34 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         (make_call(get_id("FX_VEC_ELEM_ZERO"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
                     }
                     (true, get_elem_exp, ccode)
-                | _ => throw compile_err(kloc, "cgen: vector slicing is not supported yet (step 3)")
+                | [:: DomainRange (a, b, delta)] =>
+                    // a vector slice is a COPY (Python-list semantics), never a
+                    // view. fx_vec_slice supports an arbitrary non-zero stride.
+                    if border != BorderNone {
+                        throw compile_err(kloc, "cgen: border extrapolation with ranges is not supported for vectors")
+                    }
+                    val (mask, (a_exp, ccode)) =
+                        match a {
+                        | AtomLit(KLitNil _) => (1, (make_int_exp(0, kloc), ccode))
+                        | _ => (0, atom2cexp(a, ccode, kloc))
+                        }
+                    val (mask, (b_exp, ccode)) =
+                        match b {
+                        | AtomLit(KLitNil _) => (2 + mask, (make_int_exp(0, kloc), ccode))
+                        | _ => (mask, atom2cexp(b, ccode, kloc))
+                        }
+                    val (delta_exp, ccode) =
+                        match delta {
+                        | AtomLit(KLitNil _) => (make_int_exp(1, kloc), ccode)
+                        | _ => atom2cexp(delta, ccode, kloc)
+                        }
+                    val (slice_exp, ccode) = get_dstexp(dstexp_r, "slice", ctyp, ccode, kloc)
+                    val call_slice = make_call(get_id("fx_vec_slice"),
+                        [:: arr_exp, a_exp, b_exp, delta_exp,
+                         make_int_exp(mask, kloc), cexp_get_addr(slice_exp)],
+                        CTypCInt, kloc)
+                    (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
+                | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing vector (should be a single scalar index or range)")
                 }
             | CTypArray _ =>
                 val need_subarr = exists(for d <- idxs { | DomainRange _ => true | _ => false })
