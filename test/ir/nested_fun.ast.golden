@@ -4,6 +4,7 @@ from Complex import *
 from Array import *
 import List
 import Rrbvec
+import Vector
 import Char
 import String
 fun nested_fun.outer@g0(nested_fun.n@g1: int): (int -> int) =

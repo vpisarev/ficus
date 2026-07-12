@@ -165,40 +165,9 @@ fun foldl(v: 't vector, f: ('t, 'r) -> 'r, init: 'r): 'r
     fold res = init for i <- 0:n { res = f(v[i], res) }
 }
 
-operator == (a: 't vector, b: 't vector): bool
-{
-    val n = size(a)
-    if size(b) != n { return false }
-    for i <- 0:n {
-        if a[i] != b[i] { return false }
-    }
-    true
-}
-
-operator <=> (a: 't vector, b: 't vector): int
-{
-    val na = size(a), nb = size(b)
-    val n = min(na, nb)
-    for i <- 0:n {
-        val d = a[i] <=> b[i]
-        if d != 0 { return d }
-    }
-    na <=> nb
-}
-
-fun string(v: 't vector): string
-{
-    val n = size(v)
-    join_embrace("[", "]", ", ", [for i <- 0:n {string(v[i])}])
-}
-
-fun print(v: 't vector): void
-{
-    val n = size(v)
-    print("[")
-    for i <- 0:n {
-        if i > 0 { print(", ") }
-        print(v[i])
-    }
-    print("]")
-}
+// NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their
+// rrbvec counterparts. They compare/format elements generically (a[i] <=> b[i],
+// string(v[i])), and compiling that in a context with many <=> / string
+// overloads (as when Vector is auto-imported into the whole compiler) trips a
+// resolver internal error (FB-025); Builtins is compiled early, with few
+// overloads in scope, so it resolves cleanly there.

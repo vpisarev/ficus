@@ -7,7 +7,6 @@
 // size/empty, push_back/pop_back/back, resize/reserve/clear, slices, map/foldl.
 
 from UTest import *
-import Vector
 
 TEST("fcvector.access", fun()
 {
@@ -115,7 +114,7 @@ TEST("fcvector.binomial", fun()
     val myvecs: (float vector) vector = []
     for i <- 1:10 {
         val last = if empty(myvecs) {emptyvec} else {myvecs.back()}
-        // curr annotated to sidestep FB-0xx (order-dependent generic-return
+        // curr annotated to sidestep FB-024 (order-dependent generic-return
         // inference pollution across tests); see docs/found_bugs.md
         val curr: float vector = last.mapi(fun(x, j) { if j == 0 {1.f} else {last[j-1] + last[j]} })
         curr.push_back(1.f)

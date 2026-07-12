@@ -4,6 +4,7 @@ from Complex import *
 from Array import *
 import List
 import Rrbvec
+import Vector
 import Char
 import String
 fun list.sum@g0(list.l@g1: int list): (int list -> int) =

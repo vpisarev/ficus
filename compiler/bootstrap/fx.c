@@ -393,6 +393,8 @@ FX_EXTERN_C int fx_init_List();
 FX_EXTERN_C void fx_deinit_List();
 FX_EXTERN_C int fx_init_Rrbvec();
 FX_EXTERN_C void fx_deinit_Rrbvec();
+FX_EXTERN_C int fx_init_Vector();
+FX_EXTERN_C void fx_deinit_Vector();
 FX_EXTERN_C int fx_init_Char();
 FX_EXTERN_C void fx_deinit_Char();
 FX_EXTERN_C int fx_init_String();
@@ -500,6 +502,7 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_Array();
   if (fx_status >= 0) fx_status = fx_init_List();
   if (fx_status >= 0) fx_status = fx_init_Rrbvec();
+  if (fx_status >= 0) fx_status = fx_init_Vector();
   if (fx_status >= 0) fx_status = fx_init_Char();
   if (fx_status >= 0) fx_status = fx_init_String();
   if (fx_status >= 0) fx_status = fx_init_Filename();
@@ -599,6 +602,7 @@ int main(int argc, char** argv)
   fx_deinit_Filename();
   fx_deinit_String();
   fx_deinit_Char();
+  fx_deinit_Vector();
   fx_deinit_Rrbvec();
   fx_deinit_List();
   fx_deinit_Array();

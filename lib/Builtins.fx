@@ -368,6 +368,7 @@ fun string(l: 't list): string = join_embrace("[", "]", ", ", [for x <- l {repr(
 }
 
 fun string(v: 't rrbvec): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+fun string(v: 't vector): string { val n = size(v); join_embrace("[", "]", ", ", [for i <- 0:n {repr(v[i])}]) }
 
 @pure fun string(v: char rrbvec): string
 @ccode {
@@ -562,6 +563,31 @@ operator == (a: 't rrbvec, b: 't rrbvec): bool
 }
 
 operator <=> (a: 't rrbvec, b: 't rrbvec): int
+{
+    val na = size(a), nb = size(b)
+    val n = min(na, nb)
+    var d = 0
+    for i <- 0:n {
+        d = a[i] <=> b[i]
+        if d != 0 {break}
+    }
+    if d != 0 {d} else {na <=> nb}
+}
+
+// first-class mutable vector compare (kept here, not in Vector.fx, to resolve the
+// generic element compare in a small-overload context — see FB-025)
+operator == (a: 't vector, b: 't vector): bool
+{
+    val n = size(a)
+    if size(b) != n { return false }
+    var eq = true
+    for i <- 0:n {
+        if a[i] != b[i] { eq = false; break }
+    }
+    eq
+}
+
+operator <=> (a: 't vector, b: 't vector): int
 {
     val na = size(a), nb = size(b)
     val n = min(na, nb)
@@ -1130,6 +1156,17 @@ fun print(v: 't rrbvec): void
     for x@i <- v {
         if i > 0 {print(", ")}
         print_repr(x)
+    }
+    print("]")
+}
+
+fun print(v: 't vector): void
+{
+    print("[")
+    val n = size(v)
+    for i <- 0:n {
+        if i > 0 {print(", ")}
+        print_repr(v[i])
     }
     print("]")
 }

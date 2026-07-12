@@ -4,6 +4,7 @@ from Complex import *
 from Array import *
 import List
 import Rrbvec
+import Vector
 import Char
 import String
 val ref_mut.r@g0: int ref = (REF 0)

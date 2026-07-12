@@ -296,3 +296,21 @@ t1(); t2()   // ERROR at t2: "if() expression should have the same type as its
   result — `val curr: float vector = last.mapi(...)` — which pins the return type
   before the polluted var is consulted. Not fixed (out of scope for newvec-1;
   `map`/`mapi`/`foldl` are themselves temporary until vector comprehensions).
+
+## FB-025  resolver internal error: generic container operator in a large overload context  [OPEN — fenced]
+Compiling a generic container operator whose body compares/formats elements
+generically — `operator <=> (a: 't vector, b: 't vector): int { ... a[i] <=> b[i] ... }`
+— throws an internal error **"the winning overload of '__cmp__' failed to
+re-unify at commit"** when it is type-checked in a scope that already has many
+`<=>`/`__cmp__` overloads (a second generic container `<=>` — rrbvec's — plus the
+compiler's own per-type ones, as happens when `Vector` is auto-imported into the
+whole compiler). The element access `a[i]` has a *free* element type `'t`, so the
+resolver treats every container `<=>` (incl. the one being defined) as a
+candidate and fails to commit a unique winner.
+- **Order/context-dependent**, like FB-024: the same operator compiles fine when
+  `Vector.fx` is imported by a small program (few `<=>` in scope).
+- **Workaround (used for newvec-1 auto-import)**: define `==`/`<=>`/`string`/
+  `print` for `vector` in `Builtins.fx` (next to the rrbvec ones) instead of in
+  the auto-imported `Vector.fx`. Builtins is compiled first, with few overloads
+  in scope, so the generic element compare resolves. Not fixed (resolver work is
+  out of scope for newvec-1).

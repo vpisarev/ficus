@@ -4,6 +4,7 @@ from Complex import *
 from Array import *
 import List
 import Rrbvec
+import Vector
 import Char
 import String
 fun overload_resolve.pick@g0(overload_resolve.x@g1: int): (int -> int) = { (<int>overload_resolve.x@g1 + 1) }

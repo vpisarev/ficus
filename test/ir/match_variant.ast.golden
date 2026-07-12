@@ -4,6 +4,7 @@ from Complex import *
 from Array import *
 import List
 import Rrbvec
+import Vector
 import Char
 import String
 /*match_variant.shape_t@g0*/type

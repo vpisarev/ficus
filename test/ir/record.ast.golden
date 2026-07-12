@@ -4,6 +4,7 @@ from Complex import *
 from Array import *
 import List
 import Rrbvec
+import Vector
 import Char
 import String
 /*record.pt_t@g0*/@record type record.pt_t@g0 = | record.pt_t@g1:  { x: int; y: int }
