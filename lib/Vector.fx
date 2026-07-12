@@ -23,3 +23,6 @@ fun push_back(v: 't vector, elem: 't): void
     // pointer to the element (its first field) regardless of 't.
     push_back_(v, (elem, true))
 }
+
+// copy the vector's elements into a plain array (uses the v[i]/size intrinsics)
+fun array(v: 't vector): 't [] = [for i <- 0:size(v) {v[i]}]

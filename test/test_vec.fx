@@ -33,6 +33,24 @@ TEST("fcvector.access", fun()
     EXPECT_EQ(`s[2]`, "def")
 })
 
+TEST("fcvector.write", fun()
+{
+    val v: int vector = []
+    for i <- 0:5 { v.push_back(i) }
+    v[0] = 100; v[2] = 300; v[4] = 500
+    EXPECT_EQ(`Vector.array(v)`, [100, 1, 300, 3, 500])
+    var sink = 0
+    EXPECT_THROWS(fun() {v[5] = 9; sink = v[5]}, OutOfRangeError)
+    ignore(sink)
+
+    // complex element: overwriting must free the old string (ASan-checked)
+    val s: string vector = []
+    s.push_back("x"); s.push_back("y")
+    s[0] = "hello"; s[1] = "world"
+    EXPECT_EQ(`s[0]`, "hello")
+    EXPECT_EQ(`s[1]`, "world")
+})
+
 TEST("rrbvec.simple", fun()
 {
     val N = 10
