@@ -25,4 +25,4 @@ fun push_back(v: 't vector, elem: 't): void
 }
 
 // copy the vector's elements into a plain array (uses the v[i]/size intrinsics)
-fun array(v: 't vector): 't [] = [for i <- 0:size(v) {v[i]}]
+fun array(v: 't vector): 't [] { val n = size(v); [for i <- 0:n {v[i]}] }
