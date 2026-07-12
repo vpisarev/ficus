@@ -209,6 +209,9 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
          global_flags.{for_flag_make=ForMakeList})
     | "rrbvec" =>
         (ExpNop(body_loc), fold_body, ExpNop(body_loc),
+         global_flags.{for_flag_make=ForMakeRRBVec})
+    | "vector" =>
+        (ExpNop(body_loc), fold_body, ExpNop(body_loc),
          global_flags.{for_flag_make=ForMakeVector})
     | _ => throw ParseError(acc_loc, f"unknown fold variation '{special}'")
     }
@@ -570,12 +573,21 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
                             | _ => throw parse_err(ts, f"unknown/unsupported intrinsic '{istr}'")
                             }
                         ExpIntrin(iop, args, make_new_ctx(eloc))
+                    } else if istr == "vector" &&
+                        (match args {[:: ExpMap _] => true | _ => false}) {
+                        // mutable-vector comprehension: `vector(for ... {...})`
+                        // (the literal form `vector([...])` is not wired yet)
+                        match args {
+                        | [:: ExpMap(for_clauses, body, flags, ctx)] =>
+                            ExpMap(for_clauses, body, flags.{for_flag_make=ForMakeVector}, ctx)
+                        | _ => throw parse_err(ts, "unexpected 'vector' comprehension argument")
+                        }
                     } else if (istr == "rrbvec" || istr == "list" || istr == "array") &&
                         (match args {[:: ExpMap _] | [:: ExpMkArray ([:: _], _)] | [:: ExpMkVector _] => true | _ => false}) {
                         match args {
                         | [:: ExpMap(for_clauses, body, flags, ctx)] =>
                             val mkflag = if istr == "array" {ForMakeArray}
-                                else if istr == "rrbvec" {ForMakeVector}
+                                else if istr == "rrbvec" {ForMakeRRBVec}
                                 else {ForMakeList}
                             ExpMap(for_clauses, body, flags.{for_flag_make=mkflag}, ctx)
                         | _ =>
@@ -1134,7 +1146,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
 
     val for_exp = match for_make
     {
-    | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeVector =>
+    | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeRRBVec | ForMakeVector =>
         var pel_i_l = [], glob_when_e = ExpNop(noloc), last_loc = noloc
         for (pe_l, idxp, when_e, loc) <- nested_fors {
             glob_when_e =

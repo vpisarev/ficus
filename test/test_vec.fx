@@ -128,6 +128,28 @@ TEST("fcvector.binomial", fun()
     }
 })
 
+TEST("fcvector.comprehension", fun()
+{
+    // write-comprehension over a range and over an array
+    val v = vector(for i <- 0:6 {i*i})
+    EXPECT_EQ(`size(v)`, 6)
+    EXPECT_EQ(`array(v)`, [0, 1, 4, 9, 16, 25])
+    val a = [10, 20, 30]
+    EXPECT_EQ(`array(vector(for x <- a {x + 1}))`, [11, 21, 31])
+    // the result is a real mutable vector
+    v.push_back(36)
+    EXPECT_EQ(`v[6]`, 36)
+    // empty comprehension
+    EXPECT_EQ(`size(vector(for i <- 0:0 {i}))`, 0)
+    // complex elements (strings) — ASan-checked
+    val s = vector(for i <- 0:4 {string(i*i)})
+    EXPECT_EQ(`array(s)`, ["0", "1", "4", "9"])
+    // nested: a vector of vectors
+    val vv = vector(for i <- 0:3 {vector(for j <- 0:i {j})})
+    EXPECT_EQ(`size(vv)`, 3)
+    EXPECT_EQ(`array(vv[2])`, [0, 1])
+})
+
 TEST("fcvector.str", fun()
 {
     val vecstr: string vector = []

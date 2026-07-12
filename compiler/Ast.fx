@@ -235,7 +235,7 @@ type fun_flags_t =
 
 fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone, fun_flag_method_of=noid}
 
-type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeVector | ForMakeTuple
+type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeRRBVec | ForMakeVector | ForMakeTuple
 
 type for_flags_t =
 {

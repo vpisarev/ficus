@@ -2814,6 +2814,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val end_for_loc = get_end_loc(kloc)
             val for_flag_make = flags.for_flag_make
             val need_make_array = for_flag_make == ForMakeArray
+            val need_make_vec = for_flag_make == ForMakeVector
+            // a mutable-vector comprehension writes into a contiguous buffer just
+            // like an array (dstptr++), so it shares the array machinery (size
+            // computation, allocation gate, finalize) via need_make_contig; only
+            // the allocation call, the data pointer, and the final size differ.
+            val need_make_contig = need_make_array || need_make_vec
             val unzip_mode = flags.for_flag_unzip
             val nfors = e_idoml_l.length()
             /* collect all the variables/values declared inside for (include iterations variables) */
@@ -2879,6 +2885,29 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             for coll_typ <- coll_typs {
                 val coll_ctyp = C_gen_types.ktyp2ctyp(coll_typ, kloc)
                 match (for_flag_make, coll_ctyp, deref_ktyp(coll_typ, kloc)) {
+                | (ForMakeVector, CTypVector (elemtyp), KTypVector _) =>
+                    // mirror the array path: allocate a contiguous vector of the
+                    // computed size and write through a moving dstptr. The final
+                    // vec->size is set from (dstptr - vec->data) after the loop so
+                    // that break/continue (which skip the write+increment in the
+                    // body) yield the correct element count.
+                    val (dst_exp, ccode1) =
+                        if unzip_mode {
+                            add_local(gen_idc(cm_idx, "vec"), coll_ctyp, default_tempval_flags(), None, ccode, for_loc)
+                        } else {
+                            get_dstexp(dstexp_r, "vec", coll_ctyp, ccode, for_loc)
+                        }
+                    val (dst_ptr, ccode2) =
+                        create_cdefval( gen_idc(cm_idx, "dstptr"), make_ptr(elemtyp),
+                                        default_tempvar_flags(), "",
+                                        Some(make_nullptr(for_loc)), ccode1, for_loc)
+                    val base = CExpCast(cexp_arrow(dst_exp, get_id("data"), std_CTypVoidPtr),
+                                        make_ptr(elemtyp), for_loc)
+                    val nwritten = CExpBinary(COpSub, dst_ptr, base, (CTypInt, for_loc))
+                    val set_size = make_assign(cexp_arrow(dst_exp, get_id("size"), CTypInt), nwritten)
+                    dst_data = (coll_ctyp, elemtyp, dst_exp, dst_ptr, make_dummy_exp(for_loc)) :: dst_data
+                    ccode = ccode2
+                    finalize_ccode = CExp(set_size) :: finalize_ccode
                 | (ForMakeArray, CTypArray (nd, elemtyp), KTypArray _) =>
                     val (dst_exp, ccode1) =
                         if unzip_mode {
@@ -2901,7 +2930,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         dst_data = (coll_ctyp, elemtyp, dst_exp, dst_ptr, make_dummy_exp(for_loc)) :: dst_data
                         ccode = ccode2
                     }
-                | (ForMakeVector, CTypRRBVec (elemtyp), KTypRRBVec _) =>
+                | (ForMakeRRBVec, CTypRRBVec (elemtyp), KTypRRBVec _) =>
                     val (dst_exp, ccode1) =
                         if unzip_mode {
                             add_local(gen_idc(cm_idx, "vec"), coll_ctyp, default_tempval_flags(), None, ccode, for_loc)
@@ -2939,6 +2968,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val maptype_str = match for_flag_make {
                         | ForMakeArray => "make_array"
                         | ForMakeList => "make_list"
+                        | ForMakeRRBVec => "make_rrbvec"
                         | ForMakeVector => "make_vector"
                         | _ => "???"
                         }
@@ -2965,7 +2995,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (for_headers, list_exps, i_exps, n_exps, pre_map_ccode_delta, pre_body_ccode, body_elems, post_ccode) =
                     process_for(lbl, idoml, at_ids, for_idx, nfors, ndims, dims_ofs, nested_e_idoml, [], nested_loc)
                 val (ndims_i, n_exps, lst_len_ccode) =
-                    match (list_exps, n_exps, need_make_array) {
+                    match (list_exps, n_exps, need_make_contig) {
                     | (_, n_exp :: _, _) => (n_exps.length(), n_exps, [])
                     | (l_exp :: _, [], true) =>
                         /* if there is no fixed range or array iterated, just list(s),
@@ -2982,7 +3012,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val i_exps = prev_i_exps + i_exps
                 val (_, _, dst_exp0, _, _) = dst_data.hd()
                 val alloc_array_ccode =
-                    if !need_make_array || dims_ofs + ndims_i < ndims { [] }
+                    if !need_make_contig || dims_ofs + ndims_i < ndims { [] }
                     else {
                         val (_, cmp_size_list) =
                         fold k = 0, cmp_size_list = [] for n_exp <- n_exps {
@@ -2995,12 +3025,31 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                   else { curr_block_label(nested_loc) }
                         var then_ccode = []
                         for (coll_ctyp, elemtyp, dst_exp, dst_ptr, _) <- dst_data {
-                            val then_ccode1 = make_make_arr_call(dst_exp, n_exps, [], then_ccode, lbl, nested_loc)
+                            val then_ccode1 =
+                                if need_make_vec {
+                                    // allocate an empty vector of capacity n (size 0);
+                                    // the loop writes n elements and sets size at the end
+                                    val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elemtyp, nested_loc)
+                                    // size==capacity==n: complex elements are zeroed so a
+                                    // mid-comprehension exception frees cleanly and writes go
+                                    // into empty slots; the final size is trimmed to the count
+                                    // actually written (dstptr-data) to handle break/continue
+                                    val call_make = make_call(std_fx_make_vec,
+                                        [:: n_exps.hd(), n_exps.hd(), elemsize_exp,
+                                            free_f_exp, copy_f_exp, make_nullptr(nested_loc),
+                                            cexp_get_addr(dst_exp)], CTypCInt, nested_loc)
+                                    add_fx_call_(call_make, then_ccode, lbl, nested_loc)
+                                } else {
+                                    make_make_arr_call(dst_exp, n_exps, [], then_ccode, lbl, nested_loc)
+                                }
                             then_ccode =
                             if is_parallel_map {
                                 then_ccode1
                             } else {
-                                val arr_data = CExpCast(cexp_mem(dst_exp, get_id("data"), std_CTypVoidPtr), make_ptr(elemtyp), nested_loc)
+                                val data_ptr =
+                                    if need_make_vec { cexp_arrow(dst_exp, get_id("data"), std_CTypVoidPtr) }
+                                    else { cexp_mem(dst_exp, get_id("data"), std_CTypVoidPtr) }
+                                val arr_data = CExpCast(data_ptr, make_ptr(elemtyp), nested_loc)
                                 val set_dstptr = make_assign(dst_ptr, arr_data)
                                 CExp(set_dstptr) :: then_ccode1
                             }
@@ -3104,6 +3153,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         | ForMakeArray =>
                             C_gen_types.gen_copy_code(result_j, cexp_deref(dst_ptr), elemtyp, body_ccode, body_loc)
                         | ForMakeVector =>
+                            // *dstptr = result; dstptr++  — both in the body (not the
+                            // for-increment) so break/continue skip them and the size
+                            // trim (dstptr - data) counts only elements actually written
+                            val body_ccode1 = C_gen_types.gen_copy_code(result_j, cexp_deref(dst_ptr), elemtyp, body_ccode, body_loc)
+                            CExp(CExpUnary(COpSuffixInc, dst_ptr, (CTypVoid, body_loc))) :: body_ccode1
+                        | ForMakeRRBVec =>
                             val write_f = match C_gen_types.get_copy_f(elemtyp, true, false, body_loc) {
                                           | (_, Some _) => get_id("FX_RRB_WRITE")
                                           | _ => get_id("FX_RRB_WRITE_FAST")

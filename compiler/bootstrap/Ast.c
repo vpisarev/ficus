@@ -12093,7 +12093,7 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N15Ast__for_make_t(struct _fx_N15Ast__for_ma
    else if (tag_0 == 3) {
       fx_str_t slit_2 = FX_MAKE_STR("ForMakeList"); fx_copy_str(&slit_2, fx_result);
    }
-   else if (tag_0 == 5) {
+   else if (tag_0 == 6) {
       fx_str_t slit_3 = FX_MAKE_STR("ForMakeTuple"); fx_copy_str(&slit_3, fx_result);
    }
    else {

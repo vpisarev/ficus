@@ -542,7 +542,8 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
         | ExpMap(map_cl, map_body, flags, _) =>
             var (oparen, cparen) = match flags.for_flag_make {
             | ForMakeList => ("[::", "]")
-            | ForMakeVector => ("rrbvec [", "]")
+            | ForMakeRRBVec => ("rrbvec [", "]")
+            | ForMakeVector => ("vector [", "]")
             | ForMakeTuple => ("(", ")")
             | _ => ("[", "]")
             }

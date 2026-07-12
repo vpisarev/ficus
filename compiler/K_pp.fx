@@ -465,6 +465,7 @@ val pp_ = Ast.pp
             match flags.for_flag_make {
             | ForMakeList => ("[", "]")
             | ForMakeArray => ("[", "]")
+            | ForMakeRRBVec => ("[", "]")
             | ForMakeVector => ("[", "]")
             | ForMakeTuple => ("(", ")")
             | _ => throw compile_err(loc, f"unsupported type of comprehension '{flags.for_flag_make}'")

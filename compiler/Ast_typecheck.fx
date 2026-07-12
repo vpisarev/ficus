@@ -2744,10 +2744,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpMap(map_clauses, body, flags, ctx) =>
         val make_list = flags.for_flag_make == ForMakeList
         val make_tuple = flags.for_flag_make == ForMakeTuple
-        val make_vector = flags.for_flag_make == ForMakeVector
+        val make_vector = flags.for_flag_make == ForMakeRRBVec
+        val make_vec = flags.for_flag_make == ForMakeVector
         val unzip_mode = flags.for_flag_unzip
         val for_sc = (if make_tuple { new_block_scope(curr_m_idx) }
-                      else if make_list || make_vector { new_map_scope(curr_m_idx) }
+                      else if make_list || make_vector || make_vec { new_map_scope(curr_m_idx) }
                       else { new_arr_map_scope(curr_m_idx) }) :: sc
         val (trsz, pre_code, map_clauses, total_dims, env, _) =
             fold trsz = 0, pre_code = ([]: exp_t list), map_clauses_acc = [], total_dims = 0, env_acc = env, idset_acc = empty_idset
@@ -2768,6 +2769,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         val coll_name = if make_list {"list"}
                         else if make_tuple {"tuple"}
                         else if make_vector {"rrbvec"}
+                        else if make_vec {"vector"}
                         else {"array"}
         fun check_map_typ (elem_typ: typ_t, coll_typ: typ_t, idx: int)
         {
@@ -2780,6 +2782,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             } else if make_vector {
                 unify (coll_typ, TypRRBVec(elem_typ), eloc,
                     f"the result {idx_str} should have type '{typ2str(TypRRBVec(elem_typ))}', \
+                      but it has type '{typ2str(coll_typ)}'")
+            } else if make_vec {
+                unify (coll_typ, TypVector(elem_typ), eloc,
+                    f"the result {idx_str} should have type '{typ2str(TypVector(elem_typ))}', \
                       but it has type '{typ2str(coll_typ)}'")
             } else {
                 unify (coll_typ, TypArray(total_dims, elem_typ), eloc,
