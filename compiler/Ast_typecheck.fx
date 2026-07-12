@@ -118,6 +118,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         | TypFun(args2, rt2) => occurs(r1, args2) || occurs(r1, rt2)
         | TypList(t2_) => occurs(r1, t2_)
         | TypRRBVec(t2_) => occurs(r1, t2_)
+        | TypVector(t2_) => occurs(r1, t2_)
         | TypTuple(tl2) => occurs(r1, tl2)
         | TypVarTuple(Some(t2_)) => occurs(r1, t2_)
         | TypVarTuple _ => false
@@ -160,6 +161,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
             maybe_unify_(args1, args2, loc) && maybe_unify_(rt1, rt2, loc)
         | (TypList(et1), TypList(et2)) => maybe_unify_(et1, et2, loc)
         | (TypRRBVec(et1), TypRRBVec(et2)) => maybe_unify_(et1, et2, loc)
+        | (TypVector(et1), TypVector(et2)) => maybe_unify_(et1, et2, loc)
         | (TypTuple(tl1), TypTuple(tl2)) => maybe_unify_(tl1, tl2, loc)
         | (TypVar((ref Some(TypVarTuple(t1_opt))) as r1),
             TypVar((ref Some(TypVarTuple(t2_opt))) as r2)) =>
@@ -237,7 +239,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                 undo_stack = (r2, *r2) :: undo_stack
                 *r2 = Some(t1)
                 true
-            | TypList _ | TypRRBVec _ | TypArray(_, _)
+            | TypList _ | TypRRBVec _ | TypVector _ | TypArray(_, _)
             | TypVar(ref Some(TypVarArray _)) =>
                 undo_stack = (r1, *r1) :: undo_stack
                 *r1 = Some(t2)
@@ -2357,6 +2359,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             match (deref_typ(t), idx) {
             | (TypString, 0) => {}
             | (TypRRBVec _, 0) => {}
+            | (TypVector _, 0) => {}
             | (TypArray(ndims, _), _) =>
                 if idx < 0 || idx >= ndims { throw compile_err(eloc,
                     "the argument of __intrin_size__ is outside of array dimensionality") }

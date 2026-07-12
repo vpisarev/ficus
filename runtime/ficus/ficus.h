@@ -1046,7 +1046,7 @@ typedef struct fx_vechdr_t
     void* data;
 } fx_vechdr_t, *fx_vec_t;
 
-#define FX_VEC_SIZE(vec) ((vec)->size)
+#define FX_VEC_SIZE(vec) ((vec) ? (vec)->size : 0)
 #define FX_VEC_CHKIDX(vec, idx, catch_label) \
     if((size_t)(idx) < (size_t)(vec)->size) ; \
     else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
@@ -1077,7 +1077,9 @@ typedef struct fx_vechdr_t
     })
 
 void fx_free_vec(fx_vec_t* vec);
-#define FX_FREE_VEC(vec) if(!(vec) || !(*(vec))->rc) ; else fx_free_vec(&(vec))
+// pvec is fx_vec_t* (the address of the fx_vec_t variable), matching the
+// FX_FREE_ARR / FX_FREE_LIST_SIMPLE convention the compiler emits (&var).
+#define FX_FREE_VEC(pvec) if(!*(pvec)) ; else fx_free_vec(pvec)
 void fx_vec_destructor(void* vec);
 
 // dedicated copy macro is not needed, use FX_COPY_PTR

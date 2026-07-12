@@ -627,6 +627,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -2235,8 +2236,10 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 18:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
       case 20:
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+      case 21:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRef); break;
       default:
          ;
@@ -5373,10 +5376,10 @@ FX_EXTERN_C int _fx_M10K_fast_idxFM15__eq_variants__B2N14K_form__ktyp_tN14K_form
       }
       if (FX_REC_VARIANT_TAG(b_2) == 19) {
          if (FX_REC_VARIANT_TAG(a_2) == 19) {
-            _fx_N14K_form__ktyp_t* a0_2 = &a_2->u.KTypList;
+            _fx_N14K_form__ktyp_t* a0_2 = &a_2->u.KTypVector;
             _fx_free_N14K_form__ktyp_t(&a_1);
             FX_COPY_PTR(*a0_2, &a_1);
-            _fx_N14K_form__ktyp_t* b0_2 = &b_2->u.KTypList;
+            _fx_N14K_form__ktyp_t* b0_2 = &b_2->u.KTypVector;
             _fx_free_N14K_form__ktyp_t(&b_1);
             FX_COPY_PTR(*b0_2, &b_1);
             goto _fx_endmatch_0;
@@ -5384,12 +5387,23 @@ FX_EXTERN_C int _fx_M10K_fast_idxFM15__eq_variants__B2N14K_form__ktyp_tN14K_form
       }
       if (FX_REC_VARIANT_TAG(b_2) == 20) {
          if (FX_REC_VARIANT_TAG(a_2) == 20) {
-            _fx_N14K_form__ktyp_t* a0_3 = &a_2->u.KTypRef;
+            _fx_N14K_form__ktyp_t* a0_3 = &a_2->u.KTypList;
             _fx_free_N14K_form__ktyp_t(&a_1);
             FX_COPY_PTR(*a0_3, &a_1);
-            _fx_N14K_form__ktyp_t* b0_3 = &b_2->u.KTypRef;
+            _fx_N14K_form__ktyp_t* b0_3 = &b_2->u.KTypList;
             _fx_free_N14K_form__ktyp_t(&b_1);
             FX_COPY_PTR(*b0_3, &b_1);
+            goto _fx_endmatch_0;
+         }
+      }
+      if (FX_REC_VARIANT_TAG(b_2) == 21) {
+         if (FX_REC_VARIANT_TAG(a_2) == 21) {
+            _fx_N14K_form__ktyp_t* a0_4 = &a_2->u.KTypRef;
+            _fx_free_N14K_form__ktyp_t(&a_1);
+            FX_COPY_PTR(*a0_4, &a_1);
+            _fx_N14K_form__ktyp_t* b0_4 = &b_2->u.KTypRef;
+            _fx_free_N14K_form__ktyp_t(&b_1);
+            FX_COPY_PTR(*b0_4, &b_1);
             goto _fx_endmatch_0;
          }
       }

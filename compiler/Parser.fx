@@ -1937,6 +1937,7 @@ fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
         val t = match i {
             | "list" => TypList(result)
             | "rrbvec" => TypRRBVec(result)
+            | "vector" => TypVector(result)
             | _ => TypApp(typ2typlist(result), get_id(i))
             }
         extend_typespec_nf_(ts, t)

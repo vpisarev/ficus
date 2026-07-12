@@ -654,7 +654,11 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 create_cdefval(gen_idc(cm_idx, "slit"), CTypString, default_tempval_flags(), "", Some(e0), ccode, loc)
             | KLitNil ktyp =>
                 match deref_ktyp(ktyp, loc) {
-                | KTypList _ | KTypCPointer | KTypRawPointer _ =>
+                | KTypList _ | KTypCPointer | KTypRawPointer _ | KTypVector _ =>
+                    // the mutable vector follows the cptr model: an empty/default
+                    // vector is a NULL pointer (safe to free during a block's
+                    // exception cleanup). size/reads are NULL-aware; explicit
+                    // constructors allocate, expecting *fx_result to start NULL.
                     (make_nullptr(loc), ccode)
                 | KTypRRBVec et =>
                     val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
@@ -772,7 +776,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
         val nelems_exp = make_int_exp(data.length(), loc)
         val (sizeof_elem_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
-         val call_mkvec = make_call( std_fx_make_vec, [:: nelems_exp, sizeof_elem_exp,
+         val call_mkvec = make_call( std_fx_make_rrbvec, [:: nelems_exp, sizeof_elem_exp,
                                     free_f_exp, copy_f_exp, data_exp,
                                     cexp_get_addr(vec_exp)], CTypCInt, loc)
         val ccode = add_fx_call_(call_mkvec, ccode, lbl, loc)
@@ -1805,6 +1809,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | KTypString => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
                     | KTypArray _ => make_call(get_id("FX_ARR_SIZE"), [:: arr_exp, make_int_exp(0, kloc) ], CTypInt, kloc)
                     | KTypRRBVec _ => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | KTypVector _ => make_call(get_id("FX_VEC_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | ktyp =>
                         throw compile_err( kloc,
                             f"cgen: unsupported container type {ktyp} of {atom2str(arr_or_str)} in KExpIntrin(IntrinGetSize...)")
@@ -1816,6 +1821,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     match (get_atom_ktyp(arr_or_str, kloc), i) {
                     | (KTypString, 0i64) => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
                     | (KTypRRBVec _, 0i64) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | (KTypVector _, 0i64) => make_call(get_id("FX_VEC_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | (KTypArray (ndims, _), i) =>
                         if !(0i64 <= i && i < int64(ndims)) {
                             throw compile_err(kloc, f"array dimension index {i}i is beyond dimensionality {ndims}")

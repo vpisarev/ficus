@@ -67,7 +67,7 @@ fun get_typ_pr(t: typ_t): typ_pr_t
     | TypApp([], _) => TypPrBase
     | TypTuple _ | TypVarTuple _ => TypPrBase
     | TypRecord _ | TypVarRecord | TypVarCollection => TypPrBase
-    | TypList _ | TypRRBVec _ | TypRef _ | TypArray(_, _) | TypVarArray _ | TypApp(_, _) => TypPrComplex
+    | TypList _ | TypRRBVec _ | TypVector _ | TypRef _ | TypArray(_, _) | TypVarArray _ | TypApp(_, _) => TypPrComplex
     | TypFun(_, _) => TypPrFun
 }
 
@@ -113,6 +113,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
             pp.end()
         | TypList(t1) => pptypsuf(t1, "list")
         | TypRRBVec(t1) => pptypsuf(t1, "rrbvec")
+        | TypVector(t1) => pptypsuf(t1, "vector")
         | TypRef(t1) => pptypsuf(t1, "ref")
         | TypArray(d, t1) =>
             val shape = if d == 0 {"+"} else {','*(d-1)}

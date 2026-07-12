@@ -525,6 +525,7 @@ typedef struct _fx_N14K_form__ktyp_t_data_t {
       struct _fx_R9Ast__id_t KTypName;
       struct _fx_T2iN14K_form__ktyp_t KTypArray;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRRBVec;
+      struct _fx_N14K_form__ktyp_t_data_t* KTypVector;
       struct _fx_N14K_form__ktyp_t_data_t* KTypList;
       struct _fx_N14K_form__ktyp_t_data_t* KTypRef;
    } u;
@@ -619,6 +620,7 @@ typedef struct _fx_N14C_form__ctyp_t_data_t {
       struct _fx_T2LN19C_form__ctyp_attr_tN14C_form__ctyp_t CTypRawArray;
       struct _fx_T2iN14C_form__ctyp_t CTypArray;
       struct _fx_N14C_form__ctyp_t_data_t* CTypRRBVec;
+      struct _fx_N14C_form__ctyp_t_data_t* CTypVector;
       struct _fx_R9Ast__id_t CTypName;
    } u;
 } _fx_N14C_form__ctyp_t_data_t, *_fx_N14C_form__ctyp_t;
@@ -2064,8 +2066,10 @@ static void _fx_free_N14K_form__ktyp_t(struct _fx_N14K_form__ktyp_t_data_t** dst
       case 18:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRRBVec); break;
       case 19:
-         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypVector); break;
       case 20:
+         _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypList); break;
+      case 21:
          _fx_free_N14K_form__ktyp_t(&(*dst)->u.KTypRef); break;
       default:
          ;
@@ -2246,6 +2250,8 @@ static void _fx_free_N14C_form__ctyp_t(struct _fx_N14C_form__ctyp_t_data_t** dst
          _fx_free_T2iN14C_form__ctyp_t(&(*dst)->u.CTypArray); break;
       case 20:
          _fx_free_N14C_form__ctyp_t(&(*dst)->u.CTypRRBVec); break;
+      case 21:
+         _fx_free_N14C_form__ctyp_t(&(*dst)->u.CTypVector); break;
       default:
          ;
       }
@@ -3565,6 +3571,9 @@ FX_EXTERN_C int _fx_M4C_ppFM9pp_ctyp__v7R5PP__tSSN14C_form__ctyp_tNt6option1R9As
    else if (tag_0 == 20) {
       res_0 = true;
    }
+   else if (tag_0 == 21) {
+      res_0 = true;
+   }
    else {
       res_0 = false;
    }
@@ -3831,7 +3840,7 @@ FX_EXTERN_C int _fx_M4C_ppFM9pp_ctyp__v7R5PP__tSSN14C_form__ctyp_tNt6option1R9As
    _fx_catch_13: ;
       goto _fx_endmatch_3;
    }
-   if (tag_0 == 21) {
+   if (tag_0 == 22) {
       _fx_R9Ast__id_t* n_0 = &t_0->u.CTypName;
       if (fwd_mode_0 == false) {
          FX_CALL(_fx_M4C_ppFM5pp_idv3R5PP__tR9Ast__id_tR10Ast__loc_t(pp_0, n_0, loc_0, 0), _fx_catch_14);
@@ -3929,7 +3938,7 @@ FX_EXTERN_C int _fx_M4C_ppFM9pp_ctyp__v7R5PP__tSSN14C_form__ctyp_tNt6option1R9As
    _fx_catch_21: ;
       goto _fx_endmatch_3;
    }
-   if (tag_0 == 22) {
+   if (tag_0 == 23) {
       fx_str_t slit_36 = FX_MAKE_STR("/*<label>*/");
       FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_36, 0), _fx_catch_22);
       FX_CALL(_fx_M4C_ppFM9pr_id_optv3Nt6option1R9Ast__id_tR10Ast__loc_tR5PP__t(id_opt_0, loc_0, pp_0, 0), _fx_catch_22);
@@ -3937,7 +3946,7 @@ FX_EXTERN_C int _fx_M4C_ppFM9pp_ctyp__v7R5PP__tSSN14C_form__ctyp_tNt6option1R9As
    _fx_catch_22: ;
       goto _fx_endmatch_3;
    }
-   if (tag_0 == 23) {
+   if (tag_0 == 24) {
       fx_str_t slit_37 = FX_MAKE_STR("void");
       FX_CALL(_fx_M2PPFM3strv2RM1tS(pp_0, &slit_37, 0), _fx_catch_23);
       FX_CALL(_fx_M4C_ppFM9pr_id_optv3Nt6option1R9Ast__id_tR10Ast__loc_tR5PP__t(id_opt_0, loc_0, pp_0, 0), _fx_catch_23);

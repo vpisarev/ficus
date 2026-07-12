@@ -24,7 +24,7 @@ val pp_ = Ast.pp
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypModule | KTypName _
     | KTypTuple _ | KTypRecord _ => 3
-    | KTypList _ | KTypRef _ | KTypArray _ | KTypRRBVec _ | KTypRawPointer _ => 2
+    | KTypList _ | KTypRef _ | KTypArray _ | KTypRRBVec _ | KTypVector _ | KTypRawPointer _ => 2
     | KTypFun _ => 1
     }
 
@@ -78,6 +78,7 @@ val pp_ = Ast.pp
         pp.str(")"); pp.end()
     | KTypList t1 => ppktypsuf(t1, "list")
     | KTypRRBVec t1 => ppktypsuf(t1, "rrbvec")
+    | KTypVector t1 => ppktypsuf(t1, "vector")
     | KTypRef t1 => ppktypsuf(t1, "ref")
     | KTypArray (d, t1) => ppktypsuf(t1, "[" + ','*(d-1) + "]")
     | KTypName n => pp_id_(pp, n, loc)

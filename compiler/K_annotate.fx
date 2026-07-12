@@ -39,6 +39,7 @@ fun get_typ_deps(n: id_t, loc: loc_t): idset_t
         | KTypArray (_, et) => get_ktyp_deps_(et, deps)
         | KTypList et => get_ktyp_deps_(et, deps)
         | KTypRRBVec et => get_ktyp_deps_(et, deps)
+        | KTypVector et => get_ktyp_deps_(et, deps)
         | KTypRef et => get_ktyp_deps_(et, deps)
         }
 
@@ -169,6 +170,13 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
             val have_complex = get_ktprops_(et, loc).ktp_complex
             ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=false,
                         ktp_pass_by_ref=true, ktp_custom_free=have_complex,
+                        ktp_custom_copy=false }
+        | KTypVector et =>
+            // mutable vector: a pointer to a heap header (fx_vec_t), like a list;
+            // copy is a plain refcount INCREF (fx_copy_ptr), free is fx_free_vec
+            val have_complex = get_ktprops_(et, loc).ktp_complex
+            ktprops_t { ktp_complex=true, ktp_scalar=false, ktp_ptr=true,
+                        ktp_pass_by_ref=false, ktp_custom_free=have_complex,
                         ktp_custom_copy=false }
         | KTypRef et =>
             val have_complex = get_ktprops_(et, loc).ktp_complex

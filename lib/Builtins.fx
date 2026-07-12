@@ -1187,6 +1187,8 @@ fun rrbvec(a: 't [+]): 't rrbvec = rrbvec(for x <- a {x})
 fun rrbvec(s: string): char rrbvec = rrbvec(for x <- s {x})
 
 fun size(a: 't rrbvec): int = __intrin_size__(a)
+fun size(a: 't vector): int = __intrin_size__(a)
+fun empty(a: 't vector): bool = __intrin_size__(a) == 0
 
 @ccode {
 

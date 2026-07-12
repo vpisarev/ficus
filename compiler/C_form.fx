@@ -127,6 +127,7 @@ type ctyp_t =
     | CTypRawArray: (ctyp_attr_t list, ctyp_t)
     | CTypArray: (int, ctyp_t)
     | CTypRRBVec: ctyp_t
+    | CTypVector: ctyp_t
     | CTypName: id_t
     | CTypLabel
     | CTypAny
@@ -604,6 +605,7 @@ fun walk_ctyp(t: ctyp_t, callb: c_callb_t)
     | CTypFunRawPtr (args, rt) => CTypFunRawPtr(args.map(walk_ctyp_), walk_ctyp_(rt))
     | CTypArray (d, et) => CTypArray(d, walk_ctyp_(et))
     | CTypRRBVec (et) => CTypRRBVec(walk_ctyp_(et))
+    | CTypVector (et) => CTypVector(walk_ctyp_(et))
     | CTypRawPtr (attrs, t) => CTypRawPtr(attrs, walk_ctyp_(t))
     | CTypRawArray (attrs, et) => CTypRawArray(attrs, walk_ctyp_(et))
     | CTypName n => CTypName(walk_id_(n))
@@ -784,6 +786,7 @@ fun fold_ctyp(t: ctyp_t, callb: c_fold_callb_t)
     | CTypRawArray (_, et) => fold_ctyp_(et)
     | CTypArray (_, t) => fold_ctyp_(t)
     | CTypRRBVec (t) => fold_ctyp_(t)
+    | CTypVector (t) => fold_ctyp_(t)
     | CTypName n => fold_id_(n)
     | CTypLabel => {}
     }
@@ -930,6 +933,7 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
         (s + " []", noid)
     | CTypArray _ => ("fx_arr_t", noid)
     | CTypRRBVec _ => ("fx_rrbvec_t", noid)
+    | CTypVector _ => ("fx_vec_t", noid)
     | CTypName n => val cname = get_idc_cname(n, loc); (cname, n)
     | CTypLabel => throw compile_err(loc, "ctyp2str: CTypLabel is not supported")
     | CTypAny => throw compile_err(loc, "ctyp2str: CTypAny is not supported")
@@ -959,7 +963,8 @@ fun make_const_ptr(t: ctyp_t) =
 val std_CTypVoidPtr = make_ptr(CTypVoid)
 val std_CTypConstVoidPtr = make_const_ptr(CTypVoid)
 val std_CTypAnyArray = CTypArray(0, CTypAny)
-val std_CTypAnyVector = CTypRRBVec(CTypAny)
+val std_CTypAnyRRBVec = CTypRRBVec(CTypAny)
+val std_CTypAnyVec = CTypVector(CTypAny)
 
 fun make_lit_exp(l: clit_t, loc: loc_t) {
     val t = get_lit_ctyp(l)
@@ -1114,8 +1119,11 @@ var std_fx_copy_arr = noid
 var std_fx_copy_arr_data = noid
 var std_fx_make_arr = noid
 var std_fx_subarr = noid
+var std_fx_free_rrbvec = noid
+var std_fx_copy_rrbvec = noid
+var std_fx_make_rrbvec = noid
+var std_FX_FREE_VEC = noid
 var std_fx_free_vec = noid
-var std_fx_copy_vec = noid
 var std_fx_make_vec = noid
 var std_FX_FREE_REF_SIMPLE = noid
 var std_fx_free_ref_simple = noid

@@ -140,6 +140,7 @@ type typ_t =
     | TypFun: (typ_t list, typ_t)
     | TypList: typ_t
     | TypRRBVec: typ_t
+    | TypVector: typ_t // mutable, growable, contiguous vector (fx_vec_t)
     | TypTuple: typ_t list
     | TypRef: typ_t
     | TypArray: (int, typ_t)
@@ -1422,6 +1423,7 @@ fun typ2str(t: typ_t): string {
     | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
     | TypList(t) => f"{typ2str(t)} list"
     | TypRRBVec(t) => f"{typ2str(t)} rrbvec"
+    | TypVector(t) => f"{typ2str(t)} vector"
     | TypRef(t) => f"{typ2str(t)} ref"
     | TypExn => "exn"
     | TypErr => "<err>"
@@ -1502,6 +1504,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypFun(args, rt) => TypFun(check_n_walk_tlist(args, callb), check_n_walk_typ(rt, callb))
     | TypList(t) => TypList(check_n_walk_typ(t, callb))
     | TypRRBVec(t) => TypRRBVec(check_n_walk_typ(t, callb))
+    | TypVector(t) => TypVector(check_n_walk_typ(t, callb))
     | TypTuple(tl) => TypTuple(check_n_walk_tlist(tl, callb))
     | TypVarTuple(t_opt) =>
         TypVarTuple(match t_opt { | Some(t) => Some(check_n_walk_typ(t, callb)) | _ => None})

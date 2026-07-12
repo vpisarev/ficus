@@ -47,6 +47,7 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
         | TypRef(t) => KTypRef(typ2ktyp_(t))
         | TypArray(d, t) => KTypArray(d, typ2ktyp_(t))
         | TypRRBVec(t) => KTypRRBVec(typ2ktyp_(t))
+        | TypVector(t) => KTypVector(typ2ktyp_(t))
         | TypVarArray _ => throw compile_err(loc,
             "variable array type cannot be inferenced; please, use explicit type annotation")
         | TypVarRecord => throw compile_err(loc,
@@ -95,9 +96,9 @@ fun lit2klit(l: lit_t, ktyp: ktyp_t, loc: loc_t) =
     | LitBool(f) => KLitBool(f)
     | LitEmpty =>
         match ktyp {
-        | KTypList _ | KTypRRBVec _ | KTypArray _ => KLitNil(ktyp)
+        | KTypList _ | KTypRRBVec _ | KTypVector _ | KTypArray _ => KLitNil(ktyp)
         | _ => throw compile_err(loc,
-            "[] is misused. It can only denote an empty collection (list, rrbvec or array)")
+            "[] is misused. It can only denote an empty collection (list, rrbvec, vector or array)")
         }
     | LitNull => KLitNil(KTypCPointer)
     }
