@@ -180,6 +180,42 @@ TEST("fcvector.iteration", fun()
     EXPECT_EQ(`size(v)`, 6)
 })
 
+TEST("fcvector.readlock", fun()
+{
+    // structural mutation while iterating throws VecModifiedError (variant D)
+    val v = vector(for i <- 0:10 {i})
+    EXPECT_THROWS(fun() { for x <- v { if x == 2 {v.push_back(99)} } }, VecModifiedError)
+    // the lock was released on the exception exit -> mutation works again
+    v.push_back(50)
+    EXPECT_EQ(`size(v)`, 11)
+
+    // reads and v[i]=a ARE allowed during iteration
+    var acc = 0
+    for x <- v { acc += v[0] }
+    EXPECT_EQ(`acc`, 0)
+    for x@i <- v { if i == 0 {v[0] = 7} }
+    EXPECT_EQ(`v[0]`, 7)
+
+    // break releases the lock
+    for x <- v { if x == 3 {break} }
+    v.push_back(51)
+    EXPECT_EQ(`size(v)`, 12)
+
+    // nested iteration of the same vector is fine (stacked read-locks)
+    var pairs = 0
+    for x <- v { for y <- v { pairs += 1 } }
+    EXPECT_EQ(`pairs`, 12*12)
+
+    // aliased structural mutation is caught (the lock is on the shared header)
+    val w = v
+    EXPECT_THROWS(fun() { for x <- v { w.push_back(1) } }, VecModifiedError)
+
+    // an unrelated exception in the body still releases the lock
+    EXPECT_THROWS(fun() { for x <- v { ignore(v[1000]) } }, OutOfRangeError)
+    v.push_back(52)
+    EXPECT_EQ(`size(v)`, 13)
+})
+
 TEST("fcvector.str", fun()
 {
     val vecstr: string vector = []

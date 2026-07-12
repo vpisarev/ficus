@@ -3307,6 +3307,31 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
             val (for_headers, _, _, _, ccode, pre_body_ccode, body_elems, post_ccode) =
             process_for(lbl, idoml, at_ids, 0, 1, ndims, 0, [:: (body, [], [])], ccode, kloc)
+            /* variant-D read-lock: every vector we iterate over is locked for the
+               loop's duration. We wrap the for-statement in its own block whose
+               once-run cleanup releases the lock on EVERY exit (normal, break,
+               continue, return, exception) — the loop-body block nests inside, so
+               its exceptions propagate through this block's cleanup. FX_VEC_SIZE/
+               data were already read into locals (outside the lock), which is safe
+               since nothing mutates between that and taking the lock. */
+            val locked_vec_exps = [:: for (_, dom) <- idoml {
+                val col = match dom {
+                    | DomainElem(AtomId c) => c
+                    | DomainFast(AtomId c) => c
+                    | _ => noid }
+                if col != noid && (match get_idk_ktyp(col, kloc) { | KTypVector _ => true | _ => false }) {
+                    val (e, _) = id2cexp(col, false, [], kloc); e
+                } else { make_dummy_exp(kloc) }
+            }].filter(fun (e) { | CExpIdent _ => true | _ => false })
+            val have_lock = locked_vec_exps != []
+            if have_lock {
+                new_block_ctx(BlockKind_Block, kloc)
+                val wbctx = curr_block_ctx(kloc)
+                wbctx->bctx_prologue = [:: for e <- locked_vec_exps {
+                    CExp(make_call(get_id("FX_VEC_START_READ"), [:: e], CTypVoid, kloc)) }]
+                wbctx->bctx_cleanup = [:: for e <- locked_vec_exps {
+                    CExp(make_call(get_id("FX_VEC_END_READ"), [:: e], CTypVoid, kloc)) }]
+            }
             new_for_block_ctx(ndims, flags, nested_status, par_status, kloc)
             val body_ccode = if is_parallel_for { decl_nested_status }
                              else { [] }
@@ -3342,7 +3367,25 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     CExp(update_exn_parallel) :: post_ccode)
                 }
             /* add it all to ccode; nothing to return/assign, since "for-loop" is "void" expression */
-            (false, dummy_exp, post_ccode + ([::for_stmt ] + (omp_pragma + ccode)))
+            val loop_ccode = post_ccode + ([::for_stmt ] + omp_pragma)
+            val result_ccode =
+                if have_lock {
+                    // the loop-body block was popped by finalize_loop_body, so the
+                    // read-lock block is on top; wrap the loop in it (prologue takes
+                    // the lock, cleanup releases it once) and propagate to the parent
+                    val wbctx = curr_block_ctx(kloc)
+                    val {bctx_prologue, bctx_cleanup, bctx_label, bctx_label_used} = *wbctx
+                    val epilogue = if bctx_label_used == 0 { bctx_cleanup }
+                                   else { bctx_cleanup + [:: CStmtLabel(bctx_label, end_for_loc)] }
+                    val wrapped = epilogue + loop_ccode + bctx_prologue
+                    val c_e = rccode2stmt(wrapped, for_loc)
+                    pop_block_ctx(kloc)
+                    val check_exn = CExp(make_call(std_FX_CHECK_EXN, [:: lbl], CTypVoid, kloc))
+                    check_exn :: c_e :: ccode
+                } else {
+                    loop_ccode + ccode
+                }
+            (false, dummy_exp, result_ccode)
         | KExpWhile (c, body, _) =>
             new_block_ctx(BlockKind_Loop, kloc)
             val (cc, cc_code) = kexp2cexp(c, ref None, [])

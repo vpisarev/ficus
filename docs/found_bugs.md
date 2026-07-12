@@ -314,3 +314,12 @@ candidate and fails to commit a unique winner.
   the auto-imported `Vector.fx`. Builtins is compiled first, with few overloads
   in scope, so the generic element compare resolves. Not fixed (resolver work is
   out of scope for newvec-1).
+
+## FB-026  cannot bind a variable in an or-pattern  [OPEN — limitation]
+An or-pattern that binds the same variable in each alternative is rejected:
+`match dom { | DomainElem(AtomId c) | DomainFast(AtomId c) => c | _ => noid }`
+gives "duplicate identifier 'c' in the pattern". Both arms bind `c` to the same
+type, so this is a legal and common pattern in ML-family languages. Current
+limitation (worked around by splitting into two arms, e.g. in the vector-iteration
+read-lock codegen in C_gen_code.fx). Should be fixed — allow a variable bound
+identically across all alternatives of an or-pattern.
