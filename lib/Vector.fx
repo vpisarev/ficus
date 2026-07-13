@@ -64,16 +64,9 @@ fun reserve(v: 't vector, capacity: int): void
 // ficus.h.
 @inline fun push_back(v: 't vector, elem: 't): void = __intrin_push__(v, elem)
 
-// append x and return its index (v.push_back returns void); used by the code
-// migrated off the retired Dynvec.t where the index is needed
+// append x and return its index (unlike push_back / append, which are void);
+// used by the code migrated off the retired Dynvec.t where the index is needed
 fun push(v: 't vector, x: 't): int { push_back(v, x); size(v) - 1 }
-// append all elements of an array in one shot
-fun push(v: 't vector, arr: 't []): void
-@ccode {
-    if (!v)
-        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    return fx_vec_append(v, arr->data, arr->dim[0].size);
-}
 // remove the last element and return it
 fun pop(v: 't vector): 't { val r = back(v); pop_back(v); r }
 
@@ -107,7 +100,17 @@ fun back(v: 't vector): 't
 
 // ------------------------- append / concat -------------------------
 
-// append all elements of another vector in one shot (elements are copied)
+// append one element (a void synonym for push_back; the overloads below append
+// all elements of an array or of another vector in one shot, copying them). The
+// three argument kinds ('t / 't [] / 't vector) never overlap for a resolved
+// call, so the family is unambiguous.
+@inline fun append(v: 't vector, elem: 't): void = push_back(v, elem)
+fun append(v: 't vector, arr: 't []): void
+@ccode {
+    if (!v)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    return fx_vec_append(v, arr->data, arr->dim[0].size);
+}
 fun append(v: 't vector, src: 't vector): void
 @ccode {
     if (!v)

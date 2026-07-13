@@ -4,7 +4,8 @@
 */
 
 // first-class mutable vector ('t vector) tests: element access v[i], v[i]=a,
-// size/empty, push_back/pop_back/back, resize/reserve/clear, slices, map/foldl.
+// size/empty, push_back/pop_back/back/push, append (elem/array/vector), concat,
+// resize/reserve/clear, comprehensions/iteration, slices, slice-assign (splice).
 
 from UTest import *
 
@@ -311,6 +312,34 @@ TEST("fcvector.str", fun()
     EXPECT_EQ(vecstr[::2], vector(["a", "def", "klmno", "vwxyz"]))
     EXPECT_EQ(array(vecstr[::-1]), ["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"])
     EXPECT_EQ(vecstr[::-1], vector(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
+})
+
+TEST("fcvector.append", fun()
+{
+    // the append family: element / array / vector, all void and unambiguous
+    val v: int vector = []
+    v.append(1)                        // single element (push_back synonym)
+    v.append(2)
+    v.append([3, 4, 5])                // whole array
+    v.append(vector([6, 7]))           // whole vector
+    EXPECT_EQ(`array(v)`, [1, 2, 3, 4, 5, 6, 7])
+
+    // vector-of-vectors: element-append vs vector-append pick different overloads
+    val vv: (int vector) vector = []
+    vv.append(vector([1, 2]))                              // one element
+    vv.append(vector([vector([3]), vector([4])]))         // two elements
+    EXPECT_EQ(`[for x <- vv {array(x)}]`, [[1, 2], [3], [4]])
+
+    // push keeps its index-returning semantics
+    val p: string vector = []
+    EXPECT_EQ(`p.push("a")`, 0)
+    EXPECT_EQ(`p.push("b")`, 1)
+    EXPECT_EQ(`array(p)`, ["a", "b"])
+
+    // appending an empty array/vector is a no-op
+    v.append(([]: int []))
+    v.append((vector(): int vector))
+    EXPECT_EQ(`size(v)`, 7)
 })
 
 TEST("fcvector.concat", fun()
