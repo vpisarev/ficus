@@ -1214,6 +1214,13 @@ fun rrbvec(l: 't list): 't rrbvec = rrbvec(for x <- l {x})
 fun rrbvec(a: 't [+]): 't rrbvec = rrbvec(for x <- a {x})
 fun rrbvec(s: string): char rrbvec = rrbvec(for x <- s {x})
 
+fun vector(): 't vector = []
+fun vector(n: int, x: 't): 't vector = vector(for i <- 0:n {x})
+fun vector(a: 't []): 't vector = vector(for x <- a {x})
+fun vector(l: 't list): 't vector = vector(for x <- l {x})
+fun vector(v: 't rrbvec): 't vector = vector(for x <- v {x})
+fun vector(s: string): char vector = vector(for x <- s {x})
+
 fun size(a: 't rrbvec): int = __intrin_size__(a)
 fun size(a: 't vector): int = __intrin_size__(a)
 fun empty(a: 't vector): bool = __intrin_size__(a) == 0

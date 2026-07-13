@@ -66,8 +66,8 @@ fun assign_buffers(model: Ast.nnmodel_t)
     val nargs = model.args.size()
     val usecounts = model.use_counts()
     var nbufs = 0
-    val freebufs = Vector.make(0, 0)
-    val buf_usecounts = Vector.make(0, 0)
+    val freebufs = vector(0, 0)
+    val buf_usecounts = vector(0, 0)
     val bufidxs = array(nargs, -1)
 
     /*

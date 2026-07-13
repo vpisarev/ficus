@@ -20,7 +20,7 @@ fun cfold(model: Ast.nnmodel_t)
 
 fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int [])
 {
-    val new_prog = Vector.make(0, Ast.NN_Nop)
+    val new_prog = vector(0, Ast.NN_Nop)
     var have_changes = false
     for op <- graph.prog {
         val opt_op = match op {

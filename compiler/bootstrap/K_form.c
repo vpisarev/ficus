@@ -6435,19 +6435,6 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M6K_formFM7resize_v3VN15K_form__kinfo_tiT2N15K_form__kinfo_tB(
-   fx_vec_t v,
-   int_ size,
-   struct _fx_T2N15K_form__kinfo_tB* val0_,
-   void* fx_fv)
-{
-
-if (!v)
-            FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-        return fx_vec_resize(v, size, val0_);
-
-}
-
 FX_EXTERN_C int _fx_M6K_formFM10push_back_v2VN15K_form__kinfo_tT2N15K_form__kinfo_tB(
    fx_vec_t v,
    struct _fx_T2N15K_form__kinfo_tB* elem_,
@@ -7802,20 +7789,23 @@ FX_EXTERN_C int _fx_M6K_formFM13init_all_idksv0(void* fx_fv)
    for (int_ i_0 = 0; i_0 < ni_0; i_0++, dstptr_0++) {
       _fx_N16Ast__defmodule_t dm_0 = 0;
       fx_vec_t v_1 = 0;
-      fx_vec_t z_0 = 0;
-      _fx_T2N15K_form__kinfo_tB v_2 = {0};
+      fx_vec_t vec_0 = 0;
       FX_COPY_PTR(ptr_all_modules_0[i_0], &dm_0);
       FX_COPY_PTR(dm_0->u.defmodule_t.t9, &v_1);
       int_ sz_0 = FX_VEC_SIZE(v_1);
-      fx_make_vec(0, 0, sizeof(_fx_N15K_form__kinfo_t), (fx_free_t)_fx_free_N15K_form__kinfo_t,
-         (fx_copy_t)_fx_copy_N15K_form__kinfo_t, 0, &z_0);
-      _fx_make_T2N15K_form__kinfo_tB(&_fx_g13K_form__KNone, true, &v_2);
-      FX_CALL(_fx_M6K_formFM7resize_v3VN15K_form__kinfo_tiT2N15K_form__kinfo_tB(z_0, sz_0, &v_2, 0), _fx_catch_0);
-      FX_COPY_PTR(z_0, dstptr_0);
+      _fx_N15K_form__kinfo_t* dstptr_1 = 0;
+      FX_CALL(
+         fx_make_vec(sz_0, sz_0, sizeof(_fx_N15K_form__kinfo_t), (fx_free_t)_fx_free_N15K_form__kinfo_t,
+            (fx_copy_t)_fx_copy_N15K_form__kinfo_t, 0, &vec_0), _fx_catch_0);
+      dstptr_1 = (_fx_N15K_form__kinfo_t*)vec_0->data;
+      for (int_ i_1 = 0; i_1 < sz_0; i_1++) {
+         _fx_copy_N15K_form__kinfo_t(&_fx_g13K_form__KNone, dstptr_1); dstptr_1++;
+      }
+      vec_0->size = dstptr_1 - (_fx_N15K_form__kinfo_t*)vec_0->data;
+      FX_COPY_PTR(vec_0, dstptr_0);
 
    _fx_catch_0: ;
-      _fx_free_T2N15K_form__kinfo_tB(&v_2);
-      FX_FREE_VEC(&z_0);
+      FX_FREE_VEC(&vec_0);
       FX_FREE_VEC(&v_1);
       if (dm_0) {
          _fx_free_N16Ast__defmodule_t(&dm_0);

@@ -51,7 +51,7 @@ TEST("fcvector.write", fun()
 
 TEST("fcvector.ops", fun()
 {
-    val v = Vector.make(3, 7)
+    val v = vector(3, 7)
     EXPECT_EQ(`size(v)`, 3)
     EXPECT_EQ(`Vector.capacity(v) >= 3`, true)
     EXPECT_EQ(`array(v)`, [7, 7, 7])
@@ -65,16 +65,16 @@ TEST("fcvector.ops", fun()
     EXPECT_EQ(`size(v)`, 0)
     EXPECT_EQ(`empty(v)`, true)
 
-    val a = Vector.make([1, 2, 3])
-    val b = Vector.make([1, 2, 3])
-    val c = Vector.make([1, 2, 4])
+    val a = vector([1, 2, 3])
+    val b = vector([1, 2, 3])
+    val c = vector([1, 2, 4])
     EXPECT_EQ(`a == b`, true)
     EXPECT_EQ(`a == c`, false)
     EXPECT_EQ(`a <=> c`, -1)
     EXPECT_EQ(`string(a)`, "[1, 2, 3]")
 
     // complex-element resize (grow with fill, shrink freeing elements) — ASan
-    val s = Vector.make(2, "ab")
+    val s = vector(2, "ab")
     s.push_back("cd")
     s.resize(5, "zz")
     EXPECT_EQ(`size(s)`, 5)
@@ -114,14 +114,12 @@ TEST("fcvector.binomial", fun()
     val myvecs: (float vector) vector = []
     for i <- 1:10 {
         val last = if empty(myvecs) {emptyvec} else {myvecs.back()}
-        // curr annotated to sidestep FB-024 (order-dependent generic-return
-        // inference pollution across tests); see docs/found_bugs.md
-        val curr: float vector = last.mapi(fun(x, j) { if j == 0 {1.f} else {last[j-1] + last[j]} })
+        val curr = vector(for x@j <- last { if j == 0 {1.f} else {last[j-1] + last[j]} })
         curr.push_back(1.f)
         myvecs.push_back(curr)
     }
 
-    fun sum(v: 't vector, v0: 'r): 'r = v.foldl(fun (x, s) {x + s}, v0)
+    fun sum(v: 't vector, v0: 'r): 'r = fold s = v0 for x <- v {s = x + s}
     for i <- 0:size(myvecs) {
         val expected_sum = double(1 << i)
         EXPECT_EQ(`sum(myvecs[i], 0.)`, expected_sum)
@@ -223,7 +221,7 @@ TEST("fcvector.str", fun()
         vecstr.push_back(w)
     }
     EXPECT_EQ(array(vecstr[::2]), ["a", "def", "klmno", "vwxyz"])
-    EXPECT_EQ(vecstr[::2], Vector.make(["a", "def", "klmno", "vwxyz"]))
+    EXPECT_EQ(vecstr[::2], vector(["a", "def", "klmno", "vwxyz"]))
     EXPECT_EQ(array(vecstr[::-1]), ["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"])
-    EXPECT_EQ(vecstr[::-1], Vector.make(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
+    EXPECT_EQ(vecstr[::-1], vector(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
 })

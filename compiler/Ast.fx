@@ -488,7 +488,7 @@ fun default_module() =
         dm_defs=[], dm_idx=-1,
         dm_deps=[], dm_env=empty_env,
         dm_parsed=false, dm_real=false,
-        dm_table=Vector.make(0, IdNone),
+        dm_table=vector(0, IdNone),
         dm_block_idx=-1
     }
 
@@ -507,7 +507,7 @@ fun is_compiler_frontend(): bool = compiler_stage == CompilerFrontend
 
 var freeze_ids = false
 var lock_all_names = 0
-var all_names = Vector.make(0, "")
+var all_names = vector(0, "")
 var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules: defmodule_t [] = []
@@ -828,7 +828,7 @@ fun find_module(mname: id_t, mfname: string) =
             dm_name=mname, dm_filename=mfname,
             dm_idx=m_idx, dm_defs=[], dm_deps=[],
             dm_env=empty_env, dm_parsed=false, dm_real=true,
-            dm_table=Vector.make(0, IdNone),
+            dm_table=vector(0, IdNone),
             dm_block_idx=-1
         }
         val saved_modules = all_modules

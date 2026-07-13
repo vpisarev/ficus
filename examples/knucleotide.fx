@@ -93,7 +93,7 @@ while !f.eof() {
     }
 }
 
-var all_data = Vector.make(0, 0u8)
+var all_data = vector(0, 0u8)
 
 while !f.eof() {
     val line = f.readln()

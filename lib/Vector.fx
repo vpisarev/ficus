@@ -13,33 +13,13 @@
 // compile-time element metadata. Construction goes through `[]` (the compiler
 // emits fx_make_vec with the correct metadata), and make(n,...) then resizes it.
 
-// ------------------------- construction -------------------------
-
-// a vector of `n` copies of val0
-fun make(n: int, val0: 't): 't vector
-{
-    val v: 't vector = []
-    resize(v, n, val0)
-    v
-}
-
-// a vector with the elements of an array
-fun make(arr: 't []): 't vector = vector(for x <- arr {x})
-
-// a vector of `n` default-initialized elements
-fun make(n: int): 't vector
-{
-    val any: 't = __any_element__()
-    make(n, any)
-}
+// construction is via the vector() family in Builtins.fx (mirrors array()):
+// vector(), vector(n, x), vector(a: 't []), vector(l), vector(rrbvec), vector(s).
 
 // ------------------------- capacity / size -------------------------
 
-fun capacity(v: 't vector): int
-@ccode {
-    *fx_result = v ? v->capacity : 0;
-    return FX_OK;
-}
+@nothrow fun capacity(v: 't vector): int
+@ccode { return v ? v->capacity : 0; }
 
 fun clear(v: 't vector): void
 @ccode {
@@ -141,17 +121,8 @@ fun pop_back(v: 't vector): void
     return FX_OK;
 }
 
-// ------------------------- conversion / compare / print -------------------------
-
-// map each element through f into a fresh vector
-fun map(v: 't vector, f: 't -> 'r): 'r vector = vector(for x <- v {f(x)})
-
-// map each (element, index) through f into a fresh vector
-fun mapi(v: 't vector, f: ('t, int) -> 'r): 'r vector = vector(for x@i <- v {f(x, i)})
-
-// left fold: res = f(v[n-1], ... f(v[1], f(v[0], init)))
-fun foldl(v: 't vector, f: ('t, 'r) -> 'r, init: 'r): 'r =
-    fold res = init for x <- v { res = f(x, res) }
+// map/mapi/foldl are gone: `vector(for x <- v {..})`, `vector(for x@i <- v {..})`
+// and `fold acc=init for x <- v {..}` express them directly.
 
 // NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their
 // rrbvec counterparts. They compare/format elements generically (a[i] <=> b[i],

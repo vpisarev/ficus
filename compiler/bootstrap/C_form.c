@@ -8444,19 +8444,6 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M6C_formFM7resize_v3VN15C_form__cinfo_tiT2N15C_form__cinfo_tB(
-   fx_vec_t v,
-   int_ size,
-   struct _fx_T2N15C_form__cinfo_tB* val0_,
-   void* fx_fv)
-{
-
-if (!v)
-            FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-        return fx_vec_resize(v, size, val0_);
-
-}
-
 FX_EXTERN_C int _fx_M6C_formFM10push_back_v2VN15C_form__cinfo_tT2N15C_form__cinfo_tB(
    fx_vec_t v,
    struct _fx_T2N15C_form__cinfo_tB* elem_,
@@ -9269,18 +9256,22 @@ FX_EXTERN_C int _fx_M6C_formFM13init_all_idcsv0(void* fx_fv)
    dstptr_0 = (fx_vec_t*)v_0.data;
    for (int_ i_0 = 0; i_0 < ni_0; i_0++, dstptr_0++) {
       fx_vec_t k_0 = 0;
-      fx_vec_t z_0 = 0;
-      _fx_T2N15C_form__cinfo_tB v_1 = {0};
+      fx_vec_t vec_0 = 0;
       FX_COPY_PTR(ptr_all_idks_0[i_0], &k_0);
-      fx_make_vec(0, 0, sizeof(_fx_N15C_form__cinfo_t), (fx_free_t)_fx_free_N15C_form__cinfo_t,
-         (fx_copy_t)_fx_copy_N15C_form__cinfo_t, 0, &z_0);
-      _fx_make_T2N15C_form__cinfo_tB(&_fx_g13C_form__CNone, true, &v_1);
-      FX_CALL(_fx_M6C_formFM7resize_v3VN15C_form__cinfo_tiT2N15C_form__cinfo_tB(z_0, FX_VEC_SIZE(k_0), &v_1, 0), _fx_catch_0);
-      FX_COPY_PTR(z_0, dstptr_0);
+      _fx_N15C_form__cinfo_t* dstptr_1 = 0;
+      int_ v_1 = FX_VEC_SIZE(k_0);
+      FX_CALL(
+         fx_make_vec(v_1, v_1, sizeof(_fx_N15C_form__cinfo_t), (fx_free_t)_fx_free_N15C_form__cinfo_t,
+            (fx_copy_t)_fx_copy_N15C_form__cinfo_t, 0, &vec_0), _fx_catch_0);
+      dstptr_1 = (_fx_N15C_form__cinfo_t*)vec_0->data;
+      for (int_ i_1 = 0; i_1 < v_1; i_1++) {
+         _fx_copy_N15C_form__cinfo_t(&_fx_g13C_form__CNone, dstptr_1); dstptr_1++;
+      }
+      vec_0->size = dstptr_1 - (_fx_N15C_form__cinfo_t*)vec_0->data;
+      FX_COPY_PTR(vec_0, dstptr_0);
 
    _fx_catch_0: ;
-      _fx_free_T2N15C_form__cinfo_tB(&v_1);
-      FX_FREE_VEC(&z_0);
+      FX_FREE_VEC(&vec_0);
       FX_FREE_VEC(&k_0);
       FX_CHECK_EXN(_fx_cleanup);
    }

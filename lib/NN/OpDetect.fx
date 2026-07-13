@@ -27,7 +27,7 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
     orig_image_size: (int*2), input_size: int, score_threshold: float)
 {
     val CLS0 = 5
-    val boxes = Vector.make(0, (0.f, 0.f, 0.f, 0.f, 0.f, 0.f))
+    val boxes = vector(0, (0.f, 0.f, 0.f, 0.f, 0.f, 0.f))
     val org_h = float(orig_image_size.0)
     val org_w = float(orig_image_size.1)
     val resize_ratio = min(input_size/org_w, input_size/org_h)
