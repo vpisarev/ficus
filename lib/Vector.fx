@@ -11,10 +11,11 @@
 // Note: the element ops read the element size / free / copy from the vector's
 // own header (fx_vecinfo_t, set when the vector is constructed), so they need no
 // compile-time element metadata. Construction goes through `[]` (the compiler
-// emits fx_make_vec with the correct metadata), and make(n,...) then resizes it.
+// emits fx_make_vec with the correct metadata).
 
 // construction is via the vector() family in Builtins.fx (mirrors array()):
-// vector(), vector(n, x), vector(a: 't []), vector(l), vector(rrbvec), vector(s).
+// vector(~capacity=0), vector(n, x), vector(a: 't []), vector(l), vector(rrbvec),
+// vector(s). `vector()` is the empty one; `vector(capacity=n)` pre-reserves n.
 
 // ------------------------- capacity / size -------------------------
 
@@ -46,12 +47,9 @@ fun assign(v: 't vector, size: int, val0: 't): void
     resize(v, size, val0)
 }
 
-fun reserve(v: 't vector, capacity: int): void
-@ccode {
-    if (!v)
-        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    return fx_vec_reserve(v, capacity);
-}
+// reserve is a thin wrapper over the Builtins __vec_reserve__ primitive (which
+// the vector(~capacity) constructor also uses).
+fun reserve(v: 't vector, capacity: int): void = __vec_reserve__(v, capacity)
 
 // ------------------------- element push/pop -------------------------
 
@@ -109,18 +107,14 @@ fun append(v: 't vector, src: 't vector): void
 // so no input vector is needed to supply metadata and an empty input yields a
 // real allocated empty vector.
 fun concat(vs: ('t vector) []): 't vector {
-    val r: 't vector = []
-    var total = 0
-    for v <- vs { total += v.size() }
-    r.reserve(total)
+    val total = fold s = 0 for v <- vs { s += v.size() }
+    val r: 't vector = vector(capacity=total)
     for v <- vs { r.append(v) }
     r
 }
 fun concat(vs: ('t vector) vector): 't vector {
-    val r: 't vector = []
-    var total = 0
-    for v <- vs { total += v.size() }
-    r.reserve(total)
+    val total = fold s = 0 for v <- vs { s += v.size() }
+    val r: 't vector = vector(capacity=total)
     for v <- vs { r.append(v) }
     r
 }

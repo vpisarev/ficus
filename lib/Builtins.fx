@@ -1214,7 +1214,19 @@ fun rrbvec(l: 't list): 't rrbvec = rrbvec(for x <- l {x})
 fun rrbvec(a: 't [+]): 't rrbvec = rrbvec(for x <- a {x})
 fun rrbvec(s: string): char rrbvec = rrbvec(for x <- s {x})
 
-fun vector(): 't vector = []
+// low-level reserve primitive; Vector.reserve is a thin wrapper over it. It
+// lives here so the vector(~capacity) constructor can join the rest of the
+// family without a cyclic dependency on Vector.fx (which is compiled later).
+fun __vec_reserve__(v: 't vector, capacity: int): void
+@ccode {
+    if (!v)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    return fx_vec_reserve(v, capacity);
+}
+
+// the no-arg / capacity constructor: `vector()` gives an empty vector,
+// `vector(capacity=n)` an empty vector pre-reserved to n elements.
+fun vector(~capacity: int=0): 't vector { val v: 't vector = []; __vec_reserve__(v, capacity); v }
 fun vector(n: int, x: 't): 't vector = vector(for i <- 0:n {x})
 fun vector(a: 't []): 't vector = vector(for x <- a {x})
 fun vector(l: 't list): 't vector = vector(for x <- l {x})
