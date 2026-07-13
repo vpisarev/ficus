@@ -45,8 +45,10 @@ fun move_loop_invs(code: kcode_t)
         }
 
         is_ktyp_scalar(get_kexp_typ(e)) &&
-        K_remove_unused.pure_kexp(e) &&
-        (match e { | KExpAt _ => false | _ => true }) &&
+        // hoisting out of a loop is a MOVE: ask for the movement grade, which
+        // classifies every mutable-memory read (KExpAt included) as non-movable
+        // in one place -- replacing the old explicit `KExpAt => false` guard.
+        K_remove_unused.pure_kexp(e, mut_read_is_impure=true) &&
         ({
             isinv_kexp_(e, isinv_callb)
             isinv

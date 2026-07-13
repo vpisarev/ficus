@@ -93,10 +93,10 @@ TEST("fcvector.pushpop_edge", fun()
     v.push_back(1); v.push_back(2)
     v.pop_back(); v.pop_back()
     EXPECT_THROWS(fun() { v.pop_back() }, OutOfRangeError)
-    // back() on an empty vector likewise throws OutOfRangeError
-    var sink = 0
-    EXPECT_THROWS(fun() { sink = v.back() }, OutOfRangeError)
-    ignore(sink)
+    // back() on an empty vector likewise throws OutOfRangeError. FB-027 fixed:
+    // ignore() of a checked read no longer swallows the exception, so the
+    // natural spelling works (no captured-sink workaround needed).
+    EXPECT_THROWS(fun() { ignore(v.back()) }, OutOfRangeError)
 
     // complex-element push/pop frees correctly (ASan-checked), fast path bypassed
     val s: string vector = []

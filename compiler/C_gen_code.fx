@@ -109,35 +109,15 @@ type count_map_t = (id_t, int) Hashmap.t
 */
 /* A single-use temp is inlined by folding its initializer into the use site,
    which MOVES the computation forward across whatever code sits between the
-   definition and the use. `pure_kexp` guarantees no side effects, but that is
-   not enough for a *read of mutable memory*: an array element, a ref cell or a
-   mutable record field can be overwritten by an intervening store, so moving
-   the read past that store changes its value. This exact hazard is exposed by
-   simultaneous tuple/array assignment, e.g. `(arr[i], arr[j]) = (arr[j],
-   arr[i])`. Such reads are pure yet not movement-invariant, so we keep them
-   materialized (they cost one named C temp, which the C compiler coalesces
-   anyway). See docs/found_bugs.md FB-023. */
-fun movement_unsafe_read(e0: kexp_t): bool
-{
-    var unsafe = false
-    // fold over the whole initializer: a compound one (KExpIf/KExpSeq/KExpMatch
-    // /...) may hide a mutable-memory read that inlining would move past a store.
-    fun chk_kexp_(e: kexp_t, callb: k_fold_callb_t): void =
-        if !unsafe {
-            match e {
-            | KExpAt _ => unsafe = true                        // array element (arrays are mutable)
-            | KExpUnary(OpDeref, _, _) => unsafe = true         // ref-cell dereference
-            | KExpMem(base, _, (_, loc)) =>                     // field of a mutable record/var
-                if is_mutable(base, loc) { unsafe = true }
-            | KExpMap _ => unsafe = true                        // comprehension: never safe to move
-            | _ => fold_kexp(e, callb)
-            }
-        }
-    val callb = k_fold_callb_t { kcb_fold_atom=None, kcb_fold_ktyp=None, kcb_fold_kexp=Some(chk_kexp_) }
-    chk_kexp_(e0, callb)
-    unsafe
-}
-
+   definition and the use. Plain purity is not enough for a *read of mutable
+   memory*: an array element, a ref cell or a mutable record field can be
+   overwritten by an intervening store, so moving the read past that store
+   changes its value (exposed by simultaneous tuple/array assignment, e.g.
+   `(arr[i], arr[j]) = (arr[j], arr[i])`). We therefore ask `pure_kexp` for its
+   movement grade (`~mut_read_is_impure=true`, the default), which classifies
+   such reads AND comprehensions as non-movable in the single point of truth; the
+   temp stays materialized (one named C temp, coalesced by the C compiler where
+   legal). See docs/found_bugs.md FB-023. */
 fun find_single_use_vals(topcode: kcode_t)
 {
     var count_map: count_map_t = Hashmap.empty(1024, noid, 0)
@@ -160,8 +140,7 @@ fun find_single_use_vals(topcode: kcode_t)
             /* We only replace those values with expressions which are temporary
                 and computed using pure expressions */
             val good_temp = kv_flags.val_flag_tempref || kv_flags.val_flag_temp
-            if good_temp && K_remove_unused.pure_kexp(e1) &&
-               !movement_unsafe_read(e1) {
+            if good_temp && K_remove_unused.pure_kexp(e1, mut_read_is_impure=true) {
                 decl_const_vals.add(k)
             }
             count_kexp(e1, callb)

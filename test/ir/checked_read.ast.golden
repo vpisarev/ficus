@@ -1,0 +1,17 @@
+from Builtins import *
+from Math import *
+from Complex import *
+from Array import *
+import List
+import Rrbvec
+import Vector
+import Char
+import String
+fun checked_read.probe@g0(checked_read.a@g1: int []): (int [] -> int) =
+{
+   <(int -> void)>Builtins.ignore@g2(<int []>checked_read.a@g1..clip[100])
+   <(int -> void)>Builtins.ignore@g2(<int []>checked_read.a@g1[7])
+   <int []>checked_read.a@g1[0]
+}
+
+<(int -> void)>Builtins.println@g3(<(int [] -> int)>checked_read.probe@g0([1, 2, 3, 4, 5]))

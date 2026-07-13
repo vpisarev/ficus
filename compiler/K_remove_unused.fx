@@ -34,7 +34,22 @@ from K_form import *
 import Options
 import Map, Set, Hashmap, Hashset
 
-fun pure_kexp(e: kexp_t): bool
+/* `pure_kexp` answers "does this expression have no observable effect?", but two
+   consumers need two different grades of that question and conflating them caused
+   FB-023 and FB-027 (see docs/found_bugs.md). The single classification below is
+   the one point of truth; `~mut_read_is_impure` selects the grade:
+
+   - Throwing is impure UNCONDITIONALLY (not the flag): a bounds-checked
+     (BorderNone) `KExpAt` emits a throwing check in C-gen, and throwing
+     intrinsics likewise -- removing one swallows the exception (FB-027), moving
+     one reorders the throw. Neither eliminable nor movable.
+   - `~mut_read_is_impure` governs NON-throwing reads of mutable memory as a
+     class -- border-mode `KExpAt`, ref-cell `OpDeref`, a mutable-record
+     `KExpMem`, and comprehensions (`KExpMap`): `false` = removable (a dead read
+     has no effect -- DCE keeps its power), `true` = not movable (moving a read
+     past an aliasing store changes its value, FB-023). Default `true` is the
+     safe, movement-grade reading for any caller that does not think about it. */
+fun pure_kexp(e: kexp_t, ~mut_read_is_impure: bool = true): bool
 {
     var ispure = true
     var local_vars = empty_id_hashset(8)
@@ -63,6 +78,17 @@ fun pure_kexp(e: kexp_t): bool
         | KExpTryCatch _ => ispure = false
         | KExpThrow _ => ispure = false
         | KExpCCode _ => ispure = false
+        // throwing, unconditional (FB-027): a bounds-checked read raises
+        // OutOfRangeError, so it can be neither removed nor moved.
+        | KExpAt (_, BorderNone, _, _, _) => ispure = false
+        // non-throwing reads of mutable memory + comprehensions: pure to REMOVE,
+        // not to MOVE (FB-023). The grade decides; see the function header.
+        | KExpAt _ | KExpUnary (OpDeref, _, _) | KExpMap _ =>
+            if mut_read_is_impure { ispure = false }
+            else if ispure { fold_kexp(e, callb) }
+        | KExpMem (base, _, (_, loc)) =>
+            if is_mutable(base, loc) && mut_read_is_impure { ispure = false }
+            else if ispure { fold_kexp(e, callb) }
         | KExpSeq (elist, (_, loc)) =>
             /*
                 if we have a block of code, this block,
@@ -134,7 +160,10 @@ fun pure_fun(f: id_t, loc: loc_t) =
         else if kf_flags.fun_flag_pure == 0 || kf_flags.fun_flag_ccode { false }
         else {
             *df = df->{kf_flags=kf_flags.{fun_flag_pure=1}}
-            val ispure = pure_kexp(kf_body)
+            // removal grade: a function is "pure" (its unused call is removable)
+            // if its body has no effect to remove; a read of mutable memory has
+            // none. Throwing reads stay impure (handled unconditionally).
+            val ispure = pure_kexp(kf_body, mut_read_is_impure=false)
             *df = df->{kf_flags=kf_flags.{fun_flag_pure=int(ispure)}}
             ispure
         }
@@ -212,7 +241,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
                    !kv_flags.val_flag_temp && !kv_flags.val_flag_tempref {
                     compile_warning(loc, f"'{pp(i)}' is declared but not used")
                 }
-                if !pure_kexp(e) {
+                if !pure_kexp(e, mut_read_is_impure=false) {
                     e
                 } else {
                     KExpNop(loc)
@@ -303,7 +332,7 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             | KDefTyp _ | KDefClosureVars _ | KDefInterface _ =>
                 e :: result
             | _ =>
-                if rest != [] && pure_kexp(e) { result }
+                if rest != [] && pure_kexp(e, mut_read_is_impure=false) { result }
                 else { e :: result }
             }
             remove_unused_(rest, result, callb)

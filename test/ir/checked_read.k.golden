@@ -1,0 +1,5 @@
+@temp val v@g0: int [] = [ 1, 2, 3, 4, 5 ]
+v@g0[7]
+@temp val v@g1: int = v@g0[0]
+_fx_F5printv1i(v@g1)
+_fx_F12print_stringv1S("\n")

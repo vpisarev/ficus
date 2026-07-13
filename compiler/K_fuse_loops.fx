@@ -84,7 +84,12 @@ fun fuse_loops_(code: kcode_t)
         fold_kexp(e, process_callb)
         match e {
         | KDefVal (i, KExpMap ([:: (_, idl, [])], body, flags, (KTypArray _, _)), loc) =>
-            if K_remove_unused.pure_kexp(body) && !flags.for_flag_unzip {
+            // removal grade preserves the pre-existing fusion criterion (a body
+            // that reads mutable memory is still a fusion candidate; fusion of a
+            // single-use comprehension replays the body in the consumer loop,
+            // preserving iteration). Whether fusion also needs movement-grade
+            // safety is a separate question -- see docs/purity1_report.md.
+            if K_remove_unused.pure_kexp(body, mut_read_is_impure=false) && !flags.for_flag_unzip {
                 val ainfo = ref (arr_info_t {
                     arr_nused=0, arr_nused_for=0,
                     arr_idl=idl, arr_body=body, arr_map_flags=flags})

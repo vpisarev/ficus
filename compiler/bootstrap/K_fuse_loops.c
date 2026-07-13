@@ -3401,7 +3401,11 @@ FX_EXTERN_C int _fx_M6K_formFM9fold_kexpv2N14K_form__kexp_tRM14k_fold_callb_t(
    struct _fx_R22K_form__k_fold_callb_t*,
    void*);
 
-FX_EXTERN_C int _fx_M15K_remove_unusedFM9pure_kexpB1N14K_form__kexp_t(struct _fx_N14K_form__kexp_t_data_t*, bool*, void*);
+FX_EXTERN_C int _fx_M15K_remove_unusedFM9pure_kexpB2N14K_form__kexp_tB(
+   struct _fx_N14K_form__kexp_t_data_t*,
+   bool,
+   bool*,
+   void*);
 
 static int _fx_M12K_fuse_loopsFM11process_idlv3BLT2R9Ast__id_tN13K_form__dom_trRt6Map__t2R9Ast__id_trRM10arr_info_t(
    bool,
@@ -4594,7 +4598,7 @@ FX_EXTERN_C int _fx_M12K_fuse_loopsFM11fuse_loops_LN14K_form__kexp_t1LN14K_form_
                         _fx_N14K_form__kexp_t body_0 = vcase_1->t1;
                         bool v_9;
                         bool res_0;
-                        FX_CALL(_fx_M15K_remove_unusedFM9pure_kexpB1N14K_form__kexp_t(body_0, &res_0, 0), _fx_catch_0);
+                        FX_CALL(_fx_M15K_remove_unusedFM9pure_kexpB2N14K_form__kexp_tB(body_0, false, &res_0, 0), _fx_catch_0);
                         if (res_0) {
                            v_9 = !flags_0->for_flag_unzip;
                         }
