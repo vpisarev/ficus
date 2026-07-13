@@ -237,7 +237,13 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
   follow-up would extend the DefVal recovery to poison the pattern regardless of
   RHS shape.
 
-## FB-023  single-use temp memory read inlined PAST an aliasing store  [FIXED — fold-1]
+## FB-023  single-use temp memory read inlined PAST an aliasing store  [FIXED — fold-1; refactored — purity-1]
+- **purity-1 update**: the local `movement_unsafe_read` guard described below was
+  removed; its `{KExpAt, OpDeref, mutable KExpMem, KExpMap}` set is now the
+  `~mut_read_is_impure=true` grade of the shared `pure_kexp` predicate
+  (`K_remove_unused.fx`). C-gen's `find_single_use_vals` calls
+  `pure_kexp(e1, mut_read_is_impure=true)`; behaviour byte-identical. See FB-027
+  and `docs/purity1_report.md`.
 - repro (via fold-1 tuple assignment): `(arr[i], arr[j]) = (arr[j], arr[i])`
   desugars to `val __t = (arr[j], arr[i]); arr[i] = __t.0; arr[j] = __t.1`.
   The dealiaser (`K_cfold_dealias`, `mktup_map`) flattens `__t.k` to its
