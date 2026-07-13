@@ -4,14 +4,14 @@
       Adjust the type checker not to stop at the first appropriate candidate.
 - [ ] new syntax for generic types and its instances: `t list => list[t]`
   - [ ] Q: what would be a syntax for generic functions? `fun add[u, v, r](a: u, b: v): r {...}`?
-- [ ] new syntax for fold: `fold acc = 0 for x <- arr {acc + x}` => `fold acc = 0 for x <- arr {acc += x}`
-- [ ] add syntax to append elements to lists, vectors during fold?
+- [x] new syntax for fold: `fold acc = 0 for x <- arr {acc + x}` => `fold acc = 0 for x <- arr {acc += x}`
+- [ ] ~~add syntax to append elements to lists, vectors during fold?
       We already have runtime support for vector writers for vector comprehensions,
       maybe need to add list writer as well. E.g. `fold val l = [] for x <- 1:n {if isprime(n) {l++=x}}`.
       It partially duplicates list comprehensions, but fold is more universal.
       In fact, list comprehensions can then be converted to just fold's that are,
-      in their turn, are converted to simple loops.
-- [ ] because of new syntax for generic types, we can get rid of `(x :> new_type)` type cast syntax and switch to normal `new_type(x)`.
+      in their turn, are converted to simple loops.~~
+- [ ] ~~because of new syntax for generic types, we can get rid of `(x :> new_type)` type cast syntax and switch to normal `new_type(x)`.~~
 - [ ] ~~currently we use Matlab-style .op for elemwise-operations, but it looks weird
       sometimes for those who are not familiar with Matlab. Shall we drop all .op
       operations and use Python-style `@` for matrix multiplication? We also use `@` for
@@ -30,8 +30,8 @@
         for the particular case: `type employee_t = Engineer: {age: int; computer: string; claude_subscr: string} | Manager: {age: int; tablet: string; team: list[employee_t]}`, how do we operate on all Engineer fields as a whole?
         It's suggested to automatically introduce `Engineer.t` type. It should be possible to
         construct employee_t directly from Engineer.t: `val e = Engineer(data: Engineer.t)`
-- [ ] rename `half` to `fp16`, because `half` is quite generic name.
-- [ ] add `bf16`.
+- [x] rename `half` to `fp16`, because `half` is quite generic name.
+- [x] add `bf16`.
 - [ ] add more array reductions, e.g. `sum(for x <- arr {x**2}, 0.)`.
       Shall we somehow infer automatically the initial value, not to pass explicit `0.` as initializer?
 - [ ] Add hygienic macros? Unlike functions, macros don't compute anything (except for `@{...}` parts),
@@ -83,7 +83,7 @@
       just like Python. otherwise it's impossible to differentiate between just a tree of
       files and complex hierarchical modules.
 - [ ] support more than 5-dimensional arrays. Maybe 7-dimensional arrays?
-- [ ] shall we add a syntax for saturating +,-,*,/ (including floating-point types)?
+- [ ] ~~shall we add a syntax for saturating +,-,*,/ (including floating-point types)?~~
 - [ ] syntax like `@parallel_if(condition) for {...}` to run loop as sequential
       if the problem is small enough. Compilers cannot always figure the bounary
       properly.
@@ -109,56 +109,11 @@
 - [ ] try to accept `(op)` everywhere where `__opname__` is accepted, e.g. `Complex.(*)(a, b)`
 - [ ] introduce infix `++` as concatenation operator. `some_list ++ another_list`, `some_vec ++= 5 // push_back`.
       `+` will be kept as synonym of concatenation for strings, lists, vectors.
-- [ ] revise uniform containers and their names. We now have:
-    * arrays (`'t [,,]` => `t [,,]`; `t`, if not a concrete type, will be specified separately as a template parameter).
-    * lists (`'t list` => `list[t]`)
-    * rrb vectors (`'t vector` => `vector[t]`)
-    * experimental half-baked 'dynamic vectors', `Dynvec.t`, which are similar
-      to `std::vector<t>` or Python lists. See `lib/Dynvec.fx`.
-
-    Now let's see if we need to do any changes:
-    * arrays are definitely useful, they are one of the main reasons to create
-      Ficus. So they will stay. Probably, a black-box `tensor` will be added
-    * lists are not very efficient from performance point of view, they use
-      memory heap quite actively. But they are one of the most useful concepts in
-      functional programming, dated back to Lisp. They are very conveniently
-      handled by pattern matching and recursive functions. With 'list writers',
-      see above, they will become very efficient in `fold` as well
-      (now the common technique is to construct a list inside `fold` in the
-      reverse order with `::` and then reverse it). They are actively used in
-      the compiler and they will be gladly accepted by all Lisp, Haskell, ML users.
-    * Now to rrb vectors. They are much more efficient than lists in terms of
-      memory usage, they are much faster to access in random order and even
-      sequential order (cache locality), they are immutable, so very safe in
-      parallel workloads.
-      But currently they are not used much. Actually, they are not used at all,
-      they are just tested in test_all. It's not very clear how to extend
-      pattern matching to handle rrb vectors. Even introduced in the library
-      Map.t (balanced tree) can be processed with pattern matching, because it's
-      built on top of algebraic types. Because of missing pattern matching
-      support, vectors are difficult to use in parsers or other 1D streams
-      analyzers. Pattern matching for vectors should take start_index from where
-      we start matching, arms/cases' patterns should list some matched/captured
-      elements and then we should be able to advance start_index to move to the
-      next portion. Maybe the whole rrb vector should become a pair
-      `(rrbcontainer_vec, start_index_and_iterator)`, maybe the position to the
-      block where start_index resides should be cached so that we can access
-      `rrbvector[start_index]` and its next neighbors instantly? With all those
-      changes maybe rrbvector can become a very efficient
-      functional-programming-friendly alternative to `list[t]`?
-    * `Dynvec.t`, even though it's of very limited functionality, and even
-      without pattern matching, it's really useful, Python and C++ users
-      confirm it. Compiler uses it actively too.
-
-    It's suggested to:
-    * rename `vector` to `rrbvec` and make it a very good
-      alternative to `list[t]`. Think of:
-        * adding pattern matching support, because it's one of the keys.
-        * instant access to the `rrbvec` starting from certain location
-          (basically, add iterator together with explicit start index to rrbvec).
-        * efficient writer (already implemented) usable in `fold` as well.
-    * rename `Dynvec.t` to `vector` and make it a first-class container in Ficus
-      (slicing, comprehensions, 'vector writer' etc.)
+- [x] revise uniform containers and their names:
+    * rrb vectors: `'t vector` => `'t rrbvec`
+    * new vectors (similar to std::vector/Python list): `'t vector`.
+      Compiler now uses it instead of `'t Dynvec.t`
+    * remove `'t Dynvec.t`
 
 # Code generation, runtime
 - [x] (we now put compiler modification date, its binary size and the compiler flags as the 'signature')
