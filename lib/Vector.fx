@@ -24,14 +24,7 @@ fun make(n: int, val0: 't): 't vector
 }
 
 // a vector with the elements of an array
-fun make(arr: 't []): 't vector
-{
-    val n = size(arr)
-    val v: 't vector = []
-    reserve(v, n)
-    for x <- arr { push_back(v, x) }
-    v
-}
+fun make(arr: 't []): 't vector = vector(for x <- arr {x})
 
 // a vector of `n` default-initialized elements
 fun make(n: int): 't vector
@@ -137,35 +130,15 @@ fun pop_back(v: 't vector): void
 
 // ------------------------- conversion / compare / print -------------------------
 
-// TEMPORARY (until vector comprehensions, Step 4): map/mapi/foldl. Once
-// `vector(for x <- v {...})` exists these become one-liners / disappear.
-
 // map each element through f into a fresh vector
-fun map(v: 't vector, f: 't -> 'r): 'r vector
-{
-    val n = size(v)
-    val res: 'r vector = []
-    reserve(res, n)
-    for i <- 0:n { res.push_back(f(v[i])) }
-    res
-}
+fun map(v: 't vector, f: 't -> 'r): 'r vector = vector(for x <- v {f(x)})
 
 // map each (element, index) through f into a fresh vector
-fun mapi(v: 't vector, f: ('t, int) -> 'r): 'r vector
-{
-    val n = size(v)
-    val res: 'r vector = []
-    reserve(res, n)
-    for i <- 0:n { res.push_back(f(v[i], i)) }
-    res
-}
+fun mapi(v: 't vector, f: ('t, int) -> 'r): 'r vector = vector(for x@i <- v {f(x, i)})
 
 // left fold: res = f(v[n-1], ... f(v[1], f(v[0], init)))
-fun foldl(v: 't vector, f: ('t, 'r) -> 'r, init: 'r): 'r
-{
-    val n = size(v)
-    fold res = init for i <- 0:n { res = f(v[i], res) }
-}
+fun foldl(v: 't vector, f: ('t, 'r) -> 'r, init: 'r): 'r =
+    fold res = init for x <- v { res = f(x, res) }
 
 // NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their
 // rrbvec counterparts. They compare/format elements generically (a[i] <=> b[i],

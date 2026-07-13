@@ -369,7 +369,7 @@ fun string(l: 't list): string = join_embrace("[", "]", ", ", [for x <- l {repr(
 }
 
 fun string(v: 't rrbvec): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
-fun string(v: 't vector): string { val n = size(v); join_embrace("[", "]", ", ", [for i <- 0:n {repr(v[i])}]) }
+fun string(v: 't vector): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 @pure fun string(v: char rrbvec): string
 @ccode {
@@ -577,27 +577,17 @@ operator <=> (a: 't rrbvec, b: 't rrbvec): int
 
 // first-class mutable vector compare (kept here, not in Vector.fx, to resolve the
 // generic element compare in a small-overload context — see FB-025)
-operator == (a: 't vector, b: 't vector): bool
-{
-    val n = size(a)
-    if size(b) != n { return false }
-    var eq = true
-    for i <- 0:n {
-        if a[i] != b[i] { eq = false; break }
-    }
-    eq
-}
+operator == (a: 't vector, b: 't vector): bool =
+    size(a) == size(b) && all(for xa <- a, xb <- b {xa == xb})
 
 operator <=> (a: 't vector, b: 't vector): int
 {
-    val na = size(a), nb = size(b)
-    val n = min(na, nb)
     var d = 0
-    for i <- 0:n {
-        d = a[i] <=> b[i]
+    for xa <- a, xb <- b {
+        d = xa <=> xb
         if d != 0 {break}
     }
-    if d != 0 {d} else {na <=> nb}
+    if d != 0 {d} else {size(a) <=> size(b)}
 }
 
 operator == (a: 't [+], b: 't [+]): bool =
@@ -1164,10 +1154,9 @@ fun print(v: 't rrbvec): void
 fun print(v: 't vector): void
 {
     print("[")
-    val n = size(v)
-    for i <- 0:n {
+    for x@i <- v {
         if i > 0 {print(", ")}
-        print_repr(v[i])
+        print_repr(x)
     }
     print("]")
 }
@@ -1211,7 +1200,7 @@ fun array((m: int, n: int, n2: int), x: 't): 't [,,] = [for i <- 0:m for j <- 0:
 fun array((m: int, n: int, n2: int, n3: int), x: 't): 't [,,,] = [for i <- 0:m for j <- 0:n for k <- 0:n2 for l <- 0:n3 {x}]
 fun array(l: 't list): 't [] = [for x <- l {x}]
 fun array(v: 't rrbvec): 't [] = [for x <- v {x}]
-fun array(v: 't vector): 't [] { val n = size(v); [for i <- 0:n {v[i]}] }
+fun array(v: 't vector): 't [] = [for x <- v {x}]
 fun array(s: string): char [] = [for x <- s {x}]
 
 // basically, this is violation of the type system; use with care
