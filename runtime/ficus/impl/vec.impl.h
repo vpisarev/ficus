@@ -103,20 +103,16 @@ int fx_vec_reserve(fx_vec_t vec, int_ new_capacity)
         return FX_OK;
     size_t esz = vec->info.elemsize;
     size_t total = new_capacity * esz;
-    void *data = fx_malloc(total), *temp;
+    // realloc performs a pure move of the existing bytes (no copy-constructors
+    // needed) and frees the old buffer; it treats vec->data==NULL (an empty
+    // vector grown for the first time) as malloc. Only the first vec->size
+    // elements are live; the freshly grown tail is set/filled by the caller
+    // (fx_vec_resize / fx_vec_append) before use.
+    void *data = fx_realloc(vec->data, total);
     if (!data)
         FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
-    // regardless of whether the data is complex or POD,
-    // we 'move' it, so no need to invoke copy-constructors.
-    // guard against vec->data==NULL (an empty vector grown for the first time):
-    // memcpy(dst, NULL, 0) is undefined behaviour.
-    if (vec->size > 0)
-        memcpy(data, vec->data, (size_t)vec->size*esz);
-    // make it a little bit more atomic
-    // more robust implementation should use CAS (atomic compare-and-swap)
-    FX_SWAP(data, vec->data, temp);
+    vec->data = data;
     vec->capacity = new_capacity;
-    fx_free(data);
     return FX_OK;
 }
 
