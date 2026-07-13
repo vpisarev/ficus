@@ -567,6 +567,8 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
                             | "__intrin_sat_uint16__" => IntrinSaturate(ScUInt16)
                             | "__intrin_sat_int16__" => IntrinSaturate(ScInt16)
                             | "__intrin_size__" => IntrinGetSize
+                            | "__intrin_push__" => IntrinVecPushBack
+                            | "__intrin_pop__" => IntrinVecPopBack
 
                             | "__intrin_gemm__" => IntrinGEMM
 

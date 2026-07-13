@@ -2014,6 +2014,35 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (i_exp, ccode) = atom2cexp(idx, ccode, kloc)
                 val get_elem_exp = CExpBinary(COpArrayElem, ptr_exp, i_exp, (ctyp, kloc))
                 (true, get_elem_exp, ccode)
+            | (IntrinVecPushBack, [:: vec, elem]) =>
+                val lbl = curr_block_label(kloc)
+                val (vec_exp, ccode) = atom2cexp(vec, ccode, kloc)
+                val (elem_exp, ccode) = atom2cexp(elem, ccode, kloc)
+                val et = match get_atom_ktyp(vec, kloc) {
+                    | KTypVector et => et
+                    | t => throw compile_err(kloc,
+                        f"cgen: __intrin_push__ applied to a non-vector type {t}")
+                    }
+                val elem_ctyp = C_gen_types.ktyp2ctyp(et, kloc)
+                val {ktp_complex} = K_annotate.get_ktprops(et, kloc)
+                val macro = if ktp_complex {get_id("FX_VEC_PUSH_BACK")}
+                            else {get_id("FX_VEC_PUSH_BACK_FAST")}
+                val push = make_call(macro, [:: CExpTyp(elem_ctyp, kloc), vec_exp, elem_exp, lbl],
+                                     CTypVoid, kloc)
+                (false, dummy_exp, CExp(push) :: ccode)
+            | (IntrinVecPopBack, [:: vec]) =>
+                val lbl = curr_block_label(kloc)
+                val (vec_exp, ccode) = atom2cexp(vec, ccode, kloc)
+                val et = match get_atom_ktyp(vec, kloc) {
+                    | KTypVector et => et
+                    | t => throw compile_err(kloc,
+                        f"cgen: __intrin_pop__ applied to a non-vector type {t}")
+                    }
+                val {ktp_complex} = K_annotate.get_ktprops(et, kloc)
+                val macro = if ktp_complex {get_id("FX_VEC_POP_BACK")}
+                            else {get_id("FX_VEC_POP_BACK_FAST")}
+                val pop = make_call(macro, [:: vec_exp, lbl], CTypVoid, kloc)
+                (false, dummy_exp, CExp(pop) :: ccode)
             | _ => throw compile_err(kloc,
                 f"cgen: unsupported KExpIntrin({intr}, ...) or the wrong number of arguments ({args.length()})")
             }

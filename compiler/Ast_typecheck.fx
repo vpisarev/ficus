@@ -2368,6 +2368,33 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                                      a rrbvec or an array")
             }
             ExpIntrin(iop, a::(if idx > 0 {args.tl()} else {[]}), ctx)
+        | IntrinVecPushBack =>
+            val (v, elem) = match args {
+                | [:: v, elem] => (v, elem)
+                | _ => throw compile_err(eloc,
+                    "__intrin_push__ intrinsic expects exactly two arguments (vector, element)")
+                }
+            val v = check_exp(v, env, sc)
+            val et = make_new_typ()
+            unify(get_exp_typ(v), TypVector(et), get_exp_loc(v),
+                "the first argument of __intrin_push__ must be a vector")
+            val elem = check_exp(elem, env, sc)
+            unify(get_exp_typ(elem), et, get_exp_loc(elem),
+                "the element type must match the vector element type in __intrin_push__")
+            unify(etyp, TypVoid, eloc, "the result of __intrin_push__ must be void")
+            ExpIntrin(iop, [:: v, elem], ctx)
+        | IntrinVecPopBack =>
+            val v = match args {
+                | [:: v] => v
+                | _ => throw compile_err(eloc,
+                    "__intrin_pop__ intrinsic expects exactly one argument (vector)")
+                }
+            val v = check_exp(v, env, sc)
+            val et = make_new_typ()
+            unify(get_exp_typ(v), TypVector(et), get_exp_loc(v),
+                "the argument of __intrin_pop__ must be a vector")
+            unify(etyp, TypVoid, eloc, "the result of __intrin_pop__ must be void")
+            ExpIntrin(iop, [:: v], ctx)
         | _ => throw compile_err(eloc, f"the intrinsic '{iop}' is not supported by the type checker")
         }
     | ExpSeq(eseq, _) =>

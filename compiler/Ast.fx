@@ -186,6 +186,8 @@ type intrin_t =
     | IntrinGEMM
     | IntrinGetSlice
     | IntrinAccessSlice
+    | IntrinVecPushBack
+    | IntrinVecPopBack
     | IntrinMath: id_t
     | IntrinSaturate: sctyp_t
 
@@ -1121,6 +1123,8 @@ fun string(iop: intrin_t): string
     | IntrinSaturate(sct) => f"__intrin_sat_{sct}__"
     | IntrinGetSlice => "__intrin_get_slice__"
     | IntrinAccessSlice => "__intrin_access_slice__"
+    | IntrinVecPushBack => "__intrin_push__"
+    | IntrinVecPopBack => "__intrin_pop__"
 }
 
 fun border2str(border: border_t, f: bool) {

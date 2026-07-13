@@ -83,6 +83,29 @@ TEST("fcvector.ops", fun()
     EXPECT_EQ(`array(s)`, ["ab", "ab"])
 })
 
+TEST("fcvector.pushpop_edge", fun()
+{
+    // __intrin_pop__ slow path: popping an empty vector throws SizeError
+    val v: int vector = []
+    EXPECT_THROWS(fun() { v.pop_back() }, SizeError)
+    v.push_back(1); v.push_back(2)
+    v.pop_back(); v.pop_back()
+    EXPECT_THROWS(fun() { v.pop_back() }, SizeError)
+
+    // complex-element push/pop frees correctly (ASan-checked), fast path bypassed
+    val s: string vector = []
+    for w <- ["aa", "bb", "cc"] { s.push_back(w) }
+    s.pop_back()
+    EXPECT_EQ(`array(s)`, ["aa", "bb"])
+
+    // growth (capacity exceeded) goes through the slow path and keeps all elements
+    val g: int vector = []
+    for i <- 0:1000 { g.push_back(i) }
+    EXPECT_EQ(`size(g)`, 1000)
+    EXPECT_EQ(`g[999]`, 999)
+    EXPECT_EQ(`g[0]`, 0)
+})
+
 TEST("fcvector.slice", fun()
 {
     val v: int vector = []

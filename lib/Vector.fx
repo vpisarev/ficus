@@ -58,18 +58,11 @@ fun reserve(v: 't vector, capacity: int): void
 // append one element in place. The vector must already be allocated (e.g. via
 // `[]`); a growth reallocates the internal data buffer inside the shared header,
 // so the caller's binding keeps pointing at the same (updated) header.
-fun push_back(v: 't vector, elem: 't): void
-{
-    fun push_back_(v: 't vector, elem_: ('t, bool)): void
-    @ccode {
-        if (!v)
-            FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-        return fx_vec_append(v, elem_, 1);
-    }
-    // the (elem, true) tuple is always passed by reference, so elem_ is a
-    // pointer to the element (its first field) regardless of 't.
-    push_back_(v, (elem, true))
-}
+// __intrin_push__ inlines the append: for POD elements the common in-capacity,
+// not-being-iterated case is a raw slot write (no call); every other case (grow,
+// empty, locked, NULL) falls through to fx_vec_append. See FX_VEC_PUSH_BACK* in
+// ficus.h.
+@inline fun push_back(v: 't vector, elem: 't): void = __intrin_push__(v, elem)
 
 // append x and return its index (v.push_back returns void); used by the code
 // migrated off the retired Dynvec.t where the index is needed
@@ -103,23 +96,11 @@ fun back(v: 't vector): 't
     return FX_OK;
 }
 
-// drop the last element (freeing it if it is a complex type)
-fun pop_back(v: 't vector): void
-@ccode {
-    if (!v)
-        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    if (v->nlocks != 0)
-        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
-    int_ size = v->size;
-    if (size == 0)
-        FX_FAST_THROW_RET(FX_EXN_SizeError);
-    v->size = --size;
-    fx_free_t free_f = v->info.free_elem;
-    if (free_f) {
-        free_f((char*)v->data + size*v->info.elemsize);
-    }
-    return FX_OK;
-}
+// drop the last element (freeing it if it is a complex type). __intrin_pop__
+// inlines the fast path: for POD elements a present, not-being-iterated last
+// slot is dropped with a bare size decrement; every other case (empty, locked,
+// NULL, or a complex element that must be freed) goes through fx_vec_pop_back.
+@inline fun pop_back(v: 't vector): void = __intrin_pop__(v)
 
 // map/mapi/foldl are gone: `vector(for x <- v {..})`, `vector(for x@i <- v {..})`
 // and `fold acc=init for x <- v {..}` express them directly.

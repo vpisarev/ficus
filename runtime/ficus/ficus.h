@@ -1094,6 +1094,35 @@ typedef struct fx_vechdr_t
 #define FX_VEC_ELEM_ZERO(typ, vec, idx) (*FX_VEC_PTR_ZERO(typ, vec, idx))
 #define FX_VEC_ELEM_WRAP(typ, vec, idx) (*FX_VEC_PTR_WRAP(typ, vec, idx))
 
+int fx_vec_pop_back(fx_vec_t vec);
+
+// push_back / pop_back fast paths, emitted by the __intrin_push__/__intrin_pop__
+// intrinsics (see lib/Vector.fx). The _FAST variants are used for POD element
+// types: the common in-capacity, not-being-iterated case is a raw slot write /
+// size decrement done inline; every other case (grow, empty, locked, NULL) falls
+// through to the runtime, which throws the right error and, for complex types,
+// invokes the element copy/free. The plain variants have no inline fast path and
+// always go through the runtime (its fx_copy_arr_elems / free_elem handle the
+// element metadata). `elem` is copied into a local so it may be any expression
+// (incl. a literal) and is taken by address without evaluating it twice.
+#define FX_VEC_PUSH_BACK_FAST(typ, vec, elem, catch_label) \
+    { fx_vec_t __vec__ = (vec); typ __elem__ = (elem); \
+      if (__vec__ && __vec__->nlocks == 0 && __vec__->size < __vec__->capacity) \
+          ((typ*)__vec__->data)[__vec__->size++] = __elem__; \
+      else FX_CALL(fx_vec_append(__vec__, &__elem__, 1), catch_label); }
+
+#define FX_VEC_PUSH_BACK(typ, vec, elem, catch_label) \
+    { fx_vec_t __vec__ = (vec); typ __elem__ = (elem); \
+      FX_CALL(fx_vec_append(__vec__, &__elem__, 1), catch_label); }
+
+#define FX_VEC_POP_BACK_FAST(vec, catch_label) \
+    { fx_vec_t __vec__ = (vec); \
+      if (__vec__ && __vec__->nlocks == 0 && __vec__->size > 0) __vec__->size--; \
+      else FX_CALL(fx_vec_pop_back(__vec__), catch_label); }
+
+#define FX_VEC_POP_BACK(vec, catch_label) \
+    FX_CALL(fx_vec_pop_back(vec), catch_label)
+
 void fx_free_vec(fx_vec_t* vec);
 // pvec is fx_vec_t* (the address of the fx_vec_t variable), matching the
 // FX_FREE_ARR / FX_FREE_LIST_SIMPLE convention the compiler emits (&var).

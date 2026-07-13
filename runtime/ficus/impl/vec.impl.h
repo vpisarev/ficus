@@ -150,6 +150,8 @@ int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems)
 {
     if (nelems == 0)
         return FX_OK;
+    if (!vec)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
     if (vec->nlocks != 0)
         FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     if (nelems < 0)
@@ -174,6 +176,24 @@ int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems)
         memset(dst, 0, nelems*elemsize);
     }
     vec->size = new_size;
+    return FX_OK;
+}
+
+// drop the last element (freeing it if it is a complex type). Used by the slow
+// path of the __intrin_pop__ intrinsic (FX_VEC_POP_BACK / FX_VEC_POP_BACK_FAST).
+int fx_vec_pop_back(fx_vec_t vec)
+{
+    if (!vec)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    if (vec->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
+    int_ size = vec->size;
+    if (size == 0)
+        FX_FAST_THROW_RET(FX_EXN_SizeError);
+    vec->size = --size;
+    fx_free_t free_f = vec->info.free_elem;
+    if (free_f)
+        free_f((char*)vec->data + size*vec->info.elemsize);
     return FX_OK;
 }
 
