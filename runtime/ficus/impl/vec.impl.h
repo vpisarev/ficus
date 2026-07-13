@@ -189,7 +189,7 @@ int fx_vec_pop_back(fx_vec_t vec)
         FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     int_ size = vec->size;
     if (size == 0)
-        FX_FAST_THROW_RET(FX_EXN_SizeError);
+        FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
     vec->size = --size;
     fx_free_t free_f = vec->info.free_elem;
     if (free_f)

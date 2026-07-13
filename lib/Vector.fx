@@ -70,24 +70,9 @@ fun push(v: 't vector, x: 't): int { push_back(v, x); size(v) - 1 }
 // remove the last element and return it
 fun pop(v: 't vector): 't { val r = back(v); pop_back(v); r }
 
-// the last element
-fun back(v: 't vector): 't
-@ccode {
-    if (!v)
-        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    int_ size = v->size;
-    if (size == 0)
-        FX_FAST_THROW_RET(FX_EXN_SizeError);
-    size_t elemsize = sizeof(*fx_result);
-    const void* src = (const char*)v->data + (size - 1)*elemsize;
-    fx_copy_t copy_f = v->info.copy_elem;
-    if (!copy_f) {
-        memcpy(fx_result, src, elemsize);
-    } else {
-        fx_copy_arr_elems(src, fx_result, 1, elemsize, copy_f);
-    }
-    return FX_OK;
-}
+// the last element. `v[.-1]` desugars to `v[__intrin_size__(v) - 1]`, so the
+// bounds check (FX_VEC_CHKIDX) yields OutOfRangeError on an empty/NULL vector.
+@inline fun back(v: 't vector): 't = v[.-1]
 
 // drop the last element (freeing it if it is a complex type). __intrin_pop__
 // inlines the fast path: for POD elements a present, not-being-iterated last

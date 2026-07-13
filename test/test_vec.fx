@@ -86,12 +86,17 @@ TEST("fcvector.ops", fun()
 
 TEST("fcvector.pushpop_edge", fun()
 {
-    // __intrin_pop__ slow path: popping an empty vector throws SizeError
+    // __intrin_pop__ slow path: popping an empty vector throws OutOfRangeError
+    // (consistent with back() / element access on an empty vector)
     val v: int vector = []
-    EXPECT_THROWS(fun() { v.pop_back() }, SizeError)
+    EXPECT_THROWS(fun() { v.pop_back() }, OutOfRangeError)
     v.push_back(1); v.push_back(2)
     v.pop_back(); v.pop_back()
-    EXPECT_THROWS(fun() { v.pop_back() }, SizeError)
+    EXPECT_THROWS(fun() { v.pop_back() }, OutOfRangeError)
+    // back() on an empty vector likewise throws OutOfRangeError
+    var sink = 0
+    EXPECT_THROWS(fun() { sink = v.back() }, OutOfRangeError)
+    ignore(sink)
 
     // complex-element push/pop frees correctly (ASan-checked), fast path bypassed
     val s: string vector = []
