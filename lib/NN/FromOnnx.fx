@@ -5,7 +5,7 @@
 
 // Converts Onnx onnx_model to NN.Ast
 import Ast, Onnx.Ast as OAst, Onnx.Parser
-import Hashmap, Hashset, Dynvec
+import Hashmap, Hashset
 
 exception OnnxConvertError: string
 
@@ -184,8 +184,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
     })
 
     val args = [ empty_arg ]
-    val vargs = Dynvec.create(args, empty_arg)
-    val vtensors = Dynvec.create([ empty_tensor ], empty_tensor)
+    val vargs = Vector.make(args)
+    val vtensors = Vector.make([ empty_tensor ])
     dimnames.add("?", -1)
 
     fun get_const_tensor_arg(name: string, data: Ast.nndata_t) =
@@ -204,10 +204,10 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 shape = shape,
                 data = data
             }
-            val idx = vargs.push()
-            val _ = vtensors.push()
-            vargs.data[idx] = arg
-            vtensors.data[idx] = t
+            val idx = vargs.push(empty_arg)
+            val _ = vtensors.push(empty_tensor)
+            vargs[idx] = arg
+            vtensors[idx] = t
             argnames.add(name, idx)
             idx
         }
@@ -268,8 +268,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
     fun convert_graph(onnx_graph: OAst.graph_t, nspace: string, nested: bool) {
         val nspace_ = if nspace == "" {nspace} else {nspace + "::"}
         for c <- onnx_graph.initializers {
-            val argidx = vargs.push()
-            val _ = vtensors.push()
+            val argidx = vargs.push(empty_arg)
+            val _ = vtensors.push(empty_tensor)
             val t = onnx2tensor(c)
             val arg = Ast.nnarg_t {
                 name = nspace_ + c.name,
@@ -278,35 +278,35 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 typ = t.elemtype()
             }
             argnames.add(arg.name, argidx)
-            vargs.data[argidx] = arg
-            vtensors.data[argidx] = t
+            vargs[argidx] = arg
+            vtensors[argidx] = t
         }
         fun convert_targ_group(group: OAst.valueinfo_t [], argkind: Ast.nnargkind_t) {
             for vi@i <- group {
                 if vi.name == "" || !argnames.mem(vi.name) {
-                    val argidx = vargs.push()
-                    val _ = vtensors.push()
+                    val argidx = vargs.push(empty_arg)
+                    val _ = vtensors.push(empty_tensor)
                     argnames.add(nspace_ + vi.name, argidx)
                     val arg = onnx2arg(dimnames, vi, argkind)
-                    vargs.data[argidx] = arg
-                    vtensors.data[argidx] = Ast.nntensor_t {
+                    vargs[argidx] = arg
+                    vtensors[argidx] = Ast.nntensor_t {
                             shape = arg.shape,
                             data=Ast.NN_Data_Empty
                         }
                 }
             }
         }
-        val inputs_start = vargs.count
+        val inputs_start = size(vargs)
         convert_targ_group(onnx_graph.inputs, if nested {Ast.NN_Arg_Temp} else {Ast.NN_Arg_Input})
-        val outputs_start = vargs.count
+        val outputs_start = size(vargs)
         convert_targ_group(onnx_graph.outputs, if nested {Ast.NN_Arg_Temp} else {Ast.NN_Arg_Output})
-        val values_start = vargs.count
+        val values_start = size(vargs)
         convert_targ_group(onnx_graph.values, Ast.NN_Arg_Temp)
         val inpargs = mkrange(inputs_start, outputs_start)
         val outargs = mkrange(outputs_start, values_start)
 
         val fold prog = [] for node <- onnx_graph.nodes {
-            //println(f"parsing operation '{node.name}' (Op={node.op}); #args = {vargs.count}")
+            //println(f"parsing operation '{node.name}' (Op={node.op}); #args = {size(vargs)}")
             val name = node.name
             val inputs = [for argname <- node.inputs { find_inp_arg(nspace, argname) }]
             val outputs = [for argname <- node.outputs {
@@ -318,8 +318,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     //println(f"found '{argname}' as {idx}")
                     idx
                 | _ =>
-                    val idx = vargs.push()
-                    val _ = vtensors.push()
+                    val idx = vargs.push(empty_arg)
+                    val _ = vtensors.push(empty_tensor)
                     //println(f"did not found '{argname}'; adding arg #{idx}")
                     val arg = Ast.nnarg_t {
                         name=argname,
@@ -330,9 +330,9 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                         },
                         typ=Notype }
                     argnames.add(argname, idx)
-                    vargs.data[idx] = arg
+                    vargs[idx] = arg
                     val t = Ast.nntensor_t { shape=arg.shape, data=Ast.NN_Data_Empty }
-                    vtensors.data[idx] = t
+                    vtensors[idx] = t
                     idx
                 }}]
             val ninputs = size(inputs), noutputs = size(outputs)
@@ -533,10 +533,10 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 if count != 1 {
                     throw OnnxConvertError(f"{node.name} (op=Constant): missing value")
                 }
-                vargs.data[outputs[0]] = vargs.data[outputs[0]].{
+                vargs[outputs[0]] = vargs[outputs[0]].{
                     argkind=Ast.NN_Arg_Const, shape=t.shape,
                     typ=t.elemtype()}
-                vtensors.data[outputs[0]] = t
+                vtensors[outputs[0]] = t
                 [] // there is no actual output operation
             | "ConstantOfShape" =>
                 assert(`ninputs == 1`)
@@ -606,8 +606,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                         0
                     } else {
                         val t_training_mode = inputs[2]
-                        assert(`vargs.data[t_training_mode].argkind == Ast.NN_Arg_Const`)
-                        assert(`vtensors.data[t_training_mode].data.total() == 1`)
+                        assert(`vargs[t_training_mode].argkind == Ast.NN_Arg_Const`)
+                        assert(`vtensors[t_training_mode].data.total() == 1`)
                         t_training_mode
                     }
                 [:: Ast.NN_Dropout {
@@ -1037,9 +1037,9 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
         argnames = argnames,
         dimnames = dimnames,
         dimnames_ = dimnames_,
-        args = vargs.data[:vargs.count],
-        tensors = vtensors.data[:vtensors.count],
-        bufidxs = array(vargs.count, -1)
+        args = array(vargs),
+        tensors = array(vtensors),
+        bufidxs = array(size(vargs), -1)
     }
 }
 

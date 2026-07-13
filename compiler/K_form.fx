@@ -40,7 +40,7 @@
     * ...
 */
 from Ast import *
-import Dynvec, Set, Hashset
+import Set, Hashset
 
 type ktprops_t =
 {
@@ -257,7 +257,7 @@ type kinfo_t =
 
 val _KLitVoid = KLitNil(KTypVoid)
 val _ALitVoid = AtomLit(_KLitVoid)
-var all_idks: kinfo_t Dynvec.t [] = []
+var all_idks: kinfo_t vector [] = []
 var builtin_exn_NoMatchError = noid
 var builtin_exn_OutOfRangeError = noid
 var freeze_idks = false
@@ -266,8 +266,8 @@ fun new_idk_idx(m_idx: int): int {
     if freeze_idks {
         throw Fail("internal error: new idk is requested when they are frozen")
     }
-    val new_idx = all_modules[m_idx].dm_table.push()
-    val new_kidx = all_idks[m_idx].push()
+    val new_idx = all_modules[m_idx].dm_table.push(IdNone)
+    val new_kidx = all_idks[m_idx].push(KNone)
     if new_idx != new_kidx {
         throw Fail("internal error: unsynchronized outputs from new_id_idx() and new_idk_idx()")
     }
@@ -278,7 +278,7 @@ fun kinfo_(n: id_t, loc: loc_t) =
     if n.m == 0 {KNone}
     else {
         val (m, j) = id2idx_(n, loc)
-        all_idks[m].data[j]
+        all_idks[m][j]
     }
 
 fun dup_idk(m_idx: int, old_id: id_t): id_t
@@ -298,7 +298,7 @@ fun set_idk_entry(n: id_t, info: kinfo_t): void
 {
     //val loc = get_kinfo_loc(info)
     val (m, j) = id2idx_(n, noloc)
-    all_idks[m].data[j] = info
+    all_idks[m][j] = info
 }
 
 fun init_all_idks(): void
@@ -306,8 +306,8 @@ fun init_all_idks(): void
     freeze_ids = true
     freeze_idks = false
     all_idks = [for dm <- all_modules {
-        val sz = dm.dm_table.size()
-        Dynvec.create(sz, KNone)
+        val sz = size(dm.dm_table)
+        Vector.make(sz, KNone)
     }]
 }
 

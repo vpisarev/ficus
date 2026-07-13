@@ -17,7 +17,7 @@ fun ppid2str(x: id_t)
 {
     if x == noid { "<noid>" }
     else {
-        val prefix = all_names.data[x.i]
+        val prefix = all_names[x.i]
         if x.m == 0 { prefix }
         else {
             val m_prefix = pp_(get_module_name(x.m)) + "."

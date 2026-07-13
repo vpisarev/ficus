@@ -59,15 +59,15 @@ During the second run of inference with the same resolution input the buffer wil
 The reallocation is done using NN.Ast.fit() function.
 */
 
-import Ast, Dynvec
+import Ast
 
 fun assign_buffers(model: Ast.nnmodel_t)
 {
     val nargs = model.args.size()
     val usecounts = model.use_counts()
     var nbufs = 0
-    val freebufs = Dynvec.create(0, 0)
-    val buf_usecounts = Dynvec.create(0, 0)
+    val freebufs = Vector.make(0, 0)
+    val buf_usecounts = Vector.make(0, 0)
     val bufidxs = array(nargs, -1)
 
     /*
@@ -90,14 +90,14 @@ fun assign_buffers(model: Ast.nnmodel_t)
     */
     fun get_free_buffer()
     {
-        if freebufs.count == 0 {
-            freebufs.do_push(nbufs)
-            buf_usecounts.do_push(0)
-            //println(f"added buf #{nbufs}: {freebufs.data[:freebufs.count]}")
+        if size(freebufs) == 0 {
+            freebufs.push_back(nbufs)
+            buf_usecounts.push_back(0)
+            //println(f"added buf #{nbufs}: {freebufs[:size(freebufs)]}")
             nbufs += 1
         }
         val outidx = freebufs.pop()
-        buf_usecounts.data[outidx] = 1
+        buf_usecounts[outidx] = 1
         //println(f"use buf #{outidx}")
         outidx
     }
@@ -105,10 +105,10 @@ fun assign_buffers(model: Ast.nnmodel_t)
     fun release_buffer(bufidx: int)
     {
         if bufidx >= 0 {
-            assert(`buf_usecounts.data[bufidx] > 0`)
-            buf_usecounts.data[bufidx] -= 1
-            if buf_usecounts.data[bufidx] == 0 {
-                freebufs.do_push(bufidx)
+            assert(`buf_usecounts[bufidx] > 0`)
+            buf_usecounts[bufidx] -= 1
+            if buf_usecounts[bufidx] == 0 {
+                freebufs.push_back(bufidx)
             }
         }
     }
@@ -120,7 +120,7 @@ fun assign_buffers(model: Ast.nnmodel_t)
         assert(`from_buf >= 0`)
         val to_buf = bufidxs[to_arg]
         bufidxs[to_arg] = from_buf
-        buf_usecounts.data[from_buf] += 1
+        buf_usecounts[from_buf] += 1
         if to_buf >= 0 {
             release_buffer(to_buf)
         }
@@ -190,12 +190,12 @@ fun assign_buffers(model: Ast.nnmodel_t)
                         (if i == 0 {""} else if model.isconst(i) {": const"} else
                         {
                             val bufidx = bufidxs[i]
-                            assert(`bufidx >= 0 && buf_usecounts.data[bufidx] > 0`)
+                            assert(`bufidx >= 0 && buf_usecounts[bufidx] > 0`)
                             f": buf #{bufidx}"
                         })
                 }]
             println(f"name={op.name()}, inplace={inplace_op}, inps={gen_info(inps)}, outs={gen_info(outs)}")
-            println(f"\tbuf_usecounts: {buf_usecounts.data[:nbufs]}")*/
+            println(f"\tbuf_usecounts: {buf_usecounts[:nbufs]}")*/
 
             match op {
             /*
@@ -307,7 +307,7 @@ fun assign_buffers(model: Ast.nnmodel_t)
             for outarg <- outs {
                 if usecounts[outarg] == 0 {
                     release_buffer(bufidxs[outarg])
-                    //println(f"arg '{model.args[argidx].name}' (buf #{model.args[argidx].idx}) is not used anymore: {freebufs.data[:freebufs.count]}")
+                    //println(f"arg '{model.args[argidx].name}' (buf #{model.args[argidx].idx}) is not used anymore: {freebufs[:size(freebufs)]}")
                 }
             }
             // let's release inputs in the reverse order to keep the buffer allocation consistent across the network

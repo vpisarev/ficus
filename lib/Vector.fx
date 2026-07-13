@@ -91,6 +91,19 @@ fun push_back(v: 't vector, elem: 't): void
     push_back_(v, (elem, true))
 }
 
+// append x and return its index (v.push_back returns void); used by the code
+// migrated off the retired Dynvec.t where the index is needed
+fun push(v: 't vector, x: 't): int { push_back(v, x); size(v) - 1 }
+// append all elements of an array in one shot
+fun push(v: 't vector, arr: 't []): void
+@ccode {
+    if (!v)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    return fx_vec_append(v, arr->data, arr->dim[0].size);
+}
+// remove the last element and return it
+fun pop(v: 't vector): 't { val r = back(v); pop_back(v); r }
+
 // the last element
 fun back(v: 't vector): 't
 @ccode {

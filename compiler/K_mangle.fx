@@ -587,11 +587,11 @@ fun mangle_locals(kmods: kmodule_t list)
     var prefix_hash = empty_int_map(256)
 
     fun gen_cname(n: id_t, global: bool) {
-        val prefix = if global {get_id("g_" + all_names.data[n.i]).i} else {n.i}
+        val prefix = if global {get_id("g_" + all_names[n.i]).i} else {n.i}
         val idx = prefix_hash.find_idx_or_insert(prefix)
         val j1 = prefix_hash.table[idx].data + 1
         prefix_hash.table[idx].data = j1
-        f"{all_names.data[prefix]}_{j1}"
+        f"{all_names[prefix]}_{j1}"
     }
 
     fun gen_kval_cname(n: id_t, loc: loc_t, global: bool) =

@@ -70,7 +70,7 @@
       * list comprehensions are replaced with a for-loop that constructs the output list on-fly.
 */
 
-import Dynvec
+// (Dynvec retired)
 from Ast import *
 from K_form import *
 
@@ -296,16 +296,16 @@ type cinfo_t =
     | CLabel: cdeflabel_t
     | CMacro: cdefmacro_t ref
 
-var all_idcs: cinfo_t Dynvec.t [] = []
+var all_idcs: cinfo_t vector [] = []
 var freeze_idcs = true
 
 fun new_idc_idx(m_idx: int): int {
     if freeze_idcs {
         throw Fail("internal error: attempt to add new idc when they are frozen")
     }
-    val new_idx = all_modules[m_idx].dm_table.push()
-    val new_kidx = all_idks[m_idx].push()
-    val new_cidx = all_idcs[m_idx].push()
+    val new_idx = all_modules[m_idx].dm_table.push(IdNone)
+    val new_kidx = all_idks[m_idx].push(KNone)
+    val new_cidx = all_idcs[m_idx].push(CNone)
     if new_idx == new_kidx && new_idx == new_cidx {
         new_idx
     } else {
@@ -316,7 +316,7 @@ fun new_idc_idx(m_idx: int): int {
 fun cinfo_(i: id_t, loc: loc_t)
 {
     val (m, j) = id2idx_(i, loc)
-    all_idcs[m].data[j]
+    all_idcs[m][j]
 }
 
 fun gen_idc(m_idx: int, s: string): id_t
@@ -332,7 +332,7 @@ fun dup_idc(m_idx: int, old_id: id_t) =
 fun set_idc_entry(i: id_t, entry: cinfo_t)
 {
     val (m, j) = id2idx(i)
-    all_idcs[m].data[j] = entry
+    all_idcs[m][j] = entry
 }
 
 fun init_all_idcs()
@@ -340,7 +340,7 @@ fun init_all_idcs()
     freeze_ids = true
     freeze_idks = true
     freeze_idcs = false
-    all_idcs = [for k <- all_idks {Dynvec.create(k.count, CNone)}]
+    all_idcs = [for k <- all_idks {Vector.make(size(k), CNone)}]
 }
 
 fun get_cexp_ctx(e: cexp_t): cctx_t
@@ -942,8 +942,8 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
 fun idc2str(n: id_t, loc: loc_t) {
     val cname = get_idc_cname(n, loc)
     if cname != "" { cname }
-    else if n.m == 0 { all_names.data[n.i] }
-    else { f"{all_names.data[n.i]}_{n.j}" }
+    else if n.m == 0 { all_names[n.i] }
+    else { f"{all_names[n.i]}_{n.j}" }
 }
 
 fun ctyp2str_(t: ctyp_t, loc: loc_t): string = ctyp2str(t, loc).0

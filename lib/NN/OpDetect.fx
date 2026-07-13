@@ -8,7 +8,7 @@
    Adopted from https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/yolov4
 */
 
-import Ast, Dynvec
+import Ast
 
 val yolov4_default_anchors =
 [
@@ -27,7 +27,7 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
     orig_image_size: (int*2), input_size: int, score_threshold: float)
 {
     val CLS0 = 5
-    val boxes = Dynvec.create(0, (0.f, 0.f, 0.f, 0.f, 0.f, 0.f))
+    val boxes = Vector.make(0, (0.f, 0.f, 0.f, 0.f, 0.f, 0.f))
     val org_h = float(orig_image_size.0)
     val org_w = float(orig_image_size.1)
     val resize_ratio = min(input_size/org_w, input_size/org_h)
@@ -79,14 +79,14 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
                     val ymax = (ymax - dh)/resize_ratio
 
                     if xmin >= org_w || ymin >= org_h || xmax < 0.f || ymax < 0.f {continue}
-                    //println(f"{boxes.count}: {(xmin, ymin, xmax, ymax, score, best_class)}")
+                    //println(f"{size(boxes)}: {(xmin, ymin, xmax, ymax, score, best_class)}")
 
-                    boxes.do_push((ymin, xmin, ymax, xmax, score, float(best_class)))
+                    boxes.push_back((ymin, xmin, ymax, xmax, score, float(best_class)))
                 }
             }
         }
     }
-    boxes.data[:boxes.count]
+    array(boxes)
 }
 
 // calculate the Intersection-Over-Union value

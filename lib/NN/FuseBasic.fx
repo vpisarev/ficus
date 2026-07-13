@@ -9,17 +9,17 @@
     * Log (1 + Exp(x)) => Softplus(x)
     * x*Tanh(Softplus(x)) => Mish(x)
 */
-import Ast, Dynvec, Hashmap
+import Ast, Hashmap
 
 fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int []): Ast.nngraph_t
 {
     val nargs = model.args.size()
     val produced_by = array(nargs, -1)
     val prog = graph.prog
-    val new_prog = Dynvec.create(0, Ast.NN_Nop)
+    val new_prog = Vector.make(0, Ast.NN_Nop)
     var modified = false
     fun get_op(op_idx: int) =
-        if op_idx >= 0 {new_prog.data[op_idx]} else {Ast.NN_Nop}
+        if op_idx >= 0 {new_prog[op_idx]} else {Ast.NN_Nop}
     fun is_const_scalar_tensor(argidx: int, v: float?) =
         if model.isconst(argidx) {
             val t = model.get_tensor(argidx)
@@ -114,7 +114,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
                 val t_inp_add0 = t_inp_add[1-_1_arg]
                 val (exp_op_idx, t_inp_exp) = is_elemwise(Ast.NN_Exp, t_inp_add0, false)
                 if t_inp_exp >= 0 {
-                    new_prog.data[add_op_idx] = Ast.NN_Nop
+                    new_prog[add_op_idx] = Ast.NN_Nop
                     val fused_op = Ast.NN_Elemwise {name=name,
                         el_op=Ast.NN_Softplus, t_inp=[t_inp_exp], t_out=t_out_log}
                     (exp_op_idx, fused_op, t_out_log, [t_out_add, t_inp_add0])
@@ -140,7 +140,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
             }) =>
             val (splus_op_idx, t_inp_splus) = is_elemwise(Ast.NN_Softplus, t_imm_arg, false)
             if t_inp_splus == t_inp_mul[mish_arg_idx] {
-                new_prog.data[imm_op_idx] = Ast.NN_Nop
+                new_prog[imm_op_idx] = Ast.NN_Nop
                 usecounts[t_inp_splus] -= 1
                 val fused_op = Ast.NN_Elemwise {name=name, el_op=Ast.NN_Mish,
                     t_inp=[t_inp_splus], t_out=t_out_mul}
@@ -238,7 +238,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
         }
         if fused_op_idx >= 0 {
             modified = true
-            new_prog.data[fused_op_idx] = fused_op
+            new_prog[fused_op_idx] = fused_op
             produced_by[t_out_new] = fused_op_idx
             for t_out_old <- t_out_removed {
                 usecounts[t_out_old] = 0
@@ -246,24 +246,24 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
             }
         } else {
             val (_, t_outs) = op.get_inputs_outputs()
-            for out <- t_outs {produced_by[out] = new_prog.count}
-            new_prog.do_push(op)
+            for out <- t_outs {produced_by[out] = size(new_prog)}
+            new_prog.push_back(op)
         }
     }
 
     if modified {
         var j = 0
-        for i <- 0:new_prog.count {
-            match new_prog.data[i] {
+        for i <- 0:size(new_prog) {
+            match new_prog[i] {
             | Ast.NN_Nop => {}
             | op =>
-                if j < i {new_prog.data[j] = op}
+                if j < i {new_prog[j] = op}
                 j += 1
             }
         }
         println(f"updated graph: {prog.size()} ops to {j} ops")
         Ast.NN_Graph {name=graph.name, inpargs=graph.inpargs,
-            outargs=graph.outargs, prog=new_prog.data[0:j].copy()}
+            outargs=graph.outargs, prog=array(new_prog[0:j])}
     } else {
         //println(f"not updated graph")
         graph

@@ -413,8 +413,6 @@ FX_EXTERN_C int fx_init_Hashset();
 FX_EXTERN_C void fx_deinit_Hashset();
 FX_EXTERN_C int fx_init_LexerUtils();
 FX_EXTERN_C void fx_deinit_LexerUtils();
-FX_EXTERN_C int fx_init_Dynvec();
-FX_EXTERN_C void fx_deinit_Dynvec();
 FX_EXTERN_C int fx_init_Map();
 FX_EXTERN_C void fx_deinit_Map();
 FX_EXTERN_C int fx_init_Set();
@@ -512,7 +510,6 @@ int main(int argc, char** argv)
   if (fx_status >= 0) fx_status = fx_init_Hashmap();
   if (fx_status >= 0) fx_status = fx_init_Hashset();
   if (fx_status >= 0) fx_status = fx_init_LexerUtils();
-  if (fx_status >= 0) fx_status = fx_init_Dynvec();
   if (fx_status >= 0) fx_status = fx_init_Map();
   if (fx_status >= 0) fx_status = fx_init_Set();
   if (fx_status >= 0) fx_status = fx_init_Ast();
@@ -592,7 +589,6 @@ int main(int argc, char** argv)
   fx_deinit_Ast();
   fx_deinit_Set();
   fx_deinit_Map();
-  fx_deinit_Dynvec();
   fx_deinit_LexerUtils();
   fx_deinit_Hashset();
   fx_deinit_Hashmap();

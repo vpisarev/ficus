@@ -5,7 +5,7 @@
 
 //////// ficus abstract syntax definition + helper structures and functions ////////
 
-import Dynvec, Map, Set, Hashmap, Hashset
+import Map, Set, Hashmap, Hashset
 import File, Filename, Options, Sys
 
 /*
@@ -480,7 +480,7 @@ type defmodule_t =
     var dm_env: env_t
     var dm_parsed: bool
     var dm_block_idx: int
-    dm_table: id_info_t Dynvec.t
+    dm_table: id_info_t vector
 }
 fun default_module() =
     defmodule_t {
@@ -488,7 +488,7 @@ fun default_module() =
         dm_defs=[], dm_idx=-1,
         dm_deps=[], dm_env=empty_env,
         dm_parsed=false, dm_real=false,
-        dm_table=Dynvec.create(0, IdNone),
+        dm_table=Vector.make(0, IdNone),
         dm_block_idx=-1
     }
 
@@ -507,7 +507,7 @@ fun is_compiler_frontend(): bool = compiler_stage == CompilerFrontend
 
 var freeze_ids = false
 var lock_all_names = 0
-var all_names = Dynvec.create(0, "")
+var all_names = Vector.make(0, "")
 var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules: defmodule_t [] = []
@@ -535,7 +535,7 @@ fun new_id_idx(midx: int) {
     if freeze_ids {
         throw Fail("internal error: attempt to add new AST id during K-phase or C code generation phase")
     }
-    all_modules[midx].dm_table.push()
+    all_modules[midx].dm_table.push(IdNone)
 }
 
 fun dump_id(i: id_t) {
@@ -546,7 +546,7 @@ fun dump_id(i: id_t) {
 fun id2str_(i: id_t, pp: bool): string =
     if i == noid { "<noid>" }
     else {
-        val prefix = all_names.data[i.i]
+        val prefix = all_names[i.i]
         if pp || i.m == 0 { prefix }
         else { f"{prefix}@{i.j}" }
     }
@@ -554,12 +554,12 @@ fun id2str_(i: id_t, pp: bool): string =
 fun id2str_m(i: id_t): string =
     if i == noid { "<noid>" }
     else {
-        val prefix = all_names.data[i.i]
+        val prefix = all_names[i.i]
         if i.m == 0 { prefix }
         else {
             val mprefix = pp(get_module_name(i.m))
             val mprefix = if mprefix == "Builtins" {""} else {mprefix + "."}
-            val prefix = all_names.data[i.i]
+            val prefix = all_names[i.i]
             f"{mprefix}{prefix}@{i.j}"
         }
     }
@@ -695,7 +695,7 @@ fun id_info(i: id_t, loc: loc_t) =
     if i.m == 0 {IdNone}
     else {
         val (m, j) = id2idx_(i, loc)
-        all_modules[m].dm_table.data[j]
+        all_modules[m].dm_table[j]
     }
 
 fun is_unique_id(i: id_t) = i.m > 0
@@ -731,7 +731,7 @@ fun set_id_entry(i: id_t, n: id_info_t)
 {
     val loc = get_idinfo_loc(n)
     val (m_idx, idx) = id2idx_(i, loc)
-    all_modules[m_idx].dm_table.data[idx] = n
+    all_modules[m_idx].dm_table[idx] = n
 }
 
 fun get_exp_ctx(e: exp_t)
@@ -828,7 +828,7 @@ fun find_module(mname: id_t, mfname: string) =
             dm_name=mname, dm_filename=mfname,
             dm_idx=m_idx, dm_defs=[], dm_deps=[],
             dm_env=empty_env, dm_parsed=false, dm_real=true,
-            dm_table=Dynvec.create(0, IdNone),
+            dm_table=Vector.make(0, IdNone),
             dm_block_idx=-1
         }
         val saved_modules = all_modules
