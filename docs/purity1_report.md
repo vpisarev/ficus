@@ -107,6 +107,13 @@ practice.
 
 ## STOP-rule item — `K_fuse_loops` and movement grade
 
+> **Resolved in `fuse-move-1` (FB-028).** The audit question below was confirmed
+> a real correctness bug: `K_fuse_loops` on the removal grade fuses a
+> mutable-memory-reading body into a consumer that writes it (an in-place
+> stencil), corrupting the result. Fixed by flipping the criterion to the
+> movement grade; the fix also uncovered and repaired that fusion never fired
+> inside function/lambda bodies. See `docs/fuse_move1_report.md`.
+
 Per the brief: *if Phase 2's audit finds a consumer whose migration would CHANGE
 optimization behaviour — report, don't decide.* `K_fuse_loops` is that consumer.
 
