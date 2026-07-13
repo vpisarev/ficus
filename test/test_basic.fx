@@ -897,3 +897,24 @@ TEST("basic.int64_min", fun() {
     arr[1] = -9223372036854775808
     EXPECT_EQ(arr[1], min64)
 })
+
+TEST("basic.checked_read_side_effect", fun() {
+    // FB-027: an element read whose result is discarded (via ignore) must still
+    // perform its bounds check -- dropping it would swallow OutOfRangeError.
+    // Holds for every checked (BorderNone) container read: array, vector,
+    // string, rrbvec; independent of opt level (T2 runs O0 and O3).
+    val ea: int [] = []
+    val ev: int vector = []
+    val es: string = ""
+    val er: int rrbvec = []
+    EXPECT_THROWS(fun() { ignore(ea[0]) },   OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(ea[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(ev[0]) },   OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(ev[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(es[0]) },   OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(es[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(er[0]) },   OutOfRangeError)
+    EXPECT_THROWS(fun() { ignore(er[.-1]) }, OutOfRangeError)
+    // a border read (.clip) never throws and stays eliminable -- no exception
+    EXPECT_EQ(ea.clip[0], 0)   // clip on empty -> clamps, returns default 0
+})

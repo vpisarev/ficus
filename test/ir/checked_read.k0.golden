@@ -1,0 +1,7 @@
+fun checked_read.probe@g0(a@g1: int []): int
+{ @temp val v@g2: int = a@g1..clip[100]; ignore@g3(v@g2); @temp val v@g4: int = a@g1[7]; ignore@g3(v@g4); a@g1[0]
+}
+
+@temp val v@g5: int [] = [ 1, 2, 3, 4, 5 ]
+@temp val v@g6: int = checked_read.probe@g0(v@g5)
+println@g7(v@g6)

@@ -324,7 +324,7 @@ limitation (worked around by splitting into two arms, e.g. in the vector-iterati
 read-lock codegen in C_gen_code.fx). Should be fixed — allow a variable bound
 identically across all alternatives of an or-pattern.
 
-## FB-027  `ignore(coll[i])` swallows the out-of-range exception  [OPEN — soundness]
+## FB-027  `ignore(coll[i])` swallows the out-of-range exception  [FIXED — purity-1]
 An element read whose result does not escape is dead-code-eliminated together
 with its bounds check, so an out-of-bounds/empty access that *should* raise
 `OutOfRangeError` silently does nothing:
@@ -351,8 +351,19 @@ soundness surprise, not just a missed diagnostic.
   `outer_sink = coll[i]` (an outer `var`) throws; `{ var s=0; s = coll[i] }`
   (local, dead) does not. This is why `test/test_vec.fx` fcvector.pushpop_edge
   asserts `back()`-on-empty via a captured `sink`, not `ignore(v.back())`.
-- **Fix direction (not done — general compiler soundness, out of scope for
-  newvec-2)**: mark a *bounds-checked* `KExpAt` (i.e. `BorderNone`, which emits a
-  throwing check) impure in `pure_kexp_`, so it survives DCE. Border reads
-  (`.clip`/`.wrap`/`.zero`) never throw and can stay pure and eliminable; gating
-  on `BorderNone` avoids inhibiting legitimate DCE of genuinely-safe reads.
+- **Fix (purity-1 Phase 1)**: `pure_kexp_` in `K_remove_unused.fx` now lists
+  `KExpAt(_, BorderNone, _, _, _) => ispure = false` — a bounds-checked read
+  (which emits a throwing `FX_CHKIDX`/`FX_VEC_CHKIDX` in C-gen) is impure and
+  survives DCE. Border reads (`.clip`/`.wrap`/`.zero`) never throw and stay pure
+  and eliminable (verified: `test/ir/checked_read.k.golden` shows a dead `.clip`
+  read removed while the dead checked read is retained). Repro now throws
+  `OutOfRangeError` for array/vector/string/rrbvec at both `-O0` and `-O3`
+  (`test/test_basic.fx` `basic.checked_read_side_effect`; `test/test_vec.fx`
+  `fcvector.pushpop_edge` restored to the natural `ignore(v.back())` spelling).
+  Churn: only `K_remove_unused.c` regenerated among the 55 compiler modules;
+  generated C for spectralnorm/mandelbrot/btree/nbody byte-identical to master
+  (perf within noise); a single test scaffold (`test_matrix.c`) materializes a
+  few extra named temps around checked reads it no longer inlines — behavior-
+  preserving, coalesced by the C compiler. Phase 2 (purity-1) folds this into a
+  parameterized `pure_kexp(~mut_read_is_impure)` so the throw-impurity and the
+  FB-023 movement guard share one classification.

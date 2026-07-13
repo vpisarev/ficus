@@ -63,6 +63,12 @@ fun pure_kexp(e: kexp_t): bool
         | KExpTryCatch _ => ispure = false
         | KExpThrow _ => ispure = false
         | KExpCCode _ => ispure = false
+        // FB-027: a bounds-checked element read (BorderNone) emits a throwing
+        // FX_CHKIDX/FX_VEC_CHKIDX in C-gen; removing the KExpAt at the K level
+        // drops the check and swallows OutOfRangeError. So a BorderNone read is
+        // NOT eliminable. Border reads (.clip/.wrap/.zero) never throw and stay
+        // pure and removable.
+        | KExpAt (_, BorderNone, _, _, _) => ispure = false
         | KExpSeq (elist, (_, loc)) =>
             /*
                 if we have a block of code, this block,

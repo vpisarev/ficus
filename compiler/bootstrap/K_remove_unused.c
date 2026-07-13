@@ -5414,6 +5414,11 @@ static int _fx_M15K_remove_unusedFM10pure_kexp_v2N14K_form__kexp_tR22K_form__k_f
    if (tag_0 == 30) {
       *ispure_0 = false; goto _fx_endmatch_1;
    }
+   if (tag_0 == 19) {
+      if (e_0->u.KExpAt.t1.tag == 1) {
+         *ispure_0 = false; goto _fx_endmatch_1;
+      }
+   }
    if (tag_0 == 10) {
       _fx_Nt10Hashset__t1R9Ast__id_t saved_local_vars_0 = 0;
       _fx_Nt10Hashset__t1R9Ast__id_t v_3 = 0;
