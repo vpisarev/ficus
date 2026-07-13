@@ -252,6 +252,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             val result = string(dims) :: "A" :: result
             mangle_ktyp_(t, result)
         | KTypList t => mangle_ktyp_(t, "L" :: result)
+        | KTypRRBVec t => mangle_ktyp_(t, "W" :: result)
         | KTypVector t => mangle_ktyp_(t, "V" :: result)
         | KTypRef t => mangle_ktyp_(t, "r" :: result)
         | KTypExn  => "E" :: result
@@ -298,6 +299,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
         | KTypFun _ => if final_mode {create_gen_typ(t, "fun", loc)} else {t}
         | KTypTuple _ => if final_mode {create_gen_typ(t, "tup", loc)} else {t}
         | KTypArray _ => t
+        | KTypRRBVec _ => t
         | KTypVector _ => t
         | KTypList _ => if final_mode {create_gen_typ(t, "lst", loc)} else {t}
         | KTypRef _ => if final_mode {create_gen_typ(t, "ref", loc)} else {t}
@@ -585,11 +587,11 @@ fun mangle_locals(kmods: kmodule_t list)
     var prefix_hash = empty_int_map(256)
 
     fun gen_cname(n: id_t, global: bool) {
-        val prefix = if global {get_id("g_" + all_names.data[n.i]).i} else {n.i}
+        val prefix = if global {get_id("g_" + all_names[n.i]).i} else {n.i}
         val idx = prefix_hash.find_idx_or_insert(prefix)
         val j1 = prefix_hash.table[idx].data + 1
         prefix_hash.table[idx].data = j1
-        f"{all_names.data[prefix]}_{j1}"
+        f"{all_names[prefix]}_{j1}"
     }
 
     fun gen_kval_cname(n: id_t, loc: loc_t, global: bool) =

@@ -270,3 +270,56 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
 `lib/NN/OpQuantized.run_dequantize` int8 scalar path yields 0 on Linux/x86.
 Known DL-engine defect, unrelated to the compiler; fenced by commenting the
 TEST block in `test/test_nn_quant.fx`.
+
+## FB-024  order-dependent generic-return inference pollution  [OPEN — fenced]
+A generic stdlib function whose return type is bound only through a closure
+argument (`Vec.map`/`mapi : ('t,int)->'r ... -> 'r vector`, `foldl`) can have its
+return-type inference *polluted* by an earlier, unrelated instantiation of a
+sibling generic in the same module, so a later call fails to unify the element
+type. Minimal repro:
+```
+import Vector
+fun t1(): void { val v: int vector = []; v.push_back(1); v[0] = 2 }
+fun t2(): void {
+    val last: float vector = []
+    val curr = last.mapi(fun(x, j) { if j == 0 {1.f} else {last[j-1] + last[j]} })
+    ignore(size(curr))
+}
+t1(); t2()   // ERROR at t2: "if() expression should have the same type as its
+             // branches" (1.f : float vs last[j] : <polluted>)
+```
+- **Order-dependent**: swapping to `t2(); t1()` type-checks cleanly. So it is not
+  a real type error — an earlier generic instantiation leaves a shared type var
+  in a state the later inference wrongly reuses (the "inferred/free return steals
+  under-constrained sites" class, CLAUDE.md — here *across* definitions).
+- **Workaround (used in `test/test_vec.fx` fcvector.binomial)**: annotate the
+  result — `val curr: float vector = last.mapi(...)` — which pins the return type
+  before the polluted var is consulted. Not fixed (out of scope for newvec-1;
+  `map`/`mapi`/`foldl` are themselves temporary until vector comprehensions).
+
+## FB-025  resolver internal error: generic container operator in a large overload context  [OPEN — fenced]
+Compiling a generic container operator whose body compares/formats elements
+generically — `operator <=> (a: 't vector, b: 't vector): int { ... a[i] <=> b[i] ... }`
+— throws an internal error **"the winning overload of '__cmp__' failed to
+re-unify at commit"** when it is type-checked in a scope that already has many
+`<=>`/`__cmp__` overloads (a second generic container `<=>` — rrbvec's — plus the
+compiler's own per-type ones, as happens when `Vector` is auto-imported into the
+whole compiler). The element access `a[i]` has a *free* element type `'t`, so the
+resolver treats every container `<=>` (incl. the one being defined) as a
+candidate and fails to commit a unique winner.
+- **Order/context-dependent**, like FB-024: the same operator compiles fine when
+  `Vector.fx` is imported by a small program (few `<=>` in scope).
+- **Workaround (used for newvec-1 auto-import)**: define `==`/`<=>`/`string`/
+  `print` for `vector` in `Builtins.fx` (next to the rrbvec ones) instead of in
+  the auto-imported `Vector.fx`. Builtins is compiled first, with few overloads
+  in scope, so the generic element compare resolves. Not fixed (resolver work is
+  out of scope for newvec-1).
+
+## FB-026  cannot bind a variable in an or-pattern  [OPEN — limitation]
+An or-pattern that binds the same variable in each alternative is rejected:
+`match dom { | DomainElem(AtomId c) | DomainFast(AtomId c) => c | _ => noid }`
+gives "duplicate identifier 'c' in the pattern". Both arms bind `c` to the same
+type, so this is a legal and common pattern in ML-family languages. Current
+limitation (worked around by splitting into two arms, e.g. in the vector-iteration
+read-lock codegen in C_gen_code.fx). Should be fixed — allow a variable bound
+identically across all alternatives of an or-pattern.

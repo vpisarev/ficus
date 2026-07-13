@@ -6,7 +6,7 @@
 // btree.fx example converted into a test. Binary tree traversal
 
 from UTest import *
-import Vector
+import Rrbvec
 
 // FB-003 / FB-005: border access (.clip/.wrap/.zero) on the four supported
 // containers x the three modes. Plain 1D arrays used to emit broken C
@@ -26,7 +26,7 @@ TEST("array.border_matrix", fun() {
     EXPECT_EQ(m.zero[9, 9], 0); EXPECT_EQ(m.zero[1, 2], 5)
     EXPECT_EQ(m.wrap[-1, -1], 5); EXPECT_EQ(m.wrap[2, 3], 0)
     // Vector
-    val v = vector(a)
+    val v = rrbvec(a)
     EXPECT_EQ(v.clip[7], 50); EXPECT_EQ(v.zero[7], 0)
     EXPECT_EQ(v.wrap[-5], 10); EXPECT_EQ(v.wrap[-1], 50)
     // string (char sequence)

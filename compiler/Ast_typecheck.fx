@@ -117,6 +117,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         match t2 {
         | TypFun(args2, rt2) => occurs(r1, args2) || occurs(r1, rt2)
         | TypList(t2_) => occurs(r1, t2_)
+        | TypRRBVec(t2_) => occurs(r1, t2_)
         | TypVector(t2_) => occurs(r1, t2_)
         | TypTuple(tl2) => occurs(r1, tl2)
         | TypVarTuple(Some(t2_)) => occurs(r1, t2_)
@@ -159,6 +160,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
         | (TypFun(args1, rt1), TypFun(args2, rt2)) =>
             maybe_unify_(args1, args2, loc) && maybe_unify_(rt1, rt2, loc)
         | (TypList(et1), TypList(et2)) => maybe_unify_(et1, et2, loc)
+        | (TypRRBVec(et1), TypRRBVec(et2)) => maybe_unify_(et1, et2, loc)
         | (TypVector(et1), TypVector(et2)) => maybe_unify_(et1, et2, loc)
         | (TypTuple(tl1), TypTuple(tl2)) => maybe_unify_(tl1, tl2, loc)
         | (TypVar((ref Some(TypVarTuple(t1_opt))) as r1),
@@ -220,7 +222,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
             }
         | (_, TypVar (ref Some(TypVarRecord))) => maybe_unify_(t2, t1, loc)
         /* TypVarCollection ("some collection", the type of a []-literal):
-           binds only to a list, vector or array (or to an array-var 't [+],
+           binds only to a list, rrbvec or array (or to an array-var 't [+],
            or is captured by a plain free var / merged with another
            collection-var). Everything else is a unification failure -- this
            is the whole point: [] no longer poses as "anything". */
@@ -237,7 +239,7 @@ fun maybe_unify(t1: typ_t, t2: typ_t, loc: loc_t, update_refs: bool): bool {
                 undo_stack = (r2, *r2) :: undo_stack
                 *r2 = Some(t1)
                 true
-            | TypList _ | TypVector _ | TypArray(_, _)
+            | TypList _ | TypRRBVec _ | TypVector _ | TypArray(_, _)
             | TypVar(ref Some(TypVarArray _)) =>
                 undo_stack = (r1, *r1) :: undo_stack
                 *r1 = Some(t2)
@@ -444,8 +446,8 @@ fun freeze_varform_typs(t: typ_t): typ_t {
             }
         | TypVar (ref Some(TypVarArray(et))) => TypArray(-1, freeze_(et, callb))
         /* [] / TypVarCollection: freeze to an opaque constant -- "some
-           specific collection, could be list OR vector OR array", so neither
-           't list, 't [], 't vector nor 't [+] covers it; only a plain free
+           specific collection, could be list OR rrbvec OR array", so neither
+           't list, 't [], 't rrbvec nor 't [+] covers it; only a plain free
            't does. (Signatures written in source can't contain it; this arm
            matters only if a collection-var flows in via inference.) */
         | TypVar (ref Some(TypVarCollection)) => TypApp([], get_id("__skolem_coll__"))
@@ -1654,6 +1656,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     compile_warning(eloc, "'@parallel for' over a list is not supported")
                 }
                 (et, 1)
+            | (_, TypRRBVec(et)) => (et, 1)
             | (_, TypVector(et)) => (et, 1)
             | (_, TypString) => (TypChar, 1)
             | _ => throw compile_err(eloc, "unsupported iteration domain; \
@@ -2189,11 +2192,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(TypString, etyp, eloc,
                 "improper type of the string concatenation operation (string is expected)")
             ExpBinary(bop, new_e1, new_e2, ctx)
-        | (_, OpAdd, TypVector _, _, _, _)
-        | (_, OpAdd, _, TypVector _, _, _) =>
+        | (_, OpAdd, TypRRBVec _, _, _, _)
+        | (_, OpAdd, _, TypRRBVec _, _, _) =>
             unify(etyp1, etyp2, eloc, f"the two concatenated vectors have different \
                   types '{typ2str(etyp1)}' and '{typ2str(etyp2)}'")
-            unify(etyp1, etyp, eloc, f"the type of vector concatenation result '{typ2str(etyp)}' is \
+            unify(etyp1, etyp, eloc, f"the type of rrbvec concatenation result '{typ2str(etyp)}' is \
                   different from operands' type '{typ2str(etyp1)}'")
             ExpBinary(bop, new_e1, new_e2, ctx)
         | (_, OpAdd, TypList _, TypList _, ExpBinary(OpAdd, sub_e1, sub_e2, _), _) =>
@@ -2356,12 +2359,13 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             unify(etyp, TypInt, eloc, "the result of __intrin_size__ must be integer")
             match (deref_typ(t), idx) {
             | (TypString, 0) => {}
+            | (TypRRBVec _, 0) => {}
             | (TypVector _, 0) => {}
             | (TypArray(ndims, _), _) =>
                 if idx < 0 || idx >= ndims { throw compile_err(eloc,
                     "the argument of __intrin_size__ is outside of array dimensionality") }
             | _ => throw compile_err(eloc, "the argument of __intrin_size__ must be a string, \
-                                     a vector or an array")
+                                     a rrbvec or an array")
             }
             ExpIntrin(iop, a::(if idx > 0 {args.tl()} else {[]}), ctx)
         | _ => throw compile_err(eloc, f"the intrinsic '{iop}' is not supported by the type checker")
@@ -2480,6 +2484,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 val r_t = get_exp_typ(r)
                 val mstr =  match deref_typ(r_t) {
                             | TypList _ => "List"
+                            | TypRRBVec _ => "Rrbvec"
                             | TypVector _ => "Vector"
                             | TypString => "String"
                             | TypChar => "Char"
@@ -2553,9 +2558,14 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     "the result of flatten operation ([:]) applied to N-D array \
                     must be 1D array with elements of the same type as input array")
                 ExpAt(new_arr, BorderNone, InterpNone, [:: new_idx], ctx)
+            | TypRRBVec(et) =>
+                unify(etyp, TypRRBVec(et), eloc,
+                    "the result of flatten operation ([:]) applied to rrbvec \
+                    must be a rrbvec of the same type")
+                ExpAt(new_arr, BorderNone, InterpNone, [:: new_idx], ctx)
             | TypVector(et) =>
                 unify(etyp, TypVector(et), eloc,
-                    "the result of flatten operation ([:]) applied to vector \
+                    "the result of flatten operation ([:]) applied to a vector \
                     must be a vector of the same type")
                 ExpAt(new_arr, BorderNone, InterpNone, [:: new_idx], ctx)
             | TypString =>
@@ -2619,6 +2629,12 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
             | (1, 0, TypString) => unify(etyp, TypChar, new_aloc, "indexing string should give a char")
             | (1, 1, TypString) => unify(etyp, TypString, new_aloc,
                     "indexing string with a range should give a string")
+            | (1, 0, TypRRBVec et) => unify(etyp, et, new_aloc,
+                "incorrect type of the rrbvec element access operation; \
+                it gives '{typ2str(et)}', but '{typ2str(etyp)}' is expected")
+            | (1, 1, TypRRBVec et) => unify(etyp, TypRRBVec(et), new_aloc,
+                "incorrect type of the rrbvec range access operation; \
+                it gives '{typ2str(TypRRBVec(et))}', but '{typ2str(etyp)}' is expected")
             | (1, 0, TypVector et) => unify(etyp, et, new_aloc,
                 "incorrect type of the vector element access operation; \
                 it gives '{typ2str(et)}', but '{typ2str(etyp)}' is expected")
@@ -2729,10 +2745,11 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
     | ExpMap(map_clauses, body, flags, ctx) =>
         val make_list = flags.for_flag_make == ForMakeList
         val make_tuple = flags.for_flag_make == ForMakeTuple
-        val make_vector = flags.for_flag_make == ForMakeVector
+        val make_vector = flags.for_flag_make == ForMakeRRBVec
+        val make_vec = flags.for_flag_make == ForMakeVector
         val unzip_mode = flags.for_flag_unzip
         val for_sc = (if make_tuple { new_block_scope(curr_m_idx) }
-                      else if make_list || make_vector { new_map_scope(curr_m_idx) }
+                      else if make_list || make_vector || make_vec { new_map_scope(curr_m_idx) }
                       else { new_arr_map_scope(curr_m_idx) }) :: sc
         val (trsz, pre_code, map_clauses, total_dims, env, _) =
             fold trsz = 0, pre_code = ([]: exp_t list), map_clauses_acc = [], total_dims = 0, env_acc = env, idset_acc = empty_idset
@@ -2752,7 +2769,8 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
         }
         val coll_name = if make_list {"list"}
                         else if make_tuple {"tuple"}
-                        else if make_vector {"vector"}
+                        else if make_vector {"rrbvec"}
+                        else if make_vec {"vector"}
                         else {"array"}
         fun check_map_typ (elem_typ: typ_t, coll_typ: typ_t, idx: int)
         {
@@ -2763,6 +2781,10 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     f"the result {idx_str} should have type '{typ2str(TypList(elem_typ))}', \
                       but it has type '{typ2str(coll_typ)}'")
             } else if make_vector {
+                unify (coll_typ, TypRRBVec(elem_typ), eloc,
+                    f"the result {idx_str} should have type '{typ2str(TypRRBVec(elem_typ))}', \
+                      but it has type '{typ2str(coll_typ)}'")
+            } else if make_vec {
                 unify (coll_typ, TypVector(elem_typ), eloc,
                     f"the result {idx_str} should have type '{typ2str(TypVector(elem_typ))}', \
                       but it has type '{typ2str(coll_typ)}'")
@@ -2801,7 +2823,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                     l_exp = ExpBinary(OpCons, ej, l_exp, (ltyp, eloc))
                 }
             } else if make_vector {
-                ExpMkVector(elems, (TypVector(elem_typ), eloc))
+                ExpMkVector(elems, (TypRRBVec(elem_typ), eloc))
             } else {
                 ExpMkArray([:: elems], (TypArray(1, elem_typ), eloc))
             }
@@ -2946,7 +2968,7 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 unify(t, etyp1, eloc1, "incorrect type of expanded collection")
                 val (collname, elemtyp1) = match deref_typ(etyp1) {
                     | TypArray(1, elemtyp1) => ("array", elemtyp1)
-                    | TypVector(elemtyp1) => ("vector", elemtyp1)
+                    | TypRRBVec(elemtyp1) => ("rrbvec", elemtyp1)
                     | TypList(elemtyp1) => ("list", elemtyp1)
                     | TypString => ("string", TypChar)
                     | _ => throw compile_err(eloc1, "incorrect type '{typ2str(etyp1)} of the expanded \
@@ -2957,14 +2979,14 @@ fun check_exp(e: exp_t, env: env_t, sc: scope_t list) {
                 elems_acc = ExpUnary(OpExpand, e1, (t, loc)) :: elems_acc
             | _ =>
                 val (elemtyp1, eloc1) = get_exp_ctx(elem)
-                unify(elemtyp, elemtyp1, eloc1, "all the scalar elements of the vector \
+                unify(elemtyp, elemtyp1, eloc1, "all the scalar elements of the rrbvec \
                      should have the same type")
                 elems_acc = check_exp(elem, env, sc) :: elems_acc
             }
         }
         val elems = elems_acc
-        val vectyp = TypVector(elemtyp)
-        unify(vectyp, etyp, eloc, "the constructed vector has type '{typ2str(vectype)}', \
+        val vectyp = TypRRBVec(elemtyp)
+        unify(vectyp, etyp, eloc, "the constructed rrbvec has type '{typ2str(vectype)}', \
               but is expected to have type '{typ2str(etyp)}'")
         ExpMkVector(elems.rev(), ctx)
     | ExpMkRecord(r_e, r_initializers, _) =>

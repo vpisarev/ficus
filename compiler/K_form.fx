@@ -40,7 +40,7 @@
     * ...
 */
 from Ast import *
-import Dynvec, Set, Hashset
+import Set, Hashset
 
 type ktprops_t =
 {
@@ -70,6 +70,7 @@ type ktyp_t =
     | KTypRecord: (id_t, (id_t, ktyp_t) list)
     | KTypName: id_t
     | KTypArray: (int, ktyp_t)
+    | KTypRRBVec: ktyp_t
     | KTypVector: ktyp_t
     | KTypList: ktyp_t
     | KTypRef: ktyp_t
@@ -256,7 +257,7 @@ type kinfo_t =
 
 val _KLitVoid = KLitNil(KTypVoid)
 val _ALitVoid = AtomLit(_KLitVoid)
-var all_idks: kinfo_t Dynvec.t [] = []
+var all_idks: kinfo_t vector [] = []
 var builtin_exn_NoMatchError = noid
 var builtin_exn_OutOfRangeError = noid
 var freeze_idks = false
@@ -265,8 +266,8 @@ fun new_idk_idx(m_idx: int): int {
     if freeze_idks {
         throw Fail("internal error: new idk is requested when they are frozen")
     }
-    val new_idx = all_modules[m_idx].dm_table.push()
-    val new_kidx = all_idks[m_idx].push()
+    val new_idx = all_modules[m_idx].dm_table.push(IdNone)
+    val new_kidx = all_idks[m_idx].push(KNone)
     if new_idx != new_kidx {
         throw Fail("internal error: unsynchronized outputs from new_id_idx() and new_idk_idx()")
     }
@@ -277,7 +278,7 @@ fun kinfo_(n: id_t, loc: loc_t) =
     if n.m == 0 {KNone}
     else {
         val (m, j) = id2idx_(n, loc)
-        all_idks[m].data[j]
+        all_idks[m][j]
     }
 
 fun dup_idk(m_idx: int, old_id: id_t): id_t
@@ -297,7 +298,7 @@ fun set_idk_entry(n: id_t, info: kinfo_t): void
 {
     //val loc = get_kinfo_loc(info)
     val (m, j) = id2idx_(n, noloc)
-    all_idks[m].data[j] = info
+    all_idks[m][j] = info
 }
 
 fun init_all_idks(): void
@@ -305,8 +306,8 @@ fun init_all_idks(): void
     freeze_ids = true
     freeze_idks = false
     all_idks = [for dm <- all_modules {
-        val sz = dm.dm_table.size()
-        Dynvec.create(sz, KNone)
+        val sz = size(dm.dm_table)
+        Vector.make(sz, KNone)
     }]
 }
 
@@ -611,6 +612,7 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
             [:: for (ni, ti) <- relems { (walk_id_(ni), walk_ktyp_(ti)) } ])
     | KTypName(k) => KTypName(walk_id_(k))
     | KTypArray(d, t) => KTypArray(d, walk_ktyp_(t))
+    | KTypRRBVec(t) => KTypRRBVec(walk_ktyp_(t))
     | KTypVector(t) => KTypVector(walk_ktyp_(t))
     | KTypList(t) => KTypList(walk_ktyp_(t))
     | KTypRef(t) => KTypRef(walk_ktyp_(t))
@@ -930,6 +932,7 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
     | KTypName(n) => fold_id_(n)
     | KTypArray(d, t) => fold_ktyp_(t)
     | KTypList(t) => fold_ktyp_(t)
+    | KTypRRBVec(t) => fold_ktyp_(t)
     | KTypVector(t) => fold_ktyp_(t)
     | KTypRef(t) => fold_ktyp_(t)
     }
@@ -1396,6 +1399,7 @@ fun string(t: ktyp_t): string
         | KTypName(n) => idk2str(n, noloc)
         | KTypArray(d, t) =>
             val commas = ','*(d-1); f"{ktyp2str_(t, true)} [{commas}]"
+        | KTypRRBVec(t) => f"{ktyp2str_(t, true)} rrbvec"
         | KTypVector(t) => f"{ktyp2str_(t, true)} vector"
         | KTypList(t) => f"{ktyp2str_(t, true)} list"
         | KTypRef(t) => f"{ktyp2str_(t, true)} ref"

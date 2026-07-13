@@ -29,7 +29,7 @@ fun rename_locals(cmods: cmodule_t list)
         val idx = prefix_hash.find_idx_or_insert(prefix)
         val j1 = prefix_hash.table[idx].data + 1
         prefix_hash.table[idx].data = j1
-        f"{all_names.data[prefix]}_{j1}"
+        f"{all_names[prefix]}_{j1}"
     }
 
     fun gen_cval_cname(n: id_t, loc: loc_t) =

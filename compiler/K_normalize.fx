@@ -46,13 +46,14 @@ fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
             "variable tuple type cannot be inferenced; please, use explicit type annotation")
         | TypRef(t) => KTypRef(typ2ktyp_(t))
         | TypArray(d, t) => KTypArray(d, typ2ktyp_(t))
+        | TypRRBVec(t) => KTypRRBVec(typ2ktyp_(t))
         | TypVector(t) => KTypVector(typ2ktyp_(t))
         | TypVarArray _ => throw compile_err(loc,
             "variable array type cannot be inferenced; please, use explicit type annotation")
         | TypVarRecord => throw compile_err(loc,
             "variable record type cannot be inferenced; please, use explicit type annotation")
         | TypVarCollection => throw compile_err(loc,
-            "[] denotes an empty collection (list, vector or array), but which one cannot be " +
+            "[] denotes an empty collection (list, rrbvec or array), but which one cannot be " +
             "inferenced here; please, use explicit type annotation")
         | TypFun(args, rt) => KTypFun([::for t <- args {typ2ktyp_(t)} ], typ2ktyp_(rt))
         | TypRecord (ref (relems, true)) =>
@@ -95,9 +96,9 @@ fun lit2klit(l: lit_t, ktyp: ktyp_t, loc: loc_t) =
     | LitBool(f) => KLitBool(f)
     | LitEmpty =>
         match ktyp {
-        | KTypList _ | KTypVector _ | KTypArray _ => KLitNil(ktyp)
+        | KTypList _ | KTypRRBVec _ | KTypVector _ | KTypArray _ => KLitNil(ktyp)
         | _ => throw compile_err(loc,
-            "[] is misused. It can only denote an empty collection (list, vector or array)")
+            "[] is misused. It can only denote an empty collection (list, rrbvec, vector or array)")
         }
     | LitNull => KLitNil(KTypCPointer)
     }
@@ -142,6 +143,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 match get_atom_ktyp(i, eloc) {
                 | KTypArray(_, et) => et
                 | KTypList(et) => et
+                | KTypRRBVec(et) => et
                 | KTypVector(et) => et
                 | KTypString => KTypChar
                 | _ => throw compile_err(eloc, "unsupported type of the domain expression in for loop")
@@ -347,7 +349,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
         (KExpMkArray(all_literals, krows.rev(), kctx), code)
     | ExpMkVector(elems, _) =>
         if elems == [] {
-            throw compile_err(eloc, "empty vector literals are not supported")
+            throw compile_err(eloc, "empty rrbvec literals are not supported")
         }
         var res = [], code = code
         for e <- elems {

@@ -94,6 +94,21 @@ losing the function's interface — session-2/LSP groundwork) and a future
 dividend for separate interface-only compilation. Not a language change for
 *users* — inference stays; the flag is a discipline knob.
 
+### 1.8 Container semantic model — DECIDED (newvec-1 §0, canonical)
+One axiom: `a = b` (and param pass / return / store into container or
+closure) is O(1) for any container of statically-unknown element count ⟹
+copy is an INCREF of shared state, never a deep clone ⟹ all containers have
+shared reference (aliasing) semantics; no copy-on-write; independent copy is
+explicit. Derived table: array = inline header, element-mutable, size-fixed
+(realloc would be invisible to aliases), slice = view; string/rrbvec =
+immutable (hence cheap view/structural-sharing slices); vector (mutable,
+growable, shared) = heap header behind a pointer, slice = COPY (a view would
+alias under mutation). Iteration over the mutable vector takes a read-lock
+(atomic nlocks): structural mutators (push/pop/resize/reserve/clear) throw
+while locked; `v[i]=a` and reads are free. The optimizer may EXPLOIT
+semantic locks (hoist bounds checks inside `for x <- v`) but never INSERTS
+locks — O0/O3 behavior is identical by construction. → tutorial, verbatim.
+
 ## 2. fold — imperative form — DECIDED & IMPLEMENTED (fold-1, 2026-07-11)
 
 Body is a void expression; accumulators are scoped variables updated by named

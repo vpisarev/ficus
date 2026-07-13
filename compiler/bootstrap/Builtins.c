@@ -103,6 +103,7 @@ fx_exn_t _fx_E9SizeErrorv = {0};
 fx_exn_t _fx_E17SizeMismatchErrorv = {0};
 fx_exn_t _fx_E18StackOverflowErrorv = {0};
 fx_exn_t _fx_E17TypeMismatchErrorv = {0};
+fx_exn_t _fx_E16VecModifiedErrorv = {0};
 fx_exn_t _fx_E13ZeroStepErrorv = {0};
 FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result)
 {
@@ -489,6 +490,7 @@ FX_EXTERN_C int fx_init_Builtins(void)
    FX_REG_SIMPLE_STD_EXN(FX_EXN_SizeMismatchError, _fx_E17SizeMismatchErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_StackOverflowError, _fx_E18StackOverflowErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_TypeMismatchError, _fx_E17TypeMismatchErrorv);
+   FX_REG_SIMPLE_STD_EXN(FX_EXN_VecModifiedError, _fx_E16VecModifiedErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_ZeroStepError, _fx_E13ZeroStepErrorv);
    int fx_status = 0;
    FX_CALL(_fx_F6stringS1i(_fx_g15__ficus_major__, &v_0, 0), _fx_cleanup);

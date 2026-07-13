@@ -475,6 +475,23 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             (i_exp, ccode)
         }
 
+    /* construct an ALLOCATED mutable vector with size 0 and the given CAPACITY
+       (fx_make_vec(0, cap_exp, elemsize, free, copy, 0, &dst)), elemsize/free/copy
+       taken from the element type. cap_exp==0 gives an empty vector (`[]`); a
+       positive capacity pre-reserves the buffer for a vector comprehension, whose
+       elements are then appended (size grows to capacity, no realloc). Constructs
+       into the provided dst (in-place) or a registered temp (get_dstexp) — never
+       leaks; the destination is expected to start NULL (zeroed at block prologue). */
+    fun make_vec(cap_exp: cexp_t, et: ktyp_t, dstexp_r: cexp_t? ref, ccode: ccode_t, loc: loc_t) {
+        val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
+        val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
+        val (dst_exp, ccode) = get_dstexp(dstexp_r, "zvec", CTypVector(elem_ctyp), ccode, loc)
+        val call = make_call(std_fx_make_vec,
+            [:: make_int_exp(0, loc), cap_exp, elemsize_exp, free_f_exp, copy_f_exp,
+                make_nullptr(loc), cexp_get_addr(dst_exp) ], CTypCInt, loc)
+        (dst_exp, CExp(call) :: ccode)
+    }
+
     fun get_struct(cexp: cexp_t)
     {
         val (ctyp, cloc) = get_cexp_ctx(cexp)
@@ -657,9 +674,18 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 | KTypList _ | KTypCPointer | KTypRawPointer _ =>
                     (make_nullptr(loc), ccode)
                 | KTypVector et =>
+                    // an explicit `[]` for the mutable vector is a real ALLOCATED
+                    // empty vector (so `val v: int vector = []; v.push_back(5)`
+                    // works), distinct from the NULL default a variable gets when
+                    // zero-initialized at block start. get_dstexp gives a registered
+                    // temp (zeroed in the block prologue, freed in cleanup) so this
+                    // atom context (call arg / operand) does not leak; the in-place
+                    // initialization path is handled dst-aware in kexp2cexp.
+                    make_vec(make_int_exp(0, loc), et, ref None, ccode, loc)
+                | KTypRRBVec et =>
                     val elem_ctyp = C_gen_types.ktyp2ctyp(et, loc)
                     val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
-                    val (vec_exp, ccode) = create_cdefval(gen_idc(cm_idx, "zvec"), CTypVector(elem_ctyp),
+                    val (vec_exp, ccode) = create_cdefval(gen_idc(cm_idx, "zvec"), CTypRRBVec(elem_ctyp),
                         default_tempval_flags(), "", None, ccode, loc)
                     val call_make_empty = make_call(get_id("fx_rrb_make_empty"),
                         [:: elemsize_exp, free_f_exp, copy_f_exp, cexp_get_addr(vec_exp) ],
@@ -759,9 +785,9 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
         val vec_ctyp = get_cexp_typ(vec_exp)
         val elem_ctyp =
             match vec_ctyp {
-            | CTypVector elem_ctyp =>
+            | CTypRRBVec elem_ctyp =>
                 elem_ctyp
-            | _ => throw compile_err(loc, "cgen: invalid output type of vector construction expression")
+            | _ => throw compile_err(loc, "cgen: invalid output type of rrbvec construction expression")
             }
         val ccode = []
         val (data_exp, ccode) =
@@ -772,7 +798,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
         val nelems_exp = make_int_exp(data.length(), loc)
         val (sizeof_elem_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elem_ctyp, loc)
-         val call_mkvec = make_call( std_fx_make_vec, [:: nelems_exp, sizeof_elem_exp,
+         val call_mkvec = make_call( std_fx_make_rrbvec, [:: nelems_exp, sizeof_elem_exp,
                                     free_f_exp, copy_f_exp, data_exp,
                                     cexp_get_addr(vec_exp)], CTypCInt, loc)
         val ccode = add_fx_call_(call_mkvec, ccode, lbl, loc)
@@ -1192,7 +1218,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val get_arr_elem = CExpBinary(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc))
                     ([], i_exps, n_exps, for_checks, incr_exps, init_checks, init_ccode, pre_body_ccode,
                     (iter_val_i, get_arr_elem, default_tempvar_flags()) :: body_elems, post_checks)
-                | KTypVector (et) =>
+                | KTypRRBVec (et) =>
                     /*
                         // either save the size or check it
                         int_ n = FX_RRB_SIZE(vec);
@@ -1247,9 +1273,47 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     ([], i_exps, n_exps, for_checks, incr_exp :: incr_exps,
                     init_checks, init_ccode, pre_body_ccode,
                     (iter_val_i, get_vec_elem, elem_flags) :: body_elems, post_checks)
+                | KTypVector (et) =>
+                    /* contiguous, so iterate by index into a cached data pointer
+                       (the read-lock, taken by the caller, keeps data/size stable):
+                        int_ n = FX_VEC_SIZE(vec);
+                        typ* ptr = vec ? (typ*)vec->data : 0;   // NULL vector => n==0
+                        for(int i = 0; i < n; i++) { ... ptr[i] ... }
+                    */
+                    val calc_n_exp = make_call(get_id("FX_VEC_SIZE"), [:: col_exp], CTypInt, for_loc)
+                    val (i_exps, n_exps, init_checks, init_ccode) =
+                    if n_exps == [] {
+                        val (n_exp, init_ccode) = add_local(gen_idc(cm_idx, "n"),
+                            CTypInt, default_tempval_flags(), Some(calc_n_exp), init_ccode, for_loc)
+                        val i_id = get_iter_id(0, at_ids, for_letters.nth(dims_ofs))
+                        val (i_exp, _) = add_local(i_id, CTypInt,
+                            default_tempvar_flags(), None, [], for_loc)
+                        (i_exp :: i_exps, n_exp :: n_exps, init_checks, init_ccode)
+                    } else {
+                        val prev_n = n_exps.hd()
+                        val init_check = CExpBinary(COpCmp(CmpEQ), prev_n, calc_n_exp, (CTypBool, for_loc))
+                        (i_exps, n_exps, init_check :: init_checks, init_ccode)
+                    }
+                    val c_et = C_gen_types.ktyp2ctyp(et, for_loc)
+                    val c_et_ptr = make_ptr(c_et)
+                    val colname = pp(col_)
+                    val data_ptr = CExpCast(cexp_arrow(col_exp, get_id("data"), std_CTypVoidPtr), c_et_ptr, for_loc)
+                    val nullp = CExpCast(make_nullptr(for_loc), c_et_ptr, for_loc)
+                    val ptr_init = CExpTernary(col_exp, data_ptr, nullp, (c_et_ptr, for_loc))
+                    val ptr_id = gen_idc(cm_idx, "ptr_" + colname)
+                    val (ptr_exp, init_ccode) = create_cdefval(ptr_id, c_et_ptr,
+                        default_tempval_flags(), "", Some(ptr_init), init_ccode, for_loc)
+                    val inner_idx = i_exps.rev().hd()
+                    val get_vec_elem = CExpBinary(COpArrayElem, ptr_exp, inner_idx, (c_et, for_loc))
+                    val elem_flags =
+                        if is_ktyp_scalar(et) { default_tempvar_flags() }
+                        else { default_tempref_flags() }
+                    ([], i_exps, n_exps, for_checks, incr_exps,
+                    init_checks, init_ccode, pre_body_ccode,
+                    (iter_val_i, get_vec_elem, elem_flags) :: body_elems, post_checks)
                 | _ =>
                     throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
-                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, vector or string"))
+                        f"cannot iterate over '{atom2str(a)}' of type '{ktyp}'; it needs to be array, list, rrbvec, vector or string"))
                 }
             | _ => throw compile_err(for_loc, for_err_msg(for_idx, nfors, k,
                         "unsupported type of the for loop iteration domain"))
@@ -1483,6 +1547,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val lbl = curr_block_label(kloc)
             val ret_exp = CExp(make_call(get_id("FX_RETURN"), [:: lbl], CTypVoid, kloc))
             (false, dummy_exp, ret_exp :: ccode)
+        | KExpAtom (AtomLit(KLitNil _), _)
+            when (match deref_ktyp(ktyp, kloc) { | KTypVector _ => true | _ => false }) =>
+            // `val v: T vector = []` — construct the empty vector in place (into
+            // the destination), no temp/copy, distinct from `v = []` assignment.
+            val et = match deref_ktyp(ktyp, kloc) { | KTypVector et => et | _ => KTypVoid }
+            val (dst_exp, ccode) = make_vec(make_int_exp(0, kloc), et, dstexp_r, ccode, kloc)
+            (false, dst_exp, ccode)
         | KExpAtom (a, _) => val (e, ccode) = atom2cexp(a, ccode, kloc)
                              val e = fix_nil(e, ktyp)
                              (true, e, ccode)
@@ -1584,7 +1655,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val f_exp = get_id("fx_streq")
                     val call_streq = make_call(f_exp, [:: cexp_get_addr(ce1), cexp_get_addr(ce2) ], CTypBool, kloc)
                     (true, call_streq, ccode)
-                | (COpAdd, CTypVector _) =>
+                | (COpAdd, CTypRRBVec _) =>
                     val (dst_exp, ccode) = get_dstexp(dstexp_r, "v", ctyp, ccode, kloc)
                     val call_concat = make_call(get_id("fx_rrb_concat"),
                         [:: cexp_get_addr(ce1), cexp_get_addr(ce2), cexp_get_addr(dst_exp) ], CTypCInt, kloc)
@@ -1804,7 +1875,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     match get_atom_ktyp(arr_or_str, kloc) {
                     | KTypString => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
                     | KTypArray _ => make_call(get_id("FX_ARR_SIZE"), [:: arr_exp, make_int_exp(0, kloc) ], CTypInt, kloc)
-                    | KTypVector _ => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | KTypRRBVec _ => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | KTypVector _ => make_call(get_id("FX_VEC_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | ktyp =>
                         throw compile_err( kloc,
                             f"cgen: unsupported container type {ktyp} of {atom2str(arr_or_str)} in KExpIntrin(IntrinGetSize...)")
@@ -1815,7 +1887,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val c_e =
                     match (get_atom_ktyp(arr_or_str, kloc), i) {
                     | (KTypString, 0i64) => make_call(get_id("FX_STR_LENGTH"), [:: arr_exp], CTypInt, kloc)
-                    | (KTypVector _, 0i64) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | (KTypRRBVec _, 0i64) => make_call(get_id("FX_RRB_SIZE"), [:: arr_exp], CTypInt, kloc)
+                    | (KTypVector _, 0i64) => make_call(get_id("FX_VEC_SIZE"), [:: arr_exp], CTypInt, kloc)
                     | (KTypArray (ndims, _), i) =>
                         if !(0i64 <= i && i < int64(ndims)) {
                             throw compile_err(kloc, f"array dimension index {i}i is beyond dimensionality {ndims}")
@@ -2143,8 +2216,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             match deref_ktyp(elem_ktyp, kloc) {
                             | KTypArray (d, _) => (d, cexp_get_addr(e))
                             | KTypList _ => (100, e)
-                            | KTypVector _ => (110, cexp_get_addr(e))
-                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, vector or list")
+                            | KTypRRBVec _ => (110, cexp_get_addr(e))
+                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, rrbvec or list")
                             }
                             tags_data = make_int_exp(tag, kloc) :: tags_data
                             arr_data = elem_ptr :: arr_data
@@ -2234,8 +2307,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (vec_exp, ccode) = get_dstexp(dstexp_r, "vec", ctyp, ccode, kloc)
                 val elem_ctyp =
                     match ctyp {
-                    | CTypVector elem_ctyp => elem_ctyp
-                    | _ => throw compile_err(kloc, "cgen: invalid output type of vector construction expression")
+                    | CTypRRBVec elem_ctyp => elem_ctyp
+                    | _ => throw compile_err(kloc, "cgen: invalid output type of rrbvec construction expression")
                     }
                 val scalars_id = gen_idc(cm_idx, "scalars")
                 val scalars_exp = make_id_t_exp(scalars_id, make_ptr(elem_ctyp), kloc)
@@ -2249,8 +2322,8 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             match deref_ktyp(elem_ktyp, kloc) {
                             | KTypArray (d, _) => (d, cexp_get_addr(e))
                             | KTypList _ => (100, e)
-                            | KTypVector _ => (110, cexp_get_addr(e))
-                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, vector or list")
+                            | KTypRRBVec _ => (110, cexp_get_addr(e))
+                            | _ => throw compile_err(kloc, f"cgen: the expanded structure {atom2str(a)} is not an array, rrbvec or list")
                             }
                             tags_data = make_int_exp(tag, kloc) :: tags_data
                             vec_data = elem_ptr :: vec_data
@@ -2380,7 +2453,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     (false, substr_exp, add_fx_call(call_substr, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing string (should be a single scalar index or range)")
                 }
-            | CTypVector _ =>
+            | CTypRRBVec _ =>
                 match idxs {
                 | [:: DomainFast(i)] =>
                     val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
@@ -2423,13 +2496,64 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     | AtomLit(KLitNil _) | AtomLit(KLitInt 1i64) => 1
                     | AtomLit(KLitInt(-1i64)) => -1
                     | _ =>
-                        throw compile_err(kloc, "cgen: vector slicing only supports stride == ±1")
+                        throw compile_err(kloc, "cgen: rrbvec slicing only supports stride == ±1")
                     }
                     val (slice_exp, ccode) = get_dstexp(dstexp_r, "slice", ctyp, ccode, kloc)
                     val call_slice = make_call(get_id("fx_rrb_slice"),
                         [:: cexp_get_addr(arr_exp), a_exp, b_exp, make_int_exp(delta, kloc),
                          make_int_exp(mask, kloc), cexp_get_addr(slice_exp)],
                         ctyp, kloc)
+                    (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
+                | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing rrbvec (should be a single scalar index or range)")
+                }
+            | CTypVector _ =>
+                match idxs {
+                | [:: DomainFast(i)] =>
+                    val (i_exp, ccode) = atom2cexp(i, ccode, kloc)
+                    val get_elem_exp = make_call(get_id("FX_VEC_ELEM"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
+                    (true, get_elem_exp, ccode)
+                | [:: DomainElem(i)] =>
+                    val (i_exp, ccode) = atom2cexp_(i, true, ccode, kloc)
+                    val (get_elem_exp, ccode) =
+                    match border {
+                    | BorderNone =>
+                        val chk_exp = make_call(get_id("FX_VEC_CHKIDX"), [:: arr_exp, i_exp, lbl ], CTypVoid, kloc)
+                        val get_elem_exp = make_call(get_id("FX_VEC_ELEM"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc)
+                        (get_elem_exp, CExp(chk_exp) :: ccode)
+                    | BorderClip =>
+                        (make_call(get_id("FX_VEC_ELEM_CLIP"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
+                    | BorderWrap =>
+                        (make_call(get_id("FX_VEC_ELEM_WRAP"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
+                    | BorderZero =>
+                        (make_call(get_id("FX_VEC_ELEM_ZERO"), [:: CExpTyp(ctyp, kloc), arr_exp, i_exp ], ctyp, kloc), ccode)
+                    }
+                    (true, get_elem_exp, ccode)
+                | [:: DomainRange (a, b, delta)] =>
+                    // a vector slice is a COPY (Python-list semantics), never a
+                    // view. fx_vec_slice supports an arbitrary non-zero stride.
+                    if border != BorderNone {
+                        throw compile_err(kloc, "cgen: border extrapolation with ranges is not supported for vectors")
+                    }
+                    val (mask, (a_exp, ccode)) =
+                        match a {
+                        | AtomLit(KLitNil _) => (1, (make_int_exp(0, kloc), ccode))
+                        | _ => (0, atom2cexp(a, ccode, kloc))
+                        }
+                    val (mask, (b_exp, ccode)) =
+                        match b {
+                        | AtomLit(KLitNil _) => (2 + mask, (make_int_exp(0, kloc), ccode))
+                        | _ => (mask, atom2cexp(b, ccode, kloc))
+                        }
+                    val (delta_exp, ccode) =
+                        match delta {
+                        | AtomLit(KLitNil _) => (make_int_exp(1, kloc), ccode)
+                        | _ => atom2cexp(delta, ccode, kloc)
+                        }
+                    val (slice_exp, ccode) = get_dstexp(dstexp_r, "slice", ctyp, ccode, kloc)
+                    val call_slice = make_call(get_id("fx_vec_slice"),
+                        [:: arr_exp, a_exp, b_exp, delta_exp,
+                         make_int_exp(mask, kloc), cexp_get_addr(slice_exp)],
+                        CTypCInt, kloc)
                     (false, slice_exp, add_fx_call(call_slice, ccode, kloc))
                 | _ => throw compile_err(kloc, "cgen: unexpected index type when accessing vector (should be a single scalar index or range)")
                 }
@@ -2536,7 +2660,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 }
             | _ =>
                 throw compile_err(kloc,
-                    "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypVector _ or CTypString")
+                    "cgen: unknown/unsupported type of the container, it should be CTypArray _ or CTypRRBVec _ or CTypString")
             }
         | KExpMem (a1, n, _) =>
             val (ce1, ccode) = id2cexp(a1, false, ccode, kloc)
@@ -2728,6 +2852,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             val end_for_loc = get_end_loc(kloc)
             val for_flag_make = flags.for_flag_make
             val need_make_array = for_flag_make == ForMakeArray
+            val need_make_vec = for_flag_make == ForMakeVector
+            // a mutable-vector comprehension writes into a contiguous buffer just
+            // like an array (dstptr++), so it shares the array machinery (size
+            // computation, allocation gate, finalize) via need_make_contig; only
+            // the allocation call, the data pointer, and the final size differ.
+            val need_make_contig = need_make_array || need_make_vec
             val unzip_mode = flags.for_flag_unzip
             val nfors = e_idoml_l.length()
             /* collect all the variables/values declared inside for (include iterations variables) */
@@ -2793,6 +2923,29 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             for coll_typ <- coll_typs {
                 val coll_ctyp = C_gen_types.ktyp2ctyp(coll_typ, kloc)
                 match (for_flag_make, coll_ctyp, deref_ktyp(coll_typ, kloc)) {
+                | (ForMakeVector, CTypVector (elemtyp), KTypVector _) =>
+                    // mirror the array path: allocate a contiguous vector of the
+                    // computed size and write through a moving dstptr. The final
+                    // vec->size is set from (dstptr - vec->data) after the loop so
+                    // that break/continue (which skip the write+increment in the
+                    // body) yield the correct element count.
+                    val (dst_exp, ccode1) =
+                        if unzip_mode {
+                            add_local(gen_idc(cm_idx, "vec"), coll_ctyp, default_tempval_flags(), None, ccode, for_loc)
+                        } else {
+                            get_dstexp(dstexp_r, "vec", coll_ctyp, ccode, for_loc)
+                        }
+                    val (dst_ptr, ccode2) =
+                        create_cdefval( gen_idc(cm_idx, "dstptr"), make_ptr(elemtyp),
+                                        default_tempvar_flags(), "",
+                                        Some(make_nullptr(for_loc)), ccode1, for_loc)
+                    val base = CExpCast(cexp_arrow(dst_exp, get_id("data"), std_CTypVoidPtr),
+                                        make_ptr(elemtyp), for_loc)
+                    val nwritten = CExpBinary(COpSub, dst_ptr, base, (CTypInt, for_loc))
+                    val set_size = make_assign(cexp_arrow(dst_exp, get_id("size"), CTypInt), nwritten)
+                    dst_data = (coll_ctyp, elemtyp, dst_exp, dst_ptr, make_dummy_exp(for_loc)) :: dst_data
+                    ccode = ccode2
+                    finalize_ccode = CExp(set_size) :: finalize_ccode
                 | (ForMakeArray, CTypArray (nd, elemtyp), KTypArray _) =>
                     val (dst_exp, ccode1) =
                         if unzip_mode {
@@ -2815,7 +2968,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         dst_data = (coll_ctyp, elemtyp, dst_exp, dst_ptr, make_dummy_exp(for_loc)) :: dst_data
                         ccode = ccode2
                     }
-                | (ForMakeVector, CTypVector (elemtyp), KTypVector _) =>
+                | (ForMakeRRBVec, CTypRRBVec (elemtyp), KTypRRBVec _) =>
                     val (dst_exp, ccode1) =
                         if unzip_mode {
                             add_local(gen_idc(cm_idx, "vec"), coll_ctyp, default_tempval_flags(), None, ccode, for_loc)
@@ -2853,6 +3006,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val maptype_str = match for_flag_make {
                         | ForMakeArray => "make_array"
                         | ForMakeList => "make_list"
+                        | ForMakeRRBVec => "make_rrbvec"
                         | ForMakeVector => "make_vector"
                         | _ => "???"
                         }
@@ -2879,7 +3033,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val (for_headers, list_exps, i_exps, n_exps, pre_map_ccode_delta, pre_body_ccode, body_elems, post_ccode) =
                     process_for(lbl, idoml, at_ids, for_idx, nfors, ndims, dims_ofs, nested_e_idoml, [], nested_loc)
                 val (ndims_i, n_exps, lst_len_ccode) =
-                    match (list_exps, n_exps, need_make_array) {
+                    match (list_exps, n_exps, need_make_contig) {
                     | (_, n_exp :: _, _) => (n_exps.length(), n_exps, [])
                     | (l_exp :: _, [], true) =>
                         /* if there is no fixed range or array iterated, just list(s),
@@ -2896,7 +3050,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                 val i_exps = prev_i_exps + i_exps
                 val (_, _, dst_exp0, _, _) = dst_data.hd()
                 val alloc_array_ccode =
-                    if !need_make_array || dims_ofs + ndims_i < ndims { [] }
+                    if !need_make_contig || dims_ofs + ndims_i < ndims { [] }
                     else {
                         val (_, cmp_size_list) =
                         fold k = 0, cmp_size_list = [] for n_exp <- n_exps {
@@ -2909,12 +3063,31 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                                   else { curr_block_label(nested_loc) }
                         var then_ccode = []
                         for (coll_ctyp, elemtyp, dst_exp, dst_ptr, _) <- dst_data {
-                            val then_ccode1 = make_make_arr_call(dst_exp, n_exps, [], then_ccode, lbl, nested_loc)
+                            val then_ccode1 =
+                                if need_make_vec {
+                                    // allocate an empty vector of capacity n (size 0);
+                                    // the loop writes n elements and sets size at the end
+                                    val (elemsize_exp, free_f_exp, copy_f_exp) = get_elem_size_free_copy(elemtyp, nested_loc)
+                                    // size==capacity==n: complex elements are zeroed so a
+                                    // mid-comprehension exception frees cleanly and writes go
+                                    // into empty slots; the final size is trimmed to the count
+                                    // actually written (dstptr-data) to handle break/continue
+                                    val call_make = make_call(std_fx_make_vec,
+                                        [:: n_exps.hd(), n_exps.hd(), elemsize_exp,
+                                            free_f_exp, copy_f_exp, make_nullptr(nested_loc),
+                                            cexp_get_addr(dst_exp)], CTypCInt, nested_loc)
+                                    add_fx_call_(call_make, then_ccode, lbl, nested_loc)
+                                } else {
+                                    make_make_arr_call(dst_exp, n_exps, [], then_ccode, lbl, nested_loc)
+                                }
                             then_ccode =
                             if is_parallel_map {
                                 then_ccode1
                             } else {
-                                val arr_data = CExpCast(cexp_mem(dst_exp, get_id("data"), std_CTypVoidPtr), make_ptr(elemtyp), nested_loc)
+                                val data_ptr =
+                                    if need_make_vec { cexp_arrow(dst_exp, get_id("data"), std_CTypVoidPtr) }
+                                    else { cexp_mem(dst_exp, get_id("data"), std_CTypVoidPtr) }
+                                val arr_data = CExpCast(data_ptr, make_ptr(elemtyp), nested_loc)
                                 val set_dstptr = make_assign(dst_ptr, arr_data)
                                 CExp(set_dstptr) :: then_ccode1
                             }
@@ -2997,7 +3170,7 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             because it will _always_ do nothing, except for the exceptional situations)
                         3. (optional: we need to extend _fx_cons_L...() implementation:
                             add `bool move_hd` parameter), otherwise we could use this 'move' trick
-                            only with array and vector comprehensions.
+                            only with array and rrbvec comprehensions.
                     */
                     var body_ccode = body_ccode
                     for (coll_ctyp, elemtyp, dst_exp, dst_ptr, iter)@j <- dst_data {
@@ -3018,6 +3191,12 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                         | ForMakeArray =>
                             C_gen_types.gen_copy_code(result_j, cexp_deref(dst_ptr), elemtyp, body_ccode, body_loc)
                         | ForMakeVector =>
+                            // *dstptr = result; dstptr++  — both in the body (not the
+                            // for-increment) so break/continue skip them and the size
+                            // trim (dstptr - data) counts only elements actually written
+                            val body_ccode1 = C_gen_types.gen_copy_code(result_j, cexp_deref(dst_ptr), elemtyp, body_ccode, body_loc)
+                            CExp(CExpUnary(COpSuffixInc, dst_ptr, (CTypVoid, body_loc))) :: body_ccode1
+                        | ForMakeRRBVec =>
                             val write_f = match C_gen_types.get_copy_f(elemtyp, true, false, body_loc) {
                                           | (_, Some _) => get_id("FX_RRB_WRITE")
                                           | _ => get_id("FX_RRB_WRITE_FAST")
@@ -3128,6 +3307,31 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
             }
             val (for_headers, _, _, _, ccode, pre_body_ccode, body_elems, post_ccode) =
             process_for(lbl, idoml, at_ids, 0, 1, ndims, 0, [:: (body, [], [])], ccode, kloc)
+            /* variant-D read-lock: every vector we iterate over is locked for the
+               loop's duration. We wrap the for-statement in its own block whose
+               once-run cleanup releases the lock on EVERY exit (normal, break,
+               continue, return, exception) — the loop-body block nests inside, so
+               its exceptions propagate through this block's cleanup. FX_VEC_SIZE/
+               data were already read into locals (outside the lock), which is safe
+               since nothing mutates between that and taking the lock. */
+            val locked_vec_exps = [:: for (_, dom) <- idoml {
+                val col = match dom {
+                    | DomainElem(AtomId c) => c
+                    | DomainFast(AtomId c) => c
+                    | _ => noid }
+                if col != noid && (match get_idk_ktyp(col, kloc) { | KTypVector _ => true | _ => false }) {
+                    val (e, _) = id2cexp(col, false, [], kloc); e
+                } else { make_dummy_exp(kloc) }
+            }].filter(fun (e) { | CExpIdent _ => true | _ => false })
+            val have_lock = locked_vec_exps != []
+            if have_lock {
+                new_block_ctx(BlockKind_Block, kloc)
+                val wbctx = curr_block_ctx(kloc)
+                wbctx->bctx_prologue = [:: for e <- locked_vec_exps {
+                    CExp(make_call(get_id("FX_VEC_START_READ"), [:: e], CTypVoid, kloc)) }]
+                wbctx->bctx_cleanup = [:: for e <- locked_vec_exps {
+                    CExp(make_call(get_id("FX_VEC_END_READ"), [:: e], CTypVoid, kloc)) }]
+            }
             new_for_block_ctx(ndims, flags, nested_status, par_status, kloc)
             val body_ccode = if is_parallel_for { decl_nested_status }
                              else { [] }
@@ -3163,7 +3367,25 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     CExp(update_exn_parallel) :: post_ccode)
                 }
             /* add it all to ccode; nothing to return/assign, since "for-loop" is "void" expression */
-            (false, dummy_exp, post_ccode + ([::for_stmt ] + (omp_pragma + ccode)))
+            val loop_ccode = post_ccode + ([::for_stmt ] + omp_pragma)
+            val result_ccode =
+                if have_lock {
+                    // the loop-body block was popped by finalize_loop_body, so the
+                    // read-lock block is on top; wrap the loop in it (prologue takes
+                    // the lock, cleanup releases it once) and propagate to the parent
+                    val wbctx = curr_block_ctx(kloc)
+                    val {bctx_prologue, bctx_cleanup, bctx_label, bctx_label_used} = *wbctx
+                    val epilogue = if bctx_label_used == 0 { bctx_cleanup }
+                                   else { bctx_cleanup + [:: CStmtLabel(bctx_label, end_for_loc)] }
+                    val wrapped = epilogue + loop_ccode + bctx_prologue
+                    val c_e = rccode2stmt(wrapped, for_loc)
+                    pop_block_ctx(kloc)
+                    val check_exn = CExp(make_call(std_FX_CHECK_EXN, [:: lbl], CTypVoid, kloc))
+                    check_exn :: c_e :: ccode
+                } else {
+                    loop_ccode + ccode
+                }
+            (false, dummy_exp, result_ccode)
         | KExpWhile (c, body, _) =>
             new_block_ctx(BlockKind_Loop, kloc)
             val (cc, cc_code) = kexp2cexp(c, ref None, [])
@@ -3313,7 +3535,13 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                     val saved_cleanup = bctx->bctx_cleanup
                     bctx->bctx_cleanup = []
                     val assign_e2 = match (ktp_complex, e2) {
-                                    | (true, KExpAtom (AtomLit(KLitNil _), _)) => false
+                                    | (true, KExpAtom (AtomLit(KLitNil _), (nil_ktyp, _))) =>
+                                        /* for an inline-struct container (array/rrbvec) the zeroed
+                                           default IS a valid empty, so no assignment is needed. The
+                                           pointer-based vector defaults to NULL, which is NOT an
+                                           allocated empty — force the `[]` make-empty assignment. */
+                                        (match deref_ktyp(nil_ktyp, kloc) {
+                                        | KTypVector _ => true | _ => false })
                                     | _ => true
                                     }
                     val (flags, e0_opt, assign_e2) =

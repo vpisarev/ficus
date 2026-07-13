@@ -148,10 +148,11 @@ extern int FX_EXN_SysContinue;
 extern int FX_EXN_SysReturn;
 extern int FX_EXN_RangeError;
 extern int FX_EXN_TypeMismatchError;
+extern int FX_EXN_VecModifiedError;
 extern int FX_EXN_UnknownExnError;
 extern int FX_EXN_ZeroStepError;
 
-#define FX_ZEROBUF_MAX_SIZE 256
+#define FX_ZEROBUF_MAX_SIZE (1<<14)
 extern const char fx_zerobuf[];
 
 enum {
@@ -725,6 +726,7 @@ typedef struct fx_arr_t
     int_* rc;
     fx_free_t free_elem;
     fx_copy_t copy_elem;
+    size_t elemsize;
     int flags;
     int ndims;
     // put 'data' together with the interleaved '(size, step)' pairs
@@ -1005,6 +1007,9 @@ void fx_free_arr(fx_arr_t* arr);
 
 void fx_copy_arr(const fx_arr_t* src, fx_arr_t* dst);
 int fx_copy_arr_data(const fx_arr_t* src, fx_arr_t* dst, bool free_dst);
+void fx_copy_arr_elems(const void* src_, void* dst_, int_ nelems, size_t elemsize, fx_copy_t copy_f);
+void fx_set_arr_elems(const void* elem_, void* dst_, int_ nelems, size_t elemsize, fx_copy_t copy_f);
+void fx_free_arr_elems(void* elems_, int_ nelems, size_t elemsize, fx_free_t free_f);
 int fx_make_arr( int ndims, const int_* size, size_t elemsize,
                  fx_free_t free_elem, fx_copy_t copy_elem, const void* elems, fx_arr_t* arr );
 int fx_compose_arr( int dims, size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
@@ -1025,7 +1030,96 @@ int fx_mpgemm(bool tA, bool tB, double alpha, double beta,
 int fx_gemm(fx_arr_t* m1, bool t1, int_ rs1, int_ re1, int_ rd1, int_ cs1, int_ ce1, int_ cd1,
             fx_arr_t* m2, bool t2, int_ rs2, int_ re2, int_ rd2, int_ cs2, int_ ce2, int_ cd2, fx_arr_t* result);
 
-////////////////////////// Vectors /////////////////////////////
+//////////////////// STL-like Vectors (also similar to Python lists) //////////////////
+
+typedef struct fx_vecinfo_t
+{
+    fx_free_t free_elem;
+    fx_copy_t copy_elem;
+    size_t elemsize;
+} fx_vecinfo_t;
+
+typedef struct fx_vechdr_t
+{
+    int_ rc; // must be the first element!
+    fx_vecinfo_t info;
+    int_ size, capacity;
+    void* data;
+    int_ nlocks; // read-lock counter: >0 while the vector is being iterated
+                 // (for x <- v). Structural mutators throw VecModifiedError when
+                 // it is nonzero. Atomic, so concurrent (@parallel) reads are safe.
+} fx_vechdr_t, *fx_vec_t;
+
+// `for x <- v` brackets the loop with these; NULL (empty) vectors are not locked.
+#define FX_VEC_START_READ(vec) if(!(vec)) ; else FX_INCREF((vec)->nlocks)
+#define FX_VEC_END_READ(vec) if(!(vec)) ; else FX_DECREF((vec)->nlocks)
+// a structural mutator calls this first; throws if the vector is being iterated
+#define FX_VEC_CHECK_UNLOCKED(vec, catch_label) \
+    if(!(vec) || (vec)->nlocks == 0) ; else FX_FAST_THROW(FX_EXN_VecModifiedError, catch_label)
+
+// an empty vector is a NULL pointer (cptr model); all accessors treat NULL as size 0
+#define FX_VEC_SIZE(vec) ((vec) ? (vec)->size : 0)
+#define FX_VEC_CHKIDX(vec, idx, catch_label) \
+    if((vec) && (size_t)(idx) < (size_t)(vec)->size) ; \
+    else FX_FAST_THROW(FX_EXN_OutOfRangeError, catch_label)
+#define FX_VEC_PTR(typ, vec, idx) \
+    ((typ*)(vec)->data + (idx))
+// value access: pair FX_VEC_ELEM with FX_VEC_CHKIDX (the border variants are self-checked)
+#define FX_VEC_ELEM(typ, vec, idx) (*FX_VEC_PTR(typ, vec, idx))
+
+#define FX_VEC_PTR_CLIP(typ, vec, idx) \
+    ({ \
+        fx_vec_t __vec__ = (vec); \
+        int __idx__ = (idx), __sz0__ = __vec__ ? (int)__vec__->size : 0; \
+        ((size_t)__idx__ < (size_t)__sz0__) ? FX_VEC_PTR(typ, __vec__, __idx__) : \
+        __sz0__ == 0 ? (typ*)fx_zerobuf : FX_VEC_PTR(typ, __vec__, (__idx__ < 0 ? 0 : __sz0__ - 1)); \
+    })
+
+#define FX_VEC_PTR_ZERO(typ, vec, idx) \
+    ({ \
+        fx_vec_t __vec__ = (vec); \
+        int __idx__ = (idx), __sz0__ = __vec__ ? (int)__vec__->size : 0; \
+        (size_t)__idx__ < (size_t)__sz0__ ? FX_VEC_PTR(typ, __vec__, __idx__) : (typ*)fx_zerobuf; \
+    })
+
+#define FX_VEC_PTR_WRAP(typ, vec, idx) \
+    ({ \
+        fx_vec_t __vec__ = (vec); \
+        int __idx__ = (idx), __sz0__ = __vec__ ? (int)__vec__->size : 0; \
+        ((size_t)__idx__ < (size_t)__sz0__) ? FX_VEC_PTR(typ, __vec__, __idx__) : \
+        __sz0__ == 0 ? (typ*)fx_zerobuf : FX_VEC_PTR(typ, __vec__, ((__idx__ % __sz0__) + __sz0__) % __sz0__); \
+    })
+
+#define FX_VEC_ELEM_CLIP(typ, vec, idx) (*FX_VEC_PTR_CLIP(typ, vec, idx))
+#define FX_VEC_ELEM_ZERO(typ, vec, idx) (*FX_VEC_PTR_ZERO(typ, vec, idx))
+#define FX_VEC_ELEM_WRAP(typ, vec, idx) (*FX_VEC_PTR_WRAP(typ, vec, idx))
+
+void fx_free_vec(fx_vec_t* vec);
+// pvec is fx_vec_t* (the address of the fx_vec_t variable), matching the
+// FX_FREE_ARR / FX_FREE_LIST_SIMPLE convention the compiler emits (&var).
+#define FX_FREE_VEC(pvec) if(!*(pvec)) ; else fx_free_vec(pvec)
+void fx_vec_destructor(void* vec);
+
+// dedicated copy macro is not needed, use FX_COPY_PTR
+// #define FX_COPY_VEC(src, dst) if (!(src)) ; else ({ FX_INCREF(*(src)->rc); *(dst) = (src); })
+
+// dedicated copy func is not needed, use fx_copy_ptr
+// void fx_copy_vec(fx_vec_t src, fx_vec_t* dst);
+
+int fx_make_vec( int_ size, int_ capacity, size_t elemsize,
+                 fx_free_t free_elem, fx_copy_t copy_elem,
+                 const void* elems, fx_vec_t* vec );
+int fx_compose_vec( size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
+                    const int8_t* tags, const void** data, fx_vec_t* vec );
+int fx_vec_reserve(fx_vec_t vec, int_ new_capacity);
+int fx_vec_resize(fx_vec_t vec, int_ new_size, const void* fillelem);
+int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems);
+int fx_vec_concat(const fx_vec_t* vecs, int_ nvecs,
+                  size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
+                  fx_vec_t* vec);
+int fx_vec_slice(fx_vec_t vec, int_ start, int_ end, int_ delta, int mask, fx_vec_t* subvec);
+
+////////////////////////// RRB Vectors /////////////////////////////
 
 typedef struct fx_rrbnode_t fx_rrbnode_t;
 

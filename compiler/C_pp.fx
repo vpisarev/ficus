@@ -116,7 +116,7 @@ type assoc_t = AssocLeft | AssocRight
     match t {
     | CTypInt | CTypLong | CTypCInt | CTypSize_t | CTypSInt _ | CTypUInt _ | CTypFloat _
     | CTypString | CTypUniChar | CTypBool | CTypExn | CTypCSmartPtr
-    | CTypArray _ | CTypVector _ =>
+    | CTypArray _ | CTypRRBVec _ | CTypVector _ =>
         pp.str(ctyp2str_(t, loc))
         pr_id_opt()
     | CTypVoid =>

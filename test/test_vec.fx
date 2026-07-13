@@ -3,97 +3,227 @@
     See ficus/LICENSE for the licensing terms
 */
 
-// RRB vector tests that check basic operaions:
-// comprehensions, iteration, element and slice extraction, concatentation
+// first-class mutable vector ('t vector) tests: element access v[i], v[i]=a,
+// size/empty, push_back/pop_back/back, resize/reserve/clear, slices, map/foldl.
 
 from UTest import *
 
-TEST("vector.simple", fun()
+TEST("fcvector.access", fun()
 {
-    val N = 10
-    val a = vector([0, 1, 4, 9, 16, 25, 36, 49, 64, 81])
-    var arr = [for i <- 0:N {i*i}]
-    EXPECT_EQ(`size(a)`, 10)
-    EXPECT_EQ(`a`, vector(for i <- 0:N {i*i}))
-    EXPECT_EQ(`a`, vector(arr))
-    EXPECT_EQ(`a[5]`, 25)
-    EXPECT_EQ(`a[6:.-1][::-1] + a[:4]`, vector([64, 49, 36, 0, 1, 4, 9]))
-    //EXPECT_EQ(a.wrap[-2], 64)
+    val v: int vector = []
+    EXPECT_EQ(`size(v)`, 0)
+    EXPECT_EQ(`empty(v)`, true)
+    for i <- 0:5 { v.push_back(i*i) }
+    EXPECT_EQ(`size(v)`, 5)
+    EXPECT_EQ(`empty(v)`, false)
+    for i <- 0:5 { EXPECT_EQ(`v[i]`, i*i) }
+    EXPECT_EQ(`v.clip[100]`, 16)
+    EXPECT_EQ(`v.clip[-100]`, 0)
+    EXPECT_EQ(`v.zero[100]`, 0)
+    EXPECT_EQ(`v.wrap[-1]`, 16)
+    var sink = 0
+    EXPECT_THROWS(fun() {sink = v[5]}, OutOfRangeError)
+    ignore(sink)
+
+    val s: string vector = []
+    s.push_back("a"); s.push_back("bc"); s.push_back("def")
+    EXPECT_EQ(`size(s)`, 3)
+    EXPECT_EQ(`s[2]`, "def")
 })
 
-TEST("vector.comprehensions", fun()
+TEST("fcvector.write", fun()
 {
-    val N = 1000003
-    val arr = [for i <- 0:N {i}]
-    val vec = vector([for i <- 0:N {float(i)}])
-    EXPECT_EQ(`size(vec)`, size(arr))
-    for x <- arr, y <- vec {
-        EXPECT_EQ(`float(x)`, y)
-        if float(x) != y {break}
+    val v: int vector = []
+    for i <- 0:5 { v.push_back(i) }
+    v[0] = 100; v[2] = 300; v[4] = 500
+    EXPECT_EQ(`array(v)`, [100, 1, 300, 3, 500])
+    var sink = 0
+    EXPECT_THROWS(fun() {v[5] = 9; sink = v[5]}, OutOfRangeError)
+    ignore(sink)
+
+    // complex element: overwriting must free the old string (ASan-checked)
+    val s: string vector = []
+    s.push_back("x"); s.push_back("y")
+    s[0] = "hello"; s[1] = "world"
+    EXPECT_EQ(`s[0]`, "hello")
+    EXPECT_EQ(`s[1]`, "world")
+})
+
+TEST("fcvector.ops", fun()
+{
+    val v = Vector.make(3, 7)
+    EXPECT_EQ(`size(v)`, 3)
+    EXPECT_EQ(`Vector.capacity(v) >= 3`, true)
+    EXPECT_EQ(`array(v)`, [7, 7, 7])
+    v.push_back(9)
+    v.resize(6, 0)
+    EXPECT_EQ(`array(v)`, [7, 7, 7, 9, 0, 0])
+    EXPECT_EQ(`v.back()`, 0)
+    v.pop_back()
+    EXPECT_EQ(`array(v)`, [7, 7, 7, 9, 0])
+    v.clear()
+    EXPECT_EQ(`size(v)`, 0)
+    EXPECT_EQ(`empty(v)`, true)
+
+    val a = Vector.make([1, 2, 3])
+    val b = Vector.make([1, 2, 3])
+    val c = Vector.make([1, 2, 4])
+    EXPECT_EQ(`a == b`, true)
+    EXPECT_EQ(`a == c`, false)
+    EXPECT_EQ(`a <=> c`, -1)
+    EXPECT_EQ(`string(a)`, "[1, 2, 3]")
+
+    // complex-element resize (grow with fill, shrink freeing elements) — ASan
+    val s = Vector.make(2, "ab")
+    s.push_back("cd")
+    s.resize(5, "zz")
+    EXPECT_EQ(`size(s)`, 5)
+    EXPECT_EQ(`s[4]`, "zz")
+    s.resize(2, "")
+    EXPECT_EQ(`array(s)`, ["ab", "ab"])
+})
+
+TEST("fcvector.slice", fun()
+{
+    val v: int vector = []
+    for i <- 0:10 { v.push_back(i) }
+    EXPECT_EQ(`array(v[2:5])`, [2, 3, 4])
+    EXPECT_EQ(`array(v[:3])`, [0, 1, 2])
+    EXPECT_EQ(`array(v[7:])`, [7, 8, 9])
+    EXPECT_EQ(`array(v[:])`, array(v))      // flatten = full copy
+    EXPECT_EQ(`array(v[::-1])`, [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+    EXPECT_EQ(`array(v[::2])`, [0, 2, 4, 6, 8])
+    EXPECT_EQ(`array(v[1:8:3])`, [1, 4, 7])        // arbitrary stride
+
+    // a slice / flatten is a COPY: mutating it must not touch the source
+    val s = v[2:5]
+    s[0] = 999
+    EXPECT_EQ(`array(s)`, [999, 3, 4])
+    EXPECT_EQ(`array(v[2:5])`, [2, 3, 4])
+
+    // complex elements copied on slice
+    val w: string vector = []
+    for x <- ["a", "b", "c", "d"] { w.push_back(x) }
+    EXPECT_EQ(`array(w[1:3])`, ["b", "c"])
+    EXPECT_EQ(`array(w[::-1])`, ["d", "c", "b", "a"])
+})
+
+TEST("fcvector.binomial", fun()
+{
+    val emptyvec: float vector = []
+    val myvecs: (float vector) vector = []
+    for i <- 1:10 {
+        val last = if empty(myvecs) {emptyvec} else {myvecs.back()}
+        // curr annotated to sidestep FB-024 (order-dependent generic-return
+        // inference pollution across tests); see docs/found_bugs.md
+        val curr: float vector = last.mapi(fun(x, j) { if j == 0 {1.f} else {last[j-1] + last[j]} })
+        curr.push_back(1.f)
+        myvecs.push_back(curr)
     }
-    val vec = vector(for i <- 0:N {vector([string(i)])})
-    for x <- arr, y <- vec {
-        EXPECT_EQ(`size(y)`, 1)
-        val str_x = string(x), y_0 = y[0]
-        EXPECT_EQ(`str_x`, y_0)
-        if str_x != y_0 {break}
+
+    fun sum(v: 't vector, v0: 'r): 'r = v.foldl(fun (x, s) {x + s}, v0)
+    for i <- 0:size(myvecs) {
+        val expected_sum = double(1 << i)
+        EXPECT_EQ(`sum(myvecs[i], 0.)`, expected_sum)
     }
 })
 
-TEST("vector.concat_slice", fun()
+TEST("fcvector.comprehension", fun()
 {
-    val rng = RNG(0xffffffffu64)
-    val N = 1000003
-    var i = 0
-    var vec: float vector = []
-    while i < N {
-        val j = rng.uniform(i, N+1)
-        val added_vec = vector(for k <- i:j {float(k)})
-        vec += added_vec
-        i = j
-    }
-    EXPECT_EQ(`size(vec)`, N)
-    for x@i <- vec {
-        val y = float(i)
-        EXPECT_EQ(`x`, y)
-        if x != y {break}
-    }
+    // write-comprehension over a range and over an array
+    val v = vector(for i <- 0:6 {i*i})
+    EXPECT_EQ(`size(v)`, 6)
+    EXPECT_EQ(`array(v)`, [0, 1, 4, 9, 16, 25])
+    val a = [10, 20, 30]
+    EXPECT_EQ(`array(vector(for x <- a {x + 1}))`, [11, 21, 31])
+    // the result is a real mutable vector
+    v.push_back(36)
+    EXPECT_EQ(`v[6]`, 36)
+    // empty comprehension
+    EXPECT_EQ(`size(vector(for i <- 0:0 {i}))`, 0)
+    // complex elements (strings) — ASan-checked
+    val s = vector(for i <- 0:4 {string(i*i)})
+    EXPECT_EQ(`array(s)`, ["0", "1", "4", "9"])
+    // nested: a vector of vectors
+    val vv = vector(for i <- 0:3 {vector(for j <- 0:i {j})})
+    EXPECT_EQ(`size(vv)`, 3)
+    EXPECT_EQ(`array(vv[2])`, [0, 1])
 
-    val ncuts = 1000
-    val cuts = [for i <- 0:ncuts+1 {
-        if i == 0 {0} else if i == ncuts {N} else {rng.uniform(0, N)}
-    }]
-    cuts.sort((<))
-    val parts = vector(for i <- 0:ncuts {vec[cuts[i]:cuts[i+1]]})
-    var vec2: float vector = []
-    // test the reverse at once
-    for part <- parts[::-1] { vec2 = part + vec2 }
-    EXPECT_EQ(`size(vec2)`, N)
-    for x@i <- vec2 {
-        val y = float(i)
-        EXPECT_EQ(`x`, `y`)
-        if x != y {break}
-    }
+    // break / continue: the size is trimmed to the count actually written
+    val odds_skipped = vector(for i <- 0:10 { if i % 2 == 1 {continue}; i })
+    EXPECT_EQ(`array(odds_skipped)`, [0, 2, 4, 6, 8])
+    val stopped = vector(for i <- 0:10 { if i == 3 {break}; i*10 })
+    EXPECT_EQ(`array(stopped)`, [0, 10, 20])
 })
 
-TEST("vector.find", fun()
+TEST("fcvector.iteration", fun()
 {
-    val rng = RNG(0xffffffffu64)
-    val N = 1000003
-    val (simple_vec, complex_vec) = vector(@unzip for i <- 0:N {(i, vector([i]))})
+    val v = vector(for i <- 0:5 {i*i})
+    var s = 0
+    for x <- v { s += x }
+    EXPECT_EQ(`s`, 0 + 1 + 4 + 9 + 16)
+    // index binding
+    var chk = true
+    for x@i <- v { if x != i*i {chk = false} }
+    EXPECT_EQ(`chk`, true)
+    // comprehension with a vector source (read + write)
+    EXPECT_EQ(`array(vector(for x <- v {x + 1}))`, [1, 2, 5, 10, 17])
+    // iterating an empty vector does nothing
+    val e: int vector = []
+    var cnt = 0
+    for x <- e { cnt += 1 }
+    EXPECT_EQ(`cnt`, 0)
+    // reads and set are fine during iteration; post-loop mutation works
+    for x@i <- v { if i < 2 {v[i] = x + 100} }
+    EXPECT_EQ(`array(v)`, [100, 101, 4, 9, 16])
+    v.push_back(25)
+    EXPECT_EQ(`size(v)`, 6)
+})
 
-    for i <- 0:10000 {
-        val idx = rng.uniform(0, N)
-        val big_idx = rng.uniform(-N, N*2)
-        val clip_idx = max(min(big_idx, N-1), 0)
-        val wrap_idx = (big_idx % N) + (if big_idx < 0 {N} else {0})
-        val x = simple_vec[idx]
-        val xv = complex_vec[idx]
-        EXPECT_EQ(`x`, `idx`)
-        EXPECT_EQ(`size(xv)`, 1)
-        EXPECT_EQ(`xv[0]`, `idx`)
-        EXPECT_EQ(`simple_vec.clip[big_idx]`, `simple_vec[clip_idx]`)
-        EXPECT_EQ(`simple_vec.wrap[big_idx]`, `simple_vec[wrap_idx]`)
-        EXPECT_EQ(`simple_vec.zero[big_idx]`, `if big_idx == clip_idx {big_idx} else {0}`)
+TEST("fcvector.readlock", fun()
+{
+    // structural mutation while iterating throws VecModifiedError (variant D)
+    val v = vector(for i <- 0:10 {i})
+    EXPECT_THROWS(fun() { for x <- v { if x == 2 {v.push_back(99)} } }, VecModifiedError)
+    // the lock was released on the exception exit -> mutation works again
+    v.push_back(50)
+    EXPECT_EQ(`size(v)`, 11)
+
+    // reads and v[i]=a ARE allowed during iteration
+    var acc = 0
+    for x <- v { acc += v[0] }
+    EXPECT_EQ(`acc`, 0)
+    for x@i <- v { if i == 0 {v[0] = 7} }
+    EXPECT_EQ(`v[0]`, 7)
+
+    // break releases the lock
+    for x <- v { if x == 3 {break} }
+    v.push_back(51)
+    EXPECT_EQ(`size(v)`, 12)
+
+    // nested iteration of the same vector is fine (stacked read-locks)
+    var pairs = 0
+    for x <- v { for y <- v { pairs += 1 } }
+    EXPECT_EQ(`pairs`, 12*12)
+
+    // aliased structural mutation is caught (the lock is on the shared header)
+    val w = v
+    EXPECT_THROWS(fun() { for x <- v { w.push_back(1) } }, VecModifiedError)
+
+    // an unrelated exception in the body still releases the lock
+    EXPECT_THROWS(fun() { for x <- v { ignore(v[1000]) } }, OutOfRangeError)
+    v.push_back(52)
+    EXPECT_EQ(`size(v)`, 13)
+})
+
+TEST("fcvector.str", fun()
+{
+    val vecstr: string vector = []
+    for w <- ["a", "bc", "def", "ghij", "klmno", "pqrstu", "vwxyz"] {
+        vecstr.push_back(w)
     }
+    EXPECT_EQ(array(vecstr[::2]), ["a", "def", "klmno", "vwxyz"])
+    EXPECT_EQ(vecstr[::2], Vector.make(["a", "def", "klmno", "vwxyz"]))
+    EXPECT_EQ(array(vecstr[::-1]), ["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"])
+    EXPECT_EQ(vecstr[::-1], Vector.make(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
 })

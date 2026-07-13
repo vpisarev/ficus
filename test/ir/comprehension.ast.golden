@@ -3,10 +3,12 @@ from Math import *
 from Complex import *
 from Array import *
 import List
+import Rrbvec
 import Vector
 import Char
 import String
-fun comprehension.sqr@g0(comprehension.x@g1: int): (int -> int) = { (<int>comprehension.x@g1 * <int>comprehension.x@g1) }
+fun comprehension.sqr@g0(comprehension.x@g1: int): (int -> int) =
+{ (<int>comprehension.x@g1 * <int>comprehension.x@g1) }
 
 val comprehension.a@g2: int [] =
    [ for comprehension.i@g3 <- (0:5:1) { <(int -> int)>comprehension.sqr@g0(<int>comprehension.i@g3) }]

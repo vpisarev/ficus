@@ -207,6 +207,9 @@ fun transform_fold_exp(special: string, fold_pat: pat_t, fold_init_exp: exp_t,
         val new_body = ExpSeq([::check_exp, for_iter_exp ], make_new_ctx(body_loc))
         (ExpNop(body_loc), new_body, ExpNop(body_loc),
          global_flags.{for_flag_make=ForMakeList})
+    | "rrbvec" =>
+        (ExpNop(body_loc), fold_body, ExpNop(body_loc),
+         global_flags.{for_flag_make=ForMakeRRBVec})
     | "vector" =>
         (ExpNop(body_loc), fold_body, ExpNop(body_loc),
          global_flags.{for_flag_make=ForMakeVector})
@@ -257,7 +260,7 @@ fun fold_acc_ids(p: pat_t): id_t list =
 // the whole-fold value is the accumulator after the loop. Multiple accumulators
 // become multiple vars via a tuple pattern. break/continue fall out for free
 // (it is an ordinary `for`). This is the desugar of the `fold` KEYWORD; the
-// named reduction sugars (all/exists/count/find/filter/vector) have their own
+// named reduction sugars (all/exists/count/find/filter/rrbvec) have their own
 // desugar in transform_fold_exp.
 fun transform_new_fold_exp(fold_pat: pat_t, fold_init_exp: exp_t,
                            for_exp: exp_t, fold_loc: loc_t): exp_t
@@ -570,12 +573,21 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
                             | _ => throw parse_err(ts, f"unknown/unsupported intrinsic '{istr}'")
                             }
                         ExpIntrin(iop, args, make_new_ctx(eloc))
-                    } else if (istr == "vector" || istr == "list" || istr == "array") &&
+                    } else if istr == "vector" &&
+                        (match args {[:: ExpMap _] => true | _ => false}) {
+                        // mutable-vector comprehension: `vector(for ... {...})`
+                        // (the literal form `vector([...])` is not wired yet)
+                        match args {
+                        | [:: ExpMap(for_clauses, body, flags, ctx)] =>
+                            ExpMap(for_clauses, body, flags.{for_flag_make=ForMakeVector}, ctx)
+                        | _ => throw parse_err(ts, "unexpected 'vector' comprehension argument")
+                        }
+                    } else if (istr == "rrbvec" || istr == "list" || istr == "array") &&
                         (match args {[:: ExpMap _] | [:: ExpMkArray ([:: _], _)] | [:: ExpMkVector _] => true | _ => false}) {
                         match args {
                         | [:: ExpMap(for_clauses, body, flags, ctx)] =>
                             val mkflag = if istr == "array" {ForMakeArray}
-                                else if istr == "vector" {ForMakeVector}
+                                else if istr == "rrbvec" {ForMakeRRBVec}
                                 else {ForMakeList}
                             ExpMap(for_clauses, body, flags.{for_flag_make=mkflag}, ctx)
                         | _ =>
@@ -586,7 +598,7 @@ fun parse_simple_exp(ts: tklist_t, allow_mkrecord: bool): (tklist_t, exp_t)
                                 }
                             if istr == "array" {
                                 ExpMkArray([:: el], ctx)
-                            } else if istr == "vector" {
+                            } else if istr == "rrbvec" {
                                 ExpMkVector(el, ctx)
                             } else {
                                 make_list_exp(el, ctx.1)
@@ -1134,7 +1146,7 @@ fun parse_for(ts: tklist_t, for_make: for_make_t): (tklist_t, exp_t, exp_t)
 
     val for_exp = match for_make
     {
-    | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeVector =>
+    | ForMakeArray | ForMakeList | ForMakeTuple | ForMakeRRBVec | ForMakeVector =>
         var pel_i_l = [], glob_when_e = ExpNop(noloc), last_loc = noloc
         for (pe_l, idxp, when_e, loc) <- nested_fors {
             glob_when_e =
@@ -1936,6 +1948,7 @@ fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
         val (ts, i) = parse_dot_ident(ts, false, "")
         val t = match i {
             | "list" => TypList(result)
+            | "rrbvec" => TypRRBVec(result)
             | "vector" => TypVector(result)
             | _ => TypApp(typ2typlist(result), get_id(i))
             }

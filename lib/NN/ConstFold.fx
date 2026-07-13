@@ -8,7 +8,7 @@
 // expressions on constants), it's eliminated from the graph and
 // the result of operation is represented as the constant.
 
-import Dynvec
+// Dynvec retired
 import Ast, InferShapes, RunOp, OpPermute
 
 fun cfold(model: Ast.nnmodel_t)
@@ -20,7 +20,7 @@ fun cfold(model: Ast.nnmodel_t)
 
 fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int [])
 {
-    val new_prog = Dynvec.create(0, Ast.NN_Nop)
+    val new_prog = Vector.make(0, Ast.NN_Nop)
     var have_changes = false
     for op <- graph.prog {
         val opt_op = match op {
@@ -66,14 +66,14 @@ fun cfold_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: int [])
             }
         }
         match opt_op {
-        | Some op => new_prog.do_push(op)
+        | Some op => new_prog.push_back(op)
         | _ => {}
         }
     }
-    if new_prog.count == graph.prog.size() && !have_changes {graph}
+    if size(new_prog) == graph.prog.size() && !have_changes {graph}
     else {
         val {name, inpargs, outargs} = graph
         Ast.NN_Graph {name=name, inpargs=inpargs, outargs=outargs,
-            prog = new_prog.data[:new_prog.count]}
+            prog = array(new_prog)}
     }
 }

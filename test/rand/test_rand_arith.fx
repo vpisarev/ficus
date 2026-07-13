@@ -17,7 +17,7 @@ TEST("rand.arith.splitmix64_vectors", fun() {
     val expected = [16294208416658607535u64, 7960286522194355700u64, 487617019471545679u64]
     for e@i <- expected {
         val got = next_u64(rng)
-        if got != e {println(f"  [repro] splitmix64 vector {i}: got={got} expected={e}")}
+        if got != e {println(f"  [repro] splitmix64 rrbvec {i}: got={got} expected={e}")}
         EXPECT_EQ(got, e)
     }
 })

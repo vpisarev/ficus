@@ -11,7 +11,7 @@
 //    Rick Branson
 
 import File, Sys
-import Hashmap, Dynvec
+import Hashmap
 
 type hashtab_t = (int64, int) Hashmap.t
 
@@ -93,7 +93,7 @@ while !f.eof() {
     }
 }
 
-var all_data = Dynvec.create(0, 0u8)
+var all_data = Vector.make(0, 0u8)
 
 while !f.eof() {
     val line = f.readln()
@@ -102,7 +102,7 @@ while !f.eof() {
     all_data.push(converted)
 }
 
-val all_data = all_data.data[:all_data.count]
+val all_data = array(all_data)
 
 val report = [ @parallel for w <- [ "*", "**", "GGT", "GGTA", "GGTATT", "GGTATTTTAATT", "GGTATTTTAATTTATAGT" ] {
     if w.startswith("*") { sort_by_freq(all_data, w.length()) }

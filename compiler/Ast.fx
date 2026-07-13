@@ -5,7 +5,7 @@
 
 //////// ficus abstract syntax definition + helper structures and functions ////////
 
-import Dynvec, Map, Set, Hashmap, Hashset
+import Map, Set, Hashmap, Hashset
 import File, Filename, Options, Sys
 
 /*
@@ -121,7 +121,7 @@ type typ_t =
     | TypVarTuple: typ_t?
     | TypVarArray: typ_t
     | TypVarRecord
-    /* "some collection" (list, vector or array), element type yet unknown.
+    /* "some collection" (list, rrbvec or array), element type yet unknown.
        This is the type of the empty-collection literal []: unlike a plain
        free TypVar it refuses to unify with scalars, records, functions etc.,
        so `val n: int = []` or `[] + 3.14` fail in the type checker, and an
@@ -139,7 +139,8 @@ type typ_t =
     | TypVoid
     | TypFun: (typ_t list, typ_t)
     | TypList: typ_t
-    | TypVector: typ_t
+    | TypRRBVec: typ_t
+    | TypVector: typ_t // mutable, growable, contiguous vector (fx_vec_t)
     | TypTuple: typ_t list
     | TypRef: typ_t
     | TypArray: (int, typ_t)
@@ -234,7 +235,7 @@ type fun_flags_t =
 
 fun default_fun_flags() = fun_flags_t {fun_flag_ctor=CtorNone, fun_flag_method_of=noid}
 
-type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeVector | ForMakeTuple
+type for_make_t = ForMakeNone | ForMakeArray | ForMakeList | ForMakeRRBVec | ForMakeVector | ForMakeTuple
 
 type for_flags_t =
 {
@@ -479,7 +480,7 @@ type defmodule_t =
     var dm_env: env_t
     var dm_parsed: bool
     var dm_block_idx: int
-    dm_table: id_info_t Dynvec.t
+    dm_table: id_info_t vector
 }
 fun default_module() =
     defmodule_t {
@@ -487,7 +488,7 @@ fun default_module() =
         dm_defs=[], dm_idx=-1,
         dm_deps=[], dm_env=empty_env,
         dm_parsed=false, dm_real=false,
-        dm_table=Dynvec.create(0, IdNone),
+        dm_table=Vector.make(0, IdNone),
         dm_block_idx=-1
     }
 
@@ -506,7 +507,7 @@ fun is_compiler_frontend(): bool = compiler_stage == CompilerFrontend
 
 var freeze_ids = false
 var lock_all_names = 0
-var all_names = Dynvec.create(0, "")
+var all_names = Vector.make(0, "")
 var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
 var all_modules: defmodule_t [] = []
@@ -534,7 +535,7 @@ fun new_id_idx(midx: int) {
     if freeze_ids {
         throw Fail("internal error: attempt to add new AST id during K-phase or C code generation phase")
     }
-    all_modules[midx].dm_table.push()
+    all_modules[midx].dm_table.push(IdNone)
 }
 
 fun dump_id(i: id_t) {
@@ -545,7 +546,7 @@ fun dump_id(i: id_t) {
 fun id2str_(i: id_t, pp: bool): string =
     if i == noid { "<noid>" }
     else {
-        val prefix = all_names.data[i.i]
+        val prefix = all_names[i.i]
         if pp || i.m == 0 { prefix }
         else { f"{prefix}@{i.j}" }
     }
@@ -553,12 +554,12 @@ fun id2str_(i: id_t, pp: bool): string =
 fun id2str_m(i: id_t): string =
     if i == noid { "<noid>" }
     else {
-        val prefix = all_names.data[i.i]
+        val prefix = all_names[i.i]
         if i.m == 0 { prefix }
         else {
             val mprefix = pp(get_module_name(i.m))
             val mprefix = if mprefix == "Builtins" {""} else {mprefix + "."}
-            val prefix = all_names.data[i.i]
+            val prefix = all_names[i.i]
             f"{mprefix}{prefix}@{i.j}"
         }
     }
@@ -694,7 +695,7 @@ fun id_info(i: id_t, loc: loc_t) =
     if i.m == 0 {IdNone}
     else {
         val (m, j) = id2idx_(i, loc)
-        all_modules[m].dm_table.data[j]
+        all_modules[m].dm_table[j]
     }
 
 fun is_unique_id(i: id_t) = i.m > 0
@@ -730,7 +731,7 @@ fun set_id_entry(i: id_t, n: id_info_t)
 {
     val loc = get_idinfo_loc(n)
     val (m_idx, idx) = id2idx_(i, loc)
-    all_modules[m_idx].dm_table.data[idx] = n
+    all_modules[m_idx].dm_table[idx] = n
 }
 
 fun get_exp_ctx(e: exp_t)
@@ -827,7 +828,7 @@ fun find_module(mname: id_t, mfname: string) =
             dm_name=mname, dm_filename=mfname,
             dm_idx=m_idx, dm_defs=[], dm_deps=[],
             dm_env=empty_env, dm_parsed=false, dm_real=true,
-            dm_table=Dynvec.create(0, IdNone),
+            dm_table=Vector.make(0, IdNone),
             dm_block_idx=-1
         }
         val saved_modules = all_modules
@@ -1421,6 +1422,7 @@ fun typ2str(t: typ_t): string {
             }])
     | TypArray(d, t) => f"{typ2str(t)} [{','*(d-1)}]"
     | TypList(t) => f"{typ2str(t)} list"
+    | TypRRBVec(t) => f"{typ2str(t)} rrbvec"
     | TypVector(t) => f"{typ2str(t)} vector"
     | TypRef(t) => f"{typ2str(t)} ref"
     | TypExn => "exn"
@@ -1501,6 +1503,7 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
     | TypVoid => t
     | TypFun(args, rt) => TypFun(check_n_walk_tlist(args, callb), check_n_walk_typ(rt, callb))
     | TypList(t) => TypList(check_n_walk_typ(t, callb))
+    | TypRRBVec(t) => TypRRBVec(check_n_walk_typ(t, callb))
     | TypVector(t) => TypVector(check_n_walk_typ(t, callb))
     | TypTuple(tl) => TypTuple(check_n_walk_tlist(tl, callb))
     | TypVarTuple(t_opt) =>
@@ -1765,7 +1768,7 @@ val (std__List__, builtin_ids) = std_id("List", builtin_ids)
 val (std__String__, builtin_ids) = std_id("String", builtin_ids)
 val (std__Char__, builtin_ids) = std_id("Char", builtin_ids)
 val (std__Array__, builtin_ids) = std_id("Array", builtin_ids)
-val (std__Vector__, builtin_ids) = std_id("Vector", builtin_ids)
+val (std__Rrbvec__, builtin_ids) = std_id("Rrbvec", builtin_ids)
 
 fun init_all(): void
 {

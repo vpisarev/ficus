@@ -77,6 +77,7 @@ fun ktyp2ctyp(t: ktyp_t, loc: loc_t) {
         | KTypRecord _ => throw type_err("KTypRecord")
         | KTypName i => CTypName(i)
         | KTypArray (d, et) => CTypArray(d, ktyp2ctyp_(et))
+        | KTypRRBVec et => CTypRRBVec(ktyp2ctyp_(et))
         | KTypVector et => CTypVector(ktyp2ctyp_(et))
         | KTypList _ => throw type_err("KTypList")
         | KTypRef _ => throw type_err("KTypRef")
@@ -133,11 +134,18 @@ fun get_ctprops(ctyp: ctyp_t, loc: loc_t): ctprops_t
             ctp_free=(std_FX_FREE_ARR, std_fx_free_arr),
             ctp_copy=(noid, std_fx_copy_arr),
             ctp_pass_by_ref=true, ctp_ptr=false }
-    | CTypVector (_) =>
+    | CTypRRBVec (_) =>
         ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
-            ctp_free=(noid, std_fx_free_vec),
-            ctp_copy=(noid, std_fx_copy_vec),
+            ctp_free=(noid, std_fx_free_rrbvec),
+            ctp_copy=(noid, std_fx_copy_rrbvec),
             ctp_pass_by_ref=true, ctp_ptr=false }
+    | CTypVector (_) =>
+        // mutable vector: a pointer to a refcounted heap header (rc first).
+        // copy is a plain INCREF (FX_COPY_PTR/fx_copy_ptr); free is fx_free_vec.
+        ctprops_t { ctp_scalar=false, ctp_complex=true, ctp_make=[],
+            ctp_free=(std_FX_FREE_VEC, std_fx_free_vec),
+            ctp_copy=(std_FX_COPY_PTR, std_fx_copy_ptr),
+            ctp_pass_by_ref=false, ctp_ptr=true }
     | CTypName i =>
         match cinfo_(i, loc) {
         | CTyp (ref {ct_props}) => ct_props

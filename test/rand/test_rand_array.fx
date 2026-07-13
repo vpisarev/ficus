@@ -10,7 +10,7 @@
 
 from UTest import *
 from RandUtil import *
-import Vector
+import Rrbvec
 
 TEST("rand.array.map", fun() {
     val name = "rand.array.map"
@@ -90,7 +90,7 @@ TEST("rand.array.border", fun() {
         val rng = mk_rng(seed)
         val n = next_int(rng, 1, 30)
         val a = rand_iarray(rng, n, -100, 100)
-        val v = vector(a)
+        val v = rrbvec(a)
         // most cases random in [-3n, 3n); a few forced boundary values.
         val idx = match i % 8 {
             | 0 => -n | 1 => -2*n | 2 => 2*n | 3 => n

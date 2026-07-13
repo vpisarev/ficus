@@ -70,7 +70,7 @@
       * list comprehensions are replaced with a for-loop that constructs the output list on-fly.
 */
 
-import Dynvec
+// (Dynvec retired)
 from Ast import *
 from K_form import *
 
@@ -126,6 +126,7 @@ type ctyp_t =
     | CTypRawPtr: (ctyp_attr_t list, ctyp_t)
     | CTypRawArray: (ctyp_attr_t list, ctyp_t)
     | CTypArray: (int, ctyp_t)
+    | CTypRRBVec: ctyp_t
     | CTypVector: ctyp_t
     | CTypName: id_t
     | CTypLabel
@@ -295,16 +296,16 @@ type cinfo_t =
     | CLabel: cdeflabel_t
     | CMacro: cdefmacro_t ref
 
-var all_idcs: cinfo_t Dynvec.t [] = []
+var all_idcs: cinfo_t vector [] = []
 var freeze_idcs = true
 
 fun new_idc_idx(m_idx: int): int {
     if freeze_idcs {
         throw Fail("internal error: attempt to add new idc when they are frozen")
     }
-    val new_idx = all_modules[m_idx].dm_table.push()
-    val new_kidx = all_idks[m_idx].push()
-    val new_cidx = all_idcs[m_idx].push()
+    val new_idx = all_modules[m_idx].dm_table.push(IdNone)
+    val new_kidx = all_idks[m_idx].push(KNone)
+    val new_cidx = all_idcs[m_idx].push(CNone)
     if new_idx == new_kidx && new_idx == new_cidx {
         new_idx
     } else {
@@ -315,7 +316,7 @@ fun new_idc_idx(m_idx: int): int {
 fun cinfo_(i: id_t, loc: loc_t)
 {
     val (m, j) = id2idx_(i, loc)
-    all_idcs[m].data[j]
+    all_idcs[m][j]
 }
 
 fun gen_idc(m_idx: int, s: string): id_t
@@ -331,7 +332,7 @@ fun dup_idc(m_idx: int, old_id: id_t) =
 fun set_idc_entry(i: id_t, entry: cinfo_t)
 {
     val (m, j) = id2idx(i)
-    all_idcs[m].data[j] = entry
+    all_idcs[m][j] = entry
 }
 
 fun init_all_idcs()
@@ -339,7 +340,7 @@ fun init_all_idcs()
     freeze_ids = true
     freeze_idks = true
     freeze_idcs = false
-    all_idcs = [for k <- all_idks {Dynvec.create(k.count, CNone)}]
+    all_idcs = [for k <- all_idks {Vector.make(size(k), CNone)}]
 }
 
 fun get_cexp_ctx(e: cexp_t): cctx_t
@@ -603,6 +604,7 @@ fun walk_ctyp(t: ctyp_t, callb: c_callb_t)
             [:: for (n, t) <- uelems { (walk_id_(n), walk_ctyp_(t)) }])
     | CTypFunRawPtr (args, rt) => CTypFunRawPtr(args.map(walk_ctyp_), walk_ctyp_(rt))
     | CTypArray (d, et) => CTypArray(d, walk_ctyp_(et))
+    | CTypRRBVec (et) => CTypRRBVec(walk_ctyp_(et))
     | CTypVector (et) => CTypVector(walk_ctyp_(et))
     | CTypRawPtr (attrs, t) => CTypRawPtr(attrs, walk_ctyp_(t))
     | CTypRawArray (attrs, et) => CTypRawArray(attrs, walk_ctyp_(et))
@@ -783,6 +785,7 @@ fun fold_ctyp(t: ctyp_t, callb: c_fold_callb_t)
     | CTypRawPtr (_, t) => fold_ctyp_(t)
     | CTypRawArray (_, et) => fold_ctyp_(et)
     | CTypArray (_, t) => fold_ctyp_(t)
+    | CTypRRBVec (t) => fold_ctyp_(t)
     | CTypVector (t) => fold_ctyp_(t)
     | CTypName n => fold_id_(n)
     | CTypLabel => {}
@@ -929,7 +932,8 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
         val s = if attrs.mem(CTypVolatile) { "volatile " + s } else { s }
         (s + " []", noid)
     | CTypArray _ => ("fx_arr_t", noid)
-    | CTypVector _ => ("fx_rrbvec_t", noid)
+    | CTypRRBVec _ => ("fx_rrbvec_t", noid)
+    | CTypVector _ => ("fx_vec_t", noid)
     | CTypName n => val cname = get_idc_cname(n, loc); (cname, n)
     | CTypLabel => throw compile_err(loc, "ctyp2str: CTypLabel is not supported")
     | CTypAny => throw compile_err(loc, "ctyp2str: CTypAny is not supported")
@@ -938,8 +942,8 @@ fun ctyp2str(t: ctyp_t, loc: loc_t) =
 fun idc2str(n: id_t, loc: loc_t) {
     val cname = get_idc_cname(n, loc)
     if cname != "" { cname }
-    else if n.m == 0 { all_names.data[n.i] }
-    else { f"{all_names.data[n.i]}_{n.j}" }
+    else if n.m == 0 { all_names[n.i] }
+    else { f"{all_names[n.i]}_{n.j}" }
 }
 
 fun ctyp2str_(t: ctyp_t, loc: loc_t): string = ctyp2str(t, loc).0
@@ -959,7 +963,8 @@ fun make_const_ptr(t: ctyp_t) =
 val std_CTypVoidPtr = make_ptr(CTypVoid)
 val std_CTypConstVoidPtr = make_const_ptr(CTypVoid)
 val std_CTypAnyArray = CTypArray(0, CTypAny)
-val std_CTypAnyVector = CTypVector(CTypAny)
+val std_CTypAnyRRBVec = CTypRRBVec(CTypAny)
+val std_CTypAnyVec = CTypVector(CTypAny)
 
 fun make_lit_exp(l: clit_t, loc: loc_t) {
     val t = get_lit_ctyp(l)
@@ -1114,8 +1119,11 @@ var std_fx_copy_arr = noid
 var std_fx_copy_arr_data = noid
 var std_fx_make_arr = noid
 var std_fx_subarr = noid
+var std_fx_free_rrbvec = noid
+var std_fx_copy_rrbvec = noid
+var std_fx_make_rrbvec = noid
+var std_FX_FREE_VEC = noid
 var std_fx_free_vec = noid
-var std_fx_copy_vec = noid
 var std_fx_make_vec = noid
 var std_FX_FREE_REF_SIMPLE = noid
 var std_fx_free_ref_simple = noid

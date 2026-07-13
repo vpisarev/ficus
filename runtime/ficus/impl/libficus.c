@@ -78,6 +78,7 @@ int FX_EXN_SysReturn = -26;
 int FX_EXN_TypeMismatchError = -27;
 int FX_EXN_UnknownExnError = -28;
 int FX_EXN_ZeroStepError = -29;
+int FX_EXN_VecModifiedError = -30;
 
 int fx_init(int argc, char** argv)
 {
@@ -122,6 +123,7 @@ int fx_init(int argc, char** argv)
     FX_DECL_STD_EXN(ParallelForError);
     FX_DECL_STD_EXN(BadArgError);
     FX_DECL_STD_EXN(OverflowError);
+    FX_DECL_STD_EXN(VecModifiedError);
 
     #undef FX_DECL_STD_EXN
 
@@ -774,4 +776,5 @@ int fx_make_cptr(void* ptr, fx_free_t free_f, fx_cptr_t* fx_result)
 #include "ficus/impl/system.impl.h"
 #include "ficus/impl/gemm.impl.h"
 #include "ficus/impl/rrbvec.impl.h"
+#include "ficus/impl/vec.impl.h"
 #include "ficus/impl/rpmalloc.impl.h"

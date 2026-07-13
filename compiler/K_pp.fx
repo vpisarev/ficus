@@ -24,7 +24,7 @@ val pp_ = Ast.pp
     | KTypString | KTypChar | KTypBool | KTypVoid | KTypExn
     | KTypErr | KTypCPointer | KTypModule | KTypName _
     | KTypTuple _ | KTypRecord _ => 3
-    | KTypList _ | KTypRef _ | KTypArray _ | KTypVector _ | KTypRawPointer _ => 2
+    | KTypList _ | KTypRef _ | KTypArray _ | KTypRRBVec _ | KTypVector _ | KTypRawPointer _ => 2
     | KTypFun _ => 1
     }
 
@@ -77,6 +77,7 @@ val pp_ = Ast.pp
         pp.space(); pp.str("->"); pp.space(); ppktyp_(t2, prec)
         pp.str(")"); pp.end()
     | KTypList t1 => ppktypsuf(t1, "list")
+    | KTypRRBVec t1 => ppktypsuf(t1, "rrbvec")
     | KTypVector t1 => ppktypsuf(t1, "vector")
     | KTypRef t1 => ppktypsuf(t1, "ref")
     | KTypArray (d, t1) => ppktypsuf(t1, "[" + ','*(d-1) + "]")
@@ -464,6 +465,7 @@ val pp_ = Ast.pp
             match flags.for_flag_make {
             | ForMakeList => ("[", "]")
             | ForMakeArray => ("[", "]")
+            | ForMakeRRBVec => ("[", "]")
             | ForMakeVector => ("[", "]")
             | ForMakeTuple => ("(", ")")
             | _ => throw compile_err(loc, f"unsupported type of comprehension '{flags.for_flag_make}'")
