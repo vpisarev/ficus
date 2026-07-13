@@ -27,24 +27,6 @@ type arr_info_t =
 type ainfo_map_t = (id_t, arr_info_t ref) Map.t
 type arr_fuse_map_t = (id_t, id_t) Map.t
 
-fun fuse_loops(code: kcode_t)
-{
-    var nmaps = 0, nfors = 0
-    for e <- code {
-        match e {
-        | KDefVal(_, KExpMap _, _) => nmaps += 1
-        | KExpMap _ => nmaps += 1
-        | KExpFor _ => nfors += 1
-        | _ => {}
-        }
-    }
-    if nmaps >= 1 && nmaps + nfors >= 2 {
-        fuse_loops_(code)
-    } else {
-        code
-    }
-}
-
 fun fuse_loops_(code: kcode_t)
 {
     var counters: ainfo_map_t = Map.empty(cmp_id)
@@ -84,12 +66,13 @@ fun fuse_loops_(code: kcode_t)
         fold_kexp(e, process_callb)
         match e {
         | KDefVal (i, KExpMap ([:: (_, idl, [])], body, flags, (KTypArray _, _)), loc) =>
-            // removal grade preserves the pre-existing fusion criterion (a body
-            // that reads mutable memory is still a fusion candidate; fusion of a
-            // single-use comprehension replays the body in the consumer loop,
-            // preserving iteration). Whether fusion also needs movement-grade
-            // safety is a separate question -- see docs/purity1_report.md.
-            if K_remove_unused.pure_kexp(body, mut_read_is_impure=false) && !flags.for_flag_unzip {
+            // FB-028: fusion REPLAYS the producer body inside the consumer loop,
+            // so a read of mutable memory in the body is MOVED across the
+            // consumer's stores. If the consumer writes memory the body reads
+            // (e.g. an in-place stencil), the fused reads see the wrong values.
+            // Hence the movement grade: a body that reads mutable memory is not a
+            // fusion candidate. (Bodies reading only immutable data still fuse.)
+            if K_remove_unused.pure_kexp(body, mut_read_is_impure=true) && !flags.for_flag_unzip {
                 val ainfo = ref (arr_info_t {
                     arr_nused=0, arr_nused_for=0,
                     arr_idl=idl, arr_body=body, arr_map_flags=flags})
@@ -187,28 +170,36 @@ fun fuse_loops_(code: kcode_t)
     }
 
     fun fuse_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
-    fun fuse_kexp_(e: kexp_t, callb: k_callb_t)
-    {
-        val e = walk_kexp(e, callb)
+    fun fuse_kexp_(e: kexp_t, callb: k_callb_t) =
         match e {
-        | KExpSeq(elist, (t, loc)) => code2kexp(fuse_loops(elist), loc)
-        | KDefVal(i, KExpMap ([:: (e0, idl, idxs)], body, _, _), loc) =>
-            match arrs_to_fuse.find_opt(i) {
-            | Some ainfo =>
-                ainfo->arr_idl = idl
-                ainfo->arr_body = body
-                KExpNop(loc)
+        | KExpSeq(elist, (_, loc)) =>
+            // A basic block: run this block's OWN fusion analysis, exactly once.
+            // Crucially do NOT walk_kexp(e) first -- walk_kexp already descends
+            // into these same elements, so combined with fuse_loops_ every block
+            // would be traversed twice, i.e. 2^depth times overall (the old code
+            // avoided this only because the fuse_loops gate short-circuited nearly
+            // always). fuse_loops_ itself transforms each element via fuse_kexp_.
+            code2kexp(fuse_loops_(elist), loc)
+        | _ =>
+            val e = walk_kexp(e, callb)
+            match e {
+            | KDefVal(i, KExpMap ([:: (e0, idl, idxs)], body, _, _), loc) =>
+                match arrs_to_fuse.find_opt(i) {
+                | Some ainfo =>
+                    ainfo->arr_idl = idl
+                    ainfo->arr_body = body
+                    KExpNop(loc)
+                | _ => e
+                }
+            | KExpFor (idl, [], body, flags, loc) =>
+                val (new_idl, new_body) = fuse_for(idl, body, loc)
+                KExpFor(new_idl.rev(), [], new_body, flags, loc)
+            | KExpMap ([:: (e0, idl, [])], body, flags, (map_result_type, loc)) =>
+                val (new_idl, new_body) = fuse_for(idl, body, loc)
+                KExpMap([:: (e0, new_idl.rev(), [])], new_body, flags, (map_result_type, loc))
             | _ => e
             }
-        | KExpFor (idl, [], body, flags, loc) =>
-            val (new_idl, new_body) = fuse_for(idl, body, loc)
-            KExpFor(new_idl.rev(), [], new_body, flags, loc)
-        | KExpMap ([:: (e0, idl, [])], body, flags, (map_result_type, loc)) =>
-            val (new_idl, new_body) = fuse_for(idl, body, loc)
-            KExpMap([:: (e0, new_idl.rev(), [])], new_body, flags, (map_result_type, loc))
-        | _ => e
         }
-    }
 
     val fuse_callb = k_callb_t {
         kcb_ktyp=Some(fuse_ktyp_),
@@ -221,6 +212,6 @@ fun fuse_loops_(code: kcode_t)
 fun fuse_loops_all(kmods: kmodule_t list) =
     [:: for km <- kmods {
         val {km_top} = km
-        val new_top = fuse_loops(km_top)
+        val new_top = fuse_loops_(km_top)
         km.{km_top=new_top}
     }]

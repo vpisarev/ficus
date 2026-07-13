@@ -373,3 +373,42 @@ soundness surprise, not just a missed diagnostic.
   preserving, coalesced by the C compiler. Phase 2 (purity-1) folds this into a
   parameterized `pure_kexp(~mut_read_is_impure)` so the throw-impurity and the
   FB-023 movement guard share one classification.
+
+## FB-028  loop fusion moves a mutable-memory read past the consumer's stores  [FIXED — fuse-move-1]
+Sibling of FB-023, in `K_fuse_loops`. Fusion takes a single-use comprehension
+`val tmp = [for i <- A {body(i)}]` consumed by exactly one for-loop
+`for x <- tmp {bar(x)}` and REPLAYS the body inside the consumer:
+`for i <- A { val x = body(i); bar(x) }`. If `body` reads mutable memory and the
+consumer `bar` writes it, the fused reads see values written earlier in the SAME
+pass — the unfused meaning reads the original array (tmp is materialized first).
+Minimal repro (an in-place 3-tap smoothing filter):
+```
+val arr = [30, 60, 90, 120, 150]
+val n = size(arr)
+val smoothed = [for i <- 0:n { (arr.clip[i-1] + arr.clip[i] + arr.clip[i+1]) / 3 }]
+var k = 0
+for s <- smoothed { arr[k] = s; k += 1 }   // write-back in place
+// unfused (O0): [40, 60, 90, 120, 140]; fused (O3): [40, 63, 91, 120, 140]
+```
+- **Post-purity-1 reachability**: a plain `arr[i]` read is `BorderNone` → impure
+  → already blocks fusion; the bug survives only through a NON-throwing mutable
+  read — a border read (`.clip`/`.wrap`/`.zero`), `*ref`, or a mutable field.
+- **Fix**: the fusion criterion asks `pure_kexp` for its MOVEMENT grade
+  (`mut_read_is_impure=true`) — a body that reads mutable memory is not a fusion
+  candidate (bodies reading only immutable data still fuse). Conservative (blocks
+  even when the consumer provably doesn't alias), but measured zero corpus fusion
+  loss for it.
+- **Driver fix (bonus)**: while adding a regression test we found fusion **never
+  fired inside function or lambda bodies** — `fuse_loops_all` only ran the pass
+  on each module's top-level code, and the recursive descent (`fuse_kexp_`) only
+  started once the *top-level* gate (`≥1 map`, `≥2 map+for`) passed; a module
+  whose top level is only `KDefFun`s (every UTest file, all modular code) got no
+  fusion at all. Killed the gate (`fuse_loops` → always `fuse_loops_`) and made
+  `fuse_kexp_` process a `KExpSeq` with `fuse_loops_(elist)` directly WITHOUT a
+  preceding `walk_kexp` (which also descends → every block would be traversed
+  2^depth times; the gate had been masking that). Net: fusion now fires in
+  function/lambda bodies too (25 test_all modules newly fuse; benchmark C
+  unchanged), compiler front-end +4.5%, and the FB-028 regression is now
+  observable from a UTest (`test/test_array.fx` `array.fuse_inplace_stencil`;
+  positive companion `array.fuse_map_reduce`). So: trying to DISABLE fusion in
+  unsafe places, we ENABLED it in safe ones.

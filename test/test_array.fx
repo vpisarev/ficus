@@ -162,3 +162,40 @@ TEST("array.bounding_box", fun() {
 
     EXPECT_EQ(bounding_box(img), (2, 1, 5, 4))
 })
+
+TEST("array.fuse_inplace_stencil", fun() {
+    // FB-028: a single-use comprehension whose body reads mutable memory via a
+    // non-throwing .clip read is a loop-fusion candidate. Fusing it into a
+    // consumer loop that writes that array IN PLACE would replay the reads across
+    // the consumer's stores (K_fuse_loops' sibling of the FB-023 move hazard):
+    // a 3-tap smoothing filter must read the ORIGINAL array for every tap. The
+    // fusion criterion uses pure_kexp's movement grade so this body (mutable read)
+    // is NOT fused; without it the in-place write-back corrupts later taps at O3.
+    // (Regression is observable here because fusion now fires inside lambda
+    // bodies too, so this UTest closure is itself a fusion site.)
+    val arr = [30, 60, 90, 120, 150]
+    val n = size(arr)
+    val smoothed = [for i <- 0:n { (arr.clip[i-1] + arr.clip[i] + arr.clip[i+1]) / 3 }]
+    var k = 0
+    for s <- smoothed { arr[k] = s; k += 1 }
+    EXPECT_EQ(arr, [40, 60, 90, 120, 140])
+})
+
+TEST("array.fuse_map_reduce", fun() {
+    // positive: a single-use comprehension consumed by exactly one for-loop is
+    // fused -- the intermediate `squares` array is never materialized, the map
+    // body is replayed inside the reduce loop. The body reads no mutable memory,
+    // so it fuses under the movement grade; the result must equal the unfused
+    // meaning. Confirmed a fusion site via -pr-k. Guards fusion correctness on a
+    // case where it fires (complement of fuse_inplace_stencil, where it must not).
+    val n = 10
+    val squares = [for i <- 0:n { i * i }]
+    var s = 0
+    for x <- squares { s += x }
+    EXPECT_EQ(s, 285)                        // 0+1+4+9+...+81 = 285
+    // a second fusable shape: comprehension over a range, consumed once
+    val evens = [for i <- 0:n { i * 2 }]
+    var prod1 = 1
+    for x <- evens { if x > 0 { prod1 *= x } }
+    EXPECT_EQ(prod1, 2*4*6*8*10*12*14*16*18) // product of the positive evens
+})
