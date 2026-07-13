@@ -184,8 +184,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
     })
 
     val args = [ empty_arg ]
-    val vargs = Vector.make(args)
-    val vtensors = Vector.make([ empty_tensor ])
+    val vargs = vector(args)
+    val vtensors = vector([ empty_tensor ])
     dimnames.add("?", -1)
 
     fun get_const_tensor_arg(name: string, data: Ast.nndata_t) =

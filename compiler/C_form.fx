@@ -340,7 +340,7 @@ fun init_all_idcs()
     freeze_ids = true
     freeze_idks = true
     freeze_idcs = false
-    all_idcs = [for k <- all_idks {Vector.make(size(k), CNone)}]
+    all_idcs = [for k <- all_idks {vector(size(k), CNone)}]
 }
 
 fun get_cexp_ctx(e: cexp_t): cctx_t

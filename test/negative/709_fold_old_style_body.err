@@ -1,13 +1,8 @@
-709_fold_old_style_body.fx:5:14: warning: 'fold' accumulator 's' is never assigned in the body, so the fold has no effect. The body must UPDATE the accumulator (e.g. 's = <expr>' or 's += ...'); write 's = _' to silence
- 5 | val s = fold s = 0 for x <- [1, 2, 3] { s + x }
-   |              ^
-709_fold_old_style_body.fx:5:43: error: improper type of the arithmetic operation result
- 5 | val s = fold s = 0 for x <- [1, 2, 3] { s + x }
+709_fold_old_style_body.fx:6:43: error: improper type of the arithmetic operation result
+ 6 | val s = fold s = 0 for x <- [1, 2, 3] { s + x }
    |                                           ^
-709_fold_old_style_body.fx:6:9: error: the appropriate match for 's' of type '<unknown>' is not found.
- 6 | println(s)
+709_fold_old_style_body.fx:7:9: error: the appropriate match for 's' of type '<unknown>' is not found.
+ 7 | println(s)
    |         ^
 
 2 errors occured during type checking.
-
-1 warning generated.

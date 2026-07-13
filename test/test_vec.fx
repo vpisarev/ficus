@@ -4,7 +4,8 @@
 */
 
 // first-class mutable vector ('t vector) tests: element access v[i], v[i]=a,
-// size/empty, push_back/pop_back/back, resize/reserve/clear, slices, map/foldl.
+// size/empty, push_back/pop_back/back/push, append (elem/array/vector), concat,
+// resize/reserve/clear, comprehensions/iteration, slices, slice-assign (splice).
 
 from UTest import *
 
@@ -51,7 +52,7 @@ TEST("fcvector.write", fun()
 
 TEST("fcvector.ops", fun()
 {
-    val v = Vector.make(3, 7)
+    val v = vector(3, 7)
     EXPECT_EQ(`size(v)`, 3)
     EXPECT_EQ(`Vector.capacity(v) >= 3`, true)
     EXPECT_EQ(`array(v)`, [7, 7, 7])
@@ -65,22 +66,114 @@ TEST("fcvector.ops", fun()
     EXPECT_EQ(`size(v)`, 0)
     EXPECT_EQ(`empty(v)`, true)
 
-    val a = Vector.make([1, 2, 3])
-    val b = Vector.make([1, 2, 3])
-    val c = Vector.make([1, 2, 4])
+    val a = vector([1, 2, 3])
+    val b = vector([1, 2, 3])
+    val c = vector([1, 2, 4])
     EXPECT_EQ(`a == b`, true)
     EXPECT_EQ(`a == c`, false)
     EXPECT_EQ(`a <=> c`, -1)
     EXPECT_EQ(`string(a)`, "[1, 2, 3]")
 
     // complex-element resize (grow with fill, shrink freeing elements) — ASan
-    val s = Vector.make(2, "ab")
+    val s = vector(2, "ab")
     s.push_back("cd")
     s.resize(5, "zz")
     EXPECT_EQ(`size(s)`, 5)
     EXPECT_EQ(`s[4]`, "zz")
     s.resize(2, "")
     EXPECT_EQ(`array(s)`, ["ab", "ab"])
+})
+
+TEST("fcvector.pushpop_edge", fun()
+{
+    // __intrin_pop__ slow path: popping an empty vector throws OutOfRangeError
+    // (consistent with back() / element access on an empty vector)
+    val v: int vector = []
+    EXPECT_THROWS(fun() { v.pop_back() }, OutOfRangeError)
+    v.push_back(1); v.push_back(2)
+    v.pop_back(); v.pop_back()
+    EXPECT_THROWS(fun() { v.pop_back() }, OutOfRangeError)
+    // back() on an empty vector likewise throws OutOfRangeError
+    var sink = 0
+    EXPECT_THROWS(fun() { sink = v.back() }, OutOfRangeError)
+    ignore(sink)
+
+    // complex-element push/pop frees correctly (ASan-checked), fast path bypassed
+    val s: string vector = []
+    for w <- ["aa", "bb", "cc"] { s.push_back(w) }
+    s.pop_back()
+    EXPECT_EQ(`array(s)`, ["aa", "bb"])
+
+    // growth (capacity exceeded) goes through the slow path and keeps all elements
+    val g: int vector = []
+    for i <- 0:1000 { g.push_back(i) }
+    EXPECT_EQ(`size(g)`, 1000)
+    EXPECT_EQ(`g[999]`, 999)
+    EXPECT_EQ(`g[0]`, 0)
+})
+
+TEST("fcvector.splice", fun()
+{
+    // contiguous replace, grow (2 elems -> 3)
+    val v = vector([0,1,2,3,4,5,6,7,8,9])
+    v[3:5] = vector([100,200,300])
+    EXPECT_EQ(`array(v)`, [0,1,2,100,200,300,5,6,7,8,9])
+
+    // contiguous replace, shrink (6 elems -> 1)
+    val w = vector([0,1,2,3,4,5,6,7,8,9])
+    w[2:8] = vector([99])
+    EXPECT_EQ(`array(w)`, [0,1,99,8,9])
+
+    // contiguous replace, same size (in place)
+    val u = vector([0,1,2,3,4])
+    u[1:4] = vector([10,20,30])
+    EXPECT_EQ(`array(u)`, [0,10,20,30,4])
+
+    // range delete (rhs [])
+    val e = vector([0,1,2,3,4,5,6,7,8,9])
+    e[3:6] = []
+    EXPECT_EQ(`array(e)`, [0,1,2,6,7,8,9])
+
+    // strided delete (even indices)
+    val d = vector([0,1,2,3,4,5,6,7,8,9])
+    d[::2] = []
+    EXPECT_EQ(`array(d)`, [1,3,5,7,9])
+
+    // strided delete with explicit bounds
+    val d2 = vector([0,1,2,3,4,5,6,7,8,9])
+    d2[1:8:3] = []                      // remove indices 1,4,7
+    EXPECT_EQ(`array(d2)`, [0,2,3,5,6,8,9])
+
+    // clear via the full slice
+    val c = vector([1,2,3,4,5])
+    c[:] = []
+    EXPECT_EQ(`size(c)`, 0)
+    c.push_back(42)                     // still an allocated (pushable) vector
+    EXPECT_EQ(`array(c)`, [42])
+
+    // insert into an empty vector via [0:0]
+    val f: int vector = []
+    f[0:0] = vector([7,8,9])
+    EXPECT_EQ(`array(f)`, [7,8,9])
+
+    // prepend / append via zero-width ranges
+    val g = vector([3,4])
+    g[0:0] = vector([1,2])
+    g[4:4] = vector([5,6])
+    EXPECT_EQ(`array(g)`, [1,2,3,4,5,6])
+
+    // complex (string) elements: replace shrink frees the removed strings (ASan)
+    val s = vector(["a","b","c","d","e"])
+    s[1:4] = vector(["X"])
+    EXPECT_EQ(`array(s)`, ["a","X","e"])
+    // string strided delete
+    val s2 = vector(["a","b","c","d","e","f"])
+    s2[::2] = []
+    EXPECT_EQ(`array(s2)`, ["b","d","f"])
+
+    // out-of-range slice throws
+    val r = vector([1,2,3])
+    EXPECT_THROWS(fun() { r[2:9] = vector([0]) }, OutOfRangeError)
 })
 
 TEST("fcvector.slice", fun()
@@ -114,14 +207,12 @@ TEST("fcvector.binomial", fun()
     val myvecs: (float vector) vector = []
     for i <- 1:10 {
         val last = if empty(myvecs) {emptyvec} else {myvecs.back()}
-        // curr annotated to sidestep FB-024 (order-dependent generic-return
-        // inference pollution across tests); see docs/found_bugs.md
-        val curr: float vector = last.mapi(fun(x, j) { if j == 0 {1.f} else {last[j-1] + last[j]} })
+        val curr = vector(for x@j <- last { if j == 0 {1.f} else {last[j-1] + last[j]} })
         curr.push_back(1.f)
         myvecs.push_back(curr)
     }
 
-    fun sum(v: 't vector, v0: 'r): 'r = v.foldl(fun (x, s) {x + s}, v0)
+    fun sum(v: 't vector, v0: 'r): 'r = fold s = v0 for x <- v {s = x + s}
     for i <- 0:size(myvecs) {
         val expected_sum = double(1 << i)
         EXPECT_EQ(`sum(myvecs[i], 0.)`, expected_sum)
@@ -223,7 +314,66 @@ TEST("fcvector.str", fun()
         vecstr.push_back(w)
     }
     EXPECT_EQ(array(vecstr[::2]), ["a", "def", "klmno", "vwxyz"])
-    EXPECT_EQ(vecstr[::2], Vector.make(["a", "def", "klmno", "vwxyz"]))
+    EXPECT_EQ(vecstr[::2], vector(["a", "def", "klmno", "vwxyz"]))
     EXPECT_EQ(array(vecstr[::-1]), ["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"])
-    EXPECT_EQ(vecstr[::-1], Vector.make(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
+    EXPECT_EQ(vecstr[::-1], vector(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
+})
+
+TEST("fcvector.append", fun()
+{
+    // the append family: element / array / vector, all void and unambiguous
+    val v: int vector = []
+    v.append(1)                        // single element (push_back synonym)
+    v.append(2)
+    v.append([3, 4, 5])                // whole array
+    v.append(vector([6, 7]))           // whole vector
+    EXPECT_EQ(`array(v)`, [1, 2, 3, 4, 5, 6, 7])
+
+    // vector-of-vectors: element-append vs vector-append pick different overloads
+    val vv: (int vector) vector = []
+    vv.append(vector([1, 2]))                              // one element
+    vv.append(vector([vector([3]), vector([4])]))         // two elements
+    EXPECT_EQ(`[for x <- vv {array(x)}]`, [[1, 2], [3], [4]])
+
+    // push keeps its index-returning semantics
+    val p: string vector = []
+    EXPECT_EQ(`p.push("a")`, 0)
+    EXPECT_EQ(`p.push("b")`, 1)
+    EXPECT_EQ(`array(p)`, ["a", "b"])
+
+    // appending an empty array/vector is a no-op
+    v.append(([]: int []))
+    v.append((vector(): int vector))
+    EXPECT_EQ(`size(v)`, 7)
+})
+
+TEST("fcvector.concat", fun()
+{
+    val a = vector([1, 2, 3])
+    val b = vector([4, 5])
+    val c: int vector = []
+    val d = vector([6, 7, 8, 9])
+    // array of vectors
+    EXPECT_EQ(`array(Vector.concat([a, b, d]))`, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    // empty inputs contribute nothing
+    EXPECT_EQ(`array(Vector.concat([a, c, b]))`, [1, 2, 3, 4, 5])
+    // all-empty / empty list -> empty result that is still a real allocated
+    // (pushable) vector, not the NULL/default vector
+    EXPECT_EQ(`size(Vector.concat([c, c]))`, 0)
+    val e = Vector.concat(([]: (int vector) []))
+    EXPECT_EQ(`size(e)`, 0)
+    e.push_back(42)
+    EXPECT_EQ(`array(e)`, [42])
+    // vector of vectors
+    val vv = vector([a, b, d])
+    EXPECT_EQ(`array(Vector.concat(vv))`, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    // complex elements (strings) are copied — ASan-checked
+    val s1 = vector(["a", "bc"])
+    val s2 = vector(["def"])
+    EXPECT_EQ(`array(Vector.concat([s1, s2]))`, ["a", "bc", "def"])
+    // the result is independent of the inputs (a real fresh vector)
+    val r = Vector.concat([a, b])
+    r.push_back(99)
+    EXPECT_EQ(`size(a)`, 3)
+    EXPECT_EQ(`r[5]`, 99)
 })

@@ -93,13 +93,13 @@ while !f.eof() {
     }
 }
 
-var all_data = Vector.make(0, 0u8)
+var all_data = vector(0, 0u8)
 
 while !f.eof() {
     val line = f.readln()
     if line.startswith('>') {break}
     val converted = [for c <- line.rstrip() {encrypt_char(c)}]
-    all_data.push(converted)
+    all_data.append(converted)
 }
 
 val all_data = array(all_data)

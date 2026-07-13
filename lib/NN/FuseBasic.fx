@@ -16,7 +16,7 @@ fun fuse_conv_elemwise(model: Ast.nnmodel_t, graph: Ast.nngraph_t, usecounts: in
     val nargs = model.args.size()
     val produced_by = array(nargs, -1)
     val prog = graph.prog
-    val new_prog = Vector.make(0, Ast.NN_Nop)
+    val new_prog = vector(0, Ast.NN_Nop)
     var modified = false
     fun get_op(op_idx: int) =
         if op_idx >= 0 {new_prog[op_idx]} else {Ast.NN_Nop}

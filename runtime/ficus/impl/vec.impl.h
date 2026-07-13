@@ -103,20 +103,16 @@ int fx_vec_reserve(fx_vec_t vec, int_ new_capacity)
         return FX_OK;
     size_t esz = vec->info.elemsize;
     size_t total = new_capacity * esz;
-    void *data = fx_malloc(total), *temp;
+    // realloc performs a pure move of the existing bytes (no copy-constructors
+    // needed) and frees the old buffer; it treats vec->data==NULL (an empty
+    // vector grown for the first time) as malloc. Only the first vec->size
+    // elements are live; the freshly grown tail is set/filled by the caller
+    // (fx_vec_resize / fx_vec_append) before use.
+    void *data = fx_realloc(vec->data, total);
     if (!data)
         FX_FAST_THROW_RET(FX_EXN_OutOfMemError);
-    // regardless of whether the data is complex or POD,
-    // we 'move' it, so no need to invoke copy-constructors.
-    // guard against vec->data==NULL (an empty vector grown for the first time):
-    // memcpy(dst, NULL, 0) is undefined behaviour.
-    if (vec->size > 0)
-        memcpy(data, vec->data, (size_t)vec->size*esz);
-    // make it a little bit more atomic
-    // more robust implementation should use CAS (atomic compare-and-swap)
-    FX_SWAP(data, vec->data, temp);
+    vec->data = data;
     vec->capacity = new_capacity;
-    fx_free(data);
     return FX_OK;
 }
 
@@ -154,6 +150,8 @@ int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems)
 {
     if (nelems == 0)
         return FX_OK;
+    if (!vec)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
     if (vec->nlocks != 0)
         FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
     if (nelems < 0)
@@ -181,31 +179,21 @@ int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems)
     return FX_OK;
 }
 
-int fx_vec_concat(const fx_vec_t* vecs, int_ nvecs,
-                size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
-                fx_vec_t* vec_)
+// drop the last element (freeing it if it is a complex type). Used by the slow
+// path of the __intrin_pop__ intrinsic (FX_VEC_POP_BACK / FX_VEC_POP_BACK_FAST).
+int fx_vec_pop_back(fx_vec_t vec)
 {
-    int_ size = 0;
-    for (int_ i = 0; i < nvecs; i++) {
-        if (vecs[i]->info.elemsize != elemsize ||
-            vecs[i]->info.copy_elem != copy_elem ||
-            vecs[i]->info.free_elem != free_elem )
-            FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
-        size += vecs[i]->size;
-    }
-    int fx_status = fx_make_vec(size, size, elemsize, free_elem, copy_elem, 0, vec_);
-    if (fx_status < 0) {
-        FX_UPDATE_BT();
-        return fx_status;
-    }
-    fx_vec_t vec = *vec_;
-    size = 0;
-    for (int_ i = 0; i < nvecs; i++) {
-        int_ sizei = vecs[i]->size;
-        fx_copy_arr_elems(vecs[i]->data, (char*)vec->data + size*elemsize,
-                        sizei, elemsize, copy_elem);
-        size += sizei;
-    }
+    if (!vec)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    if (vec->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
+    int_ size = vec->size;
+    if (size == 0)
+        FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
+    vec->size = --size;
+    fx_free_t free_f = vec->info.free_elem;
+    if (free_f)
+        free_f((char*)vec->data + size*vec->info.elemsize);
     return FX_OK;
 }
 
@@ -254,6 +242,85 @@ int fx_vec_slice(fx_vec_t vec, int_ start, int_ end, int_ delta, int mask, fx_ve
                 copy_f(src + i*(delta*elemsize), dst + i*elemsize);
         }
     }
+    return FX_OK;
+}
+
+// In-place slice assignment `vec[start:end:delta] = rhs`.
+//   - rhs == NULL or empty  => deletion of the selected elements (any delta);
+//     the survivors are compacted and the freed/vacated slots zeroed.
+//   - rhs non-empty         => contiguous replacement (delta == 1, guaranteed by
+//     the compiler: a strided replace with a non-empty vector is a compile error).
+//     The sizes may differ; the tail is shifted with memmove (a pure move — no
+//     copy/free of the moved elements), the removed elements are freed first, and
+//     any slot vacated by a shrink is zeroed so no aliased pointer lingers.
+// Elements are never aliased into `vec`: rhs is deep-copied in (copy_elem).
+int fx_vec_splice(fx_vec_t vec, int_ start, int_ end, int_ delta, int mask, fx_vec_t rhs)
+{
+    if (!vec)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    if (vec->nlocks != 0)
+        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
+    if (delta == 0)
+        FX_FAST_THROW_RET(FX_EXN_ZeroStepError);
+    int_ size = vec->size;
+    start = !(mask & 1) ? start : delta > 0 ? 0 : size-1;
+    end = !(mask & 2) ? end : delta > 0 ? size : -1;
+    if ((delta > 0 && (start < 0 || start > end || end > size)) ||
+        (delta < 0 && (end < -1 || start < end || start >= size)))
+        FX_FAST_THROW_RET(FX_EXN_OutOfRangeError);
+    size_t esz = vec->info.elemsize;
+    fx_free_t free_f = vec->info.free_elem;
+    fx_copy_t copy_f = vec->info.copy_elem;
+    int_ nrhs = rhs ? rhs->size : 0;
+    char* data;
+
+    if (nrhs == 0) {
+        // deletion (any delta): free selected elements, compact the survivors
+        // down with a pure move, then zero the vacated tail.
+        data = (char*)vec->data;
+        int_ j = 0;
+        for (int_ i = 0; i < size; i++) {
+            int selected = delta > 0
+                ? (i >= start && i < end && (i - start) % delta == 0)
+                : (i <= start && i > end && (start - i) % (-delta) == 0);
+            if (selected) {
+                if (free_f) free_f(data + i*esz);
+            } else {
+                if (j != i) memmove(data + j*esz, data + i*esz, esz);
+                j++;
+            }
+        }
+        if (j < size)
+            memset(data + j*esz, 0, (size - j)*esz);
+        vec->size = j;
+        return FX_OK;
+    }
+
+    // contiguous replacement (delta == 1 guaranteed by the compiler)
+    int_ nremove = end - start;
+    int_ newsize = size - nremove + nrhs;
+    // reserve first so an OOM leaves the vector untouched
+    if (newsize > vec->capacity) {
+        int fx_status = fx_vec_reserve(vec, newsize);
+        if (fx_status < 0) {
+            FX_UPDATE_BT();
+            return fx_status;
+        }
+    }
+    data = (char*)vec->data;
+    // free the elements being removed/overwritten
+    if (free_f)
+        fx_free_arr_elems(data + start*esz, nremove, esz, free_f);
+    // shift the surviving tail to its new position (pure move, overlap-safe)
+    int_ tail = size - end;
+    if (tail > 0 && nrhs != nremove)
+        memmove(data + (start+nrhs)*esz, data + end*esz, tail*esz);
+    // deep-copy the replacement elements in (rhs keeps ownership)
+    fx_copy_arr_elems(rhs->data, data + start*esz, nrhs, esz, copy_f);
+    // on a shrink, zero the vacated tail so no aliased pointer lingers past size
+    if (newsize < size)
+        memset(data + newsize*esz, 0, (size - newsize)*esz);
+    vec->size = newsize;
     return FX_OK;
 }
 

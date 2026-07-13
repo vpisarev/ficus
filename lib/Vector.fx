@@ -11,35 +11,16 @@
 // Note: the element ops read the element size / free / copy from the vector's
 // own header (fx_vecinfo_t, set when the vector is constructed), so they need no
 // compile-time element metadata. Construction goes through `[]` (the compiler
-// emits fx_make_vec with the correct metadata), and make(n,...) then resizes it.
+// emits fx_make_vec with the correct metadata).
 
-// ------------------------- construction -------------------------
-
-// a vector of `n` copies of val0
-fun make(n: int, val0: 't): 't vector
-{
-    val v: 't vector = []
-    resize(v, n, val0)
-    v
-}
-
-// a vector with the elements of an array
-fun make(arr: 't []): 't vector = vector(for x <- arr {x})
-
-// a vector of `n` default-initialized elements
-fun make(n: int): 't vector
-{
-    val any: 't = __any_element__()
-    make(n, any)
-}
+// construction is via the vector() family in Builtins.fx (mirrors array()):
+// vector(~capacity=0), vector(n, x), vector(a: 't []), vector(l), vector(rrbvec),
+// vector(s). `vector()` is the empty one; `vector(capacity=n)` pre-reserves n.
 
 // ------------------------- capacity / size -------------------------
 
-fun capacity(v: 't vector): int
-@ccode {
-    *fx_result = v ? v->capacity : 0;
-    return FX_OK;
-}
+@nothrow fun capacity(v: 't vector): int
+@ccode { return v ? v->capacity : 0; }
 
 fun clear(v: 't vector): void
 @ccode {
@@ -66,92 +47,73 @@ fun assign(v: 't vector, size: int, val0: 't): void
     resize(v, size, val0)
 }
 
-fun reserve(v: 't vector, capacity: int): void
-@ccode {
-    if (!v)
-        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    return fx_vec_reserve(v, capacity);
-}
+// reserve is a thin wrapper over the Builtins __vec_reserve__ primitive (which
+// the vector(~capacity) constructor also uses).
+fun reserve(v: 't vector, capacity: int): void = __vec_reserve__(v, capacity)
 
 // ------------------------- element push/pop -------------------------
 
 // append one element in place. The vector must already be allocated (e.g. via
 // `[]`); a growth reallocates the internal data buffer inside the shared header,
 // so the caller's binding keeps pointing at the same (updated) header.
-fun push_back(v: 't vector, elem: 't): void
-{
-    fun push_back_(v: 't vector, elem_: ('t, bool)): void
-    @ccode {
-        if (!v)
-            FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-        return fx_vec_append(v, elem_, 1);
-    }
-    // the (elem, true) tuple is always passed by reference, so elem_ is a
-    // pointer to the element (its first field) regardless of 't.
-    push_back_(v, (elem, true))
-}
+// __intrin_push__ inlines the append: for POD elements the common in-capacity,
+// not-being-iterated case is a raw slot write (no call); every other case (grow,
+// empty, locked, NULL) falls through to fx_vec_append. See FX_VEC_PUSH_BACK* in
+// ficus.h.
+@inline fun push_back(v: 't vector, elem: 't): void = __intrin_push__(v, elem)
 
-// append x and return its index (v.push_back returns void); used by the code
-// migrated off the retired Dynvec.t where the index is needed
+// append x and return its index (unlike push_back / append, which are void);
+// used by the code migrated off the retired Dynvec.t where the index is needed
 fun push(v: 't vector, x: 't): int { push_back(v, x); size(v) - 1 }
-// append all elements of an array in one shot
-fun push(v: 't vector, arr: 't []): void
+// remove the last element and return it
+fun pop(v: 't vector): 't { val r = back(v); pop_back(v); r }
+
+// the last element. `v[.-1]` desugars to `v[__intrin_size__(v) - 1]`, so the
+// bounds check (FX_VEC_CHKIDX) yields OutOfRangeError on an empty/NULL vector.
+@inline fun back(v: 't vector): 't = v[.-1]
+
+// drop the last element (freeing it if it is a complex type). __intrin_pop__
+// inlines the fast path: for POD elements a present, not-being-iterated last
+// slot is dropped with a bare size decrement; every other case (empty, locked,
+// NULL, or a complex element that must be freed) goes through fx_vec_pop_back.
+@inline fun pop_back(v: 't vector): void = __intrin_pop__(v)
+
+// map/mapi/foldl are gone: `vector(for x <- v {..})`, `vector(for x@i <- v {..})`
+// and `fold acc=init for x <- v {..}` express them directly.
+
+// ------------------------- append / concat -------------------------
+
+// append one element (a void synonym for push_back; the overloads below append
+// all elements of an array or of another vector in one shot, copying them). The
+// three argument kinds ('t / 't [] / 't vector) never overlap for a resolved
+// call, so the family is unambiguous.
+@inline fun append(v: 't vector, elem: 't): void = push_back(v, elem)
+fun append(v: 't vector, arr: 't []): void
 @ccode {
     if (!v)
         FX_FAST_THROW_RET(FX_EXN_NullPtrError);
     return fx_vec_append(v, arr->data, arr->dim[0].size);
 }
-// remove the last element and return it
-fun pop(v: 't vector): 't { val r = back(v); pop_back(v); r }
-
-// the last element
-fun back(v: 't vector): 't
+fun append(v: 't vector, src: 't vector): void
 @ccode {
     if (!v)
         FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    int_ size = v->size;
-    if (size == 0)
-        FX_FAST_THROW_RET(FX_EXN_SizeError);
-    size_t elemsize = sizeof(*fx_result);
-    const void* src = (const char*)v->data + (size - 1)*elemsize;
-    fx_copy_t copy_f = v->info.copy_elem;
-    if (!copy_f) {
-        memcpy(fx_result, src, elemsize);
-    } else {
-        fx_copy_arr_elems(src, fx_result, 1, elemsize, copy_f);
-    }
-    return FX_OK;
+    return fx_vec_append(v, src ? src->data : 0, src ? src->size : 0);
 }
 
-// drop the last element (freeing it if it is a complex type)
-fun pop_back(v: 't vector): void
-@ccode {
-    if (!v)
-        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
-    if (v->nlocks != 0)
-        FX_FAST_THROW_RET(FX_EXN_VecModifiedError);
-    int_ size = v->size;
-    if (size == 0)
-        FX_FAST_THROW_RET(FX_EXN_SizeError);
-    v->size = --size;
-    fx_free_t free_f = v->info.free_elem;
-    if (free_f) {
-        free_f((char*)v->data + size*v->info.elemsize);
-    }
-    return FX_OK;
+// concatenate several vectors into one fresh vector (elements are copied). The
+// result vector is created here (via `[]`, which carries the correct element
+// metadata), reserved to the total size up front, then filled by bulk appends;
+// so no input vector is needed to supply metadata and an empty input yields a
+// real allocated empty vector.
+fun concat(vs: ('t vector) []): 't vector {
+    val total = fold s = 0 for v <- vs { s += v.size() }
+    fold r: 't vector = vector(capacity=total) for v <- vs { r.append(v) }
 }
-
-// ------------------------- conversion / compare / print -------------------------
-
-// map each element through f into a fresh vector
-fun map(v: 't vector, f: 't -> 'r): 'r vector = vector(for x <- v {f(x)})
-
-// map each (element, index) through f into a fresh vector
-fun mapi(v: 't vector, f: ('t, int) -> 'r): 'r vector = vector(for x@i <- v {f(x, i)})
-
-// left fold: res = f(v[n-1], ... f(v[1], f(v[0], init)))
-fun foldl(v: 't vector, f: ('t, 'r) -> 'r, init: 'r): 'r =
-    fold res = init for x <- v { res = f(x, res) }
+fun concat(vs: ('t vector) vector): 't vector {
+    val total = fold s = 0 for v <- vs { s += v.size() }
+    fold r: 't vector = vector(capacity=total) for v <- vs { r.append(v) }
+}
 
 // NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their
 // rrbvec counterparts. They compare/format elements generically (a[i] <=> b[i],

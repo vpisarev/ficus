@@ -307,7 +307,7 @@ fun init_all_idks(): void
     freeze_idks = false
     all_idks = [for dm <- all_modules {
         val sz = size(dm.dm_table)
-        Vector.make(sz, KNone)
+        vector(sz, KNone)
     }]
 }
 

@@ -323,3 +323,36 @@ type, so this is a legal and common pattern in ML-family languages. Current
 limitation (worked around by splitting into two arms, e.g. in the vector-iteration
 read-lock codegen in C_gen_code.fx). Should be fixed — allow a variable bound
 identically across all alternatives of an or-pattern.
+
+## FB-027  `ignore(coll[i])` swallows the out-of-range exception  [OPEN — soundness]
+An element read whose result does not escape is dead-code-eliminated together
+with its bounds check, so an out-of-bounds/empty access that *should* raise
+`OutOfRangeError` silently does nothing:
+```
+val e: int vector = []
+ignore(e[.-1])          // expected OutOfRangeError; actually NO throw
+val ea: int [] = []
+ignore(ea[.-1])         // same — arrays too
+```
+`ignore(x)` is the "evaluate for the side effects, discard the value" idiom, and
+a bounds check is exactly such a side effect (it can throw), so dropping it is a
+soundness surprise, not just a missed diagnostic.
+- **Affects every checked container read** — `array`, `vector`, `string`,
+  `rrbvec` — because they all lower to `KExpAt`. Independent of opt level (repro
+  at both `-O0` and `-O3`).
+- **Root cause**: `pure_kexp_` in `compiler/K_remove_unused.fx` does not list
+  `KExpAt` among the impure forms (`| _ => {}` leaves `ispure = true`), so an
+  element read with an unused result is removed before C-gen ever emits its
+  `FX_VEC_CHKIDX`/`FX_CHKIDX`. Note the *separate* `IntrinCheckIdx` /
+  `IntrinCheckIdxRange` intrinsics ARE marked impure there — but the plain
+  `KExpAt` read path emits its check inline in C-gen, so eliminating the whole
+  `KExpAt` at the K level drops the check.
+- **Contrast**: an *escaping* store keeps the read live and the check fires —
+  `outer_sink = coll[i]` (an outer `var`) throws; `{ var s=0; s = coll[i] }`
+  (local, dead) does not. This is why `test/test_vec.fx` fcvector.pushpop_edge
+  asserts `back()`-on-empty via a captured `sink`, not `ignore(v.back())`.
+- **Fix direction (not done — general compiler soundness, out of scope for
+  newvec-2)**: mark a *bounds-checked* `KExpAt` (i.e. `BorderNone`, which emits a
+  throwing check) impure in `pure_kexp_`, so it survives DCE. Border reads
+  (`.clip`/`.wrap`/`.zero`) never throw and can stay pure and eliminable; gating
+  on `BorderNone` avoids inhibiting legitimate DCE of genuinely-safe reads.
