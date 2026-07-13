@@ -1,8 +1,5 @@
 709_fold_old_style_body.fx:6:43: error: improper type of the arithmetic operation result
  6 | val s = fold s = 0 for x <- [1, 2, 3] { s + x }
    |                                           ^
-709_fold_old_style_body.fx:7:9: error: the appropriate match for 's' of type '<unknown>' is not found.
- 7 | println(s)
-   |         ^
 
-2 errors occured during type checking.
+1 errors occured during type checking.

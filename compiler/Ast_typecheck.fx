@@ -3351,20 +3351,34 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                                                         sc, false, true, is_mutable)
                     (DefVal(p1, e1, flags, loc) :: eseq_acc, env1)
                 } catch {
-                | CompileError(_, _) as err =>
-                    push_compile_err(err)
-                    // Poison every name the pattern binds. With an explicit
-                    // annotation, poison with THAT type -- the §1.7 firewall:
-                    // callers keep checking against the declared type. Without
-                    // one, poison with TypErr so later uses are suppressed
-                    // (structural cascade suppression), not cascaded.
-                    val poison_t = match p {
-                        | PatTyped(_, t1, tloc) =>
-                            (try { check_typ(t1, env, sc, tloc) } catch { | CompileError(_, _) => TypErr })
-                        | _ => TypErr
+                | (CompileError(_, _) | PropagateCompileError) as err =>
+                    // A direct RHS failure arrives as CompileError. A failure
+                    // INSIDE a block-valued RHS -- e.g. the fold desugar
+                    // `val (a,b): (..) = { ..failed stmt..; (a,b) }` (FB-022) --
+                    // has already been reported by the block's own check_eseq
+                    // and reaches us as PropagateCompileError; don't re-push it.
+                    match err { | CompileError(_, _) => push_compile_err(err) | _ => {} }
+                    // Bind every name the pattern introduces so later statements
+                    // don't cascade into spurious "undefined". With a usable
+                    // annotation, bind each name to its ANNOTATED type -- the
+                    // §1.7 firewall (callers keep checking against the declared
+                    // interface). check_pat destructures a tuple/record
+                    // annotation per-field, so `val (a,b): (int,bool)` yields
+                    // a:int, b:bool (not both the whole tuple, which would
+                    // itself cascade). Without a usable annotation, poison with
+                    // TypErr so later uses are structurally suppressed.
+                    val env1 = match p {
+                        | PatTyped(p1, t1, tloc) =>
+                            (try {
+                                val t1 = check_typ(t1, env, sc, tloc)
+                                val (_, env1, _, _, _) =
+                                    check_pat(p1, t1, env, empty_idset, empty_idset,
+                                              sc, false, true, is_mutable)
+                                env1
+                            } catch { | CompileError(_, _) | PropagateCompileError =>
+                                poison_pattern_vars(p1, TypErr, flags, sc, curr_m_idx, env) })
+                        | _ => poison_pattern_vars(p, TypErr, flags, sc, curr_m_idx, env)
                         }
-                    val env1 = poison_pattern_vars(pat_skip_typed(p), poison_t, flags,
-                                                   sc, curr_m_idx, env)
                     (DefVal(p, e, flags, loc) :: eseq_acc, env1)
                 }
             | DefFun(df) =>

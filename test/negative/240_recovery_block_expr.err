@@ -1,0 +1,5 @@
+240_recovery_block_expr.fx:9:9: error: the appropriate match for 'foo' of type '(int -> <unknown>)' is not found.
+ 9 |         foo(a)
+   |         ^~~
+
+1 errors occured during type checking.

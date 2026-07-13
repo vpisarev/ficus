@@ -226,16 +226,30 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
   the `.op → plain op / @ matmul` reform (which removes `.op`) and to a future
   "report at the call site, not the instantiation site" diagnostic pass.
 
-## FB-022  a failed `fold`-valued `val` cascades ("<name> not found")  [OPEN — recovery gap]
-- repro: `val s = fold acc = 0 for x <- [1,2,3] {acc + undefined}` reports the
-  body error AND a spurious `s is not found` at a later use of `s`.
-- cause: `fold` desugars during parsing into a block (`__fold_result__` etc.),
-  so the DefVal that binds `s` no longer has a simple RHS; the diag-1 recovery
-  that poisons a failed `val`'s pattern to `TypErr` does not fire on this
-  desugared shape, leaving `s` unbound → cascade.
-- impact: minor extra diagnostic; the root error is still correct. A diag-1
-  follow-up would extend the DefVal recovery to poison the pattern regardless of
-  RHS shape.
+## FB-022  a failed block-valued `val` cascades ("<name> not found")  [FIXED — resolve-3 Phase C]
+- repro: `val s = fold acc = 0 for x <- [1,2,3] {acc + undefined}` (and the wider
+  `val fold sz=0, have_neg=false for s <- shape { ..typo.. }`) reports the body
+  error AND a spurious `<accumulator> is not found` at every later use.
+- cause (actual, narrower than first thought): a `val fold ...` desugars to
+  `val (a,b): (..) = { var a=..; var b=..; for ...; (a,b) }`. The block's own
+  `check_eseq` already RECOVERS the failed `for` per-statement and types the tail
+  `(a,b)` correctly, but its closing `check_compile_errs()` then throws
+  **`PropagateCompileError`** (not `CompileError`) to flag the tainted subtree.
+  The outer DefVal recovery caught only `CompileError`, so it skipped pattern
+  binding entirely → the accumulators stayed unbound → cascade.
+- fix (`Ast_typecheck.fx`, `check_eseq` DefVal arm): (1) the recovery catches
+  `PropagateCompileError` too (without re-pushing the already-reported inner
+  error); (2) it binds the pattern via `check_pat` against the annotation type
+  instead of `poison_pattern_vars` with one whole-pattern poison type, so a
+  tuple/record annotation is destructured per-field (`val (a,b):(int,bool)` →
+  `a:int, b:bool`, the §1.7 firewall) rather than binding both to `(int,bool)`
+  (which would itself cascade). No usable annotation → still `TypErr` poison.
+- generalization: this is NOT fold-specific — ANY block expression in value
+  position (`val r: int = { ..failed stmt..; r_expr }`) now recovers. Golden
+  `test/negative/709` loses its spurious cascade; directed tests
+  `239_recovery_fold_block` (fold, with did-you-mean) and `240_recovery_block_expr`
+  (plain block) lock the mechanism. Acceptance: Vadim's repro → exactly ONE
+  diagnostic (`'s1' is not found; did you mean 's'`), no cascade.
 
 ## FB-023  single-use temp memory read inlined PAST an aliasing store  [FIXED — fold-1; refactored — purity-1]
 - **purity-1 update**: the local `movement_unsafe_read` guard described below was
