@@ -124,6 +124,38 @@ fun pop_back(v: 't vector): void
 // map/mapi/foldl are gone: `vector(for x <- v {..})`, `vector(for x@i <- v {..})`
 // and `fold acc=init for x <- v {..}` express them directly.
 
+// ------------------------- append / concat -------------------------
+
+// append all elements of another vector in one shot (elements are copied)
+fun append(v: 't vector, src: 't vector): void
+@ccode {
+    if (!v)
+        FX_FAST_THROW_RET(FX_EXN_NullPtrError);
+    return fx_vec_append(v, src ? src->data : 0, src ? src->size : 0);
+}
+
+// concatenate several vectors into one fresh vector (elements are copied). The
+// result vector is created here (via `[]`, which carries the correct element
+// metadata), reserved to the total size up front, then filled by bulk appends;
+// so no input vector is needed to supply metadata and an empty input yields a
+// real allocated empty vector.
+fun concat(vs: ('t vector) []): 't vector {
+    val r: 't vector = []
+    var total = 0
+    for v <- vs { total += v.size() }
+    r.reserve(total)
+    for v <- vs { r.append(v) }
+    r
+}
+fun concat(vs: ('t vector) vector): 't vector {
+    val r: 't vector = []
+    var total = 0
+    for v <- vs { total += v.size() }
+    r.reserve(total)
+    for v <- vs { r.append(v) }
+    r
+}
+
 // NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their
 // rrbvec counterparts. They compare/format elements generically (a[i] <=> b[i],
 // string(v[i])), and compiling that in a context with many <=> / string

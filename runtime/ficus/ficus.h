@@ -1114,9 +1114,6 @@ int fx_compose_vec( size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
 int fx_vec_reserve(fx_vec_t vec, int_ new_capacity);
 int fx_vec_resize(fx_vec_t vec, int_ new_size, const void* fillelem);
 int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems);
-int fx_vec_concat(const fx_vec_t* vecs, int_ nvecs,
-                  size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
-                  fx_vec_t* vec);
 int fx_vec_slice(fx_vec_t vec, int_ start, int_ end, int_ delta, int mask, fx_vec_t* subvec);
 
 ////////////////////////// RRB Vectors /////////////////////////////

@@ -225,3 +225,34 @@ TEST("fcvector.str", fun()
     EXPECT_EQ(array(vecstr[::-1]), ["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"])
     EXPECT_EQ(vecstr[::-1], vector(["vwxyz", "pqrstu", "klmno", "ghij", "def", "bc", "a"]))
 })
+
+TEST("fcvector.concat", fun()
+{
+    val a = vector([1, 2, 3])
+    val b = vector([4, 5])
+    val c: int vector = []
+    val d = vector([6, 7, 8, 9])
+    // array of vectors
+    EXPECT_EQ(`array(Vector.concat([a, b, d]))`, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    // empty inputs contribute nothing
+    EXPECT_EQ(`array(Vector.concat([a, c, b]))`, [1, 2, 3, 4, 5])
+    // all-empty / empty list -> empty result that is still a real allocated
+    // (pushable) vector, not the NULL/default vector
+    EXPECT_EQ(`size(Vector.concat([c, c]))`, 0)
+    val e = Vector.concat(([]: (int vector) []))
+    EXPECT_EQ(`size(e)`, 0)
+    e.push_back(42)
+    EXPECT_EQ(`array(e)`, [42])
+    // vector of vectors
+    val vv = vector([a, b, d])
+    EXPECT_EQ(`array(Vector.concat(vv))`, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    // complex elements (strings) are copied — ASan-checked
+    val s1 = vector(["a", "bc"])
+    val s2 = vector(["def"])
+    EXPECT_EQ(`array(Vector.concat([s1, s2]))`, ["a", "bc", "def"])
+    // the result is independent of the inputs (a real fresh vector)
+    val r = Vector.concat([a, b])
+    r.push_back(99)
+    EXPECT_EQ(`size(a)`, 3)
+    EXPECT_EQ(`r[5]`, 99)
+})

@@ -177,34 +177,6 @@ int fx_vec_append(fx_vec_t vec, const void* elems, int_ nelems)
     return FX_OK;
 }
 
-int fx_vec_concat(const fx_vec_t* vecs, int_ nvecs,
-                size_t elemsize, fx_free_t free_elem, fx_copy_t copy_elem,
-                fx_vec_t* vec_)
-{
-    int_ size = 0;
-    for (int_ i = 0; i < nvecs; i++) {
-        if (vecs[i]->info.elemsize != elemsize ||
-            vecs[i]->info.copy_elem != copy_elem ||
-            vecs[i]->info.free_elem != free_elem )
-            FX_FAST_THROW_RET(FX_EXN_TypeMismatchError);
-        size += vecs[i]->size;
-    }
-    int fx_status = fx_make_vec(size, size, elemsize, free_elem, copy_elem, 0, vec_);
-    if (fx_status < 0) {
-        FX_UPDATE_BT();
-        return fx_status;
-    }
-    fx_vec_t vec = *vec_;
-    size = 0;
-    for (int_ i = 0; i < nvecs; i++) {
-        int_ sizei = vecs[i]->size;
-        fx_copy_arr_elems(vecs[i]->data, (char*)vec->data + size*elemsize,
-                        sizei, elemsize, copy_elem);
-        size += sizei;
-    }
-    return FX_OK;
-}
-
 // just like in Python, we always create a copy of the slice, we don' create a 'view'
 // to the existing vector. And this behavior is different from string or rrbvec,
 // which are immutable structures and where creating a view is very safe.
