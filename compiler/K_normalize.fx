@@ -615,6 +615,41 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
                 f"unsupported '(some_struct : {typ2str(get_exp_typ(e1))}).{pp(n)}' access operation")
         | (_, _) => throw compile_err(e1loc, "unsupported access operation")
         }
+    | ExpAssign(ExpAt(arr, BorderNone, InterpNone, [:: idx], _), e2, _)
+        when is_range(idx) &&
+            (match typ2ktyp(get_exp_typ(arr), get_exp_loc(arr)) {
+             | KTypVector _ => true | _ => false }) =>
+        // in-place vector slice assignment `vec[a:b:delta] = rhs`:
+        //   rhs == [] deletes the selected elements (any step);
+        //   rhs a vector replaces a CONTIGUOUS (step 1) range, growing/shrinking.
+        // A strided replace with a non-empty vector is rejected here.
+        val vec_ktyp = typ2ktyp(get_exp_typ(arr), get_exp_loc(arr))
+        val delta_is_one = match idx {
+            | ExpRange(_, _, None, _) => true
+            | ExpRange(_, _, Some(ExpLit(LitInt(1i64), _)), _) => true
+            | _ => false
+            }
+        val rhs_is_empty = match e2 {
+            | ExpLit(LitEmpty, _) => true
+            | ExpMkArray([], _) | ExpMkArray([:: []], _) | ExpMkVector([], _) => true
+            | _ => false
+            }
+        if !delta_is_one && !rhs_is_empty {
+            throw compile_err(eloc,
+                "a strided vector slice (step != 1) can only be deleted by assigning '[]'; \
+                 replacing strided elements with a non-empty vector is not supported")
+        }
+        val (arr_a, code) = exp2atom(arr, code, false, sc)
+        val (dom, code) = exp2dom(idx, code, sc)
+        val (a_at, b_at, d_at) = match dom {
+            | DomainRange(a, b, d) => (a, b, d)
+            | _ => throw compile_err(eloc, "k-norm: vector slice-assign index is not a range")
+            }
+        val (rhs_a, code) =
+            if rhs_is_empty { (AtomLit(KLitNil(vec_ktyp)), code) }
+            else { exp2atom(e2, code, false, sc) }
+        (KExpIntrin(IntrinVecSplice, [:: arr_a, a_at, b_at, d_at, rhs_a],
+                    (KTypVoid, eloc)), code)
     | ExpAssign(e1, e2, _) =>
         val (a2, code) = exp2atom(e2, code, false, sc)
         val (a_id, code) = exp2id(e1, code, true, sc, "a literal cannot be assigned")

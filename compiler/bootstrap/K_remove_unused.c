@@ -5343,6 +5343,9 @@ static int _fx_M15K_remove_unusedFM10pure_kexp_v2N14K_form__kexp_tR22K_form__k_f
       else if (tag_1 == 17) {
          res_1 = true;
       }
+      else if (tag_1 == 18) {
+         res_1 = true;
+      }
       else {
          res_1 = false;
       }

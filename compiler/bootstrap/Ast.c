@@ -7023,7 +7023,7 @@ FX_EXTERN_C void _fx_M3AstFM10IntrinMathN13Ast__intrin_t1RM4id_t(
    struct _fx_R9Ast__id_t* arg0,
    struct _fx_N13Ast__intrin_t* fx_result)
 {
-   fx_result->tag = 18;
+   fx_result->tag = 19;
    fx_result->u.IntrinMath = *arg0;
 }
 
@@ -7031,7 +7031,7 @@ FX_EXTERN_C void _fx_M3AstFM14IntrinSaturateN13Ast__intrin_t1N12Ast__sctyp_t(
    struct _fx_N12Ast__sctyp_t* arg0,
    struct _fx_N13Ast__intrin_t* fx_result)
 {
-   fx_result->tag = 19;
+   fx_result->tag = 20;
    fx_result->u.IntrinSaturate = *arg0;
 }
 
@@ -11968,7 +11968,7 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t
    else if (tag_0 == 13) {
       fx_str_t slit_12 = FX_MAKE_STR("__intrin_gemm__"); fx_copy_str(&slit_12, fx_result);
    }
-   else if (tag_0 == 18) {
+   else if (tag_0 == 19) {
       fx_str_t v_0 = {0};
       _fx_R9Ast__id_t* f_0 = &iop_0->u.IntrinMath;
       bool t_0;
@@ -11996,7 +11996,7 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t
    _fx_catch_0: ;
       FX_FREE_STR(&v_0);
    }
-   else if (tag_0 == 19) {
+   else if (tag_0 == 20) {
       fx_str_t v_2 = {0};
       int tag_1 = iop_0->u.IntrinSaturate.tag;
       if (tag_1 == 2) {
@@ -12036,6 +12036,9 @@ FX_EXTERN_C int _fx_M3AstFM6stringS1N13Ast__intrin_t(struct _fx_N13Ast__intrin_t
    }
    else if (tag_0 == 17) {
       fx_str_t slit_25 = FX_MAKE_STR("__intrin_pop__"); fx_copy_str(&slit_25, fx_result);
+   }
+   else if (tag_0 == 18) {
+      fx_str_t slit_26 = FX_MAKE_STR("__intrin_splice__"); fx_copy_str(&slit_26, fx_result);
    }
    else {
       FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);

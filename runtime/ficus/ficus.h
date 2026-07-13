@@ -1095,6 +1095,7 @@ typedef struct fx_vechdr_t
 #define FX_VEC_ELEM_WRAP(typ, vec, idx) (*FX_VEC_PTR_WRAP(typ, vec, idx))
 
 int fx_vec_pop_back(fx_vec_t vec);
+int fx_vec_splice(fx_vec_t vec, int_ start, int_ end, int_ delta, int mask, fx_vec_t rhs);
 
 // push_back / pop_back fast paths, emitted by the __intrin_push__/__intrin_pop__
 // intrinsics (see lib/Vector.fx). The _FAST variants are used for POD element

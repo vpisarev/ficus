@@ -106,6 +106,70 @@ TEST("fcvector.pushpop_edge", fun()
     EXPECT_EQ(`g[0]`, 0)
 })
 
+TEST("fcvector.splice", fun()
+{
+    // contiguous replace, grow (2 elems -> 3)
+    val v = vector([0,1,2,3,4,5,6,7,8,9])
+    v[3:5] = vector([100,200,300])
+    EXPECT_EQ(`array(v)`, [0,1,2,100,200,300,5,6,7,8,9])
+
+    // contiguous replace, shrink (6 elems -> 1)
+    val w = vector([0,1,2,3,4,5,6,7,8,9])
+    w[2:8] = vector([99])
+    EXPECT_EQ(`array(w)`, [0,1,99,8,9])
+
+    // contiguous replace, same size (in place)
+    val u = vector([0,1,2,3,4])
+    u[1:4] = vector([10,20,30])
+    EXPECT_EQ(`array(u)`, [0,10,20,30,4])
+
+    // range delete (rhs [])
+    val e = vector([0,1,2,3,4,5,6,7,8,9])
+    e[3:6] = []
+    EXPECT_EQ(`array(e)`, [0,1,2,6,7,8,9])
+
+    // strided delete (even indices)
+    val d = vector([0,1,2,3,4,5,6,7,8,9])
+    d[::2] = []
+    EXPECT_EQ(`array(d)`, [1,3,5,7,9])
+
+    // strided delete with explicit bounds
+    val d2 = vector([0,1,2,3,4,5,6,7,8,9])
+    d2[1:8:3] = []                      // remove indices 1,4,7
+    EXPECT_EQ(`array(d2)`, [0,2,3,5,6,8,9])
+
+    // clear via the full slice
+    val c = vector([1,2,3,4,5])
+    c[:] = []
+    EXPECT_EQ(`size(c)`, 0)
+    c.push_back(42)                     // still an allocated (pushable) vector
+    EXPECT_EQ(`array(c)`, [42])
+
+    // insert into an empty vector via [0:0]
+    val f: int vector = []
+    f[0:0] = vector([7,8,9])
+    EXPECT_EQ(`array(f)`, [7,8,9])
+
+    // prepend / append via zero-width ranges
+    val g = vector([3,4])
+    g[0:0] = vector([1,2])
+    g[4:4] = vector([5,6])
+    EXPECT_EQ(`array(g)`, [1,2,3,4,5,6])
+
+    // complex (string) elements: replace shrink frees the removed strings (ASan)
+    val s = vector(["a","b","c","d","e"])
+    s[1:4] = vector(["X"])
+    EXPECT_EQ(`array(s)`, ["a","X","e"])
+    // string strided delete
+    val s2 = vector(["a","b","c","d","e","f"])
+    s2[::2] = []
+    EXPECT_EQ(`array(s2)`, ["b","d","f"])
+
+    // out-of-range slice throws
+    val r = vector([1,2,3])
+    EXPECT_THROWS(fun() { r[2:9] = vector([0]) }, OutOfRangeError)
+})
+
 TEST("fcvector.slice", fun()
 {
     val v: int vector = []

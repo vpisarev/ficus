@@ -2043,6 +2043,30 @@ fun gen_ccode(cmods: cmodule_t list, kmod: kmodule_t, c_fdecls: ccode_t, mod_ini
                             else {get_id("FX_VEC_POP_BACK_FAST")}
                 val pop = make_call(macro, [:: vec_exp, lbl], CTypVoid, kloc)
                 (false, dummy_exp, CExp(pop) :: ccode)
+            | (IntrinVecSplice, [:: vec, a, b, delta, rhs]) =>
+                // vec[a:b:delta] = rhs (rhs NULL/empty => deletion). The mask
+                // (missing-bound bits) is computed exactly as for a slice read.
+                val (vec_exp, ccode) = atom2cexp(vec, ccode, kloc)
+                val (mask, (a_exp, ccode)) =
+                    match a {
+                    | AtomLit(KLitNil _) => (1, (make_int_exp(0, kloc), ccode))
+                    | _ => (0, atom2cexp(a, ccode, kloc))
+                    }
+                val (mask, (b_exp, ccode)) =
+                    match b {
+                    | AtomLit(KLitNil _) => (2 + mask, (make_int_exp(0, kloc), ccode))
+                    | _ => (mask, atom2cexp(b, ccode, kloc))
+                    }
+                val (delta_exp, ccode) =
+                    match delta {
+                    | AtomLit(KLitNil _) => (make_int_exp(1, kloc), ccode)
+                    | _ => atom2cexp(delta, ccode, kloc)
+                    }
+                val (rhs_exp, ccode) = atom2cexp(rhs, ccode, kloc)
+                val call_splice = make_call(get_id("fx_vec_splice"),
+                    [:: vec_exp, a_exp, b_exp, delta_exp, make_int_exp(mask, kloc), rhs_exp],
+                    CTypCInt, kloc)
+                (false, dummy_exp, add_fx_call(call_splice, ccode, kloc))
             | _ => throw compile_err(kloc,
                 f"cgen: unsupported KExpIntrin({intr}, ...) or the wrong number of arguments ({args.length()})")
             }

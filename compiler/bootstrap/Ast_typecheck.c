@@ -23226,7 +23226,7 @@ FX_EXTERN_C int
       if (tag_0 == 10) {
          _fx_T3N13Ast__intrin_tLN10Ast__exp_tT2N10Ast__typ_tR10Ast__loc_t* vcase_13 = &e_2->u.ExpIntrin;
          _fx_N13Ast__intrin_t* v_158 = &vcase_13->t0;
-         if (v_158->tag == 18) {
+         if (v_158->tag == 19) {
             _fx_LN10Ast__typ_t argtyps_0 = 0;
             _fx_LN10Ast__exp_t args_0 = 0;
             fx_str_t fstr_0 = {0};

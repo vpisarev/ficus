@@ -1,0 +1,3 @@
+507_vec_strided_replace.fx:3:8: error: a strided vector slice (step != 1) can only be deleted by assigning '[]'; replacing strided elements with a non-empty vector is not supported
+ 3 | v[::2] = vector([9, 9, 9])
+   |        ^
