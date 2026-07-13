@@ -108,15 +108,11 @@ fun append(v: 't vector, src: 't vector): void
 // real allocated empty vector.
 fun concat(vs: ('t vector) []): 't vector {
     val total = fold s = 0 for v <- vs { s += v.size() }
-    val r: 't vector = vector(capacity=total)
-    for v <- vs { r.append(v) }
-    r
+    fold r: 't vector = vector(capacity=total) for v <- vs { r.append(v) }
 }
 fun concat(vs: ('t vector) vector): 't vector {
     val total = fold s = 0 for v <- vs { s += v.size() }
-    val r: 't vector = vector(capacity=total)
-    for v <- vs { r.append(v) }
-    r
+    fold r: 't vector = vector(capacity=total) for v <- vs { r.append(v) }
 }
 
 // NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their

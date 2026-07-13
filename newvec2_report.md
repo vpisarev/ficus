@@ -87,7 +87,12 @@ The three argument kinds (`'t` / `'t []` / `'t vector`) never overlap for a
 resolved call, so the family is unambiguous — even for vectors-of-vectors, where
 appending one `'x vector` element vs concatenating an `('x vector) vector` pick
 different overloads. `Vector.concat` (`('t vector) []` and `('t vector) vector`)
-builds the result via `vector(capacity=total)` and bulk `append`s.
+is two folds — one sums the total size, one fills a capacity-reserved result:
+
+    fun concat(vs: ('t vector) []): 't vector {
+        val total = fold s = 0 for v <- vs { s += v.size() }
+        fold r: 't vector = vector(capacity=total) for v <- vs { r.append(v) }
+    }
 
 The runtime `fx_vec_concat` was dropped: it derived element metadata from its
 inputs, which is unavailable when every input is empty. Concatenation now lives
@@ -137,12 +142,20 @@ array/vector/string/rrbvec at both `-O0` and `-O3`. Fix direction noted in
 `docs/found_bugs.md` (mark a bounds-checked `BorderNone` `KExpAt` impure; border
 reads stay pure). Surfaced while simplifying `back` to `v[.-1]`.
 
+### fold-1: "accumulator never assigned" warning removed
+
+The 2-fold `concat` needs a `fold r = vector(capacity=total) for v { r.append(v)
+}` whose accumulator is a reference-mutable vector updated *in place*, never
+reassigned. The old fold-1 "accumulator never assigned" warning false-positived
+on this (no syntactic scan can tell in-place mutation from a genuine no-op), so
+the warning was **removed**: the fold body is void, so the mistake it targeted —
+an old-style body that yields a value (`fold s=0 for x {s+x}`) — is already a
+type error. `test/negative/708` (warning-only) is deleted; `709` keeps the
+old-style body but its golden is now the void-body type error. The accumulator's
+`: 't vector` annotation is still required (an unpinned `r` makes `r.append(v)`
+ambiguous between the element and vector `append` overloads).
+
 ## Notes for a future pass
 
-- The 2-fold `concat` (`fold r = vector(capacity=total) for v { r.append(v) }`)
-  was tried and dropped: an in-place `append` accumulator triggers the fold-1
-  "accumulator never assigned" warning, and an unpinned `r` makes `r.append(v)`
-  ambiguous between the element and vector overloads. Both could be candidates
-  for future fold-1 / resolver refinement.
 - `fx_vec_compose` for heterogeneous vector construction (`[\a, \b, 3.14, \c]`)
   remains to be implemented; `fx_vec_concat` was removed in anticipation of it.

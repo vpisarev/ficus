@@ -266,39 +266,12 @@ fun transform_new_fold_exp(fold_pat: pat_t, fold_init_exp: exp_t,
                            for_exp: exp_t, fold_loc: loc_t): exp_t
 {
     val acc_loc = get_pat_loc(fold_pat)
-    val acc_ids = fold_acc_ids(fold_pat)
-
-    // Scan the body for updates to each accumulator, so we can warn about an
-    // accumulator that is never assigned (a likely mistake — the fold does
-    // nothing). `acc = _` is the deliberate no-op suppression: it counts as a
-    // mention and lowers to nothing. One walk_exp pass both records the
-    // assigned/suppressed accumulators and strips the `acc = _` markers.
-    var assigned: id_t list = [], suppressed: id_t list = []
-    fun scan_cb(e: exp_t, callb: ast_callb_t): exp_t =
-        match e {
-        | ExpAssign(ExpIdent(id, _), ExpIdent(rid, _), aloc)
-            when acc_ids.mem(id) && rid == dummyid =>
-            // `acc = _`: deliberate no-op suppression -> lowers to nothing.
-            if !suppressed.mem(id) { suppressed = id :: suppressed }
-            ExpNop(aloc)
-        | ExpAssign((ExpIdent(id, _) as lhs), rhs, aloc) when acc_ids.mem(id) =>
-            if !assigned.mem(id) { assigned = id :: assigned }
-            ExpAssign(lhs, check_n_walk_exp(rhs, callb), aloc)
-        | ExpBinary((OpAugBinary _) as bop, (ExpIdent(id, _) as lhs), rhs, ctx)
-            when acc_ids.mem(id) =>
-            if !assigned.mem(id) { assigned = id :: assigned }
-            ExpBinary(bop, lhs, check_n_walk_exp(rhs, callb), ctx)
-        | _ => walk_exp(e, callb)
-        }
-    val callb = ast_callb_t {ast_cb_typ=None, ast_cb_exp=Some(scan_cb), ast_cb_pat=None}
-    val for_exp = check_n_walk_exp(for_exp, callb)
-    for id <- acc_ids {
-        if !assigned.mem(id) && !suppressed.mem(id) {
-            compile_warning(acc_loc, f"'fold' accumulator '{pp(id)}' is never assigned \
-in the body, so the fold has no effect. The body must UPDATE the accumulator \
-(e.g. '{pp(id)} = <expr>' or '{pp(id)} += ...'); write '{pp(id)} = _' to silence")
-        }
-    }
+    // No "accumulator never assigned" check: the fold body is now void, so the
+    // old-style body that yields a value instead of updating the accumulator
+    // (`fold s=0 for x <- a {s + x}`) is already a type error. The imperative
+    // accumulator may also be a reference-mutable type updated *in place*
+    // (`fold r=vector() for v <- vs {r.append(v)}`), which no syntactic
+    // "assigned?" scan can recognize — so no warning is emitted.
 
     // Emit SEPARATE `var a = e0, b = e1, …` rather than a destructuring
     // `var (a,…) = (e0,…)`: the destructuring form leaves an unused local

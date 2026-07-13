@@ -102,9 +102,12 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
   Lists: `[:: 1, 2, 3]`, cons `::`, list-comp `[:: for x <- l {..}]`.
 - **fold (fold-1 reform)** is now imperative: `fold acc=init for x <- a {acc +=
   x}` desugars to `{ var acc=init; for x <- a {..}; acc }`. The accumulator is a
-  real mutable **var**, ASSIGNED in the body (`acc = f(acc,x)` / `acc += x`), not
-  yielded as the tail value (that was the OLD form — it now warns "accumulator
-  never assigned"). Multiple accumulators: `fold a=0, b=1 for ..` (each its own
+  real mutable **var**, updated in the body — either ASSIGNED (`acc = f(acc,x)` /
+  `acc += x`) or, for a reference-mutable accumulator, mutated in place
+  (`fold r=vector() for v <- vs {r.append(v)}`). Yielding the accumulator as the
+  tail value (the OLD form, `fold s=0 for x {s+x}`) is now a **type error** (the
+  void body has nowhere to put the value) — there is no separate "never assigned"
+  warning. Multiple accumulators: `fold a=0, b=1 for ..` (each its own
   var; a tuple pattern also works). `break`/`continue`/`return` are legal in the
   body (it is a plain `for`). Simultaneous tuple assignment `(a,b)=(b,a+b)` is a
   language feature (parse-time desugar via a temp; the Fibonacci/swap idiom).
