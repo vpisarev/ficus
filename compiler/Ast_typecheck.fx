@@ -1376,9 +1376,27 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): 
                     throw compile_err(loc, f"ambiguous call of overloaded '{pp(n)}': \
                         {why}. Candidates:\n    {cand_lines}\n{hint}")
                 } else {
-                    // under-constrained tie: keep today's env-order first-match
-                    // semantics until deferral lands (session 2)
-                    val (i, df) = viable.hd()
+                    // under-constrained tie: env-order first-match (a documented
+                    // stopgap until deferral lands, session 2) -- BUT prefer a
+                    // concrete (non-template) candidate over a template one.
+                    // This is a fully under-determined call (all arg types free);
+                    // whichever candidate we commit is a speculative choice that
+                    // is redone per real use with concrete args. Committing a
+                    // TEMPLATE here instantiates it with the still-free args, and
+                    // for a self-recursive generic operator -- a container `<=>`
+                    // whose body compares its still-free elements -- that
+                    // instantiation re-issues the same free compare and picks the
+                    // template again, self-instantiating without bound (FB-025
+                    // StackOverflow, formerly the "failed to re-unify at commit"
+                    // internal error). A concrete candidate fixes the arg types
+                    // in this speculative check and cannot self-instantiate, so
+                    // the placement of a generic container operator (Vector.fx vs
+                    // Builtins.fx) no longer decides whether the compiler builds.
+                    val concrete_opt = find_opt(for idf <- viable { idf.1->df_templ_args == [] })
+                    val (i, df) = match concrete_opt {
+                        | Some(idf) => idf
+                        | _ => viable.hd()
+                        }
                     commit_fun(i, df)
                 }
             }

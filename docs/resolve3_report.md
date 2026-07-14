@@ -106,10 +106,157 @@ now recovers, not just the fold desugar.
 
 ---
 
-## Phases A / B — FB-024 / FB-025 resolver pollution  [NOT STARTED]
+## Phase A — FB-024: not reproducible; acceptance already met  [PARKED]
 
-The order/context-dependent generic-return pollution (FB-024) and the
-commit-time re-unify internal error (FB-025) are untouched in this section. They
-need the Phase-A exploration/repro work (rebuild FB-024's repro without the
-removed `Vec.mapi`; reproduce FB-025's internal error) before any fix. Deferred
-pending a check-in with Vadim.
+Faithful reconstruction of the documented repro (map/mapi/foldl restored into the
+real `lib/Vector.fx`; the exact `import Vector` + `last.mapi(...)` two-function
+program) compiles **clean in BOTH orders** on current master. To rule out an
+intervening resolver fix, I built the compiler at the **newvec-1 merge commit
+`8d423f7`** (where FB-024 was filed) in a throwaway worktree and ran the same
+repro there — **also clean in both orders**. Since `Ast_typecheck.fx` (the
+resolver) is unchanged between that merge and now except newvec-2's +27 lines of
+intrinsic push/pop handling and this branch's Phase C, the order-dependent
+pollution is not reproducible even at its filing point — the recipe in
+`found_bugs.md` was likely captured against a mid-development WIP state, not the
+merge. The trigger functions (`map`/`mapi`/`foldl`) were themselves retired by
+newvec-2 in favour of comprehensions, so there is no live call site.
+
+The variant hunt surfaced only **order-INDEPENDENT** phenomena, none matching
+FB-024's signature: (a) UFCS `x.f(args)` resolves only for functions in the
+type's owning module (per tutorial §UFCS, `str.foo(a)` ⇒ `String.foo(str,a)`) —
+a same-file / non-owning-module generic or even a *non-generic* function is
+"not found" via `.`, while the prefix form resolves; likely by-design, not a bug.
+(b) a chained `curr.map(fun(y){y > 0.f})` with an element-type change fails
+regardless of order.
+
+**Decision (with Vadim): PARK FB-024.** Its acceptance criterion — "compiles in
+both orders without the result annotation" — is already satisfied on master, and
+the pollution is not reproducible. Pivoted to FB-025.
+
+## Phase B — FB-025: resolver self-recursion on an under-constrained tie  [FIXED]
+
+### Reproduction
+
+Moved the vector `==`/`<=>` from `Builtins.fx` back to their natural home
+`Vector.fx` (the FB-025 acceptance test) and rebuilt. On the current tree the
+symptom is no longer the documented "failed to re-unify at commit" internal
+error — it is a **`StackOverflowError`** during the self-build (compiling the
+compiler with `Vector` auto-imported). A *small*-context program using vector
+`<=>` still compiles clean, so it is context-dependent exactly as described.
+
+### Root cause (from `-pr-resolve`, definitive)
+
+Every generic comparison body — the container `<=>` bodies AND the generic
+`operator </>/<=/>=` in Builtins (`(a <=> b) < 0`) — issues `a <=> b` on a
+**free** element type `'t`. `__cmp__((<unknown>,<unknown>) -> ...)` then has **22
+viable candidates** and is a **fully under-constrained tie**. resolve-1's
+documented stopgap for such ties is **env-order first-match** (true deferral is
+the unimplemented "session 2"). The env scan lists the most-recently-imported
+scope first, so *which* candidate wins depends on module placement:
+
+| placement of vector `<=>` | env-order winner at `a <=> b` (free) | result |
+|---|---|---|
+| `Builtins.fx` (workaround) | `__cmp__(string,string)` — **concrete, `@ccode`** | commits, no body to recurse into → **terminates** |
+| `Vector.fx` (natural home) | `__cmp__('t vector,'t vector)` — **generic template** | commits → `instantiate_fun` type-checks its body → `xa <=> xb` (free) → picks the vector `<=>` **again** → instantiate → … → **StackOverflow** |
+
+The cycle is **self-candidacy**: the generic container operator is itself a
+viable candidate for its own body's free-element compare, and the under-constrained
+fallback commits it, whose instantiation re-enters the identical resolution. The
+instance cache can't cut it — each re-entry is a *fresh* free var, never a cache
+hit. Committing a *concrete* candidate (string) terminates because there is no
+template body to instantiate; committing the *template* self-recurses. Whether the
+fallback lands on concrete vs template is essentially arbitrary (import order) —
+that arbitrariness is the latent bug the Builtins placement was tuned around.
+
+This confirms the brief's FB-025 hypothesis (self-candidacy + the under-constrained
+fallback) and localizes it to `lookup_id_opt`'s `rank_and_commit` under-constrained
+branch (`Ast_typecheck.fx:1378-1383`) feeding `commit_fun`'s template
+instantiation (`:1307-1325`). The pre-resolve-1 codepath surfaced the same cycle
+earlier, as the "failed to re-unify at commit" throw (`:1287`); resolve-1 turned it
+into unbounded instantiation.
+
+### Why the instance cache doesn't cut the recursion (instrumented)
+
+Instrumenting `commit_fun`'s template-instance scan (`:1308`) over the overflow
+build shows the request is always `((<unknown> vector, <unknown> vector) -> int)`
+(a free element `'t`), **`hit=false` on every level**, and the instance count
+grows **without bound** (…42, 43, … 81, …). So the cache is structurally unable
+to dedup: committing the self-candidate `maybe_unify`s the request's free element
+against the vector signature (`'t := 's vector`), so each recursion level asks
+for a *fresh* free-var instance that never stably matches a prior one. The
+`df_templ_inst` registration (`:4173`, before the body check) is real but useless
+here.
+
+### The precise trigger chain
+
+1. Template-check of `operator < (a: 't, b: 't) = (a <=> b) < 0` (or any container
+   `<=>` body). `a`,`b` are the template's OWN free param `'t`.
+2. `a <=> b` → `__cmp__('t,'t)`, `'t` free → 22 viable → fully under-constrained tie.
+3. resolve-1's stopgap commits the env-order-first candidate. Auto-imported
+   `Vector`'s `<=>` is env-first → a **generic template container op**.
+4. `commit_fun` instantiates it for `('t,'t)->int` → `maybe_unify` binds
+   `'t := 's vector` → instantiates the vector `<=>` body → `xs <=> xs` (`'s` free)
+   → back to step 2 → unbounded. Terminates only in the Builtins layout because
+   there the env-first candidate is a *concrete* `__cmp__(string,string)` (`@ccode`,
+   no body to instantiate).
+
+### The fix (implemented)
+
+Explored empirically first. A `commit_fun` guard that refused ANY under-constrained
+template instantiation was too broad — it broke legitimate higher-order generics
+(`map`/`foldl` instantiated with a still-free return `'r` that the closure body
+then pins; a normal, convergent case). The distinguishing property is not "free
+vars in the request" but **divergent self-recursion**: `map` with free `'r`
+converges (the body binds `'r`); the container `<=>` with a free element re-issues
+the identical free compare and never binds it.
+
+The minimal, sound fix targets the exact fork the working (Builtins) layout hit by
+luck: **in the under-constrained-tie fallback (`rank_and_commit`, the
+`!fully_determined` branch), prefer a CONCRETE (non-template) candidate over a
+template one.**
+
+```
+val concrete_opt = find_opt(for idf <- viable { idf.1->df_templ_args == [] })
+val (i, df) = match concrete_opt { | Some(idf) => idf | _ => viable.hd() }
+commit_fun(i, df)
+```
+
+A fully under-determined call (all arg types free) is a **speculative** resolution
+— redone per real use with concrete args — so committing any candidate that
+type-checks is fine. A concrete candidate fixes the arg types in the speculative
+check and cannot self-instantiate; a template re-issues the free compare and
+spawns instances without bound. This makes the working-vs-overflow behaviour
+independent of where a generic container operator is declared. The real per-use
+resolution (concrete args) never enters this branch, so runtime semantics are
+untouched.
+
+### Validation
+
+- The FB-025 acceptance: with `==`/`<=>` for `vector` moved to `Vector.fx`, the
+  compiler self-build type-checks cleanly (`exit 0`) where it previously
+  StackOverflowed.
+- `-pr-resolve` census over `compiler/fx.fx`, before vs after: **identical after
+  line-number normalization** — the fix is dormant in the shipping layout (the
+  under-constrained ties there already had a concrete env-order winner). It fires
+  only on the pathological template-first tie.
+- Bootstrap fixpoint holds; **only `Ast_typecheck.c` regenerates** (no codegen
+  change to any other module — confirms no committed-candidate change reaches
+  generated code in the shipping config).
+- Full `fxtest.py all` + `determinism` + `sanitize` green.
+
+Considered and rejected as the sole fix: aggressive `inst_merge_env` (the
+self-candidate lives in the template's base `df_env`; merging more caller entries
+can't remove it) and a `commit_fun` free-var refusal (breaks convergent
+higher-order generics like `map`/`foldl`).
+
+### Workaround removed (acceptance)
+
+`==`/`<=>`/`string`/`print` for `vector` moved from `Builtins.fx` back to their
+natural home `Vector.fx`. Churn is minimal: the compiler itself never
+compares/prints vectors, so the bootstrap stays at a clean fixpoint (`nothing to
+do`) — only the two lib files and the fix move. The compiler self-build
+auto-imports `Vector`, so it now type-checks these generic container operators in
+the large-overload context on every build and **doubles as the FB-025 regression
+guard** (a reappearance of the resolver self-recursion re-breaks the build). Full
+ladder + determinism + sanitize green with the operators in their new home;
+`vector == / <=> / string / print` verified behaviourally.

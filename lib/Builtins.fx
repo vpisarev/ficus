@@ -369,7 +369,6 @@ fun string(l: 't list): string = join_embrace("[", "]", ", ", [for x <- l {repr(
 }
 
 fun string(v: 't rrbvec): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
-fun string(v: 't vector): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 @pure fun string(v: char rrbvec): string
 @ccode {
@@ -573,21 +572,6 @@ operator <=> (a: 't rrbvec, b: 't rrbvec): int
         if d != 0 {break}
     }
     if d != 0 {d} else {na <=> nb}
-}
-
-// first-class mutable vector compare (kept here, not in Vector.fx, to resolve the
-// generic element compare in a small-overload context — see FB-025)
-operator == (a: 't vector, b: 't vector): bool =
-    size(a) == size(b) && all(for xa <- a, xb <- b {xa == xb})
-
-operator <=> (a: 't vector, b: 't vector): int
-{
-    var d = 0
-    for xa <- a, xb <- b {
-        d = xa <=> xb
-        if d != 0 {break}
-    }
-    if d != 0 {d} else {size(a) <=> size(b)}
 }
 
 operator == (a: 't [+], b: 't [+]): bool =
@@ -1142,16 +1126,6 @@ fun print(l: 't list): void
 }
 
 fun print(v: 't rrbvec): void
-{
-    print("[")
-    for x@i <- v {
-        if i > 0 {print(", ")}
-        print_repr(x)
-    }
-    print("]")
-}
-
-fun print(v: 't vector): void
 {
     print("[")
     for x@i <- v {

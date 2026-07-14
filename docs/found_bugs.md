@@ -317,23 +317,37 @@ t1(); t2()   // ERROR at t2: "if() expression should have the same type as its
   before the polluted var is consulted. Not fixed (out of scope for newvec-1;
   `map`/`mapi`/`foldl` are themselves temporary until vector comprehensions).
 
-## FB-025  resolver internal error: generic container operator in a large overload context  [OPEN — fenced]
+## FB-025  resolver self-recursion: generic container operator in a large overload context  [FIXED — resolve-3]
 Compiling a generic container operator whose body compares/formats elements
-generically — `operator <=> (a: 't vector, b: 't vector): int { ... a[i] <=> b[i] ... }`
-— throws an internal error **"the winning overload of '__cmp__' failed to
-re-unify at commit"** when it is type-checked in a scope that already has many
-`<=>`/`__cmp__` overloads (a second generic container `<=>` — rrbvec's — plus the
-compiler's own per-type ones, as happens when `Vector` is auto-imported into the
-whole compiler). The element access `a[i]` has a *free* element type `'t`, so the
-resolver treats every container `<=>` (incl. the one being defined) as a
-candidate and fails to commit a unique winner.
-- **Order/context-dependent**, like FB-024: the same operator compiles fine when
-  `Vector.fx` is imported by a small program (few `<=>` in scope).
-- **Workaround (used for newvec-1 auto-import)**: define `==`/`<=>`/`string`/
-  `print` for `vector` in `Builtins.fx` (next to the rrbvec ones) instead of in
-  the auto-imported `Vector.fx`. Builtins is compiled first, with few overloads
-  in scope, so the generic element compare resolves. Not fixed (resolver work is
-  out of scope for newvec-1).
+generically — `operator <=> (a: 't vector, b: 't vector): int { ... xa <=> xb ... }`
+— diverges when it is type-checked in a scope that already has many
+`<=>`/`__cmp__` overloads (rrbvec's container `<=>` plus the compiler's own
+per-type ones, as when `Vector` is auto-imported into the whole compiler). On the
+current tree the symptom is a **`StackOverflowError`** during the self-build
+(resolve-1 turned the older **"the winning overload of '__cmp__' failed to
+re-unify at commit"** internal error into unbounded instantiation).
+- **Root cause** (resolve-3, `-pr-resolve` + instrumented): the element compare
+  `xa <=> xb` has a *free* element type `'t`, so `__cmp__('t,'t)` is a fully
+  **under-constrained tie** (22 viable). resolve-1's stopgap for such ties is
+  env-order first-match. When the env-first candidate is a generic **template**
+  container op (as the auto-imported `Vector.<=>` is), `commit_fun` instantiates
+  it for `('t,'t)->int`, binding `'t := 's vector`, then type-checks its body,
+  which re-issues the same free compare, picks the template again, and
+  instantiates without bound (the instance cache can't dedup — each level is a
+  fresh free var). It terminated in the Builtins layout only because there the
+  env-first candidate was a *concrete* `__cmp__(string,string)` (`@ccode`, no body
+  to instantiate) — luck of declaration/import order.
+- **Fix** (`Ast_typecheck.fx`, `lookup_id_opt`/`rank_and_commit`): in the
+  under-constrained-tie fallback, **prefer a concrete (non-template) candidate over
+  a template**. A fully under-determined call is a speculative resolution (redone
+  per real use with concrete args), so any type-checking candidate is fine; a
+  concrete one fixes the arg types and cannot self-instantiate. Dormant in normal
+  code (`-pr-resolve` census byte-identical; bootstrap fixpoint touches only
+  `Ast_typecheck.c`); fires only on the pathological tie.
+- **Workaround removed**: `==`/`<=>`/`string`/`print` for `vector` moved from
+  `Builtins.fx` back to their natural home `Vector.fx`. The compiler self-build
+  (which auto-imports `Vector`) now type-checks them cleanly and doubles as the
+  FB-025 regression guard. See `docs/resolve3_report.md`.
 
 ## FB-026  cannot bind a variable in an or-pattern  [OPEN — limitation]
 An or-pattern that binds the same variable in each alternative is rejected:

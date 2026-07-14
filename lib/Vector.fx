@@ -115,9 +115,36 @@ fun concat(vs: ('t vector) vector): 't vector {
     fold r: 't vector = vector(capacity=total) for v <- vs { r.append(v) }
 }
 
-// NB: ==, <=>, string, print for `vector` live in Builtins.fx next to their
-// rrbvec counterparts. They compare/format elements generically (a[i] <=> b[i],
-// string(v[i])), and compiling that in a context with many <=> / string
-// overloads (as when Vector is auto-imported into the whole compiler) trips a
-// resolver internal error (FB-025); Builtins is compiled early, with few
-// overloads in scope, so it resolves cleanly there.
+// ------------------------- compare / string / print -------------------------
+
+// ==, <=>, string and print for `vector` compare/format elements generically
+// (xa <=> xb, repr(x)). These used to live in Builtins.fx next to their rrbvec
+// counterparts to dodge FB-025 -- a resolver self-recursion that fired when a
+// generic container operator was type-checked with many <=> / string overloads
+// in scope (as when Vector is auto-imported into the whole compiler). FB-025 is
+// fixed (resolve-3: the under-constrained-tie fallback prefers a concrete
+// candidate over a template), so they now live with their type.
+operator == (a: 't vector, b: 't vector): bool =
+    size(a) == size(b) && all(for xa <- a, xb <- b {xa == xb})
+
+operator <=> (a: 't vector, b: 't vector): int
+{
+    var d = 0
+    for xa <- a, xb <- b {
+        d = xa <=> xb
+        if d != 0 {break}
+    }
+    if d != 0 {d} else {size(a) <=> size(b)}
+}
+
+fun string(v: 't vector): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+
+fun print(v: 't vector): void
+{
+    print("[")
+    for x@i <- v {
+        if i > 0 {print(", ")}
+        print_repr(x)
+    }
+    print("]")
+}
