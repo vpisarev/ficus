@@ -3785,8 +3785,8 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
             }
     val df_sc = ScFun(df_name1) :: sc
     val class_id = df_flags.fun_flag_method_of
-    val df_args =
-        if class_id == noid { df_args }
+    val (df_args, class_param_ids) =
+        if class_id == noid { (df_args, ([]: id_t list)) }
         else {
             val classtyp_opt = find_first(class_id, env, env, sc, df_loc,
                 fun (e: env_entry_t) {
@@ -3796,8 +3796,9 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
                     match info {
                     | IdVariant (ref {dvar_name, dvar_templ_args, dvar_flags, dvar_loc})
                         when dvar_flags.var_flag_class_from > 0 =>
-                        val templ_args = [:: for i <- dvar_templ_args {TypApp([], get_orig_id(i))}]
-                        Some(TypApp(templ_args, get_orig_id(dvar_name)))
+                        val param_ids = [:: for i <- dvar_templ_args {get_orig_id(i)}]
+                        val templ_args = [:: for i <- param_ids {TypApp([], i)}]
+                        Some((TypApp(templ_args, get_orig_id(dvar_name)), param_ids))
                     | IdVariant _ | IdInterface _ | IdTyp _ =>
                         val loc = get_idinfo_loc(info)
                         throw compile_err(df_loc, f"the type name specified before \
@@ -3811,7 +3812,7 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
                         instead, it references the temporary type '{typ2str(t)}'")
                 })
             match classtyp_opt {
-            | Some(t) => PatTyped(PatIdent(std__self__, df_loc), t, df_loc) :: df_args
+            | Some((t, pids)) => (PatTyped(PatIdent(std__self__, df_loc), t, df_loc) :: df_args, pids)
             | _ => throw compile_err(df_loc,
                     f"no proper class '{pp(class_id)}' was found for the method")
             }
@@ -3819,11 +3820,15 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
 
     // generics-1: bind any DECLARED type params (new `fun f[T,...](...)` form) so
     // bare `T` references in the signature and body resolve, and seed them into
-    // the collected set. The '-prefix scan in check_pat below still handles the
-    // old `'t` form; a function uses one form or the other, and the two unite in
-    // df_templ_args.
-    val seed_env = fold e = env for targ <- df_templ_args { e = add_typ_to_env(targ, TypApp([], targ), e) }
-    val seed_targs = fold s = empty_idset for targ <- df_templ_args { s = s.add(targ) }
+    // the collected set. For a METHOD of a generic class, also bind the class's
+    // own type params: in the old notation they were harvested from the `self`
+    // type ('k,'d) by the '-prefix scan, but the new uppercase params (self:
+    // t[K,D]) are not '-prefixed, so bind them explicitly (idempotent for the
+    // old form, which the scan still covers). A function uses one form or the
+    // other, and all sources unite in df_templ_args.
+    val seed_ids = df_templ_args + class_param_ids
+    val seed_env = fold e = env for targ <- seed_ids { e = add_typ_to_env(targ, TypApp([], targ), e) }
+    val seed_targs = fold s = empty_idset for targ <- seed_ids { s = s.add(targ) }
     var args1: pat_t list = [], argtyps1: typ_t list = [], temp_env_acc = seed_env, idset1_acc = empty_idset, templ_args1_acc = seed_targs, all_typed = true
     for arg <- df_args {
         val t = make_new_typ()

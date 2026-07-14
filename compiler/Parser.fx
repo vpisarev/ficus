@@ -24,6 +24,47 @@ type parser_ctx_t =
 
 var parser_ctx = parser_ctx_t { m_idx=-1, filename="", deps=[], inc_dirs=[], default_loc=noloc }
 
+// generics-1 MIGRATION SCAFFOLDING (removed at the flip). While parsing under
+// -pr-generics-sites, the parser records source-span edits that the migrator
+// (tools/generics_migrate.py) applies textually to rewrite 't-notation into the
+// new bracketed uppercase notation. Kinds:
+//   ANNO      replace a type-annotation span with new-notation text
+//   FUNPARAMS insert a declared `[T,...]` list at a zero-width point (fn name end)
+//   TYPEHEAD  replace `('k,'d) name` (prefix params + name) with `name[K,D]`
+type gsite_t = { gs_loc: loc_t; gs_kind: string; gs_text: string }
+var generics_sites: gsite_t list = []
+
+fun record_gsite(loc: loc_t, kind: string, text: string): void {
+    generics_sites = gsite_t {gs_loc=loc, gs_kind=kind, gs_text=text} :: generics_sites
+}
+
+// span covering all tokens consumed between `before` and `after`
+fun consumed_span(before: tklist_t, after: tklist_t): loc_t =
+    match before {
+    | (_, l0) :: _ => loclist2loc([:: l0, consumed_loc(before, after)], l0)
+    | _ => consumed_loc(before, after)
+    }
+
+// record an ANNO edit for a parsed type annotation (only when the notation
+// actually changes, to avoid reformatting untouched concrete types)
+fun record_anno(before: tklist_t, after: tklist_t, t: typ_t): void {
+    if Options.opt.print_generics_sites && type_needs_migration(t) {
+        record_gsite(consumed_span(before, after), "ANNO", typ2str_new(t))
+    }
+}
+
+// emit the collected migration sites (source order), one tab-separated record
+// per line, for tools/generics_migrate.py to apply. Columns:
+//   GSITE <file> <line0> <col0> <line1> <col1> <kind> <newtext>
+fun dump_generics_sites(): void {
+    for gs <- generics_sites.rev() {
+        val loc = gs.gs_loc
+        val fname = if loc.m_idx >= 0 { all_modules[loc.m_idx].dm_filename } else { "?" }
+        val text = gs.gs_text.replace("\t", " ").replace("\n", " ")
+        println(f"GSITE\t{fname}\t{loc.line0}\t{loc.col0}\t{loc.line1}\t{loc.col1}\t{gs.gs_kind}\t{text}")
+    }
+}
+
 // "did you mean" for a not-found imported module: the candidate hypotheses are
 // the *.fx files visible on the include path (each file name is a module name).
 // A misspelled stdlib import ('Strig' -> 'String') is a common error. The
@@ -1465,10 +1506,12 @@ fun parse_typed_exp(ts: tklist_t): (tklist_t, exp_t) {
     match ts {
     | (COLON, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
+        record_anno(rest, ts, t)
         val loc = loclist2loc([:: get_exp_loc(e), consumed_loc(rest, ts)], get_exp_loc(e))
         (ts, ExpTyped(e, t, make_new_ctx(loc)))
     | (CAST, _) :: rest =>
         val (ts, t) = parse_typespec(rest)
+        record_anno(rest, ts, t)
         val loc = loclist2loc([:: get_exp_loc(e), consumed_loc(rest, ts)], get_exp_loc(e))
         (ts, ExpCast(e, t, (make_new_typ(), loc)))
     | _ => (ts, e)
@@ -1490,6 +1533,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
         | (TILDE, ploc) :: (IDENT(_, i), _) :: (COLON, _) :: rest =>
             if expect_comma { throw parse_err(ts, "',' is expected") }
             val (ts, t) = parse_typespec(rest)
+            record_anno(rest, ts, t)
             val (ts, defparam) = match ts {
                 | (EQUAL, _) :: rest =>
                     val (ts, v0) = parse_exp(rest, allow_mkrecord=true)
@@ -1507,7 +1551,10 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
         }
     val (ts, params, kw_params) = add_fun_param(ts, false, [], [])
     val (ts, rt) = match ts {
-        | (COLON, _) :: rest => parse_typespec(rest)
+        | (COLON, _) :: rest =>
+            val (ts, t) = parse_typespec(rest)
+            record_anno(rest, ts, t)
+            (ts, t)
         | _ => (ts, make_new_typ())
         }
     if kw_params == [] {
@@ -1561,6 +1608,21 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, templ_args: id_t list, pa
             | _ => make_new_typ()
             }
         }]
+    // generics-1: for an OLD-notation generic function (no declared [params],
+    // tyvars only in the signature), record a FUNPARAMS insertion of the
+    // synthesized `[T,...]` list at the end of the function name. Skip lambdas
+    // (anonymous) and already-declared (new-notation) functions.
+    if Options.opt.print_generics_sites && templ_args == [] &&
+       get_orig_id(fname) != std__lambda__ {
+        val sig_tyvars = {
+            val from_params = fold acc = ([]: string list) for t <- paramtyps { acc = collect_tyvars(t, acc) }
+            collect_tyvars(rt, from_params).rev()
+        }
+        if sig_tyvars != [] {
+            val pstr = ", ".join([:: for tv <- sig_tyvars { tyvar2new(tv) }])
+            record_gsite(loc.{line0=loc.line1, col0=loc.col1}, "FUNPARAMS", f"[{pstr}]")
+        }
+    }
     val df = ref (deffun_t { df_name=fname, df_templ_args=templ_args,
         df_args=params, df_typ=TypFun(paramtyps, rt), df_body=body,
         df_flags=fflags, df_scope=[], df_loc=loc,
@@ -1806,6 +1868,7 @@ fun parse_pat(ts: tklist_t, simple: bool): (tklist_t, pat_t)
                     }
                 | COLON =>
                     val (ts, t) = parse_typespec(rest)
+                    record_anno(rest, ts, t)
                     extend_pat_(ts, PatTyped(result, t, l), min_prec, simple)
                 | CONS =>
                     if simple {throw parse_err(ts, "'::'-patterns are not allowed here")}
@@ -2128,7 +2191,9 @@ fun parse_typespec_or_record(ts: tklist_t): (tklist_t, typ_t)
                 if expect_semicolon && !f {
                     throw parse_err(ts, "';' or newline should be inserted between record elements")
                 }
-                val (ts, t) = parse_typespec(ts)
+                val ts_b = ts
+                val (ts, t) = parse_typespec(ts_b)
+                record_anno(ts_b, ts, t)
                 val (ts, default_) = match ts {
                     | (EQUAL, _) :: rest =>
                         val (ts, v0) = parse_exp(rest, allow_mkrecord=true)
@@ -2159,6 +2224,7 @@ fun parse_deftype(ts: tklist_t)
         | (TYPE, _) :: rest => (rest, 0)
         | _ => throw parse_err(ts, "'type' or 'class' is expected")
         }
+    val ts_head = ts   // generics-1: start of the old prefix `('k,'d) name` head
 
     fun parse_tyvars_(ts: tklist_t, expect_comma: bool, tyvars: id_t list, loc: loc_t): (tklist_t, id_t list) =
         match ts {
@@ -2199,6 +2265,14 @@ fun parse_deftype(ts: tklist_t)
             parse_bracket_tyvars_(rest, false, [])
         | _ => (ts, type_params)
         }
+
+    // generics-1: rewrite the old prefix head `('k,'d) name` -> `name[K,D]`. The
+    // span runs from the head start (after `type`/`class`) through the name.
+    if Options.opt.print_generics_sites && type_params != [] {
+        val pstr = ", ".join([:: for p <- type_params { tyvar2new(id2str_m(p)) }])
+        val head_span = loclist2loc([:: consumed_span(ts_head, ts), loc], loc)
+        record_gsite(head_span, "TYPEHEAD", f"{pp(tname)}[{pstr}]")
+    }
 
     val (ts, ifaces) = match ts {
         | (COLON, _) :: rest =>
@@ -2251,6 +2325,7 @@ fun parse_deftype(ts: tklist_t)
                         throw parse_err(ts, "variant label should start with a capital letter A..Z")
                     }
                     val (ts, t) = parse_typespec_or_record(rest)
+                    record_anno(rest, ts, t)
                     parse_cases_(ts, true, (get_id(i), t) :: result)
                 }
             | (IDENT(_, i), _) :: rest =>
@@ -2283,7 +2358,9 @@ fun parse_deftype(ts: tklist_t)
     | _ =>
         if class_module > 0 { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot be class") }
         if ifaces != [] { throw parse_err(ts, "type alias (i.e. not a record nor variant) cannot implement any interfaces") }
-        val (ts, t) = parse_typespec(ts)
+        val ts_b = ts
+        val (ts, t) = parse_typespec(ts_b)
+        record_anno(ts_b, ts, t)
         val dt = ref (deftyp_t {
             dt_name=tname, dt_templ_args=type_params, dt_typ=t, dt_finalized=false,
             dt_scope=[], dt_loc=loc })

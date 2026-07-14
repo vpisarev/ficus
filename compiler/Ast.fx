@@ -1445,6 +1445,129 @@ fun tl2str(tl: typ_t list): string {
     join_embrace(begin, end, ", ", [for t <- tl { typ2str(t) }])
 }
 
+// generics-1 MIGRATION SCAFFOLDING (removed at the flip, when typ2str itself
+// switches to the new notation). Prints a parse-time typ_t in the NEW bracketed
+// notation with UPPERCASE type parameters, for the -pr-generics-sites dump the
+// migrator consumes. Only the shapes the parser can produce before typecheck are
+// covered accurately (no unification cells / resolved qualified names).
+fun tyvar2new(s: string): string =
+    if s.startswith("'") {
+        val body = s[1:]
+        if body == "" {s} else {string(body[0].toupper()) + body[1:]}
+    } else { s }
+
+fun typ2str_new(t: typ_t): string {
+    | TypVarTuple(Some(t)) => f"({typ2str_new(t)} ...)"
+    | TypVarTuple _ => "(...)"
+    | TypVarArray(t) => f"{typ2str_new(t)} [+]"
+    | TypVarRecord => "{...}"
+    | TypVarCollection => "[...]"
+    | TypVar ((ref Some(t)) as r) => typ2str_new(t)
+    | TypVar (r) => "<unknown>"
+    | TypApp([], i) => tyvar2new(id2str_m(i))
+    | TypApp([:: targ], i) when id2str_m(i) == "option" => f"{typ2str_new(targ)}?"
+    | TypApp(tl, i) => f"{id2str_m(i)}[{tl2str_new_raw(tl)}]"
+    | TypInt => "int"
+    | TypLong => "long"
+    | TypSInt(n) => f"int{n}"
+    | TypUInt(n) => f"uint{n}"
+    | TypFloat(n) =>
+        match n {
+        | 16 => "fp16"
+        | 17 => "bf16"
+        | 32 => "float"
+        | 64 => "double"
+        | _ => throw compile_err(noloc, f"bad floating-point type TypFloat({n})")
+        }
+    | TypVoid => "void"
+    | TypBool => "bool"
+    | TypChar => "char"
+    | TypString => "string"
+    | TypCPointer => "cptr"
+    | TypFun([], rt) => f"(void -> {typ2str_new(rt)})"   // nullary: (void -> T), not (() -> T)
+    | TypFun(argtyps, rt) => f"({tl2str_new(argtyps)} -> {typ2str_new(rt)})"
+    | TypTuple(tl) =>
+        val s = tl2str_new(tl)
+        match tl {
+        | [:: x] => "(" + s + ",)"
+        | _ => s
+        }
+    | TypRecord (ref (relems, _)) =>
+        join_embrace("{", "}", "; ",
+            [for (flags, i, t, _) <- relems {
+                val prefix = if flags.val_flag_mutable { "var " } else {""}
+                f"{prefix}{i}: {typ2str_new(t)}"
+            }])
+    | TypArray(d, t) => f"{typ2str_new(t)} [{','*(d-1)}]"
+    | TypList(t) => f"list[{typ2str_new(t)}]"
+    | TypRRBVec(t) => f"rrbvec[{typ2str_new(t)}]"
+    | TypVector(t) => f"vector[{typ2str_new(t)}]"
+    | TypRef(t) => f"ref[{typ2str_new(t)}]"
+    | TypExn => "exn"
+    | TypErr => "<err>"
+    | TypDecl => "<decl>"
+    | TypModule => "<module>"
+}
+
+// bracket/argument list without the tuple parens: "K, V"
+fun tl2str_new_raw(tl: typ_t list): string =
+    join_embrace("", "", ", ", [for t <- tl { typ2str_new(t) }])
+
+// generics-1: does this parsed type differ between the old and new notation?
+// True iff it contains a type variable ('t) or a postfix application (list/
+// vector/rrbvec/ref/user-app) that becomes prefix-bracketed. Concrete scalar /
+// tuple / array / function types with no application are left untouched (no
+// formatting churn). The migrator records a site only when this holds.
+fun type_needs_migration(t: typ_t): bool {
+    | TypVar (ref Some(t)) => type_needs_migration(t)  // 't [+], (t ...) wrap in TypVar
+    | TypApp([], i) => id2str_m(i).startswith("'")
+    | TypApp(_, _) => true
+    | TypList _ | TypRRBVec _ | TypVector _ | TypRef _ => true
+    | TypVarArray(t) => type_needs_migration(t)
+    | TypArray(_, t) => type_needs_migration(t)
+    | TypVarTuple(Some(t)) => type_needs_migration(t)
+    | TypTuple(tl) => exists(for x <- tl {type_needs_migration(x)})
+    | TypFun(argtyps, rt) =>
+        type_needs_migration(rt) || exists(for x <- argtyps {type_needs_migration(x)})
+    | TypRecord (ref (relems, _)) =>
+        exists(for (_, _, t, _) <- relems {type_needs_migration(t)})
+    | _ => false
+}
+
+// collect type-variable names ('t...) in first-appearance order (deduped), used
+// to synthesize a function's declared [params] list.
+fun collect_tyvars(t: typ_t, acc: string list): string list =
+    match t {
+    | TypVar (ref Some(t)) => collect_tyvars(t, acc)
+    | TypApp([], i) =>
+        val s = id2str_m(i)
+        if s.startswith("'") && !acc.mem(s) { s :: acc } else { acc }
+    | TypApp(tl, _) => fold a = acc for x <- tl { a = collect_tyvars(x, a) }
+    | TypList(t) => collect_tyvars(t, acc)
+    | TypRRBVec(t) => collect_tyvars(t, acc)
+    | TypVector(t) => collect_tyvars(t, acc)
+    | TypRef(t) => collect_tyvars(t, acc)
+    | TypVarArray(t) => collect_tyvars(t, acc)
+    | TypArray(_, t) => collect_tyvars(t, acc)
+    | TypVarTuple(Some(t)) => collect_tyvars(t, acc)
+    | TypTuple(tl) => fold a = acc for x <- tl { a = collect_tyvars(x, a) }
+    | TypFun(argtyps, rt) =>
+        val a = fold a = acc for x <- argtyps { a = collect_tyvars(x, a) }
+        collect_tyvars(rt, a)
+    | TypRecord (ref (relems, _)) =>
+        fold a = acc for (_, _, t, _) <- relems { a = collect_tyvars(t, a) }
+    | _ => acc
+    }
+
+// function-type argument list: parenthesized only when arity != 1
+fun tl2str_new(tl: typ_t list): string {
+    val (begin, end) = match tl {
+    | [:: x] => ("", "")
+    | _ => ("(", ")")
+    }
+    join_embrace(begin, end, ", ", [for t <- tl { typ2str_new(t) }])
+}
+
 fun parse_pragmas(prl: (string, loc_t) list): pragmas_t {
     fun parse(prl: (string, loc_t) list, result: pragmas_t) =
         match prl {

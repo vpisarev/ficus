@@ -97,6 +97,23 @@ TEST("generics1.qualified_map", fun() {
     EXPECT_EQ(m2.list().length(), 0)
 })
 
+// --- generic CLASS with methods (methods see the class params K/V via self,
+// even though they are not re-declared on each method -- the reg_deffun fix) ---
+class box_t[K, V] { k: K; v: V }
+fun box_t.getk(): K = self.k
+fun box_t.getv(): V = self.v
+fun box_t.withv[W](w: W): box_t[K, W] = box_t { k=self.k, v=w }
+fun mkbox[K, V](k: K, v: V): box_t[K, V] = box_t { k=k, v=v }
+
+TEST("generics1.generic_class_methods", fun() {
+    val b = mkbox("id", 7)
+    EXPECT_EQ(b.getk(), "id")
+    EXPECT_EQ(b.getv(), 7)
+    val b2 = b.withv([:: 1, 2, 3])
+    EXPECT_EQ(b2.getk(), "id")
+    EXPECT_EQ(b2.getv(), [:: 1, 2, 3])
+})
+
 // --- generic operator with a declared param ---
 operator + [T](a: tree_t[T], b: tree_t[T]): tree_t[T] =
     match a { | Leaf => b | Node(l, x, r) => Node(l + b, x, r) }

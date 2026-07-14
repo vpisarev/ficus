@@ -745,6 +745,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
                 Ast_pp.pprint_mod(minfo)
             }
         }
+        if Options.opt.print_generics_sites { Parser.dump_generics_sites() }
         val modules_used = ", ".join([::for m_idx <- Ast.all_modules_sorted { Ast.pp(Ast.get_module_name(m_idx)) }])
         val parsing_complete = clrmsg(MsgBlue, "Parsing complete")
         pr_verbose(f"{parsing_complete}. Modules used: {modules_used}")
