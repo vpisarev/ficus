@@ -40,7 +40,7 @@ from C_form import *
 fun adjust_decls(cmod: cmodule_t)
 {
     val {cmod_ccode} = cmod
-    var local_decls: cstmt_t list = []
+    var local_decls: list[cstmt_t] = []
     // whether we already have some operators,
     // not just declarations, in the current block
     var local_have_ops = false
@@ -92,4 +92,4 @@ fun adjust_decls(cmod: cmodule_t)
     cmod.{cmod_ccode=ccode}
 }
 
-fun adjust_decls(cmods: cmodule_t list) = cmods.map(adjust_decls)
+fun adjust_decls(cmods: list[cmodule_t]) = cmods.map(adjust_decls)

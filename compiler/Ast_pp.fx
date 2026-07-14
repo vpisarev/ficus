@@ -166,7 +166,7 @@ fun pprint_typ(pp: PP.t, t: typ_t, loc: loc_t, ~brief:bool=false)
 }
 
 
-fun pprint_templ_args(pp: PP.t, tt: id_t list) =
+fun pprint_templ_args(pp: PP.t, tt: list[id_t]) =
 match tt {
     | [] => {}
     | [:: t] => ppid(pp, t)
@@ -187,7 +187,7 @@ fun pprint_for_flags(pp: PP.t, flags: for_flags_t)
 
 fun pprint_exp(pp: PP.t, e: exp_t): void
 {
-    fun ppcases(pe_l: (pat_t, exp_t) list) {
+    fun ppcases(pe_l: list[pat_t, exp_t]) {
         pp.str("{"); pp.cut(); pp.begin()
         for (p, e) <- pe_l {
             pp.space(); pp.str("| "); pprint_pat(pp, p);
@@ -607,7 +607,7 @@ match e {
     | _ => pprint_exp(pp, e)
 }
 
-fun pprint_expseq(pp: PP.t, eseq: exp_t list, braces: bool): void
+fun pprint_expseq(pp: PP.t, eseq: list[exp_t], braces: bool): void
 {
     pp.beginv()
     if braces { pp.str("{"); pp.space() }
@@ -710,7 +710,7 @@ fun pprint_mod(dm: defmodule_t)
     File.stdout.flush()
 }
 
-fun pprint_top_x(top: exp_t list)
+fun pprint_top_x(top: list[exp_t])
 {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
@@ -730,7 +730,7 @@ fun pprint_top_x(top: exp_t list)
    ambiguity diagnostics of the resolver surgery. Shape:
        Module.name(arg1, arg2) -> rt [generic: 't, 'u] @ file:line
    The "[generic: ...]" clause is omitted for non-generic functions. */
-fun fun2sigstr(df: deffun_t ref): string
+fun fun2sigstr(df: ref[deffun_t]): string
 {
     val {df_name, df_typ, df_templ_args, df_loc} = *df
     val (argtyps, rt) = match deref_typ(df_typ) {

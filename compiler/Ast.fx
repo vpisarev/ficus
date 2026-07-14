@@ -39,7 +39,7 @@ fun cmp_id(a: id_t, b: id_t)
     }
 }
 
-fun std_id(name: string, bn: (string list, int)): (id_t, (string list, int)) =
+fun std_id(name: string, bn: (list[string], int)): (id_t, (list[string], int)) =
     (id_t {m=0, i=bn.1, j=0}, (name :: bn.0, bn.1+1))
 val builtin_ids = ([], 0)
 val (noid, builtin_ids) = std_id("<noid>", builtin_ids)
@@ -70,7 +70,7 @@ type loc_t =
 
 val noloc = loc_t {m_idx=-1, line0=0, col0=0, line1=0, col1=0}
 
-fun loclist2loc(llist: loc_t list, default_loc: loc_t) =
+fun loclist2loc(llist: list[loc_t], default_loc: loc_t) =
     fold loc = default_loc for loci <- llist {
         val {m_idx, line0, col0, line1, col1} = loc
         val {m_idx=loci_m_idx,
@@ -117,7 +117,7 @@ type lit_t =
 type initializer_t = InitId: id_t | InitLit: lit_t
 
 type typ_t =
-    | TypVar: typ_t? ref
+    | TypVar: ref[typ_t?]
     | TypVarTuple: typ_t?
     | TypVarArray: typ_t
     | TypVarRecord
@@ -137,18 +137,18 @@ type typ_t =
     | TypChar
     | TypBool
     | TypVoid
-    | TypFun: (typ_t list, typ_t)
+    | TypFun: (list[typ_t], typ_t)
     | TypList: typ_t
     | TypRRBVec: typ_t
     | TypVector: typ_t // mutable, growable, contiguous vector (fx_vec_t)
-    | TypTuple: typ_t list
+    | TypTuple: list[typ_t]
     | TypRef: typ_t
     | TypArray: (int, typ_t)
-    | TypRecord: ((val_flags_t, id_t, typ_t, exp_t) list, bool) ref
+    | TypRecord: ref[list[val_flags_t, id_t, typ_t, exp_t], bool]
     | TypExn
     | TypErr
     | TypCPointer
-    | TypApp: (typ_t list, id_t)
+    | TypApp: (list[typ_t], id_t)
     | TypDecl
     | TypModule
 
@@ -203,7 +203,7 @@ type val_flags_t =
     val_flag_instance: bool = false;
     val_flag_method: (id_t, int);
     val_flag_ctor: int = 0;
-    val_flag_global: scope_t list = []
+    val_flag_global: list[scope_t] = []
 }
 
 fun default_val_flags() = val_flags_t {val_flag_method=(noid, -1)}
@@ -301,52 +301,52 @@ type exp_t =
     | ExpIdent: (id_t, ctx_t)
     | ExpBinary: (binary_t, exp_t, exp_t, ctx_t)
     | ExpUnary: (unary_t, exp_t, ctx_t)
-    | ExpIntrin: (intrin_t, exp_t list, ctx_t)
+    | ExpIntrin: (intrin_t, list[exp_t], ctx_t)
     | ExpSync: (id_t, exp_t)
-    | ExpSeq: (exp_t list, ctx_t)
-    | ExpMkTuple: (exp_t list, ctx_t)
-    | ExpMkArray: (exp_t list list, ctx_t)
-    | ExpMkVector: (exp_t list, ctx_t)
-    | ExpMkRecord: (exp_t, (id_t, exp_t) list, ctx_t)
-    | ExpUpdateRecord: (exp_t, (id_t, exp_t) list, ctx_t)
-    | ExpCall: (exp_t, exp_t list, ctx_t)
-    | ExpAt: (exp_t, border_t, interpolate_t, exp_t list, ctx_t)
+    | ExpSeq: (list[exp_t], ctx_t)
+    | ExpMkTuple: (list[exp_t], ctx_t)
+    | ExpMkArray: (list[list[exp_t]], ctx_t)
+    | ExpMkVector: (list[exp_t], ctx_t)
+    | ExpMkRecord: (exp_t, list[id_t, exp_t], ctx_t)
+    | ExpUpdateRecord: (exp_t, list[id_t, exp_t], ctx_t)
+    | ExpCall: (exp_t, list[exp_t], ctx_t)
+    | ExpAt: (exp_t, border_t, interpolate_t, list[exp_t], ctx_t)
     | ExpAssign: (exp_t, exp_t, loc_t)
     | ExpMem: (exp_t, exp_t, ctx_t)
     | ExpThrow: (exp_t, loc_t)
     | ExpIf: (exp_t, exp_t, exp_t, ctx_t)
     | ExpWhile: (exp_t, exp_t, loc_t)
     | ExpDoWhile: (exp_t, exp_t, loc_t)
-    | ExpFor: ((pat_t, exp_t) list, pat_t, exp_t, for_flags_t, loc_t)
-    | ExpMap: (((pat_t, exp_t) list, pat_t) list, exp_t, for_flags_t, ctx_t)
-    | ExpTryCatch: (exp_t, (pat_t, exp_t) list, ctx_t)
-    | ExpMatch: (exp_t, (pat_t, exp_t) list, ctx_t)
+    | ExpFor: (list[pat_t, exp_t], pat_t, exp_t, for_flags_t, loc_t)
+    | ExpMap: (list[list[pat_t, exp_t], pat_t], exp_t, for_flags_t, ctx_t)
+    | ExpTryCatch: (exp_t, list[pat_t, exp_t], ctx_t)
+    | ExpMatch: (exp_t, list[pat_t, exp_t], ctx_t)
     | ExpCast: (exp_t, typ_t, ctx_t)
     | ExpTyped: (exp_t, typ_t, ctx_t)
     | ExpCCode: (string, ctx_t)
     | ExpData: (string, string, ctx_t)
     | DefVal: (pat_t, exp_t, val_flags_t, loc_t)
-    | DefFun: deffun_t ref
-    | DefExn: defexn_t ref
-    | DefTyp: deftyp_t ref
-    | DefVariant: defvariant_t ref
-    | DefInterface: definterface_t ref
-    | DirImport: ((int, id_t) list, loc_t)
-    | DirImportFrom: (int, id_t list, loc_t)
-    | DirPragma: (string list, loc_t)
+    | DefFun: ref[deffun_t]
+    | DefExn: ref[defexn_t]
+    | DefTyp: ref[deftyp_t]
+    | DefVariant: ref[defvariant_t]
+    | DefInterface: ref[definterface_t]
+    | DirImport: (list[int, id_t], loc_t)
+    | DirImportFrom: (int, list[id_t], loc_t)
+    | DirPragma: (list[string], loc_t)
 
 type pat_t =
     | PatAny: loc_t
     | PatLit: (lit_t, loc_t)
     | PatIdent: (id_t, loc_t)
-    | PatTuple: (pat_t list, loc_t)
-    | PatVariant: (id_t, pat_t list, loc_t)
-    | PatRecord: (id_t?, (id_t, pat_t) list, loc_t)
+    | PatTuple: (list[pat_t], loc_t)
+    | PatVariant: (id_t, list[pat_t], loc_t)
+    | PatRecord: (id_t?, list[id_t, pat_t], loc_t)
     | PatCons: (pat_t, pat_t, loc_t)
     | PatAs: (pat_t, id_t, loc_t)
     | PatTyped: (pat_t, typ_t, loc_t)
     | PatWhen: (pat_t, exp_t, loc_t)
-    | PatAlt: (pat_t list, loc_t)
+    | PatAlt: (list[pat_t], loc_t)
     | PatRef: (pat_t, loc_t)
 
 type env_entry_t =
@@ -373,20 +373,20 @@ type env_entry_t =
   when we get back from the nested expression analysis, at the expense of slight loss in efficiency
   (however, the type checker is very inexpensive compiler stage, even in "-O0" compile mode)
 */
-type env_t = (id_t, env_entry_t list) Map.t
-type idmap_t = (id_t, id_t) Map.t
-type idset_t = id_t Set.t
+type env_t = Map.t[id_t, list[env_entry_t]]
+type idmap_t = Map.t[id_t, id_t]
+type idset_t = Set.t[id_t]
 val empty_env: env_t = Map.empty(cmp_id)
 val empty_idset: idset_t = Set.empty(cmp_id)
 val empty_idmap: idmap_t = Map.empty(cmp_id)
 
-type id_hashset_t = id_t Hashset.t
-type str_hashset_t = string Hashset.t
+type id_hashset_t = Hashset.t[id_t]
+type str_hashset_t = Hashset.t[string]
 fun hash(i: id_t): hash_t =
     (((FNV_1A_OFFSET ^ uint64(i.m))*FNV_1A_PRIME ^ uint64(i.i))*FNV_1A_PRIME ^ uint64(i.j))
 
-fun empty_id_hashset(size0: int): id_t Hashset.t = Hashset.empty(size0, noid)
-fun empty_str_hashset(size0: int): string Hashset.t = Hashset.empty(size0, "")
+fun empty_id_hashset(size0: int): Hashset.t[id_t] = Hashset.empty(size0, noid)
+fun empty_str_hashset(size0: int): Hashset.t[string] = Hashset.empty(size0, "")
 fun id_hashset(s: idset_t) {
     val hs = empty_id_hashset(s.size*2)
     s.app(fun (x) {hs.add(x)})
@@ -398,29 +398,29 @@ type defval_t =
     dv_name: id_t;
     dv_typ: typ_t;
     dv_flags: val_flags_t;
-    dv_scope: scope_t list;
+    dv_scope: list[scope_t];
     dv_loc: loc_t
 }
 
 type deffun_t =
 {
-    df_name: id_t; df_templ_args: id_t list;
-    df_args: pat_t list; df_typ: typ_t; df_body: exp_t;
-    df_flags: fun_flags_t; df_scope: scope_t list;
-    df_loc: loc_t; df_templ_inst: id_t list ref; df_env: env_t
+    df_name: id_t; df_templ_args: list[id_t];
+    df_args: list[pat_t]; df_typ: typ_t; df_body: exp_t;
+    df_flags: fun_flags_t; df_scope: list[scope_t];
+    df_loc: loc_t; df_templ_inst: ref[list[id_t]]; df_env: env_t
 }
 
 type defexn_t =
 {
     dexn_name: id_t; dexn_typ: typ_t;
-    dexn_scope: scope_t list; dexn_loc: loc_t
+    dexn_scope: list[scope_t]; dexn_loc: loc_t
 }
 
 type deftyp_t =
 {
-    dt_name: id_t; dt_templ_args: id_t list;
+    dt_name: id_t; dt_templ_args: list[id_t];
     dt_typ: typ_t; dt_finalized: bool;
-    dt_scope: scope_t list; dt_loc: loc_t
+    dt_scope: list[scope_t]; dt_loc: loc_t
 }
 
 /* variants are represented in a seemingly complex but logical way;
@@ -440,36 +440,36 @@ type deftyp_t =
 */
 type defvariant_t =
 {
-    dvar_name: id_t; dvar_templ_args: id_t list;
+    dvar_name: id_t; dvar_templ_args: list[id_t];
     dvar_alias: typ_t; dvar_flags: var_flags_t;
-    dvar_cases: (id_t, typ_t) list;
-    dvar_ctors: id_t list; dvar_templ_inst: id_t list ref;
-    dvar_ifaces: (id_t, (id_t, id_t) list) list;
-    dvar_scope: scope_t list; dvar_loc: loc_t
+    dvar_cases: list[id_t, typ_t];
+    dvar_ctors: list[id_t]; dvar_templ_inst: ref[list[id_t]];
+    dvar_ifaces: list[id_t, list[id_t, id_t]];
+    dvar_scope: list[scope_t]; dvar_loc: loc_t
 }
 
 type definterface_t =
 {
     di_name: id_t; di_base: id_t;
-    di_new_methods: (id_t, typ_t, fun_flags_t) list;
-    di_all_methods: (id_t, typ_t, fun_flags_t) list;
-    di_scope: scope_t list; di_loc: loc_t
+    di_new_methods: list[id_t, typ_t, fun_flags_t];
+    di_all_methods: list[id_t, typ_t, fun_flags_t];
+    di_scope: list[scope_t]; di_loc: loc_t
 }
 
 type pragmas_t =
 {
     pragma_cpp: bool;
-    pragma_clibs: (string, loc_t) list
+    pragma_clibs: list[string, loc_t]
 }
 
 type id_info_t =
     | IdNone
     | IdDVal: defval_t
-    | IdFun: deffun_t ref
-    | IdExn: defexn_t ref
-    | IdTyp: deftyp_t ref
-    | IdVariant: defvariant_t ref
-    | IdInterface: definterface_t ref
+    | IdFun: ref[deffun_t]
+    | IdExn: ref[defexn_t]
+    | IdTyp: ref[deftyp_t]
+    | IdVariant: ref[defvariant_t]
+    | IdInterface: ref[definterface_t]
     | IdModule: int
 
 type defmodule_t =
@@ -478,12 +478,12 @@ type defmodule_t =
     dm_filename: string
     dm_idx: int
     dm_real: bool
-    var dm_defs: exp_t list
-    var dm_deps: int list
+    var dm_defs: list[exp_t]
+    var dm_deps: list[int]
     var dm_env: env_t
     var dm_parsed: bool
     var dm_block_idx: int
-    dm_table: id_info_t vector
+    dm_table: vector[id_info_t]
 }
 fun default_module() =
     defmodule_t {
@@ -511,22 +511,22 @@ fun is_compiler_frontend(): bool = compiler_stage == CompilerFrontend
 var freeze_ids = false
 var lock_all_names = 0
 var all_names = vector(0, "")
-var all_strhash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
-var all_modules_hash: (string, int) Hashmap.t = Hashmap.empty(1024, "", -1)
+var all_strhash: Hashmap.t[string, int] = Hashmap.empty(1024, "", -1)
+var all_modules_hash: Hashmap.t[string, int] = Hashmap.empty(1024, "", -1)
 var all_modules: defmodule_t [] = []
-var all_modules_sorted: int list = []
+var all_modules_sorted: list[int] = []
 var builtin_exceptions = empty_idmap
-var all_compile_errs: exn list = []
+var all_compile_errs: list[exn] = []
 var all_compile_warns: int = 0
-var all_compile_err_ctx: string list = []
-var all_func_ctx: (id_t, typ_t, loc_t) list = []
+var all_compile_err_ctx: list[string] = []
+var all_func_ctx: list[id_t, typ_t, loc_t] = []
 // the stdlib lib/ directory (<ficus_root>/lib), set by Compiler.process_all.
 // Used to classify a module as stdlib vs user code for -Wimplicit-rettype:
 // by default the warning covers all USER modules but skips stdlib (the user
 // did not write it); the '=all' variant includes stdlib too (how the stdlib
 // self-gates in CI). Empty => treat nothing as stdlib.
 var ficus_std_path: string = ""
-var all_c_inc_dirs: string Hashset.t = Hashset.empty(256, "")
+var all_c_inc_dirs: Hashset.t[string] = Hashset.empty(256, "")
 
 fun string(loc: loc_t)
 {
@@ -614,7 +614,7 @@ fun compile_err(loc: loc_t, msg: string) {
 // caret '^~~~'; past the AST they drift, so we print the source line WITHOUT a
 // caret rather than point confidently at an innocent column. One renderer
 // serves both errors and warnings.
-var src_lines_cache: (int, string list) Hashmap.t = Hashmap.empty(16, -1, ([]: string list))
+var src_lines_cache: Hashmap.t[int, list[string]] = Hashmap.empty(16, -1, ([]: list[string]))
 
 fun get_source_line(m_idx: int, lineno: int): string {
     if m_idx < 0 || lineno < 1 { "" }
@@ -623,7 +623,7 @@ fun get_source_line(m_idx: int, lineno: int): string {
             | Some(ls) => ls
             | _ =>
                 val ls = try { File.read_utf8(all_modules[m_idx].dm_filename).split('\n', allow_empty=true) }
-                         catch { | _ => ([]: string list) }
+                         catch { | _ => ([]: list[string]) }
                 src_lines_cache.add(m_idx, ls)
                 ls
             }
@@ -857,7 +857,7 @@ fun new_arr_map_scope(m_idx: int) = ScArrMap(new_block_idx(m_idx))
 fun new_fold_scope(m_idx: int) = ScFold(new_block_idx(m_idx))
 fun new_try_scope(m_idx: int) = ScTry(new_block_idx(m_idx))
 
-fun scope2str(sc: scope_t list): string {
+fun scope2str(sc: list[scope_t]): string {
     | scj :: rest =>
         val prefix = match scj {
             | ScBlock(b) => f"block({b})"
@@ -881,28 +881,28 @@ fun scope2str(sc: scope_t list): string {
     | _ => ""
 }
 
-fun get_module_scope(sc: scope_t list)
+fun get_module_scope(sc: list[scope_t])
 {
     | ScModule _ :: _ => sc
     | _ :: rest => get_module_scope(rest)
     | _ => []
 }
 
-fun curr_module(sc: scope_t list)
+fun curr_module(sc: list[scope_t])
 {
     | ScModule(m) :: _ => m
     | _ :: rest => curr_module(rest)
     | _ => -1
 }
 
-fun is_global_scope(sc: scope_t list)
+fun is_global_scope(sc: list[scope_t])
 {
     | ScModule _ :: _ => true
     | [] => true
     | _ => false
 }
 
-fun get_qualified_name(name: string, sc: scope_t list) =
+fun get_qualified_name(name: string, sc: list[scope_t]) =
     match sc {
     | (ScModule(m) :: _) when pp(get_module_name(m)) == "Builtins" => name
     | ScModule(m) :: r => get_qualified_name(pp(get_module_name(m)) + "." + name, r)
@@ -1292,7 +1292,7 @@ fun get_unary_fname(uop: unary_t, loc: loc_t) =
             f"for unary operation \"{uop}\" there is no corresponding function")
     }
 
-fun fname_always_import(): id_t list = [::
+fun fname_always_import(): list[id_t] = [::
     fname_op_add(), fname_op_sub(), fname_op_mul(), fname_op_div(), fname_op_rdiv(),
     fname_op_mod(), fname_op_pow(), fname_op_dot_add(), fname_op_dot_sub(),
     fname_op_dot_mul(), fname_op_dot_div(), fname_op_dot_mod(), fname_op_dot_pow(),
@@ -1379,7 +1379,7 @@ fun lit2str(c: lit_t) {
     }
 }
 
-fun ref2str(r: 't ref): string
+fun ref2str[T](r: ref[T]): string
 @ccode {
     char buf[32];
     sprintf(buf, "%p", r);
@@ -1437,7 +1437,7 @@ fun typ2str(t: typ_t): string {
     | TypModule => "<module>"
 }
 
-fun tl2str(tl: typ_t list): string {
+fun tl2str(tl: list[typ_t]): string {
     val (begin, end) = match tl {
     | [:: x] => ("", "")
     | _ => ("(", ")")
@@ -1516,7 +1516,7 @@ fun typ2str_new(t: typ_t): string {
 }
 
 // bracket/argument list without the tuple parens: "K, V"
-fun tl2str_new_raw(tl: typ_t list): string =
+fun tl2str_new_raw(tl: list[typ_t]): string =
     join_embrace("", "", ", ", [for t <- tl { typ2str_new(t) }])
 
 // generics-1: does this parsed type differ between the old and new notation?
@@ -1542,7 +1542,7 @@ fun type_needs_migration(t: typ_t): bool {
 
 // collect type-variable names ('t...) in first-appearance order (deduped), used
 // to synthesize a function's declared [params] list.
-fun collect_tyvars(t: typ_t, acc: string list): string list =
+fun collect_tyvars(t: typ_t, acc: list[string]): list[string] =
     match t {
     | TypVar (ref Some(t)) => collect_tyvars(t, acc)
     | TypApp([], i) =>
@@ -1566,7 +1566,7 @@ fun collect_tyvars(t: typ_t, acc: string list): string list =
     }
 
 // function-type argument list: parenthesized only when arity != 1
-fun tl2str_new(tl: typ_t list): string {
+fun tl2str_new(tl: list[typ_t]): string {
     val (begin, end) = match tl {
     | [:: x] => ("", "")
     | _ => ("(", ")")
@@ -1574,8 +1574,8 @@ fun tl2str_new(tl: typ_t list): string {
     join_embrace(begin, end, ", ", [for t <- tl { typ2str_new(t) }])
 }
 
-fun parse_pragmas(prl: (string, loc_t) list): pragmas_t {
-    fun parse(prl: (string, loc_t) list, result: pragmas_t) =
+fun parse_pragmas(prl: list[string, loc_t]): pragmas_t {
+    fun parse(prl: list[string, loc_t], result: pragmas_t) =
         match prl {
         | (pr, loc) :: rest =>
             if pr == "c++" || pr == "C++" {
@@ -1607,21 +1607,21 @@ fun check_n_walk_typ(t: typ_t, callb: ast_callb_t) =
     | Some(f) => f(t, callb)
     | _ => walk_typ(t, callb)
     }
-fun check_n_walk_tlist(tlist: typ_t list, callb: ast_callb_t) =
+fun check_n_walk_tlist(tlist: list[typ_t], callb: ast_callb_t) =
     [:: for t <- tlist {check_n_walk_typ(t, callb)}]
 fun check_n_walk_exp(e: exp_t, callb: ast_callb_t) =
     match callb.ast_cb_exp {
     | Some(f) => f(e, callb)
     | _ => walk_exp(e, callb)
     }
-fun check_n_walk_elist(elist: exp_t list, callb: ast_callb_t): exp_t list =
+fun check_n_walk_elist(elist: list[exp_t], callb: ast_callb_t): list[exp_t] =
     [:: for e <- elist { check_n_walk_exp(e, callb) }]
 fun check_n_walk_pat(p: pat_t, callb: ast_callb_t) =
     match callb.ast_cb_pat {
     | Some(f) => f(p, callb)
     | _ => walk_pat(p, callb)
     }
-fun check_n_walk_plist(plist: pat_t list, callb: ast_callb_t) =
+fun check_n_walk_plist(plist: list[pat_t], callb: ast_callb_t) =
     [:: for p <- plist { check_n_walk_pat(p, callb) }]
 
 fun walk_typ(t: typ_t, callb: ast_callb_t) =
@@ -1664,12 +1664,12 @@ fun walk_typ(t: typ_t, callb: ast_callb_t) =
 fun walk_exp(e: exp_t, callb: ast_callb_t) {
     fun walk_typ_(t: typ_t) = check_n_walk_typ(t, callb)
     fun walk_exp_(e: exp_t) = check_n_walk_exp(e, callb)
-    fun walk_elist_(el: exp_t list) = check_n_walk_elist(el, callb)
+    fun walk_elist_(el: list[exp_t]) = check_n_walk_elist(el, callb)
     fun walk_pat_(p: pat_t) = check_n_walk_pat(p, callb)
-    fun walk_plist_(pl: pat_t list) = check_n_walk_plist(pl, callb)
-    fun walk_pe_l_(pe_l: (pat_t, exp_t) list) = [:: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) }]
-    fun walk_ne_l_(ne_l: (id_t, exp_t) list) = [:: for (n, e) <- ne_l { (n, walk_exp_(e)) }]
-    fun walk_cases_(pe_l: (pat_t, exp_t) list) = [:: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) }]
+    fun walk_plist_(pl: list[pat_t]) = check_n_walk_plist(pl, callb)
+    fun walk_pe_l_(pe_l: list[pat_t, exp_t]) = [:: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) }]
+    fun walk_ne_l_(ne_l: list[id_t, exp_t]) = [:: for (n, e) <- ne_l { (n, walk_exp_(e)) }]
+    fun walk_cases_(pe_l: list[pat_t, exp_t]) = [:: for (p, e) <- pe_l { (walk_pat_(p), walk_exp_(e)) }]
     fun walk_exp_opt_(e_opt: exp_t?) {
         | Some(e) => Some(walk_exp_(e))
         | _ => None
@@ -1750,7 +1750,7 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
 fun walk_pat(p: pat_t, callb: ast_callb_t) {
     fun walk_typ_(t: typ_t) = check_n_walk_typ(t, callb)
     fun walk_pat_(p: pat_t) = check_n_walk_pat(p, callb)
-    fun walk_pl_(pl: pat_t list) = check_n_walk_plist(pl, callb)
+    fun walk_pl_(pl: list[pat_t]) = check_n_walk_plist(pl, callb)
 
     match p {
     | PatAny _ => p
@@ -1825,11 +1825,11 @@ fun is_fixed_typ (t: typ_t): bool
     is_fixed
 }
 
-type idset_hashmap_t = (id_t, id_hashset_t) Hashmap.t
+type idset_hashmap_t = Hashmap.t[id_t, id_hashset_t]
 
 // Compute closure of the sets, i.e.
 // for each id we find a set of id's which it references directly on indirectly
-fun calc_sets_closure(iters: int, all_ids: id_t list, all_sets: idset_hashmap_t): int
+fun calc_sets_closure(iters: int, all_ids: list[id_t], all_sets: idset_hashmap_t): int
 {
     var done_i = -1
     var all_ids = all_ids

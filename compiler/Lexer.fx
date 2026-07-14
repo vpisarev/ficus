@@ -238,7 +238,7 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
         { STRING("") RPAREN } RPAREN
     where {} denotes groups that are returned together by nexttokens().
 */
-fun make_lexer(strm: stream_t): (void -> ((token_t, lloc_t) list, lloc_t, lloc_t))
+fun make_lexer(strm: stream_t): (void -> (list[token_t, lloc_t], lloc_t, lloc_t))
 {
     var new_exp = true  // Ficus is the language with optional ';' separators between
                         // expressions in a block, tha's why we need to distinguish
@@ -273,7 +273,7 @@ fun make_lexer(strm: stream_t): (void -> ((token_t, lloc_t) list, lloc_t, lloc_t
     var expect_neg_number = false
 
     fun getloc(pos: int) = (strm.lineno, max(pos - strm.bol, 0) + 1)
-    fun addloc(loc: lloc_t, tokens: token_t list) = [:: for t <- tokens {(t, loc)} ]
+    fun addloc(loc: lloc_t, tokens: list[token_t]) = [:: for t <- tokens {(t, loc)} ]
     fun check_ne(ne: bool, loc: lloc_t, name: string): void =
         if !ne {
             throw Lxu.LexerError(loc, f"unexpected '{name}'. Insert ';' or newline")
@@ -317,9 +317,9 @@ fun make_lexer(strm: stream_t): (void -> ((token_t, lloc_t) list, lloc_t, lloc_t
         (q, buf[p:q-1].copy())
     }
 
-    fun fmt2tokens(fmt: format_t?, loc: lloc_t): (token_t, lloc_t) list
+    fun fmt2tokens(fmt: format_t?, loc: lloc_t): list[token_t, lloc_t]
     {
-        fun add_pair(attrname: string, x: 't, defval: 't, attrval: Ast.lit_t, tl: token_t list) =
+        fun add_pair[T](attrname: string, x: T, defval: T, attrval: Ast.lit_t, tl: list[token_t]) =
             if x == defval {tl} else {[:: IDENT(true, attrname), EQUAL, LITERAL(attrval), COMMA] + tl}
         match fmt {
         | Some(format_t {fill, align, sign, num_alt, width, precision, grouping, typ}) =>
@@ -344,7 +344,7 @@ fun make_lexer(strm: stream_t): (void -> ((token_t, lloc_t) list, lloc_t, lloc_t
     // share the batch span; batches are single-token except a few synthetic
     // expansions (numeric-suffix, string interpolation, ...), where one span
     // over the whole literal is the right answer anyway.
-    fun nexttokens(): ((token_t, lloc_t) list, lloc_t, lloc_t)
+    fun nexttokens(): (list[token_t, lloc_t], lloc_t, lloc_t)
     {
         val buf = strm.buf
         val len = buf.length()

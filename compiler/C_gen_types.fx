@@ -31,7 +31,7 @@ import Map, Set, Hashset
    is converted to
    (int, fx_arr_t*, _fx_LS, int*)
 */
-fun ktyp2ctyp_fargs(args: ktyp_t list, rt: ktyp_t, loc: loc_t)
+fun ktyp2ctyp_fargs(args: list[ktyp_t], rt: ktyp_t, loc: loc_t)
 {
     val args_ =
     [:: for kt <- args {
@@ -257,22 +257,22 @@ fun gen_free_code(elem_exp: cexp_t, ctyp: ctyp_t, let_macro: bool,
 
 type ctyp_temp_info_t =
 {
-    ctti_struct_decl: cdeftyp_t ref;
-    ctti_freef_decl: cdeffun_t ref;
-    ctti_copyf_decl: cdeffun_t ref;
+    ctti_struct_decl: ref[cdeftyp_t];
+    ctti_freef_decl: ref[cdeffun_t];
+    ctti_copyf_decl: ref[cdeffun_t];
     ctti_src_exp: cexp_t;
     ctti_dst_exp: cexp_t;
     ctti_cname_wo_prefix: string
 }
 
-type enum_map_t = (id_t, id_t) Map.t
-type ctyp_map_t = (id_t, ctyp_temp_info_t) Map.t
+type enum_map_t = Map.t[id_t, id_t]
+type ctyp_map_t = Map.t[id_t, ctyp_temp_info_t]
 
-fun convert_all_typs(kmods: kmodule_t list)
+fun convert_all_typs(kmods: list[kmodule_t])
 {
-    var top_fwd_decl: cstmt_t list = []
-    var top_typ_decl: cstmt_t list = []
-    var top_typfun_decl: cstmt_t list = []
+    var top_fwd_decl: list[cstmt_t] = []
+    var top_typ_decl: list[cstmt_t] = []
+    var top_typfun_decl: list[cstmt_t] = []
     var all_decls = empty_idset
     var all_fwd_decls = empty_idset
     var all_visited = empty_idset
@@ -883,9 +883,9 @@ fun convert_all_typs(kmods: kmodule_t list)
 /* Excludes types (together with their utility functions like
    _fx_copy_..., _fx_make_..., _fx_free_... etc.)
    that are not used by the module (passed as ccode) */
-fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: cstmt_t list,
-                       all_ctypes_decl: cstmt_t list,
-                       all_ctypes_fun_decl: cstmt_t list,
+fun elim_unused_ctypes(mname: id_t, all_ctypes_fwd_decl: list[cstmt_t],
+                       all_ctypes_decl: list[cstmt_t],
+                       all_ctypes_fun_decl: list[cstmt_t],
                        ccode: ccode_t)
 {
     val used_names = empty_str_hashset(1024)

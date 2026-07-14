@@ -171,7 +171,7 @@ fun pure_fun(f: id_t, loc: loc_t) =
     | _ => false
     }
 
-fun reset_purity_flags(code: kexp_t list): void {
+fun reset_purity_flags(code: list[kexp_t]): void {
     // skip type processing, it does not affect purity flag
     fun reset_purity_flags_ktyp_(t: ktyp_t, loc: loc_t,
                                  callb: k_fold_callb_t) {}
@@ -193,7 +193,7 @@ fun reset_purity_flags(code: kexp_t list): void {
     }
 }
 
-fun remove_unused(kmods: kmodule_t list, initial: bool)
+fun remove_unused(kmods: list[kmodule_t], initial: bool)
 {
     for {km_top} <- kmods {
         reset_purity_flags(km_top)
@@ -306,8 +306,8 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
             }
         | _ => walk_kexp(e, callb)
         }
-    fun remove_unused_(code: kexp_t list, result: kexp_t list,
-                     callb: k_callb_t): kexp_t list =
+    fun remove_unused_(code: list[kexp_t], result: list[kexp_t],
+                     callb: k_callb_t): list[kexp_t] =
         match code {
         | e :: rest =>
             val e = remove_unused_kexp_(e, callb)
@@ -353,12 +353,12 @@ fun remove_unused(kmods: kmodule_t list, initial: bool)
     }]
 }
 
-fun remove_unused_by_main(kmods: kmodule_t list)
+fun remove_unused_by_main(kmods: list[kmodule_t])
 {
     val all_main_ids = empty_id_hashset(1024)
     val all_top_ids = empty_id_hashset(1024)
-    var all_top: (id_t, kexp_t) list = []
-    var all_actions: kexp_t list = []
+    var all_top: list[id_t, kexp_t] = []
+    var all_actions: list[kexp_t] = []
 
     // Find all top-level declarations;
     // Also copy all top-level declarations from

@@ -19,13 +19,13 @@ type arr_info_t =
 {
     arr_nused: int;
     arr_nused_for: int;
-    arr_idl: (id_t, dom_t) list;
+    arr_idl: list[id_t, dom_t];
     arr_body: kexp_t;
     arr_map_flags: for_flags_t
 }
 
-type ainfo_map_t = (id_t, arr_info_t ref) Map.t
-type arr_fuse_map_t = (id_t, id_t) Map.t
+type ainfo_map_t = Map.t[id_t, ref[arr_info_t]]
+type arr_fuse_map_t = Map.t[id_t, id_t]
 
 fun fuse_loops_(code: kcode_t)
 {
@@ -46,7 +46,7 @@ fun fuse_loops_(code: kcode_t)
         kcb_fold_kexp=None
     }
 
-    fun process_idl(inside_for: bool, idl: (id_t, dom_t) list) =
+    fun process_idl(inside_for: bool, idl: list[id_t, dom_t]) =
         for (_, dom) <- idl {
             match dom {
             | DomainElem(AtomId col) =>
@@ -85,13 +85,13 @@ fun fuse_loops_(code: kcode_t)
         }
     }
     val arrs_to_fuse = counters.filter(
-        fun (i: id_t, ainfo: arr_info_t ref) {
+        fun (i: id_t, ainfo: ref[arr_info_t]) {
             match *ainfo {
             | {arr_nused=1, arr_nused_for=1} => true
             | _ => false
             }})
 
-    fun fuse_for(idl: (id_t, dom_t) list, body: kexp_t, loc: loc_t)
+    fun fuse_for(idl: list[id_t, dom_t], body: kexp_t, loc: loc_t)
     {
         val fold arr_fuse_map = (Map.empty(cmp_id): arr_fuse_map_t), a2f = []
         for (i, dom) <- idl {
@@ -209,7 +209,7 @@ fun fuse_loops_(code: kcode_t)
     [:: for e <- code { fuse_kexp_(e, fuse_callb) } ]
 }
 
-fun fuse_loops_all(kmods: kmodule_t list) =
+fun fuse_loops_all(kmods: list[kmodule_t]) =
     [:: for km <- kmods {
         val {km_top} = km
         val new_top = fuse_loops_(km_top)

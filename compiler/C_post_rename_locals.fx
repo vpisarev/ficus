@@ -16,10 +16,10 @@ from C_form import *
 import Hashmap
 
 fun cmp_int(a: int, b: int): int = a <=> b
-type int_map_t = (int, int) Hashmap.t
+type int_map_t = Hashmap.t[int, int]
 fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1)
 
-fun rename_locals(cmods: cmodule_t list)
+fun rename_locals(cmods: list[cmodule_t])
 {
     var global_prefix_hash: int_map_t = empty_int_map(256)
     var prefix_hash = empty_int_map(256)

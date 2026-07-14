@@ -315,8 +315,8 @@ fun cfold_cast(a: atom_t, res_t: ktyp_t, loc: loc_t)
     finalize_cfold_result(c_opt, a_opt, res_t, loc)
 }
 
-type idamap_t = (id_t, atom_t) Hashmap.t
-type idalmap_t = (id_t, atom_t list) Hashmap.t
+type idamap_t = Hashmap.t[id_t, atom_t]
+type idalmap_t = Hashmap.t[id_t, list[atom_t]]
 
 fun print_subst_map(m: idamap_t, loc: loc_t) {
     println("subsitution map {")
@@ -328,7 +328,7 @@ fun print_subst_map(m: idamap_t, loc: loc_t) {
     println("}")
 }
 
-fun cfold_dealias(kmods: kmodule_t list)
+fun cfold_dealias(kmods: list[kmodule_t])
 {
     var ida_map: idamap_t = Hashmap.empty(1024, noid, AtomId(noid))
     var concat_map: idalmap_t = Hashmap.empty(1024, noid, [])
@@ -402,7 +402,7 @@ fun cfold_dealias(kmods: kmodule_t list)
             // a completely flat list - make it one big concatenation.
             // At the same time, we do constant folding when two constant strings are
             // concatentated together.
-            fun try_cfold_str_concat(a: atom_t, res_al: atom_t list): atom_t list =
+            fun try_cfold_str_concat(a: atom_t, res_al: list[atom_t]): list[atom_t] =
                 match (a, res_al) {
                 // the order s2 + s1 is correct here, since we operate on reversed lists
                 | (AtomLit(KLitChar c1), AtomLit(KLitChar c2) :: rest) =>
@@ -512,8 +512,8 @@ fun cfold_dealias(kmods: kmodule_t list)
             */
             match e {
             | KExpMatch (cases, (match_ktyp, match_loc) as kctx) =>
-                fun process_case_checks(checks: kexp_t list, next_check_code: kcode_t,
-                                        result_checks: kexp_t list) =
+                fun process_case_checks(checks: list[kexp_t], next_check_code: kcode_t,
+                                        result_checks: list[kexp_t]) =
                     match checks {
                     | c :: other_checks =>
                         val code = next_check_code + kexp2code(c)
@@ -537,8 +537,8 @@ fun cfold_dealias(kmods: kmodule_t list)
                         }
                     | _ => (true, next_check_code, result_checks.rev())
                     }
-                fun process_cases(cases: (kexp_t list, kexp_t) list,
-                                  result: (kexp_t list, kexp_t) list) =
+                fun process_cases(cases: list[list[kexp_t], kexp_t],
+                                  result: list[list[kexp_t], kexp_t]) =
                     match cases {
                     | (checks, e) :: other_cases =>
                         if other_cases == [] && checks != [] {

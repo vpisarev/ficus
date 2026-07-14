@@ -98,7 +98,7 @@ type ctprops_t =
     ctp_complex: bool;
     ctp_ptr: bool;
     ctp_pass_by_ref: bool;
-    ctp_make: id_t list;
+    ctp_make: list[id_t];
     ctp_free: (id_t, id_t);
     ctp_copy: (id_t, id_t)
 }
@@ -120,11 +120,11 @@ type ctyp_t =
     | CTypCSmartPtr
     | CTypString
     | CTypExn
-    | CTypStruct: (id_t?, (id_t, ctyp_t) list)
-    | CTypUnion: (id_t?, (id_t, ctyp_t) list)
-    | CTypFunRawPtr: (ctyp_t list, ctyp_t)
-    | CTypRawPtr: (ctyp_attr_t list, ctyp_t)
-    | CTypRawArray: (ctyp_attr_t list, ctyp_t)
+    | CTypStruct: (id_t?, list[id_t, ctyp_t])
+    | CTypUnion: (id_t?, list[id_t, ctyp_t])
+    | CTypFunRawPtr: (list[ctyp_t], ctyp_t)
+    | CTypRawPtr: (list[ctyp_attr_t], ctyp_t)
+    | CTypRawArray: (list[ctyp_attr_t], ctyp_t)
     | CTypArray: (int, ctyp_t)
     | CTypRRBVec: ctyp_t
     | CTypVector: ctyp_t
@@ -143,8 +143,8 @@ type cexp_t =
     | CExpArrow: (cexp_t, id_t, cctx_t)
     | CExpCast: (cexp_t, ctyp_t, loc_t)
     | CExpTernary: (cexp_t, cexp_t, cexp_t, cctx_t)
-    | CExpCall: (cexp_t, cexp_t list, cctx_t)
-    | CExpInit: (cexp_t list, cctx_t)
+    | CExpCall: (cexp_t, list[cexp_t], cctx_t)
+    | CExpInit: (list[cexp_t], cctx_t)
     | CExpTyp: (ctyp_t, loc_t)
     /* we don't parse and don't process the inline C code; just retain it as-is */
     | CExpCCode: (string, loc_t)
@@ -156,29 +156,29 @@ type cstmt_t =
     | CStmtBreak: loc_t
     | CStmtContinue: loc_t
     | CStmtReturn: (cexp_t?, loc_t)
-    | CStmtBlock: (cstmt_t list, loc_t)
+    | CStmtBlock: (list[cstmt_t], loc_t)
     | CStmtSync: (id_t, cstmt_t)
     | CStmtIf: (cexp_t, cstmt_t, cstmt_t, loc_t)
     | CStmtGoto: (id_t, loc_t)
     | CStmtLabel: (id_t, loc_t)
-    | CStmtFor: (ctyp_t?, cexp_t list, cexp_t?, cexp_t list, cstmt_t, loc_t)
+    | CStmtFor: (ctyp_t?, list[cexp_t], cexp_t?, list[cexp_t], cstmt_t, loc_t)
     | CStmtWhile: (cexp_t, cstmt_t, loc_t)
     | CStmtDoWhile: (cstmt_t, cexp_t, loc_t)
-    | CStmtSwitch: (cexp_t, (cexp_t list, cstmt_t list) list, loc_t)
+    | CStmtSwitch: (cexp_t, list[list[cexp_t], list[cstmt_t]], loc_t)
     | CDefVal: (ctyp_t, id_t, cexp_t?, loc_t)
-    | CDefFun: cdeffun_t ref
-    | CDefTyp: cdeftyp_t ref
+    | CDefFun: ref[cdeffun_t]
+    | CDefTyp: ref[cdeftyp_t]
     | CDefForwardSym: (id_t, loc_t)
     | CDefForwardTyp: (id_t, loc_t)
-    | CDefEnum: cdefenum_t ref
-    | CDefInterface: cdefinterface_t ref
-    | CMacroDef: cdefmacro_t ref
+    | CDefEnum: ref[cdefenum_t]
+    | CDefInterface: ref[cdefinterface_t]
+    | CMacroDef: ref[cdefmacro_t]
     | CMacroUndef: (id_t, loc_t)
-    | CMacroIf: ((cexp_t, cstmt_t list) list, cstmt_t list, loc_t)
+    | CMacroIf: (list[cexp_t, list[cstmt_t]], list[cstmt_t], loc_t)
     | CMacroInclude: (string, loc_t)
     | CMacroPragma: (string, loc_t)
 
-type ccode_t = cstmt_t list
+type ccode_t = list[cstmt_t]
 
 type cdefval_t =
 {
@@ -188,22 +188,22 @@ type cdefval_t =
 
 type cdeffun_t =
 {
-    cf_name: id_t; cf_cname: string; cf_args: (id_t, ctyp_t, carg_attr_t list) list;
-    cf_rt: ctyp_t; cf_body: cstmt_t list; cf_flags: fun_flags_t;
-    cf_scope: scope_t list; cf_loc: loc_t
+    cf_name: id_t; cf_cname: string; cf_args: list[id_t, ctyp_t, list[carg_attr_t]];
+    cf_rt: ctyp_t; cf_body: list[cstmt_t]; cf_flags: fun_flags_t;
+    cf_scope: list[scope_t]; cf_loc: loc_t
 }
 
 type cdeftyp_t =
 {
     ct_name: id_t; ct_typ: ctyp_t; ct_cname: string; ct_props: ctprops_t;
-    ct_data_start: int; ct_enum: id_t; ct_ifaces: id_t list; ct_ifaces_id: id_t;
-    ct_scope: scope_t list; ct_loc: loc_t
+    ct_data_start: int; ct_enum: id_t; ct_ifaces: list[id_t]; ct_ifaces_id: id_t;
+    ct_scope: list[scope_t]; ct_loc: loc_t
 }
 
 type cdefenum_t =
 {
-    cenum_name: id_t; cenum_members: (id_t, cexp_t?) list;
-    cenum_cname: string; cenum_scope: scope_t list; cenum_loc: loc_t
+    cenum_name: id_t; cenum_members: list[id_t, cexp_t?];
+    cenum_cname: string; cenum_scope: list[scope_t]; cenum_loc: loc_t
 }
 
 type cdeflabel_t =
@@ -213,15 +213,15 @@ type cdeflabel_t =
 
 type cdefmacro_t =
 {
-    cm_name: id_t; cm_cname: string; cm_args: id_t list;
-    cm_body: cstmt_t list; cm_scope: scope_t list; cm_loc: loc_t
+    cm_name: id_t; cm_cname: string; cm_args: list[id_t];
+    cm_body: list[cstmt_t]; cm_scope: list[scope_t]; cm_loc: loc_t
 }
 
 type cdefexn_t =
 {
     cexn_name: id_t; cexn_cname: string; cexn_base_cname: string; cexn_typ: ctyp_t;
     cexn_std: bool; cexn_tag: id_t; cexn_data: id_t; cexn_info: id_t;
-    cexn_make: id_t; cexn_scope: scope_t list; cexn_loc: loc_t
+    cexn_make: id_t; cexn_scope: list[scope_t]; cexn_loc: loc_t
 }
 
 /*
@@ -274,29 +274,29 @@ type cdefinterface_t =
     ci_id: id_t;
     ci_vtbl: id_t;
     ci_base: id_t;
-    ci_all_methods: (id_t, ctyp_t) list;
-    ci_scope: scope_t list;
+    ci_all_methods: list[id_t, ctyp_t];
+    ci_scope: list[scope_t];
     ci_loc: loc_t;
 }
 
 type cmodule_t =
 {
-    cmod_name: id_t; cmod_cname: string; cmod_ccode: cstmt_t list;
+    cmod_name: id_t; cmod_cname: string; cmod_ccode: list[cstmt_t];
     cmod_main: bool; cmod_recompile: bool; cmod_skip: bool; cmod_pragmas: pragmas_t
 }
 
 type cinfo_t =
     | CNone
     | CVal: cdefval_t
-    | CFun: cdeffun_t ref
-    | CTyp: cdeftyp_t ref
-    | CExn: cdefexn_t ref
-    | CInterface: cdefinterface_t ref
-    | CEnum: cdefenum_t ref
+    | CFun: ref[cdeffun_t]
+    | CTyp: ref[cdeftyp_t]
+    | CExn: ref[cdefexn_t]
+    | CInterface: ref[cdefinterface_t]
+    | CEnum: ref[cdefenum_t]
     | CLabel: cdeflabel_t
-    | CMacro: cdefmacro_t ref
+    | CMacro: ref[cdefmacro_t]
 
-var all_idcs: cinfo_t vector [] = []
+var all_idcs: vector[cinfo_t] [] = []
 var freeze_idcs = true
 
 fun new_idc_idx(m_idx: int): int {
@@ -538,7 +538,7 @@ fun cexp2stmt(e: cexp_t) =
     | _ => CExp(e)
     }
 
-fun get_cinterface_opt(t: ctyp_t, loc: loc_t): cdefinterface_t ref?
+fun get_cinterface_opt(t: ctyp_t, loc: loc_t): ref[cdefinterface_t]?
 {
     match t {
     | CTypName(tn) =>
@@ -647,9 +647,9 @@ fun walk_cstmt(s: cstmt_t, callb: c_callb_t)
         | _ => t_opt
         }
     fun walk_cexp_(e: cexp_t) = check_n_walk_cexp(e, callb)
-    fun walk_cel_(el: cexp_t list) = el.map(walk_cexp_)
+    fun walk_cel_(el: list[cexp_t]) = el.map(walk_cexp_)
     fun walk_cstmt_(s: cstmt_t) = check_n_walk_cstmt(s, callb)
-    fun walk_csl_(sl: cstmt_t list) = sl.map(walk_cstmt_)
+    fun walk_csl_(sl: list[cstmt_t]) = sl.map(walk_cstmt_)
     fun walk_cexp_opt_(e_opt: cexp_t?) =
         match e_opt {
         | Some e => Some(check_n_walk_cexp(e, callb))
@@ -761,7 +761,7 @@ fun check_n_fold_id(n: id_t, callb: c_fold_callb_t) =
 fun fold_ctyp(t: ctyp_t, callb: c_fold_callb_t)
 {
     fun fold_ctyp_(t: ctyp_t) = check_n_fold_ctyp(t, callb)
-    fun fold_tl_(tl: ctyp_t list) = tl.app(fold_ctyp_)
+    fun fold_tl_(tl: list[ctyp_t]) = tl.app(fold_ctyp_)
     fun fold_id_(i: id_t) = check_n_fold_id(i, callb)
     fun fold_id_opt_(i_opt: id_t?) =
         match i_opt {
@@ -823,11 +823,11 @@ fun fold_cexp(e: cexp_t, callb: c_fold_callb_t)
 fun fold_cstmt(s: cstmt_t, callb: c_fold_callb_t)
 {
     fun fold_cstmt_(s: cstmt_t) = check_n_fold_cstmt(s, callb)
-    fun fold_csl_(sl: cstmt_t list) = sl.app(fold_cstmt_)
+    fun fold_csl_(sl: list[cstmt_t]) = sl.app(fold_cstmt_)
     fun fold_ctyp_(t: ctyp_t) = check_n_fold_ctyp(t, callb)
     fun fold_id_(n: id_t) = check_n_fold_id(n, callb)
     fun fold_cexp_(e: cexp_t) = check_n_fold_cexp(e, callb)
-    fun fold_cel_(el: cexp_t list) = el.app(fold_cexp_)
+    fun fold_cel_(el: list[cexp_t]) = el.app(fold_cexp_)
     fun fold_cexp_opt_(e_opt: cexp_t?) =
         match e_opt { | Some e => fold_cexp_(e) | _ => {} }
 
@@ -983,7 +983,7 @@ fun make_id_exp(i: id_t, loc: loc_t) {
 
 fun make_id_t_exp(i: id_t, t: ctyp_t, loc: loc_t) = CExpIdent(i, (t, loc))
 
-fun make_call(f: id_t, args: cexp_t list, rt: ctyp_t, loc: loc_t) {
+fun make_call(f: id_t, args: list[cexp_t], rt: ctyp_t, loc: loc_t) {
     val f_exp = make_id_exp(f, loc)
     CExpCall(f_exp, args, (rt, loc))
 }
@@ -1107,10 +1107,10 @@ var std_FX_LIST_APPEND = noid
 var std_FX_MOVE_LIST = noid
 var std_FX_CHKIDX1 = noid
 var std_FX_CHKIDX = noid
-var std_FX_PTR_xD = ([]: id_t list)
-var std_FX_PTR_xD_CLIP = ([]: id_t list)
-var std_FX_PTR_xD_WRAP = ([]: id_t list)
-var std_FX_PTR_xD_ZERO = ([]: id_t list)
+var std_FX_PTR_xD = ([]: list[id_t])
+var std_FX_PTR_xD_CLIP = ([]: list[id_t])
+var std_FX_PTR_xD_WRAP = ([]: list[id_t])
+var std_FX_PTR_xD_ZERO = ([]: list[id_t])
 var std_FX_ARR_SIZE = noid
 var std_FX_FREE_ARR = noid
 var std_FX_MOVE_ARR = noid

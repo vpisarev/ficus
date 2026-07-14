@@ -44,7 +44,7 @@ fun update_globals(top_code: kcode_t, globals: id_hashset_t) =
         globals.add_list(n_list)
     }
 
-fun lift(kmods: kmodule_t list) {
+fun lift(kmods: list[kmodule_t]) {
     // first, let's see which definitions are already at the top level
     var new_top_code: kcode_t = []
     val globals = empty_id_hashset(256)
@@ -63,7 +63,7 @@ fun lift(kmods: kmodule_t list) {
        "free variables" are either global (or have been just promoted there) or
        type names, constructor names or C functions, i.e. they will
        definitely can be promoted to the top level. */
-    fun can_lift_fun(kf: kdeffun_t ref): bool
+    fun can_lift_fun(kf: ref[kdeffun_t]): bool
     {
         val {kf_name, kf_loc} = *kf
         val code = [:: KDefFun(kf)]

@@ -13,11 +13,11 @@ from Ast import *
 from K_form import *
 import Hashmap
 
-type mangle_map_t = (string, id_t) Hashmap.t
+type mangle_map_t = Hashmap.t[string, id_t]
 
 fun mangle_mname(m: string): string = m.replace(".", "__")
 
-fun mangle_scope(sc: scope_t list, result: string, loc: loc_t) =
+fun mangle_scope(sc: list[scope_t], result: string, loc: loc_t) =
     match sc {
     | ScModule m :: rest =>
         val mstr = mangle_mname(pp(get_module_name(m)))
@@ -33,7 +33,7 @@ fun mangle_scope(sc: scope_t list, result: string, loc: loc_t) =
     they should be "transliterated" into English
     (however, it looks like recent versions of clang/GCC
     support Unicode identifiers) */
-fun mangle_name(n: id_t, sc_opt: scope_t list?, loc: loc_t): string
+fun mangle_name(n: id_t, sc_opt: list[scope_t]?, loc: loc_t): string
 {
     val sc = match sc_opt {
              | Some sc => sc
@@ -46,7 +46,7 @@ fun mangle_name(n: id_t, sc_opt: scope_t list?, loc: loc_t): string
 
 /* try to compress the name by encoding the module name just once;
    for now it's used only for functions */
-fun compress_name(nstr: string, sc: scope_t list, loc: loc_t)
+fun compress_name(nstr: string, sc: list[scope_t], loc: loc_t)
 {
     val prefix = mangle_scope(sc, "", loc)
     if prefix == "" {
@@ -125,11 +125,11 @@ fun remove_fx(str: string) =
    for those KTypName _ and KTypRecord _. */
 fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
 {
-    fun mangle_inst_(n_id: id_t, prefix: string, targs: ktyp_t list,
-        name: id_t, sc: scope_t list): (string, string)
+    fun mangle_inst_(n_id: id_t, prefix: string, targs: list[ktyp_t],
+        name: id_t, sc: list[scope_t]): (string, string)
     {
         val nargs = targs.length()
-        var result: string list = []
+        var result: list[string] = []
         for targ <- targs {
             result = mangle_ktyp_(targ, result)
         }
@@ -141,7 +141,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             mangle_make_unique(n_id, prefix, name, suffix, mangle_map)
         (mangled_basename, mangled_name)
     }
-    fun mangle_typname_(n: id_t, result: string list): string list =
+    fun mangle_typname_(n: id_t, result: list[string]): list[string] =
         match kinfo_(n, loc) {
         | KVariant kvar =>
             val {kvar_name, kvar_cname, kvar_proto, kvar_targs, kvar_scope, kvar_loc} = *kvar
@@ -199,7 +199,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
             }
         | _ => throw compile_err(loc, f"unsupported type '{idk2str(n, loc)}' (should be variant or record)")
         }
-    fun mangle_ktyp_(t: ktyp_t, result: string list): string list =
+    fun mangle_ktyp_(t: ktyp_t, result: list[string]): list[string] =
         match t {
         | KTypInt  => "i" :: result
         | KTypLong  => "g" :: result
@@ -262,7 +262,7 @@ fun mangle_ktyp(t: ktyp_t, mangle_map: mangle_map_t, loc: loc_t): string
     "".join(mangle_ktyp_(t, []).rev())
 }
 
-fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
+fun mangle_all(kmods: list[kmodule_t], final_mode: bool) {
     val mangle_map: mangle_map_t = Hashmap.empty(1024, "", noid)
     var curr_top_code: kcode_t = []
     var curr_km_idx = -1
@@ -335,7 +335,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
                             }])
         | t => walk_ktyp_n_mangle(t, loc, callb)
         }
-    fun mangle_idoml(idoml: (id_t, dom_t) list, at_ids: id_t list,
+    fun mangle_idoml(idoml: list[id_t, dom_t], at_ids: list[id_t],
                              loc: loc_t, callb: k_callb_t)
     {
         for i <- at_ids { ignore(mangle_id_typ(i, loc, callb)) }
@@ -512,7 +512,7 @@ fun mangle_all(kmods: kmodule_t list, final_mode: bool) {
     }]
 }
 
-fun demangle_all(kmods: kmodule_t list)
+fun demangle_all(kmods: list[kmodule_t])
 {
     fun reset_kval_cname(i: id_t, loc: loc_t) {
         val kv = get_kval(i, loc)
@@ -581,7 +581,7 @@ fun demangle_all(kmods: kmodule_t list)
 
 fun empty_int_map(size0: int) = Hashmap.empty(size0, 0, -1)
 
-fun mangle_locals(kmods: kmodule_t list)
+fun mangle_locals(kmods: list[kmodule_t])
 {
     var global_prefix_hash = empty_int_map(256)
     var prefix_hash = empty_int_map(256)

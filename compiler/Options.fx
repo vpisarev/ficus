@@ -8,7 +8,7 @@ type optval_t = OptBool: bool | OptInt: int | OptString: string
 
 type options_t =
 {
-    app_args: string list = [];
+    app_args: list[string] = [];
     app_filename: string = "";
     arch64: bool = true;
     force_rebuild: bool = false;
@@ -19,9 +19,9 @@ type options_t =
     compile_by_cpp: bool = false;
     filename: string = "";
     gen_c: bool = true;
-    include_path: string list = [];
+    include_path: list[string] = [];
     debug: bool = false;
-    defines: (string, optval_t) list = [];
+    defines: list[string, optval_t] = [];
     optim_iters: int = 0;
     inline_thresh: int = 100;
     enable_openmp: bool = true;

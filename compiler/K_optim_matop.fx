@@ -15,7 +15,7 @@ import K_pp
 import K_cfold_dealias
 import Math, Hashmap, Hashset
 
-fun optimize_gemm(kmods: kmodule_t list)
+fun optimize_gemm(kmods: list[kmodule_t])
 {
     var curr_m_idx = -1
 
@@ -147,7 +147,7 @@ fun optimize_gemm(kmods: kmodule_t list)
          AtomId(m_pr2.original_matrix), AtomLit(KLitBool(m_pr2.is_transposed)), rs2, re2, rd2, cs2, ce2, cd2]
     }
 
-    fun arglist2m_prs(arglist: atom_t list, loc: loc_t){
+    fun arglist2m_prs(arglist: list[atom_t], loc: loc_t){
         match arglist {
         |AtomId(m1)::AtomLit(KLitBool(t1))::rs1::re1::rd1::cs1::ce1::cd1::
          AtomId(m2)::AtomLit(KLitBool(t2))::rs2::re2::rd2::cs2::ce2::cd2::[] =>
@@ -164,7 +164,7 @@ fun optimize_gemm(kmods: kmodule_t list)
 
     var involved_matrixes = empty_id_hashset(256)
 
-    fun form_involved_matrixes(ktop: kexp_t list) {
+    fun form_involved_matrixes(ktop: list[kexp_t]) {
 
         involved_matrixes.clear()
         var matrix_dependencies = Hashmap.empty(1024, noid, noid)
@@ -232,7 +232,7 @@ fun optimize_gemm(kmods: kmodule_t list)
         }
     }
 
-    var mat_proj_map: (id_t, matrix_projection) Hashmap.t = Hashmap.empty(1024, noid, matrix_projection {})
+    var mat_proj_map: Hashmap.t[id_t, matrix_projection] = Hashmap.empty(1024, noid, matrix_projection {})
 
     fun opg_atom_(a: atom_t, loc: loc_t, callb: k_callb_t) = a
     fun opg_ktyp_(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t

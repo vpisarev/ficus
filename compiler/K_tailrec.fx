@@ -17,7 +17,7 @@
 from Ast import *
 from K_form import *
 
-fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
+fun tailrec2loop(km_idx: int, kf: ref[kdeffun_t]): void
 {
     val {kf_name, kf_params, kf_rt=rt, kf_body, kf_loc} = *kf
     fun have_tailrec_calls_(e: kexp_t): bool =
@@ -188,7 +188,7 @@ fun tailrec2loop(km_idx: int, kf: kdeffun_t ref): void
     }
 }
 
-fun tailrec2loops_all(kmods: kmodule_t list): kmodule_t list
+fun tailrec2loops_all(kmods: list[kmodule_t]): list[kmodule_t]
 {
     var curr_km_idx = -1
     fun tailrec2loop_ktyp_(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t) {}

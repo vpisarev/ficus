@@ -20,7 +20,7 @@ from K_freevars import *
 import K_lift_simple
 import Hashmap, Hashset
 
-fun declosure_all(kmods: kmodule_t list){
+fun declosure_all(kmods: list[kmodule_t]){
 
     val globals = empty_id_hashset(256)
     for {km_top} <- kmods {
@@ -69,13 +69,13 @@ fun declosure_all(kmods: kmodule_t list){
         val {km_top} = km
         for e <- km_top {fold_filcl_kexp_(e, filcl_callb)}
     }
-    val fv_env = fv_env.foldl(fun (kf_name, func_info, sorted_env: (id_t, id_t list) Hashmap.t){
+    val fv_env = fv_env.foldl(fun (kf_name, func_info, sorted_env: Hashmap.t[id_t, list[id_t]]){
             val {fv_fvars} = func_info
             if(!fv_fvars.empty()) {
-                val sorted_fvs : id_t list = sort_freevars(fv_fvars)
+                val sorted_fvs : list[id_t] = sort_freevars(fv_fvars)
                 sorted_env.add(kf_name, sorted_fvs) }
             sorted_env
-        }, Hashmap.empty(1024, noid, ([]: id_t list)))
+        }, Hashmap.empty(1024, noid, ([]: list[id_t])))
     //Key of map is original name of mutable vars. Value is substitutional tempory reference.
     //It's different along function hierarchy
     var subst_map = Hashmap.empty(1024, noid, noid)
