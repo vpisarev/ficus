@@ -23,7 +23,7 @@ fun splitmix64(x: uint64): uint64
     z2 ^ (z2 >> 31)
 }
 
-type rndstate_t = { s: uint64 ref }
+type rndstate_t = { s: ref[uint64] }
 
 fun mk_rng(seed: uint64): RandUtil.rndstate_t = rndstate_t { s = ref(seed) }
 
@@ -61,7 +61,7 @@ fun rand_iarray(rng: rndstate_t, n: int, a: int, b: int): int [] =
 fun rand_darray(rng: rndstate_t, n: int, a: double, b: double): double [] =
     [for i <- 0:n {next_double(rng, a, b)}]
 
-fun rand_ilist(rng: rndstate_t, n: int, a: int, b: int): int list =
+fun rand_ilist(rng: rndstate_t, n: int, a: int, b: int): list[int] =
     [:: for i <- 0:n {next_int(rng, a, b)}]
 
 // printable ASCII, with a sprinkling of Latin/Greek to exercise UTF-32 strings.

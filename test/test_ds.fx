@@ -10,7 +10,7 @@ val poem = @text "poem.txt"
 
 TEST("ds.set", fun()
 {
-    fun cmp(a: 't, b: 't) = a <=> b
+    fun cmp[T](a: T, b: T) = a <=> b
     val icmp = (cmp: (int, int)->int)
     val scmp = (cmp: (string, string)->int)
 
@@ -18,8 +18,8 @@ TEST("ds.set", fun()
     EXPECT_EQ(`scmp("bar", "baz")`, -1)
     EXPECT_EQ(`scmp("foo", "foo")`, 0)
 
-    type intset = int Set.t
-    type strset = string Set.t
+    type intset = Set.t[int]
+    type strset = Set.t[string]
 
     val s1 = Set.from_list(icmp, [:: 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 ])
     EXPECT_EQ(`s1.list()`, [:: -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
@@ -81,10 +81,10 @@ TEST("dst.hashset", fun()
 
 TEST("ds.map", fun()
 {
-    fun cmp(a: 't, b: 't) = a <=> b
+    fun cmp[T](a: T, b: T) = a <=> b
     val scmp = (cmp: (string, string)->int)
 
-    type si_map = (string, int) Map.t
+    type si_map = Map.t[string, int]
 
     val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
     val fold wcounter = (Map.empty(scmp) : si_map) for w <- words {
@@ -137,7 +137,7 @@ TEST("ds.map", fun()
 })
 
 TEST("ds.hashmap", fun() {
-    type si_hash = (string, int) Hashmap.t
+    type si_hash = Hashmap.t[string, int]
     val words = poem.tokens(fun (c) {c.isspace() || c == '.' || c == ','})
     val wcounter = Hashmap.empty(8, "", 0)
     val odd_wcounter = Hashmap.empty(8, "", 0)

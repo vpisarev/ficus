@@ -3,10 +3,10 @@
     See ficus/LICENSE for the licensing terms
 */
 
-type 't point_ = {x: 't; y: 't}
-type 't rect_ = {x: 't; y: 't; width: 't; height: 't}
+type point_[T] = {x: T; y: T}
+type rect_[T] = {x: T; y: T; width: T; height: T}
 
-fun contains(r: 'z rect_, p: 'z point_) =
+fun contains[Z](r: rect_[Z], p: point_[Z]) =
     r.x <= p.x < r.x + r.width &&
     r.y <= p.y < r.y + r.height
 
@@ -16,7 +16,7 @@ val fp = point_ {x=10.f, y=20.f}
 val ir = rect_ {x=0, y=0, width=10, height=10}
 val fr = rect_ {x=0.f, y=0.f, width=10.f, height=10.f}
 
-fun inside_outside(p: 't point_, r: 't rect_) =
+fun inside_outside[T](p: point_[T], r: rect_[T]) =
     if contains(r, p) {"inside"} else {"outside of"}
 
 println(f"point {ip} is {inside_outside(ip, ir)} rectangle {ir}")

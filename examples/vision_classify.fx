@@ -10,7 +10,7 @@ type classifier_kind =
     | ClassifierEfficientNet
 
 var mname = "", lname = ""
-var images: string list = []
+var images: list[string] = []
 var labels: string [] = []
 var niter = 15
 var ntasks = 4
@@ -53,7 +53,7 @@ val preprocess_params_efficientnet = NN.Preprocess.image_preprocess_params_t {
     elemtype = Type_F32
 }
 
-fun parse_args(args: string list)
+fun parse_args(args: list[string])
 {
     | "-ntasks" :: ntasks_ :: rest =>
         ntasks = ntasks_.to_int_or(0); parse_args(rest)

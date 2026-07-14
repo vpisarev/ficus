@@ -3714,8 +3714,8 @@ static void _fx_ocv_trackbar_callb(int pos, void* userdata)
 }
 
 fun createTrackbar(trackbarname: string, window: string,
-                   value: int32 ref, count: int,
-                   onchange: (int->void)?): void
+                   value: ref[int32], count: int,
+                   onchange: (int -> void)?): void
 @ccode {
     std::string c_trackbarname, c_window;
     int fx_status = cvt_to(trackbarname, c_trackbarname);

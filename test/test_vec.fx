@@ -11,7 +11,7 @@ from UTest import *
 
 TEST("fcvector.access", fun()
 {
-    val v: int vector = []
+    val v: vector[int] = []
     EXPECT_EQ(`size(v)`, 0)
     EXPECT_EQ(`empty(v)`, true)
     for i <- 0:5 { v.push_back(i*i) }
@@ -26,7 +26,7 @@ TEST("fcvector.access", fun()
     EXPECT_THROWS(fun() {sink = v[5]}, OutOfRangeError)
     ignore(sink)
 
-    val s: string vector = []
+    val s: vector[string] = []
     s.push_back("a"); s.push_back("bc"); s.push_back("def")
     EXPECT_EQ(`size(s)`, 3)
     EXPECT_EQ(`s[2]`, "def")
@@ -34,7 +34,7 @@ TEST("fcvector.access", fun()
 
 TEST("fcvector.write", fun()
 {
-    val v: int vector = []
+    val v: vector[int] = []
     for i <- 0:5 { v.push_back(i) }
     v[0] = 100; v[2] = 300; v[4] = 500
     EXPECT_EQ(`array(v)`, [100, 1, 300, 3, 500])
@@ -43,7 +43,7 @@ TEST("fcvector.write", fun()
     ignore(sink)
 
     // complex element: overwriting must free the old string (ASan-checked)
-    val s: string vector = []
+    val s: vector[string] = []
     s.push_back("x"); s.push_back("y")
     s[0] = "hello"; s[1] = "world"
     EXPECT_EQ(`s[0]`, "hello")
@@ -88,7 +88,7 @@ TEST("fcvector.pushpop_edge", fun()
 {
     // __intrin_pop__ slow path: popping an empty vector throws OutOfRangeError
     // (consistent with back() / element access on an empty vector)
-    val v: int vector = []
+    val v: vector[int] = []
     EXPECT_THROWS(fun() { v.pop_back() }, OutOfRangeError)
     v.push_back(1); v.push_back(2)
     v.pop_back(); v.pop_back()
@@ -99,13 +99,13 @@ TEST("fcvector.pushpop_edge", fun()
     EXPECT_THROWS(fun() { ignore(v.back()) }, OutOfRangeError)
 
     // complex-element push/pop frees correctly (ASan-checked), fast path bypassed
-    val s: string vector = []
+    val s: vector[string] = []
     for w <- ["aa", "bb", "cc"] { s.push_back(w) }
     s.pop_back()
     EXPECT_EQ(`array(s)`, ["aa", "bb"])
 
     // growth (capacity exceeded) goes through the slow path and keeps all elements
-    val g: int vector = []
+    val g: vector[int] = []
     for i <- 0:1000 { g.push_back(i) }
     EXPECT_EQ(`size(g)`, 1000)
     EXPECT_EQ(`g[999]`, 999)
@@ -152,7 +152,7 @@ TEST("fcvector.splice", fun()
     EXPECT_EQ(`array(c)`, [42])
 
     // insert into an empty vector via [0:0]
-    val f: int vector = []
+    val f: vector[int] = []
     f[0:0] = vector([7,8,9])
     EXPECT_EQ(`array(f)`, [7,8,9])
 
@@ -178,7 +178,7 @@ TEST("fcvector.splice", fun()
 
 TEST("fcvector.slice", fun()
 {
-    val v: int vector = []
+    val v: vector[int] = []
     for i <- 0:10 { v.push_back(i) }
     EXPECT_EQ(`array(v[2:5])`, [2, 3, 4])
     EXPECT_EQ(`array(v[:3])`, [0, 1, 2])
@@ -195,7 +195,7 @@ TEST("fcvector.slice", fun()
     EXPECT_EQ(`array(v[2:5])`, [2, 3, 4])
 
     // complex elements copied on slice
-    val w: string vector = []
+    val w: vector[string] = []
     for x <- ["a", "b", "c", "d"] { w.push_back(x) }
     EXPECT_EQ(`array(w[1:3])`, ["b", "c"])
     EXPECT_EQ(`array(w[::-1])`, ["d", "c", "b", "a"])
@@ -203,8 +203,8 @@ TEST("fcvector.slice", fun()
 
 TEST("fcvector.binomial", fun()
 {
-    val emptyvec: float vector = []
-    val myvecs: (float vector) vector = []
+    val emptyvec: vector[float] = []
+    val myvecs: vector[vector[float]] = []
     for i <- 1:10 {
         val last = if empty(myvecs) {emptyvec} else {myvecs.back()}
         val curr = vector(for x@j <- last { if j == 0 {1.f} else {last[j-1] + last[j]} })
@@ -212,7 +212,7 @@ TEST("fcvector.binomial", fun()
         myvecs.push_back(curr)
     }
 
-    fun sum(v: 't vector, v0: 'r): 'r = fold s = v0 for x <- v {s = x + s}
+    fun sum[T, R](v: vector[T], v0: R): R = fold s = v0 for x <- v {s = x + s}
     for i <- 0:size(myvecs) {
         val expected_sum = double(1 << i)
         EXPECT_EQ(`sum(myvecs[i], 0.)`, expected_sum)
@@ -260,7 +260,7 @@ TEST("fcvector.iteration", fun()
     // comprehension with a vector source (read + write)
     EXPECT_EQ(`array(vector(for x <- v {x + 1}))`, [1, 2, 5, 10, 17])
     // iterating an empty vector does nothing
-    val e: int vector = []
+    val e: vector[int] = []
     var cnt = 0
     for x <- e { cnt += 1 }
     EXPECT_EQ(`cnt`, 0)
@@ -309,7 +309,7 @@ TEST("fcvector.readlock", fun()
 
 TEST("fcvector.str", fun()
 {
-    val vecstr: string vector = []
+    val vecstr: vector[string] = []
     for w <- ["a", "bc", "def", "ghij", "klmno", "pqrstu", "vwxyz"] {
         vecstr.push_back(w)
     }
@@ -322,7 +322,7 @@ TEST("fcvector.str", fun()
 TEST("fcvector.append", fun()
 {
     // the append family: element / array / vector, all void and unambiguous
-    val v: int vector = []
+    val v: vector[int] = []
     v.append(1)                        // single element (push_back synonym)
     v.append(2)
     v.append([3, 4, 5])                // whole array
@@ -330,20 +330,20 @@ TEST("fcvector.append", fun()
     EXPECT_EQ(`array(v)`, [1, 2, 3, 4, 5, 6, 7])
 
     // vector-of-vectors: element-append vs vector-append pick different overloads
-    val vv: (int vector) vector = []
+    val vv: vector[vector[int]] = []
     vv.append(vector([1, 2]))                              // one element
     vv.append(vector([vector([3]), vector([4])]))         // two elements
     EXPECT_EQ(`[for x <- vv {array(x)}]`, [[1, 2], [3], [4]])
 
     // push keeps its index-returning semantics
-    val p: string vector = []
+    val p: vector[string] = []
     EXPECT_EQ(`p.push("a")`, 0)
     EXPECT_EQ(`p.push("b")`, 1)
     EXPECT_EQ(`array(p)`, ["a", "b"])
 
     // appending an empty array/vector is a no-op
     v.append(([]: int []))
-    v.append((vector(): int vector))
+    v.append((vector(): vector[int]))
     EXPECT_EQ(`size(v)`, 7)
 })
 
@@ -351,7 +351,7 @@ TEST("fcvector.concat", fun()
 {
     val a = vector([1, 2, 3])
     val b = vector([4, 5])
-    val c: int vector = []
+    val c: vector[int] = []
     val d = vector([6, 7, 8, 9])
     // array of vectors
     EXPECT_EQ(`array(Vector.concat([a, b, d]))`, [1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -360,7 +360,7 @@ TEST("fcvector.concat", fun()
     // all-empty / empty list -> empty result that is still a real allocated
     // (pushable) vector, not the NULL/default vector
     EXPECT_EQ(`size(Vector.concat([c, c]))`, 0)
-    val e = Vector.concat(([]: (int vector) []))
+    val e = Vector.concat(([]: vector[int] []))
     EXPECT_EQ(`size(e)`, 0)
     e.push_back(42)
     EXPECT_EQ(`array(e)`, [42])

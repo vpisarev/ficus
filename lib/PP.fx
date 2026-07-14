@@ -52,14 +52,14 @@ class t
     margin: int
     default_indent: int
     print_f: string -> void
-    get_f: void -> list[string]
-    r: state_t ref
+    get_f: (void -> list[string])
+    r: ref[state_t]
 }
 
 fun no_get(): list[string] = []
 
 fun make_pprinter(margin: int, print_f: string->void,
-                  get_f: void->list[string], ~default_indent: int=4): t
+                  get_f: (void -> list[string]), ~default_indent: int=4): t
 {
     val n=max(margin, 16)*3
     val pp = t {

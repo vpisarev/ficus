@@ -194,14 +194,14 @@ TEST("basic.math", fun()
 
 TEST("basic.list.pattern_match", fun()
 {
-    fun f(l: int list) {
+    fun f(l: list[int]) {
         | [] => (0, 0)
         | [:: a] => (a, 1)
         | [:: a, d] => (a+d, 2)
         | _ => (-1, 56)
     }
 
-    var lst : int list = []
+    var lst : list[int] = []
     EXPECT_EQ(`f(lst)`, (0, 0))
 
     lst = [:: 1,]
@@ -245,12 +245,12 @@ TEST("basic.function.try_catch", fun()
 TEST("basic.types.templates", fun()
 {
     type template_fun_t[A, B] = A -> B
-    type template_fun2_t[A] = (A, A) template_fun_t
-    type tuple_signature_t[A, B] = (A, B, template_fun2_t[A] -> template_fun2_t[B])
+    type template_fun2_t[A] = template_fun_t[A, A]
+    type tuple_signature_t[A, B] = (A, B, (template_fun2_t[A] -> template_fun2_t[B]))
     type ct[A, B] = A: template_fun_t[A, B] | B: tuple_signature_t[B, B] | C: ct[A, B]
 
     // Check template_fun_t
-    val my_func: (int, string) template_fun_t = fun (x:int) {string(x)}
+    val my_func: template_fun_t[int, string] = fun (x:int) {string(x)}
     EXPECT_EQ(`my_func(3)`, "3")
 
     // Check template_fun2_t
@@ -258,17 +258,17 @@ TEST("basic.types.templates", fun()
     EXPECT_EQ(`my_func2(3)`, 9)
 
     // Check tuple_signature_t
-    val my_func3: double template_fun2_t = fun (x:double) {x*-3.}
-    val strange_tuple: (int, double) tuple_signature_t = (
+    val my_func3: template_fun2_t[double] = fun (x:double) {x*-3.}
+    val strange_tuple: tuple_signature_t[int, double] = (
             3,
             3.25,
-            (fun (f: int template_fun2_t) {my_func3} )
+            (fun (f: template_fun2_t[int]) {my_func3} )
         )
     EXPECT_EQ(`strange_tuple.0`, 3)
     EXPECT_EQ(`strange_tuple.1`, 3.25)
     EXPECT_EQ(`strange_tuple.2(my_func2)(3.0)`, -9.)
 
-    val ct_inst = C((A(cos) : (float, float) ct))
+    val ct_inst = C((A(cos) : ct[float, float]))
     EXPECT_EQ(`match ct_inst { | C(A(f)) => f(0.f) | _ => -1.f }`, 1.0f)
 })
 
@@ -508,12 +508,12 @@ TEST("basic.self_assignment", fun()
 TEST("basic.ref", fun()
 {
     val y = Some("abc")
-    val u : string? ref = ref None
+    val u : ref[string?] = ref None
 
     *u = y
     EXPECT_EQ(`u->value_or("0")`, `y.value_or("1")`)
 
-    val nested_ref: int ref ref ref = ref (ref (ref 5))
+    val nested_ref: ref[ref[ref[int]]] = ref (ref (ref 5))
     EXPECT_EQ(`***nested_ref`, 5)
 
     ***nested_ref -= 5
@@ -540,12 +540,12 @@ TEST("basic.option", fun()
 TEST("basic.types.variant", fun()
 {
     type type_t = Unit | Bool | Int | Float
-                | Fun: ((type_t list), type_t)
-                | Tuple: type_t list
+                | Fun: (list[type_t], type_t)
+                | Tuple: list[type_t]
                 | Array: type_t
-                | Var: type_t? ref
+                | Var: ref[type_t?]
 
-    fun tlist2str(args: type_t list) {
+    fun tlist2str(args: list[type_t]) {
         | [] => ""
         | [:: a] => t2str(a)
         | a :: args1 => t2str(a) + ", " + tlist2str(args1)
@@ -620,7 +620,7 @@ TEST("basic.list.map", fun()
     val strings = list_map([:: 1, 2, 3], (string: int->string))
     EXPECT_EQ(`strings`, [:: "1", "2", "3"])
 
-    val cosines : double list = list_map([:: 1., 2., 3.], cos)
+    val cosines : list[double] = list_map([:: 1., 2., 3.], cos)
     val expected = [:: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454]
     EXPECT_NEAR(`cosines`, expected, DBL_EPSILON*10)
 })
@@ -709,7 +709,7 @@ TEST("basic.loop.squares", fun()
 {
     fun gen_squares(n: int)
     {
-        var squares: int list = []
+        var squares: list[int] = []
         var i = 0
         while i < n {
             squares = i*i :: squares
@@ -904,9 +904,9 @@ TEST("basic.checked_read_side_effect", fun() {
     // Holds for every checked (BorderNone) container read: array, vector,
     // string, rrbvec; independent of opt level (T2 runs O0 and O3).
     val ea: int [] = []
-    val ev: int vector = []
+    val ev: vector[int] = []
     val es: string = ""
-    val er: int rrbvec = []
+    val er: rrbvec[int] = []
     EXPECT_THROWS(fun() { ignore(ea[0]) },   OutOfRangeError)
     EXPECT_THROWS(fun() { ignore(ea[.-1]) }, OutOfRangeError)
     EXPECT_THROWS(fun() { ignore(ev[0]) },   OutOfRangeError)

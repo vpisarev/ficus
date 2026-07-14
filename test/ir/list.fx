@@ -1,5 +1,5 @@
 // IR snapshot: list cons and recursive match
-fun sum(l: int list): int = match l {
+fun sum(l: list[int]): int = match l {
     | a :: rest => a + sum(rest)
     | _ => 0
 }

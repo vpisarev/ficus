@@ -93,7 +93,7 @@ fun arguments(): list[string] = argv.tl()
     return time(0);
 }
 
-fun timeit(f: void -> void, ~updated_min: (void->void)?,
+fun timeit(f: void -> void, ~updated_min: (void -> void)?,
            ~iterations: int=1, ~batch: int=1, ): (double, double)
 {
     val nreal_iterations = max(iterations - 1, 1)

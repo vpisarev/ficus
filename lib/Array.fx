@@ -233,10 +233,10 @@ fun clip[T](a: T [+], minv_arr: T [+], maxv_arr: T [+]): T [+] =
 fun sum[T](a: T [+]): double =
     fold s = ((0 :> T) :> double) for aj <- a {s += aj}
 
-fun sum[T](a: T [+], v0: 's): 's =
+fun sum[T, S](a: T [+], v0: S): S =
     fold s = v0 for aj <- a {s += aj}
 
-fun product[T](a: T [+], v0: 's): 's =
+fun product[T, S](a: T [+], v0: S): S =
     fold p = v0 for aj <- a {p *= aj}
 
 fun mean[T](a: T [+]): double = sum(a)/(max(total(a), 1) :> double)

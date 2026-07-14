@@ -19,7 +19,7 @@ fun gmap[T, R](a: T [], f: T -> R): R [] = [for x <- a {f(x)}]
 fun glen[T](l: list[T]): int = List.length(l)
 fun gflatten[T](ll: list[list[T]]): list[T] = List.concat(ll)
 fun gderef[T](r: ref[T]): T = *r
-fun ghead[T](l: list[T]): option[T] { | x :: _ => Some(x) | _ => None }
+fun ghead[T](l: list[T]): T? { | x :: _ => Some(x) | _ => None }
 
 TEST("generics1.fun_array_map", fun() {
     EXPECT_EQ(gmap([1, 2, 3], fun (x: int) {x * 2}), [2, 4, 6])
@@ -35,7 +35,7 @@ TEST("generics1.ref_and_option", fun() {
     val r = ref 42
     EXPECT_EQ(gderef(r), 42)
     EXPECT_EQ(ghead([:: 7, 8]), Some(7))
-    EXPECT_EQ(ghead(([] : int list)), (None : int?))
+    EXPECT_EQ(ghead(([] : list[int])), (None : int?))
 })
 
 // --- multi-param record type ---

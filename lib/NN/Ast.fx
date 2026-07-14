@@ -149,7 +149,7 @@ class nnop_t =
     | NN_Conv: {
         name: string
         attr: nnconv_attr_t
-        conv_data: cptr ref
+        conv_data: ref[cptr]
         fused_batch_norm: nnop_t?
         non_const_batch_norm: bool
         fused_activ: nnop_t?
@@ -240,7 +240,7 @@ class nnop_t =
     | NN_QLinearConv: {
         name: string
         attr: nnconv_attr_t
-        qconv_data: cptr ref
+        qconv_data: ref[cptr]
         t_inp: int; t_weights: int
         t_bias: int; t_out: int;
         t_inp_scale: int; t_inp_zp: int;
@@ -320,7 +320,7 @@ val nn_elemwise_operations = NN_Elemwise_ZZ.__tag__ - 1
 val nn_reduce_operations = NN_ReduceZZ.__tag__ - 1
 val nn_total_operations = nn_operations + nn_elemwise_operations + nn_reduce_operations
 
-type nnnames_t = (string, int) Hashmap.t
+type nnnames_t = Hashmap.t[string, int]
 
 type nnonnx_t =
 {
@@ -328,7 +328,7 @@ type nnonnx_t =
     producer: string
     domain: string
     doc_string: string
-    opsets: (int64, string) list
+    opsets: list[int64, string]
 }
 
 type dlnet_info_t =
@@ -355,14 +355,14 @@ class nnmodel_t
     buffers: nnbuf_t []
     graph: nngraph_t
     preferred_layout: nnlayout_t
-    ntasks: int ref
-    use_fp16: bool ref
-    trace: bool ref
-    profile: bool ref
-    detailed_profile: bool ref
-    use_jit: bool ref
-    jit_ctx: cptr ref
-    scratch_buf: nnbuf_t ref
+    ntasks: ref[int]
+    use_fp16: ref[bool]
+    trace: ref[bool]
+    profile: ref[bool]
+    detailed_profile: ref[bool]
+    use_jit: ref[bool]
+    jit_ctx: ref[cptr]
+    scratch_buf: ref[nnbuf_t]
     perf_profile_time: int64 []
     perf_profile_count: int []
 }
@@ -685,7 +685,7 @@ fun float(t: nntensor_t) = float(t.data)
 fun double(t: nntensor_t) = double(t.data)
 fun int(t: nntensor_t) = int(t.data)
 
-fun arr2str(elems: 't []) = join_embrace("[", "]", ",", elems.map(repr))
+fun arr2str[T](elems: T []) = join_embrace("[", "]", ",", elems.map(repr))
 
 fun tdata2str(d: nndata_t)
 {
@@ -752,7 +752,7 @@ match t.data {
 
 fun string(t: nntensor_t, ~border: int=3, ~braces: bool=true)
 {
-    fun row2str(data: 't [], n: int, ofs: int)
+    fun row2str[T](data: T [], n: int, ofs: int)
     {
         val ndump = min(n, border*2+1)
         val elems = [for i <- 0:ndump {
@@ -1376,19 +1376,19 @@ fun mktensor(shape: nnshape_t, typ: scalar_t)
     nntensor_t {shape=nnshape_t {shape=shape, layout=layout}, data=data}
 }
 
-fun mktensor(arr: 't [+], ~layout: nnlayout_t=NN_Layout_Unknown)
+fun mktensor[T](arr: T [+], ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     val sz = arr.size()
     val shape = [for sz_i <- sz {sz_i}]
-    val typ = scalar_type(0 :> 't)
+    val typ = scalar_type(0 :> T)
     mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ, layout=layout)
 }
 
-fun mktensor(arr: 't [], ~layout: nnlayout_t=NN_Layout_Unknown)
+fun mktensor[T](arr: T [], ~layout: nnlayout_t=NN_Layout_Unknown)
 {
     val sz = arr.size()
     val shape = [sz]
-    val typ = scalar_type(0 :> 't)
+    val typ = scalar_type(0 :> T)
     mktensor_(reinterpret(arr[:]) : uint8 [], shape, typ, layout=layout)
 }
 

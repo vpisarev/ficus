@@ -8,7 +8,7 @@ import Set, Map, Hashmap, Hashset
 
 TEST("parallel.primes", fun()
 {
-    var primes: int list = []
+    var primes: list[int] = []
 
     fun is_prime(n: int)
     {

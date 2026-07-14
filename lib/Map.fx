@@ -143,7 +143,7 @@ fun add[K, D](m: Map.t[K, D], xk: K, xd: D): Map.t[K, D]
     t { root=new_root, cmp=m.cmp }
 }
 
-@private fun update_[K, D](t: tree_t[K, D], xk: K, f: (K, D?) -> D, cmp: cmp_t[K]): tree_t[K, D] =
+@private fun update_[K, D](t: tree_t[K, D], xk: K, f: ((K, D?) -> D), cmp: cmp_t[K]): tree_t[K, D] =
 match t
 {
     | Node(Red, l, yk, yd, r) =>
@@ -161,7 +161,7 @@ match t
             f(xk, (None : D?)), (Empty: tree_t[K, D]))
 }
 
-fun update[K, D](m: Map.t[K, D], xk: K, f: (K, D?) -> D): Map.t[K, D]
+fun update[K, D](m: Map.t[K, D], xk: K, f: ((K, D?) -> D)): Map.t[K, D]
 {
     val new_root = blackify(update_(m.root, xk, f, m.cmp)).0
     t { root=new_root, cmp=m.cmp }

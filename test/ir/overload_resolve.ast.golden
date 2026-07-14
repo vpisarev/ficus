@@ -11,7 +11,7 @@ fun overload_resolve.pick@g0(overload_resolve.x@g1: int): (int -> int) = { (<int
 
 fun overload_resolve.pick@g2(overload_resolve.x@g3: float): (float -> int) = { 2 }
 
-template<'t> fun overload_resolve.pick@g4(x: 't): ('t -> int) = { 0 }
+template<T> fun overload_resolve.pick@g4(x: T): (T -> int) = { 0 }
 [[instances:
    @instance fun overload_resolve.pick@g5(overload_resolve.x@g6: int list): (int list -> int) = { 0 }
 

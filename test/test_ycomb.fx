@@ -14,7 +14,7 @@ type mu[A] = Roll: (mu[A] -> A)
 fun unroll[A](Roll(x): mu[A]) = x
 
 fun ycomb[A, B] (f: (A -> B) -> (A -> B)): A -> B {
-    fun l(x: mu[A -> B]): A -> B = fun (a: A) { f(unroll(x)(x))(a) }
+    fun l(x: mu[(A -> B)]): A -> B = fun (a: A) { f(unroll(x)(x))(a) }
     l(Roll(l))
 }
 

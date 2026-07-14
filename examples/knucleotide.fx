@@ -13,7 +13,7 @@
 import File, Sys
 import Hashmap
 
-type hashtab_t = (int64, int) Hashmap.t
+type hashtab_t = Hashmap.t[int64, int]
 
 val lut = {
     val L = array(256, 255u8)

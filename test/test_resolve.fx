@@ -43,7 +43,7 @@ check("ctor.under_expected", (match boxed { | Full(v) => v | Empty => -1 }), 7)
 
 // (3) A concrete overload declared AFTER a generic one wins (env order happens
 //     to agree with specificity here). Locks the common good case.
-fun good(x: 't): int = 0
+fun good[T](x: T): int = 0
 fun good(x: int): int = 1
 check("concrete_last_wins", good(5), 1)
 
@@ -70,7 +70,7 @@ check("xmodule.instance_sees_local_eq",
 // regardless of declaration order. Before the surgery the generic identity won
 // here (env-list is most-recent-first) and this yielded 5.
 fun bad(x: int): int = x + 1
-fun bad(x: 't): 't = x
+fun bad[T](x: T): T = x
 check("FB016_fixed.concrete_beats_generic", bad(5), 6)
 
 // ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ check("fb007.s2_cplx_times_int", c->re + c->im, 4)
 // and `.rev()` failed -- the FromOnnx.fx:1012 / vision_classify.fx failure
 // in miniature.) The true deferral of under-constrained calls is still
 // session-2 scope; TypVarCollection removes this particular collision class.
-fun build(l: int list): int list {
+fun build(l: list[int]): list[int] {
     val fold prog = [] for x <- l { prog = [:: x*x] + prog }
     prog.rev()
 }

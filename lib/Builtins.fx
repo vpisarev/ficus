@@ -60,7 +60,7 @@ fun ignore[T](_: T): void {}
 @nothrow fun always_use[T](x: T): void = @ccode {}
 
 // T?, int? etc. can be used instead of T option, int option ...
-class option [T] = None | Some: T
+class option[T] = None | Some: T
 
 type byte = uint8
 
@@ -332,7 +332,7 @@ fun repr(a: string): string = "\"" + a + "\""
 
 fun string(t: (...)): string = join_embrace("(", ")", ", ", [for x <- t {repr(x)}])
 fun string(r: {...}): string = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr(x)}])
-fun string[T](a: T ref): string = "ref(" + repr(*a) + ")"
+fun string[T](a: ref[T]): string = "ref(" + repr(*a) + ")"
 
 fun string[T](a: T []): string
 {
@@ -368,9 +368,9 @@ fun string[T](l: list[T]): string = join_embrace("[", "]", ", ", [for x <- l {re
     return fx_make_str((char_*)a->data, a->dim[0].size, fx_result);
 }
 
-fun string[T](v: T rrbvec): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+fun string[T](v: rrbvec[T]): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
-@pure fun string(v: char rrbvec): string
+@pure fun string(v: rrbvec[char]): string
 @ccode {
     int_ i, size = v->size;
     int fx_status = fx_make_str(0, size, fx_result);
@@ -406,7 +406,7 @@ fun string(typ: scalar_t): string
     | Type_Char => "Char"
 }
 
-fun repr(v: char rrbvec): string =
+fun repr(v: rrbvec[char]): string =
     join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
 type format_t =
@@ -477,7 +477,7 @@ fun string(x: bf16, fmt: format_t): string = format_(x :> double, 4, fmt)
 
 fun string(t: (...), fmt: format_t): string = join_embrace("(", ")", ", ", [for x <- t {string(x, fmt)}])
 fun string(r: {...}, fmt: format_t): string = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+string(x, fmt)}])
-fun string[T](a: T ref, fmt: format_t): string = "ref(" + format(a, fmt) + ")"
+fun string[T](a: ref[T], fmt: format_t): string = "ref(" + format(a, fmt) + ")"
 
 fun string[T](a: T [], fmt: format_t): string
 {
@@ -509,8 +509,8 @@ fun string[T](a: T [,,], fmt: format_t): string
 
 fun string[T](l: list[T], fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- l {string(x, fmt)}])
 fun string(a: char [], fmt: format_t): string = string(string(a), fmt)
-fun string[T](v: T rrbvec, fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
-fun string(v: char rrbvec, fmt: format_t): string = string(string(v), fmt)
+fun string[T](v: rrbvec[T], fmt: format_t): string = join_embrace("[", "]", ", ", [for x <- v {string(x, fmt)}])
+fun string(v: rrbvec[char], fmt: format_t): string = string(string(v), fmt)
 
 @pure operator * (c: char, n: int): string
 @ccode {
@@ -556,13 +556,13 @@ operator <=> [T](a: list[T], b: list[T]): int
     | _ => 0
 }
 
-operator == [T](a: T rrbvec, b: T rrbvec): bool
+operator == [T](a: rrbvec[T], b: rrbvec[T]): bool
 {
     size(a) == size(b) &&
     all(for xa <- a, xb <- b {xa == xb})
 }
 
-operator <=> [T](a: T rrbvec, b: T rrbvec): int
+operator <=> [T](a: rrbvec[T], b: rrbvec[T]): int
 {
     val na = size(a), nb = size(b)
     val n = min(na, nb)
@@ -776,7 +776,7 @@ fun exists(a: (bool...)): bool = fold f=false for x <- a {f |= x}
 }
 
 // compare the pointers, not the content. Maybe need a separate operator for that.
-@pure @nothrow operator == [T](a: T ref, b: T ref): bool = @ccode { return a == b }
+@pure @nothrow operator == [T](a: ref[T], b: ref[T]): bool = @ccode { return a == b }
 @pure @nothrow operator == (a: cptr, b: cptr): bool = @ccode { return a == b }
 
 // these are pseudo-functions that are treated specially by the compiler
@@ -1125,7 +1125,7 @@ fun print[T](l: list[T]): void
     print("]")
 }
 
-fun print[T](v: T rrbvec): void
+fun print[T](v: rrbvec[T]): void
 {
     print("[")
     for x@i <- v {
@@ -1156,7 +1156,7 @@ fun print(r: {...}): void
     print("}")
 }
 
-fun print[T](a: T ref): void {
+fun print[T](a: ref[T]): void {
     print("ref("); print_repr(*a); print(")")
 }
 
@@ -1165,7 +1165,7 @@ fun println[T](a: T): void { print(a); print("\n") }
 
 fun list[T](a: T []): list[T] = [:: for x <- a {x}]
 fun list(s: string): list[char] = [:: for x <- s {x}]
-fun list[T](v: T rrbvec): list[T] = [:: for x <- v {x}]
+fun list[T](v: rrbvec[T]): list[T] = [:: for x <- v {x}]
 
 fun array[T](): T [] = []
 fun array[T](n: int, x: T): T [] = [for i <- 0:n {x}]
@@ -1173,7 +1173,7 @@ fun array[T]((m: int, n: int), x: T): T [,] = [for i <- 0:m for j <- 0:n {x}]
 fun array[T]((m: int, n: int, n2: int), x: T): T [,,] = [for i <- 0:m for j <- 0:n for k <- 0:l {x}]
 fun array[T]((m: int, n: int, n2: int, n3: int), x: T): T [,,,] = [for i <- 0:m for j <- 0:n for k <- 0:n2 for l <- 0:n3 {x}]
 fun array[T](l: list[T]): T [] = [for x <- l {x}]
-fun array[T](v: T rrbvec): T [] = [for x <- v {x}]
+fun array[T](v: rrbvec[T]): T [] = [for x <- v {x}]
 fun array[T](v: vector[T]): T [] = [for x <- v {x}]
 fun array(s: string): char [] = [for x <- s {x}]
 
@@ -1183,10 +1183,10 @@ fun array(s: string): char [] = [for x <- s {x}]
     fx_copy_arr(x, fx_result);
 }
 
-fun rrbvec[T](): T rrbvec = []
-fun rrbvec[T](l: list[T]): T rrbvec = rrbvec(for x <- l {x})
-fun rrbvec[T](a: T [+]): T rrbvec = rrbvec(for x <- a {x})
-fun rrbvec(s: string): char rrbvec = rrbvec(for x <- s {x})
+fun rrbvec[T](): rrbvec[T] = []
+fun rrbvec[T](l: list[T]): rrbvec[T] = rrbvec(for x <- l {x})
+fun rrbvec[T](a: T [+]): rrbvec[T] = rrbvec(for x <- a {x})
+fun rrbvec(s: string): rrbvec[char] = rrbvec(for x <- s {x})
 
 // low-level reserve primitive; Vector.reserve is a thin wrapper over it. It
 // lives here so vector[the](~capacity) constructor can join the rest of the
@@ -1204,10 +1204,10 @@ fun vector[T](~capacity: int=0): vector[T] { val v: vector[T] = []; __vec_reserv
 fun vector[T](n: int, x: T): vector[T] = vector(for i <- 0:n {x})
 fun vector[T](a: T []): vector[T] = vector(for x <- a {x})
 fun vector[T](l: list[T]): vector[T] = vector(for x <- l {x})
-fun vector[T](v: T rrbvec): vector[T] = vector(for x <- v {x})
+fun vector[T](v: rrbvec[T]): vector[T] = vector(for x <- v {x})
 fun vector(s: string): vector[char] = vector(for x <- s {x})
 
-fun size[T](a: T rrbvec): int = __intrin_size__(a)
+fun size[T](a: rrbvec[T]): int = __intrin_size__(a)
 fun size[T](a: vector[T]): int = __intrin_size__(a)
 fun empty[T](a: vector[T]): bool = __intrin_size__(a) == 0
 

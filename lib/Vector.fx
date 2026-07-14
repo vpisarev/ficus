@@ -19,10 +19,10 @@
 
 // ------------------------- capacity / size -------------------------
 
-@nothrow fun capacity[T](v: T vector): int
+@nothrow fun capacity[T](v: vector[T]): int
 @ccode { return v ? v->capacity : 0; }
 
-fun clear[T](v: T vector): void
+fun clear[T](v: vector[T]): void
 @ccode {
     if (v) return fx_vec_resize(v, 0, 0);
     return FX_OK;
@@ -49,7 +49,7 @@ fun assign[T](v: vector[T], size: int, val0: T): void
 
 // reserve is a thin wrapper over the Builtins __vec_reserve__ primitive (which
 // the vector(~capacity) constructor also uses).
-fun reserve[T](v: T vector, capacity: int): void = __vec_reserve__(v, capacity)
+fun reserve[T](v: vector[T], capacity: int): void = __vec_reserve__(v, capacity)
 
 // ------------------------- element push/pop -------------------------
 
@@ -76,7 +76,7 @@ fun pop[T](v: vector[T]): T { val r = back(v); pop_back(v); r }
 // inlines the fast path: for POD elements a present, not-being-iterated last
 // slot is dropped with a bare size decrement; every other case (empty, locked,
 // NULL, or a complex element that must be freed) goes through fx_vec_pop_back.
-@inline fun pop_back[T](v: T vector): void = __intrin_pop__(v)
+@inline fun pop_back[T](v: vector[T]): void = __intrin_pop__(v)
 
 // map/mapi/foldl are gone: `vector(for x <- v {..})`, `vector(for x@i <- v {..})`
 // and `fold acc=init for x <- v {..}` express them directly.
@@ -94,7 +94,7 @@ fun append[T](v: vector[T], arr: T []): void
         FX_FAST_THROW_RET(FX_EXN_NullPtrError);
     return fx_vec_append(v, arr->data, arr->dim[0].size);
 }
-fun append[T](v: vector[T], src: T vector): void
+fun append[T](v: vector[T], src: vector[T]): void
 @ccode {
     if (!v)
         FX_FAST_THROW_RET(FX_EXN_NullPtrError);
@@ -106,11 +106,11 @@ fun append[T](v: vector[T], src: T vector): void
 // metadata), reserved to the total size up front, then filled by bulk appends;
 // so no input vector is needed to supply metadata and an empty input yields a
 // real allocated empty vector.
-fun concat[T](vs: (vector[T]) []): T vector {
+fun concat[T](vs: vector[T] []): vector[T] {
     val total = fold s = 0 for v <- vs { s += v.size() }
     fold r: vector[T] = vector(capacity=total) for v <- vs { r.append(v) }
 }
-fun concat[T](vs: (vector[T]) vector): T vector {
+fun concat[T](vs: vector[vector[T]]): vector[T] {
     val total = fold s = 0 for v <- vs { s += v.size() }
     fold r: vector[T] = vector(capacity=total) for v <- vs { r.append(v) }
 }
@@ -137,9 +137,9 @@ operator <=> [T](a: vector[T], b: vector[T]): int
     if d != 0 {d} else {size(a) <=> size(b)}
 }
 
-fun string[T](v: T vector): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
+fun string[T](v: vector[T]): string = join_embrace("[", "]", ", ", [for x <- v {repr(x)}])
 
-fun print[T](v: T vector): void
+fun print[T](v: vector[T]): void
 {
     print("[")
     for x@i <- v {

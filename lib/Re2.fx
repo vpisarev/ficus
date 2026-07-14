@@ -134,7 +134,7 @@ type replace_piece_t =
 | RPInt: int
 | RPString: string
 
-type replace_pattern_t = {pieces: replace_piece_t list; max_subnum: int}
+type replace_pattern_t = {pieces: list[replace_piece_t]; max_subnum: int}
 
 //    options_t - regular expression options.
 //    Equivalent of RE2::Options objects. See re2.h for detailed meaning of particular option.
@@ -256,7 +256,7 @@ fun compile(pattern: string): regex_t
 //    indexes. Therefore, it's possible to get sub-match by name.
 //
 //    Equivalent of RE2::NamedCapturingGroups
-fun named_capturing_groups(re: regex_t): (string, int) list
+fun named_capturing_groups(re: regex_t): list[string, int]
 {
     @pure fun named_capturing_groups_(re: regex_t): (string [], int [])
     @ccode {
@@ -310,7 +310,7 @@ fun named_capturing_groups(re: regex_t): (string, int) list
 //    Extracts assoc list from sub-match indexes to sub-match names.
 //
 //    Equivalent of RE2::CapturingGroupNames
-fun capturing_group_names(re: regex_t): (int, string) list
+fun capturing_group_names(re: regex_t): list[int, string]
 {
     val lst = named_capturing_groups(re)
     [:: for (name, index) <- lst {(index, name)} ]
@@ -903,7 +903,7 @@ fun findall(string_to_match: string, re: regex_t): (bool   , (int      , int    
         return fx_status;
     }
 
-    fun result_as_list(pos: int, lastend: int, reslst: (int, int) [] list) : (int, int)[] list
+    fun result_as_list(pos: int, lastend: int, reslst: list[(int, int) []]) : list[(int, int) []]
     {
         val (success, newpos, matches) = find_step(proc, pos,re)
         if(success)

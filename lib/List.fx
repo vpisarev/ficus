@@ -66,7 +66,7 @@ fun find[T](l: list[T], f: T -> bool): T =
 fun find_opt[T](l: list[T], f: T -> bool): T? =
     find_opt(for a <- l {f(a)})
 
-fun concat[T](ll: list[T] list): list[T] =
+fun concat[T](ll: list[list[T]]): list[T] =
     fold s = ([]: list[T]) for l <- rev(ll) {s = l + s}
 
 fun filter[T](l: list[T], f: T -> bool): list[T] =

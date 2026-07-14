@@ -67,15 +67,27 @@ def apply_edits(src, edits):
         if a > b:
             a, b = b, a
         spans.append((a, b, kind, text))
-    # apply end-to-start; ties: longer (replacement) before zero-width insert
-    spans.sort(key=lambda s: (s[0], s[1]), reverse=True)
+    # A nested type records both an outer annotation and its inner parts: a
+    # variant case with a RECORD payload records the whole record AND each field.
+    # Drop the CONTAINER and keep the inner (leaf) edits -- rewriting only the
+    # field TYPES leaves the record braces, field names, ';' and any field
+    # DEFAULT VALUES (which typ2str_new does not reproduce) untouched.
+    def contains(x, y):
+        return x[0] <= y[0] and y[1] <= x[1] and (x[0], x[1]) != (y[0], y[1])
+    keep = []
+    for i, e in enumerate(spans):
+        if any(i != j and contains(e, f) for j, f in enumerate(spans)):
+            continue                       # e strictly contains another edit -> drop
+        keep.append(e)
+    # remaining edits are disjoint (leaves + non-overlapping); apply end-to-start
+    keep.sort(key=lambda s: s[0], reverse=True)
     out = src
-    prev_start = len(src) + 1
-    for (a, b, kind, text) in spans:
-        if b > prev_start:
-            raise RuntimeError(f"overlapping edit at [{a},{b}) kind={kind}")
+    prev = len(src) + 1
+    for (a, b, kind, text) in keep:
+        if b > prev:
+            raise RuntimeError(f"unexpected overlapping leaf edit at [{a},{b}) kind={kind}")
         out = out[:a] + text + out[b:]
-        prev_start = a
+        prev = a
     return out
 
 

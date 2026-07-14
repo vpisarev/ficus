@@ -45,7 +45,7 @@ TEST("rrbvec.concat_slice", fun()
     val rng = RNG(0xffffffffu64)
     val N = 1000003
     var i = 0
-    var vec: float rrbvec = []
+    var vec: rrbvec[float] = []
     while i < N {
         val j = rng.uniform(i, N+1)
         val added_vec = rrbvec(for k <- i:j {float(k)})
@@ -65,7 +65,7 @@ TEST("rrbvec.concat_slice", fun()
     }]
     cuts.sort((<))
     val parts = rrbvec(for i <- 0:ncuts {vec[cuts[i]:cuts[i+1]]})
-    var vec2: float rrbvec = []
+    var vec2: rrbvec[float] = []
     // test the reverse at once
     for part <- parts[::-1] { vec2 = part + vec2 }
     EXPECT_EQ(`size(vec2)`, N)

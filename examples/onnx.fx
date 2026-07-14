@@ -10,7 +10,7 @@ import Hashset, Onnx.Ast, Onnx.Parser, Sys
 fun collect_opnames(model: Onnx.Ast.model_t)
 {
     val all_ops = Hashset.empty(256, "")
-    fun collect_opnames_(ops: string Hashset.t, g: Onnx.Ast.graph_t): void
+    fun collect_opnames_(ops: Hashset.t[string], g: Onnx.Ast.graph_t): void
     {
         for n <- g.nodes {
             ops.add(n.op)

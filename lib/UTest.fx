@@ -23,7 +23,7 @@ type test_info_t =
 
 type test_rng_t =
 {
-    state: uint64 ref
+    state: ref[uint64]
 }
 
 type errctx[T] = (T, string, string, int)
@@ -176,7 +176,7 @@ fun test_failed_expect_cmp[T](a: errctx[T], b: errctx[T], op: string): void
     throw TestAssertError
 }
 
-fun test_failed_expect_near[T](a: T, b: T, idx:'idx?, eps: T): void
+fun test_failed_expect_near[T, Idx](a: T, b: T, idx: Idx?, eps: T): void
 {
     print(f"Unexpected result of comparison abs(<Actual> - <Expected>) <= {eps}")
     match idx {
@@ -190,7 +190,7 @@ fun test_failed_expect_near[T](a: T, b: T, idx:'idx?, eps: T): void
     g_test_state.currstatus = false
 }
 
-fun test_failed_expect_near[T](a: (T...), b: (T...), idx:'idx?, eps: T): void
+fun test_failed_expect_near[T, Idx](a: (T...), b: (T...), idx: Idx?, eps: T): void
 {
     print(f"Unexpected result of comparison abs(<Actual> - <Expected>) <= {eps}")
     match idx {
@@ -204,7 +204,7 @@ fun test_failed_expect_near[T](a: (T...), b: (T...), idx:'idx?, eps: T): void
     g_test_state.currstatus = false
 }
 
-fun test_failed_expect_near[T](a: errctx[T], b: errctx[T], idx:'idx?, eps: T): void
+fun test_failed_expect_near[T, Idx](a: errctx[T], b: errctx[T], idx: Idx?, eps: T): void
 {
     val a_str = if a.1 != "" {a.1} else {"<Actual>"}
     val b_str = if b.1 != "" {b.1} else {"<Expected>"}
