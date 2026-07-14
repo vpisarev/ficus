@@ -1376,9 +1376,27 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: scope_t list, loc: loc_t): 
                     throw compile_err(loc, f"ambiguous call of overloaded '{pp(n)}': \
                         {why}. Candidates:\n    {cand_lines}\n{hint}")
                 } else {
-                    // under-constrained tie: keep today's env-order first-match
-                    // semantics until deferral lands (session 2)
-                    val (i, df) = viable.hd()
+                    // under-constrained tie: env-order first-match (a documented
+                    // stopgap until deferral lands, session 2) -- BUT prefer a
+                    // concrete (non-template) candidate over a template one.
+                    // This is a fully under-determined call (all arg types free);
+                    // whichever candidate we commit is a speculative choice that
+                    // is redone per real use with concrete args. Committing a
+                    // TEMPLATE here instantiates it with the still-free args, and
+                    // for a self-recursive generic operator -- a container `<=>`
+                    // whose body compares its still-free elements -- that
+                    // instantiation re-issues the same free compare and picks the
+                    // template again, self-instantiating without bound (FB-025
+                    // StackOverflow, formerly the "failed to re-unify at commit"
+                    // internal error). A concrete candidate fixes the arg types
+                    // in this speculative check and cannot self-instantiate, so
+                    // the placement of a generic container operator (Vector.fx vs
+                    // Builtins.fx) no longer decides whether the compiler builds.
+                    val concrete_opt = find_opt(for idf <- viable { idf.1->df_templ_args == [] })
+                    val (i, df) = match concrete_opt {
+                        | Some(idf) => idf
+                        | _ => viable.hd()
+                        }
                     commit_fun(i, df)
                 }
             }
@@ -3351,20 +3369,34 @@ fun check_eseq(eseq: exp_t list, env: env_t, sc: scope_t list, create_sc: bool):
                                                         sc, false, true, is_mutable)
                     (DefVal(p1, e1, flags, loc) :: eseq_acc, env1)
                 } catch {
-                | CompileError(_, _) as err =>
-                    push_compile_err(err)
-                    // Poison every name the pattern binds. With an explicit
-                    // annotation, poison with THAT type -- the §1.7 firewall:
-                    // callers keep checking against the declared type. Without
-                    // one, poison with TypErr so later uses are suppressed
-                    // (structural cascade suppression), not cascaded.
-                    val poison_t = match p {
-                        | PatTyped(_, t1, tloc) =>
-                            (try { check_typ(t1, env, sc, tloc) } catch { | CompileError(_, _) => TypErr })
-                        | _ => TypErr
+                | (CompileError(_, _) | PropagateCompileError) as err =>
+                    // A direct RHS failure arrives as CompileError. A failure
+                    // INSIDE a block-valued RHS -- e.g. the fold desugar
+                    // `val (a,b): (..) = { ..failed stmt..; (a,b) }` (FB-022) --
+                    // has already been reported by the block's own check_eseq
+                    // and reaches us as PropagateCompileError; don't re-push it.
+                    match err { | CompileError(_, _) => push_compile_err(err) | _ => {} }
+                    // Bind every name the pattern introduces so later statements
+                    // don't cascade into spurious "undefined". With a usable
+                    // annotation, bind each name to its ANNOTATED type -- the
+                    // §1.7 firewall (callers keep checking against the declared
+                    // interface). check_pat destructures a tuple/record
+                    // annotation per-field, so `val (a,b): (int,bool)` yields
+                    // a:int, b:bool (not both the whole tuple, which would
+                    // itself cascade). Without a usable annotation, poison with
+                    // TypErr so later uses are structurally suppressed.
+                    val env1 = match p {
+                        | PatTyped(p1, t1, tloc) =>
+                            (try {
+                                val t1 = check_typ(t1, env, sc, tloc)
+                                val (_, env1, _, _, _) =
+                                    check_pat(p1, t1, env, empty_idset, empty_idset,
+                                              sc, false, true, is_mutable)
+                                env1
+                            } catch { | CompileError(_, _) | PropagateCompileError =>
+                                poison_pattern_vars(p1, TypErr, flags, sc, curr_m_idx, env) })
+                        | _ => poison_pattern_vars(p, TypErr, flags, sc, curr_m_idx, env)
                         }
-                    val env1 = poison_pattern_vars(pat_skip_typed(p), poison_t, flags,
-                                                   sc, curr_m_idx, env)
                     (DefVal(p, e, flags, loc) :: eseq_acc, env1)
                 }
             | DefFun(df) =>

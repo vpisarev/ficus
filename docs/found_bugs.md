@@ -226,16 +226,30 @@ CLAUDE.md and (at rewrite time) the tutorial state it plainly; the annotate-2
   the `.op → plain op / @ matmul` reform (which removes `.op`) and to a future
   "report at the call site, not the instantiation site" diagnostic pass.
 
-## FB-022  a failed `fold`-valued `val` cascades ("<name> not found")  [OPEN — recovery gap]
-- repro: `val s = fold acc = 0 for x <- [1,2,3] {acc + undefined}` reports the
-  body error AND a spurious `s is not found` at a later use of `s`.
-- cause: `fold` desugars during parsing into a block (`__fold_result__` etc.),
-  so the DefVal that binds `s` no longer has a simple RHS; the diag-1 recovery
-  that poisons a failed `val`'s pattern to `TypErr` does not fire on this
-  desugared shape, leaving `s` unbound → cascade.
-- impact: minor extra diagnostic; the root error is still correct. A diag-1
-  follow-up would extend the DefVal recovery to poison the pattern regardless of
-  RHS shape.
+## FB-022  a failed block-valued `val` cascades ("<name> not found")  [FIXED — resolve-3 Phase C]
+- repro: `val s = fold acc = 0 for x <- [1,2,3] {acc + undefined}` (and the wider
+  `val fold sz=0, have_neg=false for s <- shape { ..typo.. }`) reports the body
+  error AND a spurious `<accumulator> is not found` at every later use.
+- cause (actual, narrower than first thought): a `val fold ...` desugars to
+  `val (a,b): (..) = { var a=..; var b=..; for ...; (a,b) }`. The block's own
+  `check_eseq` already RECOVERS the failed `for` per-statement and types the tail
+  `(a,b)` correctly, but its closing `check_compile_errs()` then throws
+  **`PropagateCompileError`** (not `CompileError`) to flag the tainted subtree.
+  The outer DefVal recovery caught only `CompileError`, so it skipped pattern
+  binding entirely → the accumulators stayed unbound → cascade.
+- fix (`Ast_typecheck.fx`, `check_eseq` DefVal arm): (1) the recovery catches
+  `PropagateCompileError` too (without re-pushing the already-reported inner
+  error); (2) it binds the pattern via `check_pat` against the annotation type
+  instead of `poison_pattern_vars` with one whole-pattern poison type, so a
+  tuple/record annotation is destructured per-field (`val (a,b):(int,bool)` →
+  `a:int, b:bool`, the §1.7 firewall) rather than binding both to `(int,bool)`
+  (which would itself cascade). No usable annotation → still `TypErr` poison.
+- generalization: this is NOT fold-specific — ANY block expression in value
+  position (`val r: int = { ..failed stmt..; r_expr }`) now recovers. Golden
+  `test/negative/709` loses its spurious cascade; directed tests
+  `239_recovery_fold_block` (fold, with did-you-mean) and `240_recovery_block_expr`
+  (plain block) lock the mechanism. Acceptance: Vadim's repro → exactly ONE
+  diagnostic (`'s1' is not found; did you mean 's'`), no cascade.
 
 ## FB-023  single-use temp memory read inlined PAST an aliasing store  [FIXED — fold-1; refactored — purity-1]
 - **purity-1 update**: the local `movement_unsafe_read` guard described below was
@@ -303,23 +317,37 @@ t1(); t2()   // ERROR at t2: "if() expression should have the same type as its
   before the polluted var is consulted. Not fixed (out of scope for newvec-1;
   `map`/`mapi`/`foldl` are themselves temporary until vector comprehensions).
 
-## FB-025  resolver internal error: generic container operator in a large overload context  [OPEN — fenced]
+## FB-025  resolver self-recursion: generic container operator in a large overload context  [FIXED — resolve-3]
 Compiling a generic container operator whose body compares/formats elements
-generically — `operator <=> (a: 't vector, b: 't vector): int { ... a[i] <=> b[i] ... }`
-— throws an internal error **"the winning overload of '__cmp__' failed to
-re-unify at commit"** when it is type-checked in a scope that already has many
-`<=>`/`__cmp__` overloads (a second generic container `<=>` — rrbvec's — plus the
-compiler's own per-type ones, as happens when `Vector` is auto-imported into the
-whole compiler). The element access `a[i]` has a *free* element type `'t`, so the
-resolver treats every container `<=>` (incl. the one being defined) as a
-candidate and fails to commit a unique winner.
-- **Order/context-dependent**, like FB-024: the same operator compiles fine when
-  `Vector.fx` is imported by a small program (few `<=>` in scope).
-- **Workaround (used for newvec-1 auto-import)**: define `==`/`<=>`/`string`/
-  `print` for `vector` in `Builtins.fx` (next to the rrbvec ones) instead of in
-  the auto-imported `Vector.fx`. Builtins is compiled first, with few overloads
-  in scope, so the generic element compare resolves. Not fixed (resolver work is
-  out of scope for newvec-1).
+generically — `operator <=> (a: 't vector, b: 't vector): int { ... xa <=> xb ... }`
+— diverges when it is type-checked in a scope that already has many
+`<=>`/`__cmp__` overloads (rrbvec's container `<=>` plus the compiler's own
+per-type ones, as when `Vector` is auto-imported into the whole compiler). On the
+current tree the symptom is a **`StackOverflowError`** during the self-build
+(resolve-1 turned the older **"the winning overload of '__cmp__' failed to
+re-unify at commit"** internal error into unbounded instantiation).
+- **Root cause** (resolve-3, `-pr-resolve` + instrumented): the element compare
+  `xa <=> xb` has a *free* element type `'t`, so `__cmp__('t,'t)` is a fully
+  **under-constrained tie** (22 viable). resolve-1's stopgap for such ties is
+  env-order first-match. When the env-first candidate is a generic **template**
+  container op (as the auto-imported `Vector.<=>` is), `commit_fun` instantiates
+  it for `('t,'t)->int`, binding `'t := 's vector`, then type-checks its body,
+  which re-issues the same free compare, picks the template again, and
+  instantiates without bound (the instance cache can't dedup — each level is a
+  fresh free var). It terminated in the Builtins layout only because there the
+  env-first candidate was a *concrete* `__cmp__(string,string)` (`@ccode`, no body
+  to instantiate) — luck of declaration/import order.
+- **Fix** (`Ast_typecheck.fx`, `lookup_id_opt`/`rank_and_commit`): in the
+  under-constrained-tie fallback, **prefer a concrete (non-template) candidate over
+  a template**. A fully under-determined call is a speculative resolution (redone
+  per real use with concrete args), so any type-checking candidate is fine; a
+  concrete one fixes the arg types and cannot self-instantiate. Dormant in normal
+  code (`-pr-resolve` census byte-identical; bootstrap fixpoint touches only
+  `Ast_typecheck.c`); fires only on the pathological tie.
+- **Workaround removed**: `==`/`<=>`/`string`/`print` for `vector` moved from
+  `Builtins.fx` back to their natural home `Vector.fx`. The compiler self-build
+  (which auto-imports `Vector`) now type-checks them cleanly and doubles as the
+  FB-025 regression guard. See `docs/resolve3_report.md`.
 
 ## FB-026  cannot bind a variable in an or-pattern  [OPEN — limitation]
 An or-pattern that binds the same variable in each alternative is rejected:

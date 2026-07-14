@@ -1,0 +1,5 @@
+239_recovery_fold_block.fx:9:27: error: the appropriate match for 's1' of type '<unknown>' is not found; did you mean 's' or 'sz'?
+ 9 |         if s >= 0 { sz *= s1 } else { have_neg = true }
+   |                           ^~
+
+1 errors occured during type checking.
