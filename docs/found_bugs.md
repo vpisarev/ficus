@@ -440,3 +440,38 @@ for s <- smoothed { arr[k] = s; k += 1 }   // write-back in place
   observable from a UTest (`test/test_array.fx` `array.fuse_inplace_stencil`;
   positive companion `array.fuse_map_reduce`). So: trying to DISABLE fusion in
   unsafe places, we ENABLED it in safe ones.
+
+## FB-029  `Map.empty(s): bool` (emptiness check) fails to instantiate  [OPEN — fenced]
+Found while smoke-testing generics-1 (pre-existing; reproduces on master too, so
+NOT a notation regression). `lib/Map.fx:54`:
+```
+class ('k, 'd) t { root: ('k,'d) tree_t; cmp: 'k cmp_t }
+fun empty(s: 't t): bool
+{
+    | { root=(Empty : ('k, 'd) tree_t) } => true
+    | _ => false
+}
+```
+The parameter is typed `'t t` — a SINGLE type var `'t` applied to the two-param
+class `t` (`('k,'d) t`). The arity is wrong (one arg to a 2-param type), and the
+pattern body introduces `'k, 'd` as FRESH vars unconnected to `s`, so at a real
+call the element vars are unconstrained. Minimal repro:
+```
+import Map
+val m: (string, int) Map.t = Map.empty(String.cmp)   // the ctor overload, fine
+println(m.empty())                                    // the bool overload -> error
+```
+```
+lib/Map.fx:56: error: the appropriate match for ''k' is not found
+    | { root=(Empty : ('k, 'd) tree_t) } => true
+  when instantiating 'empty' at <call site>
+```
+- The compiler accepts the malformed signature at definition time and only fails
+  when the overload is instantiated — a definition-site arity/type check would
+  surface it earlier (a diag-quality item).
+- The intended signature is almost certainly `fun empty(s: ('k,'d) t): bool` (or
+  `fun empty[K,D](s: Map.t[K,D]): bool` post-flip), binding the class's two
+  params so the pattern's element vars connect to `s`. A one-line library fix,
+  but it changes a stdlib signature — parked here, not fixed under generics-1.
+- Impact today: the emptiness-check overload of `Map.empty` is effectively
+  uncallable; use `m.list().empty()` / `m.list() == []` as a workaround.
