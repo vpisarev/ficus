@@ -36,7 +36,6 @@ type options_t =
     print_k: bool = false;
     print_tokens: bool = false;
     print_resolve: bool = false;
-    print_generics_sites: bool = false;  // generics-1 migrator dump (removed at flip)
     run_app: bool = false;
     verbose: bool = false;
     W_unused: bool = true;
@@ -176,8 +175,6 @@ fun parse_options(): bool {
                 opt.print_tokens = true; next
             | "-pr-ast0" :: next =>
                 opt.print_ast0 = true; next
-            | "-pr-generics-sites" :: next =>
-                opt.print_generics_sites = true; next
             | "-pr-ast" :: next =>
                 opt.print_ast = true; next
             | "-pr-k0" :: next =>

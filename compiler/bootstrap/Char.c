@@ -30,13 +30,6 @@ return fx_isspace(c);
 
 }
 
-FX_EXTERN_C char_ _fx_M4CharFM7toupperC1C(char_ c, void* fx_fv)
-{
-
-return fx_toupper(c);
-
-}
-
 FX_EXTERN_C int fx_init_Char(void)
 {
    int fx_status = 0;
