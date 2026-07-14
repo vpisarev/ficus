@@ -1499,6 +1499,12 @@ fun typ2str_new(t: typ_t): string {
                 f"{prefix}{i}: {typ2str_new(t)}"
             }])
     | TypArray(d, t) => f"{typ2str_new(t)} [{','*(d-1)}]"
+    // single-parameter builtins applied to a tuple print the args unwrapped:
+    // `list[A, B]` (== list[(A, B)]) since types don't overload on arity.
+    | TypList(TypTuple(tl)) when tl.length() >= 2 => f"list[{tl2str_new_raw(tl)}]"
+    | TypRRBVec(TypTuple(tl)) when tl.length() >= 2 => f"rrbvec[{tl2str_new_raw(tl)}]"
+    | TypVector(TypTuple(tl)) when tl.length() >= 2 => f"vector[{tl2str_new_raw(tl)}]"
+    | TypRef(TypTuple(tl)) when tl.length() >= 2 => f"ref[{tl2str_new_raw(tl)}]"
     | TypList(t) => f"list[{typ2str_new(t)}]"
     | TypRRBVec(t) => f"rrbvec[{typ2str_new(t)}]"
     | TypVector(t) => f"vector[{typ2str_new(t)}]"

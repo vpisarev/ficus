@@ -6,11 +6,11 @@
 // Various color conversion and color management functions
 
 // h: 0..360, s: 0..1, v: 0..1 -> r: 0..1, g: 0..1, b: 0..1
-// 't ~ float or double (not integer)
-fun hsv2rgb(h: 't, s: 't, v: 't): ('t*3)
+// T ~ float or double (not integer)
+fun hsv2rgb[T](h: T, s: T, v: T): (T*3)
 {
-    val _360 = (360 :> 't), _0 = (0 :> 't)
-    val _1_60 = (1./60 :> 't)
+    val _360 = (360 :> T), _0 = (0 :> T)
+    val _1_60 = (1./60 :> T)
     val h = h - (h >= _360)*_360 + (h < _0)*_360
     val h60 = h*_1_60
     val i = int(h60)
@@ -28,17 +28,17 @@ fun hsv2rgb(h: 't, s: 't, v: 't): ('t*3)
     else { (v, p, q) }
 }
 
-@inline fun hsv2rgb(hsv: ('t*3)): ('t*3) = hsv2rgb(hsv.0, hsv.1, hsv.2)
+@inline fun hsv2rgb[T](hsv: (T*3)): (T*3) = hsv2rgb(hsv.0, hsv.1, hsv.2)
 
-fun rgb2hsv(r: 't, g: 't, b: 't): ('t*3)
+fun rgb2hsv[T](r: T, g: T, b: T): (T*3)
 {
-    val _0 = (0 :> 't)
+    val _0 = (0 :> T)
     val minv = min(min(r, g), b)
     val maxv = max(max(r, g), b)
     val v = maxv
     val d = maxv - minv
 
-    if d < (FLT_EPSILON :> 't) {
+    if d < (FLT_EPSILON :> T) {
         (_0, _0, v)
     } else {
         val s = d/maxv
@@ -49,4 +49,4 @@ fun rgb2hsv(r: 't, g: 't, b: 't): ('t*3)
     }
 }
 
-@inline fun rgb2hsv(rgb: ('t*3)): ('t*3) = rgb2hsv(rgb.0, rgb.1, rgb.2)
+@inline fun rgb2hsv[T](rgb: (T*3)): (T*3) = rgb2hsv(rgb.0, rgb.1, rgb.2)

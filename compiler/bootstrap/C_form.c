@@ -142,6 +142,12 @@ typedef struct _fx_Nt6option1N10Ast__exp_t_data_t {
    } u;
 } _fx_Nt6option1N10Ast__exp_t_data_t, *_fx_Nt6option1N10Ast__exp_t;
 
+typedef struct _fx_LN10Ast__typ_t_data_t {
+   int_ rc;
+   struct _fx_LN10Ast__typ_t_data_t* tl;
+   struct _fx_N10Ast__typ_t_data_t* hd;
+} _fx_LN10Ast__typ_t_data_t, *_fx_LN10Ast__typ_t;
+
 typedef struct _fx_N12Map__color_t {
    int tag;
 } _fx_N12Map__color_t;
@@ -245,12 +251,6 @@ typedef struct _fx_rNt6option1N10Ast__typ_t_data_t {
    int_ rc;
    struct _fx_Nt6option1N10Ast__typ_t_data_t* data;
 } _fx_rNt6option1N10Ast__typ_t_data_t, *_fx_rNt6option1N10Ast__typ_t;
-
-typedef struct _fx_LN10Ast__typ_t_data_t {
-   int_ rc;
-   struct _fx_LN10Ast__typ_t_data_t* tl;
-   struct _fx_N10Ast__typ_t_data_t* hd;
-} _fx_LN10Ast__typ_t_data_t, *_fx_LN10Ast__typ_t;
 
 typedef struct _fx_T2LN10Ast__typ_tN10Ast__typ_t {
    struct _fx_LN10Ast__typ_t_data_t* t0;
@@ -2200,6 +2200,20 @@ static void _fx_free_Nt6option1N10Ast__exp_t(struct _fx_Nt6option1N10Ast__exp_t_
    *dst = 0;
 }
 
+static void _fx_free_LN10Ast__typ_t(struct _fx_LN10Ast__typ_t_data_t** dst)
+{
+   FX_FREE_LIST_IMPL(_fx_LN10Ast__typ_t, _fx_free_N10Ast__typ_t);
+}
+
+static int _fx_cons_LN10Ast__typ_t(
+   struct _fx_N10Ast__typ_t_data_t* hd,
+   struct _fx_LN10Ast__typ_t_data_t* tl,
+   bool addref_tl,
+   struct _fx_LN10Ast__typ_t_data_t** fx_result)
+{
+   FX_MAKE_LIST_IMPL(_fx_LN10Ast__typ_t, FX_COPY_PTR);
+}
+
 static void _fx_free_LN16Ast__env_entry_t(struct _fx_LN16Ast__env_entry_t_data_t** dst)
 {
    FX_FREE_LIST_IMPL(_fx_LN16Ast__env_entry_t, _fx_free_N16Ast__env_entry_t);
@@ -2338,20 +2352,6 @@ static int _fx_make_rNt6option1N10Ast__typ_t(
    struct _fx_rNt6option1N10Ast__typ_t_data_t** fx_result)
 {
    FX_MAKE_REF_IMPL(_fx_rNt6option1N10Ast__typ_t, FX_COPY_PTR);
-}
-
-static void _fx_free_LN10Ast__typ_t(struct _fx_LN10Ast__typ_t_data_t** dst)
-{
-   FX_FREE_LIST_IMPL(_fx_LN10Ast__typ_t, _fx_free_N10Ast__typ_t);
-}
-
-static int _fx_cons_LN10Ast__typ_t(
-   struct _fx_N10Ast__typ_t_data_t* hd,
-   struct _fx_LN10Ast__typ_t_data_t* tl,
-   bool addref_tl,
-   struct _fx_LN10Ast__typ_t_data_t** fx_result)
-{
-   FX_MAKE_LIST_IMPL(_fx_LN10Ast__typ_t, FX_COPY_PTR);
 }
 
 static void _fx_free_T2LN10Ast__typ_tN10Ast__typ_t(struct _fx_T2LN10Ast__typ_tN10Ast__typ_t* dst)

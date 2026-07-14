@@ -1964,17 +1964,26 @@ fun typ2typlist(t: typ_t): typ_t list
 // already-parsed head type (a bare name) applied to the parsed argument list,
 // mirroring the postfix `targ list` reinterpretation in extend_typespec_nf_ so
 // both notations produce identical typ_t (list[T] == 'T list, etc.).
+// fold a bracket argument list into ONE type for a single-parameter constructor
+// (list/vector/rrbvec/ref). Types do not overload on arity, so `list[A, B]` is
+// unambiguously `list[(A, B)]` -- the multiple args become the tuple element
+// type (mirrors the old `('a, 'b) list`).
+fun targs_as_single(targs: typ_t list, ts: tklist_t): typ_t =
+    match targs {
+    | [] => throw parse_err(ts, "a type argument is expected inside '[...]'")
+    | [:: t] => t
+    | _ => TypTuple(targs)
+    }
+
 fun apply_typ_targs(head: typ_t, targs: typ_t list, ts: tklist_t): typ_t =
     match head {
     | TypApp([], hname) =>
         match (pp(hname), targs) {
-        | ("list", [:: t]) => TypList(t)
-        | ("rrbvec", [:: t]) => TypRRBVec(t)
-        | ("vector", [:: t]) => TypVector(t)
-        | ("ref", [:: t]) => TypRef(t)
+        | ("list", _) => TypList(targs_as_single(targs, ts))
+        | ("rrbvec", _) => TypRRBVec(targs_as_single(targs, ts))
+        | ("vector", _) => TypVector(targs_as_single(targs, ts))
+        | ("ref", _) => TypRef(targs_as_single(targs, ts))
         | ("option", _) => TypApp(targs, get_id("option"))
-        | (("list"|"rrbvec"|"vector"|"ref"), _) =>
-            throw parse_err(ts, f"the built-in type '{pp(hname)}' expects exactly one type argument")
         | _ => TypApp(targs, hname)
         }
     | _ => throw parse_err(ts, "bracketed type application '[...]' must follow a type name")
@@ -2046,10 +2055,7 @@ fun parse_atomic_typ_(ts: tklist_t): (tklist_t, typ_t)
         match rest {
         | (LSQUARE(_), _) :: rest2 =>
             val (rest3, targs) = parse_typearg_list_(rest2, false, [])
-            match targs {
-            | [:: t] => (rest3, TypRef(t))
-            | _ => throw parse_err(rest, "ref[...] expects exactly one type argument")
-            }
+            (rest3, TypRef(targs_as_single(targs, rest)))
         | _ => (rest, TypApp([], get_id("ref")))
         }
     | (LPAREN _, l1) :: rest =>

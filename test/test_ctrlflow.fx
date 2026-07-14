@@ -13,7 +13,7 @@
 
 from UTest import *
 
-// continue as a match-arm value inside a list comprehension: a filter.
+// continue as a match-arm value inside list[a] comprehension: a filter.
 TEST("ctrlflow.continue_arm_filter", fun() {
     val xs = [:: 1, 2, 0, 3, 0, 0, 4, 5]
     val r = [:: for e <- xs { match e { | 0 => continue | x => x } }]
@@ -58,7 +58,7 @@ TEST("ctrlflow.break_match_arm", fun() {
 
 // return WITH a value as a match-arm value (early exit out of a function).
 TEST("ctrlflow.return_value_arm", fun() {
-    fun first_pos(xs: int list): int {
+    fun first_pos(xs: list[int]): int {
         for x <- xs { match x { | v when v > 0 => return v | _ => {} } }
         -1
     }
@@ -89,7 +89,7 @@ TEST("ctrlflow.bare_return", fun() {
 // both branches of an `if` jump: the whole `if` is TypErr, the for-body stays
 // void, and the function tail after the loop is what returns.
 TEST("ctrlflow.both_branches_jump", fun() {
-    fun find_neg(xs: int list): int {
+    fun find_neg(xs: list[int]): int {
         for x <- xs { if x < 0 { return x } else { continue } }
         999
     }
@@ -135,7 +135,7 @@ TEST("ctrlflow.refcounted_matrix_at_return", fun() {
 
 // a match where EVERY arm jumps (all-jumping arms), used in statement position.
 TEST("ctrlflow.all_arms_jump", fun() {
-    fun categorize(xs: int list): (int, int) {
+    fun categorize(xs: list[int]): (int, int) {
         var pos = 0, neg = 0
         for x <- xs {
             match x {

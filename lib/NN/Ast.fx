@@ -313,7 +313,7 @@ class nnop_t =
     | NN_Conv_Profile_3x3s1d1
     | NN_QLinearConv_Profile_1x1
     | NN_QLinearConv_Profile_Depthwise
-    | NN_Nop // shall always be the last operation in the list
+    | NN_Nop // shall always be the last operation in list[the]
 
 val nn_operations = NN_Nop.__tag__
 val nn_elemwise_operations = NN_Elemwise_ZZ.__tag__ - 1
@@ -769,7 +769,7 @@ fun string(t: nntensor_t, ~border: int=3, ~braces: bool=true)
     | _ =>
         val shape = t.shape.shape
         val ndims = shape.size()
-        var rows: string list = []
+        var rows: list[string] = []
         val step = array(ndims, 1)
         for i <- ndims-2:-1:-1 { step[i] *= step[i+1]*shape[i+1] }
         fun slice2str(d: int, ofs: int) {
@@ -834,9 +834,9 @@ fun arg2str(model: nnmodel_t, argidx: int)
     cprefix + sp + " " + string(targ.typ) + tdatastr + bufstr
 }
 
-fun parse_params(params: string): string list
+fun parse_params(params: string): list[string]
 {
-    var paren_stack: char list = []
+    var paren_stack: list[char] = []
     fun issep(c: char) = match (c, paren_stack) {
         | ('(', _) | ('[', _) | ('{', _) => paren_stack = c :: paren_stack; false
         | (')', '(' :: rest) => paren_stack = rest; false

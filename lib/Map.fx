@@ -41,23 +41,23 @@
  * =====
 */
 
-type 'k cmp_t = ('k, 'k) -> int
+type cmp_t[K] = (K, K) -> int
 type color_t = Red | Black
-type ('k,'d) tree_t = Empty | Node: (color_t, ('k,'d) tree_t, 'k, 'd, ('k,'d) tree_t)
-class ('k, 'd) t { root: ('k,'d) tree_t; cmp: 'k cmp_t }
+type tree_t[K, D] = Empty | Node: (color_t, tree_t[K, D], K, D, tree_t[K, D])
+class t[K, D] { root: tree_t[K, D]; cmp: cmp_t[K] }
 
 exception RBMapError
 
-fun empty(cmp: 'k cmp_t): ('k, 'd) Map.t =
-    t { root=(Empty : ('k, 'd) tree_t), cmp=cmp }
+fun empty[K, D](cmp: cmp_t[K]): Map.t[K, D] =
+    t { root=(Empty : tree_t[K, D]), cmp=cmp }
 
-fun empty(s: 't t): bool
+fun empty[K, D](m: Map.t[K, D]): bool
 {
-    | { root=(Empty : ('k, 'd) tree_t) } => true
+    | { root=(Empty : tree_t[K, D]) } => true
     | _ => false
 }
 
-@private fun find_opt_(t: ('k, 'd) tree_t, xk: 'k, cmp: 'k cmp_t) : 'd? =
+@private fun find_opt_[K, D](t: tree_t[K, D], xk: K, cmp: cmp_t[K]) : D? =
 match t
 {
     | Node(_, l, yk, yd, r) =>
@@ -68,18 +68,18 @@ match t
     | _ => None
 }
 
-fun find_opt(m: ('k, 'd) Map.t, x: 'k): 'd? = find_opt_(m.root, x, m.cmp)
+fun find_opt[K, D](m: Map.t[K, D], x: K): D? = find_opt_(m.root, x, m.cmp)
 
-fun find(m: ('k, 'd) Map.t, xk: 'k, def_xd: 'd): 'd =
+fun find[K, D](m: Map.t[K, D], xk: K, def_xd: D): D =
 match find_opt(m, xk)
 {
     | Some(xd) => xd
     | _ => def_xd
 }
 
-fun mem(m: ('k, 'd) Map.t, x: 'k): bool
+fun mem[K, D](m: Map.t[K, D], x: K): bool
 {
-    fun mem_(t: ('k, 'd) tree_t, xk: 'k, cmp: 'k cmp_t): bool =
+    fun mem_[K, D](t: tree_t[K, D], xk: K, cmp: cmp_t[K]): bool =
     match t {
         | Node(_, l, yk, yd, r) =>
             val c = cmp(xk, yk)
@@ -91,7 +91,7 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
     mem_(m.root, x, m.cmp)
 }
 
-@private fun balance_left(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t): ('k, 'd) tree_t
+@private fun balance_left[K, D](l: tree_t[K, D], xk: K, xd: D, r: tree_t[K, D]): tree_t[K, D]
 {
     | (Node(Red, Node(Red, a, xk, xd, b), yk, yd, c), zk, zd, d) =>
         Node(Red, Node(Black, a, xk, xd, b), yk, yd, Node(Black, c, zk, zd, d))
@@ -101,7 +101,7 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
         Node(Black, l, xk, xd, r)
 }
 
-@private fun balance_right(l: ('k, 'd) tree_t, xk: 'k, xd: 'd, r: ('k, 'd) tree_t): ('k, 'd) tree_t
+@private fun balance_right[K, D](l: tree_t[K, D], xk: K, xd: D, r: tree_t[K, D]): tree_t[K, D]
 {
     | (a, xk, xd, Node(Red, Node(Red, b, yk, yd, c), zk, zd, d)) =>
         Node(Red, Node(Black, a, xk, xd, b), yk, yd, Node(Black, c, zk, zd, d))
@@ -111,15 +111,15 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
         Node(Black, l, xk, xd, r)
 }
 
-@private fun blackify(t: ('k, 'd) tree_t): (('k, 'd) tree_t, bool)
+@private fun blackify[K, D](t: tree_t[K, D]): (tree_t[K, D], bool)
 {
     | Node(Red, l, xk, xd, r) => (Node(Black, l, xk, xd, r), false)
     | _ => (t, true)
 }
 
-@private fun add_(t: ('k, 'd) tree_t, xk: 'k, xd: 'd, cmp: 'k cmp_t): ('k, 'd) tree_t
+@private fun add_[K, D](t: tree_t[K, D], xk: K, xd: D, cmp: cmp_t[K]): tree_t[K, D]
 {
-    fun add_to_tree_(t: ('k, 'd) tree_t, xk: 'k, xd: 'd, cmp: 'k cmp_t): ('k, 'd) tree_t =
+    fun add_to_tree_[K, D](t: tree_t[K, D], xk: K, xd: D, cmp: cmp_t[K]): tree_t[K, D] =
     match t
     {
         | Node(Red, l, yk, yd, r) =>
@@ -132,18 +132,18 @@ fun mem(m: ('k, 'd) Map.t, x: 'k): bool
             if c < 0 { balance_left(add_to_tree_(l, xk, xd, cmp), yk, yd, r) }
             else if c > 0 { balance_right(l, yk, yd, add_to_tree_(r, xk, xd, cmp)) }
             else { Node(Black, l, xk, xd, r) }
-        | _ => Node(Red, (Empty: ('k, 'd) tree_t), xk, xd, (Empty: ('k, 'd) tree_t))
+        | _ => Node(Red, (Empty: tree_t[K, D]), xk, xd, (Empty: tree_t[K, D]))
     }
     blackify(add_to_tree_(t, xk, xd, cmp)).0
 }
 
-fun add(m: ('k, 'd) Map.t, xk: 'k, xd: 'd): ('k, 'd) Map.t
+fun add[K, D](m: Map.t[K, D], xk: K, xd: D): Map.t[K, D]
 {
     val new_root = add_(m.root, xk, xd, m.cmp)
     t { root=new_root, cmp=m.cmp }
 }
 
-@private fun update_(t: ('k, 'd) tree_t, xk: 'k, f: ('k, 'd?) -> 'd, cmp: 'k cmp_t): ('k, 'd) tree_t =
+@private fun update_[K, D](t: tree_t[K, D], xk: K, f: (K, D?) -> D, cmp: cmp_t[K]): tree_t[K, D] =
 match t
 {
     | Node(Red, l, yk, yd, r) =>
@@ -157,17 +157,17 @@ match t
         else if c > 0 { balance_right(l, yk, yd, update_(r, xk, f, cmp)) }
         else { Node(Black, l, xk, f(xk, Some(yd)), r) }
     | _ =>
-        Node(Red, (Empty: ('k, 'd) tree_t), xk,
-            f(xk, (None : 'd?)), (Empty: ('k, 'd) tree_t))
+        Node(Red, (Empty: tree_t[K, D]), xk,
+            f(xk, (None : D?)), (Empty: tree_t[K, D]))
 }
 
-fun update(m: ('k, 'd) Map.t, xk: 'k, f: ('k, 'd?) -> 'd): ('k, 'd) Map.t
+fun update[K, D](m: Map.t[K, D], xk: K, f: (K, D?) -> D): Map.t[K, D]
 {
     val new_root = blackify(update_(m.root, xk, f, m.cmp)).0
     t { root=new_root, cmp=m.cmp }
 }
 
-@private fun unbalanced_left(t: ('k, 'd) tree_t): (('k, 'd) tree_t, bool) =
+@private fun unbalanced_left[K, D](t: tree_t[K, D]): (tree_t[K, D], bool) =
 match t
 {
     | Node(Red, Node(Black, a, xk, xd, b), yk, yd, c) =>
@@ -179,7 +179,7 @@ match t
     | _ => throw RBMapError
 }
 
-@private fun unbalanced_right(t: ('k, 'd) tree_t): (('k, 'd) tree_t, bool) =
+@private fun unbalanced_right[K, D](t: tree_t[K, D]): (tree_t[K, D], bool) =
 match t
 {
     | Node(Red, a, xk, xd, Node(Black, b, yk, yd, c)) =>
@@ -191,7 +191,7 @@ match t
     | _ => throw RBMapError
 }
 
-@private fun remove_min(t: ('k, 'd) tree_t): (('k, 'd) tree_t, 'k, 'd, bool)
+@private fun remove_min[K, D](t: tree_t[K, D]): (tree_t[K, D], K, D, bool)
 {
     | Node(Black, Empty, xk, xd, Empty) => (Empty, xk, xd, true)
     | Node(Black, Empty, xk, xd, Node(Red, l, yk, yd, r)) =>
@@ -219,7 +219,7 @@ match t
     | _ => throw RBMapError
 }
 
-@private fun remove_(t: ('k, 'd) tree_t, xk: 'k, cmp: 'k cmp_t): (('k, 'd) tree_t, bool) =
+@private fun remove_[K, D](t: tree_t[K, D], xk: K, cmp: cmp_t[K]): (tree_t[K, D], bool) =
 match t
 {
     | Node(Black, l, yk, yd, r) =>
@@ -266,15 +266,15 @@ match t
         (Empty, false)
 }
 
-fun remove(m: ('k, 'd) Map.t, xk: 'k): ('k, 'd) Map.t
+fun remove[K, D](m: Map.t[K, D], xk: K): Map.t[K, D]
 {
     val (new_root, _) = remove_(m.root, xk, m.cmp)
     t { root=new_root, cmp=m.cmp }
 }
 
-fun foldl(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r): 'r
+fun foldl[K, D, Tr](m: Map.t[K, D], f: (K, D, Tr) -> Tr, res0: Tr): Tr
 {
-    fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
+    fun update_[K, D, Tr](t: tree_t[K, D], f: (K, D, Tr) -> Tr, res: Tr): Tr =
     match t {
         | Node(_, l, xk, xd, r) => update_(r, f, f(xk, xd, update_(l, f, res)))
         | _ => res
@@ -282,9 +282,9 @@ fun foldl(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r): 'r
     update_(m.root, f, res0)
 }
 
-fun foldr(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r): 'r
+fun foldr[K, D, Tr](m: Map.t[K, D], f: (K, D, Tr) -> Tr, res0: Tr): Tr
 {
-    fun update_(t: ('k, 'd) tree_t, f: ('k, 'd, 'r) -> 'r, res: 'r): 'r =
+    fun update_[K, D, Tr](t: tree_t[K, D], f: (K, D, Tr) -> Tr, res: Tr): Tr =
     match t {
         | Node(_, l, xk, xd, r) => update_(l, f, f(xk, xd, update_(r, f, res)))
         | _ => res
@@ -292,9 +292,9 @@ fun foldr(m: ('k, 'd) Map.t, f: ('k, 'd, 'r) -> 'r, res0: 'r): 'r
     update_(m.root, f, res0)
 }
 
-fun app(m: ('k, 'd) Map.t, f: ('k, 'd) -> void): void
+fun app[K, D, Tr](m: Map.t[K, D], f: (K, D) -> void): void
 {
-    fun app_(t: ('k, 'd) tree_t, f: ('k, 'd) -> void): void =
+    fun app_[K, D, Tr](t: tree_t[K, D], f: (K, D) -> void): void =
     match t {
         | Node(_, l, xk, xd, r) => app_(l, f); f(xk, xd); app_(r, f)
         | _ => {}
@@ -303,9 +303,9 @@ fun app(m: ('k, 'd) Map.t, f: ('k, 'd) -> void): void
 }
 
 // similar to foldr, but does a specific task - constructs the list of results
-fun map(m: ('k, 'd) Map.t, f: ('k, 'd) -> 'r): 'res list
+fun map[K, D, Tr](m: Map.t[K, D], f: (K, D) -> Tr): list[Tr]
 {
-    fun update_list_(t: ('k, 'd) tree_t, f: ('k, 'd) -> 'r, res: 'r list): 'r list =
+    fun update_list_[K, D, Tr](t: tree_t[K, D], f: (K, D) -> Tr, res: list[Tr]): list[Tr] =
     match t {
         | Node(_, l, xk, xd, r) =>
             update_list_(l, f, f(xk, xd) :: update_list_(r, f, res))
@@ -314,10 +314,10 @@ fun map(m: ('k, 'd) Map.t, f: ('k, 'd) -> 'r): 'res list
     update_list_(m.root, f, [])
 }
 
-fun filter(m: ('k, 'd) Map.t, f: ('k, 'd) -> bool): ('k, 'd) Map.t
+fun filter[K, D](m: Map.t[K, D], f: (K, D) -> bool): Map.t[K, D]
 {
-    fun filter_(t: ('k, 'd) tree_t, f: ('k, 'd) -> bool,
-                cmp: 'k cmp_t, res: ('k, 'd) tree_t): ('k, 'd) tree_t =
+    fun filter_[K, D, Tr](t: tree_t[K, D], f: (K, D) -> bool,
+                          cmp: cmp_t[K], res: tree_t[K, D]): tree_t[K, D] =
     match t {
         | Node(_, l, xk, xd, r) =>
             val res = filter_(l, f, cmp, res)
@@ -329,7 +329,7 @@ fun filter(m: ('k, 'd) Map.t, f: ('k, 'd) -> bool): ('k, 'd) Map.t
     t {root=new_root, cmp=m.cmp}
 }
 
-fun add_list(m: ('k, 'd) Map.t, l: ('k, 'd) list): ('k, 'd) Map.t
+fun add_list[K, D](m: Map.t[K, D], l: list[K, D]): Map.t[K, D]
 {
     val cmp = m.cmp
     val fold new_root=m.root for (xk, xd) <- l {
@@ -338,12 +338,12 @@ fun add_list(m: ('k, 'd) Map.t, l: ('k, 'd) list): ('k, 'd) Map.t
     t {root=new_root, cmp=cmp}
 }
 
-fun from_list(cmp: 'k cmp_t, l: ('k, 'd) list): ('k, 'd) Map.t =
-    add_list((empty(cmp) : ('k, 'd) Map.t), l)
+fun from_list[K, D](cmp: cmp_t[K], l: list[K, D]): Map.t[K, D] =
+    add_list((empty(cmp) : Map.t[K, D]), l)
 
-fun list(m: ('k, 'd) Map.t): ('k, 'd) list
+fun list[K, D](m: Map.t[K, D]): list[K, D]
 {
-    fun update_list_(t: ('k, 'd) tree_t, res: ('k, 'd) list): ('k, 'd)  list =
+    fun update_list_[K, D](t: tree_t[K, D], res: list[K, D]): list[K, D] =
     match t {
         | Node(_, l, xk, xd, r) =>
             update_list_(l, (xk, xd) :: update_list_(r, res))

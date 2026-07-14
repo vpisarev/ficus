@@ -441,8 +441,16 @@ for s <- smoothed { arr[k] = s; k += 1 }   // write-back in place
   positive companion `array.fuse_map_reduce`). So: trying to DISABLE fusion in
   unsafe places, we ENABLED it in safe ones.
 
-## FB-029  `Map.empty(s): bool` (emptiness check) fails to instantiate  [OPEN — fenced]
-Found while smoke-testing generics-1 (pre-existing; reproduces on master too, so
+## FB-029  `Map.empty(s): bool` (emptiness check) fails to instantiate  [FIXED — generics-1 migration]
+**Fixed** during the generics-1 stdlib migration: `lib/Map.fx`'s emptiness-check
+overload was rewritten from the malformed `fun empty(s: 't t): bool` to
+`fun empty[K, D](m: Map.t[K, D]): bool`, binding the class's two params so the
+pattern's element vars connect to the argument. `m.empty()` now typechecks.
+The residual diagnostics-quality item (the compiler accepts a malformed arity at
+DEFINITION time and only fails at instantiation) is unaddressed and worth a
+separate definition-site arity check. Original report:
+
+Found while smoke-testing generics-1 (pre-existing; reproduced on master too, so
 NOT a notation regression). `lib/Map.fx:54`:
 ```
 class ('k, 'd) t { root: ('k,'d) tree_t; cmp: 'k cmp_t }

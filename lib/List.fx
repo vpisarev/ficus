@@ -3,82 +3,82 @@
     See ficus/LICENSE for the licensing terms
 */
 
-/* Operations on LISP-like lists */
+/* Operations on LISP-list[like]s */
 
-fun length(l: 't list): int = Builtins.length(l)
-fun hd(_: 't list): 't { | a :: _ => a | _ => throw NullListError }
-fun tl(_: 't list): 't list { | _ :: ll => ll | _ => throw NullListError }
-fun empty(_: 't list): bool { | [] => true | _ => false }
-fun last(_: 't list): 't
+fun length[T](l: list[T]): int = Builtins.length(l)
+fun hd[T](_: list[T]): T { | a :: _ => a | _ => throw NullListError }
+fun tl[T](_: list[T]): list[T] { | _ :: ll => ll | _ => throw NullListError }
+fun empty[T](_: list[T]): bool { | [] => true | _ => false }
+fun last[T](_: list[T]): T
 {
     | [:: a] => a
     | _ :: rest => last(rest)
     | _ => throw NullListError
 }
 
-fun nth(l: 't list, n: int): 't =
+fun nth[T](l: list[T], n: int): T =
 match l
 {
     | a :: rest => if n == 0 {a} else {nth(rest, n-1)}
     | _ => throw OutOfRangeError
 }
-fun skip(l: 't list, n: int): 't list =
+fun skip[T](l: list[T], n: int): list[T] =
     if n == 0 {l} else { match l { | a :: rest => skip(rest, n-1) | _ => throw OutOfRangeError } }
-fun skip_nothrow(l: 't list, n: int): 't list =
+fun skip_nothrow[T](l: list[T], n: int): list[T] =
     if n == 0 {l} else { match l { | a :: rest => skip_nothrow(rest, n-1) | _ => [] } }
 
-fun rev(l: 't list): 't list =
+fun rev[T](l: list[T]): list[T] =
     fold res=[] for a <- l {res = a :: res}
 
-fun foldl(l: 't list, f: ('t, 'r) -> 'r, res0: 'r): 'r =
+fun foldl[T, Tr](l: list[T], f: (T, Tr) -> Tr, res0: Tr): Tr =
     fold res=res0 for a <- l {res = f(a, res)}
 
-fun assoc(l: ('a, 'b) list, x: 'a): 'b =
+fun assoc[T1, T2](l: list[T1, T2], x: T1): T2 =
     find(for (a, b) <- l {a == x}).1
 
-fun assoc_opt(l: ('a, 'b) list, x: 'a): 'b? =
+fun assoc_opt[T1, T2](l: list[T1, T2], x: T1): T2? =
     match find_opt(for (a, _) <- l {a == x}) {
     | Some((_, b)) => Some(b)
     | _ => None
     }
 
-fun app(l: 't list, f: 't -> void): void =
+fun app[T](l: list[T], f: T -> void): void =
     for x <- l {f(x)}
 
-fun map(l: 't list, f: 't -> 'rt): 'rt list =
+fun map[T, Tr](l: list[T], f: T -> Tr): list[Tr] =
     [:: for x <- l {f(x)}]
 
-fun all(l: 't list, f: 't -> bool): bool =
+fun all[T](l: list[T], f: T -> bool): bool =
     all(for a <- l {f(a)})
 
-fun all2(la: 'a list, lb: 'b list, f: ('a, 'b) -> bool): bool =
+fun all2[T1, T2](la: list[T1], lb: list[T2], f: (T1, T2) -> bool): bool =
     all(for a <- la, b <- lb {f(a, b)})
 
-fun exists(l: 't list, f: 't -> bool): bool =
+fun exists[T](l: list[T], f: T -> bool): bool =
     exists(for a <- l {f(a)})
 
-fun mem(l: 't list, a: 't): bool =
+fun mem[T](l: list[T], a: T): bool =
     exists(for b <- l {a == b})
 
-fun find(l: 't list, f: 't -> bool): 't =
+fun find[T](l: list[T], f: T -> bool): T =
     find(for a <- l {f(a)})
 
-fun find_opt(l: 't list, f: 't -> bool): 't? =
+fun find_opt[T](l: list[T], f: T -> bool): T? =
     find_opt(for a <- l {f(a)})
 
-fun concat(ll: 't list list): 't list =
-    fold s = ([]: 't list) for l <- rev(ll) {s = l + s}
+fun concat[T](ll: list[T] list): list[T] =
+    fold s = ([]: list[T]) for l <- rev(ll) {s = l + s}
 
-fun filter(l: 't list, f: 't -> bool): 't list =
+fun filter[T](l: list[T], f: T -> bool): list[T] =
     [:: for x <- l { if !f(x) {continue}; x }]
 
-fun zip(la: 'a list, lb: 'b list): ('a, 'b) list =
+fun zip[T1, T2](la: list[T1], lb: list[T2]): list[T1, T2] =
     [:: for x <- la, y <- lb {(x, y)}]
 
-fun unzip(lab: ('a, 'b) list): ('a list, 'b list) =
+fun unzip[T1, T2](lab: list[T1, T2]): (list[T1], list[T2]) =
     [:: @unzip for x <- lab {x}]
 
-fun sort(l: 't list, lt: ('t, 't)->bool): 't list =
+fun sort[T](l: list[T], lt: (T, T)->bool): list[T] =
     match l
     {
         | [] => l

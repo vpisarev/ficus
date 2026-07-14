@@ -38,22 +38,22 @@ fun elemdepth(_: int32) = DEPTH_S32
 fun elemdepth(_: float) = DEPTH_FP32
 fun elemdepth(_: double) = DEPTH_FP64
 
-fun elemtype(_: 't) = (elemdepth(0:>'t), 1)
-fun elemtype(_: ('t*2)) = (elemdepth(0:>'t), 2)
-fun elemtype(_: ('t*3)) = (elemdepth(0:>'t), 3)
-fun elemtype(_: ('t*4)) = (elemdepth(0:>'t), 4)
-fun elemtype(_: ('t*5)) = (elemdepth(0:>'t), 5)
-fun elemtype(_: ('t*6)) = (elemdepth(0:>'t), 6)
-fun elemtype(_: ('t*7)) = (elemdepth(0:>'t), 7)
-fun elemtype(_: ('t*8)) = (elemdepth(0:>'t), 8)
-fun elemtype(_: ('t*9)) = (elemdepth(0:>'t), 9)
-fun elemtype(_: ('t*10)) = (elemdepth(0:>'t), 10)
+fun elemtype[T](_: T) = (elemdepth(0:>T), 1)
+fun elemtype[T](_: (T*2)) = (elemdepth(0:>T), 2)
+fun elemtype[T](_: (T*3)) = (elemdepth(0:>T), 3)
+fun elemtype[T](_: (T*4)) = (elemdepth(0:>T), 4)
+fun elemtype[T](_: (T*5)) = (elemdepth(0:>T), 5)
+fun elemtype[T](_: (T*6)) = (elemdepth(0:>T), 6)
+fun elemtype[T](_: (T*7)) = (elemdepth(0:>T), 7)
+fun elemtype[T](_: (T*8)) = (elemdepth(0:>T), 8)
+fun elemtype[T](_: (T*9)) = (elemdepth(0:>T), 9)
+fun elemtype[T](_: (T*10)) = (elemdepth(0:>T), 10)
 
-fun arrelemtype(_: 't [+]) = elemtype(0:>'t)
+fun arrelemtype[T](_: T [+]) = elemtype(0:>T)
 
 type anyarr_t = (uint8 [,], depth_t, int)
 
-fun anyarray(x: 't [+]): anyarr_t
+fun anyarray[T](x: T [+]): anyarr_t
 {
     val (depth, channels) = arrelemtype(x)
     ((reinterpret(x): uint8 [,]), depth, channels)
@@ -348,10 +348,10 @@ val DECOMP_NORMAL: int = @ccode {cv::DECOMP_NORMAL}
     return fx_status;
 }
 
-fun copyMakeBorder(src: 't [,], ~top: int, ~bottom: int, ~left: int=0, ~right: int=0,
+fun copyMakeBorder[T](src: T [,], ~top: int, ~bottom: int, ~left: int=0, ~right: int=0,
                    ~borderType: int, ~borderValue: doublex4=ZEROS) =
     (reinterpret(copyMakeBorder_(anyarray(src), top, bottom,
-        left, right, borderType, borderValue)) : 't [,])
+        left, right, borderType, borderValue)) : T [,])
 
 @private fun PSNR_(src1: anyarr_t, src2: anyarr_t, R: double): double
 @ccode
@@ -366,12 +366,12 @@ fun copyMakeBorder(src: 't [,], ~top: int, ~bottom: int, ~left: int=0, ~right: i
     return fx_status;
 }
 
-fun PSNR(src1: 't [,], src2: 't [,], ~R: double=255): double =
+fun PSNR[T](src1: T [,], src2: T [,], ~R: double=255): double =
     PSNR_(anyarray(src1), anyarray(src2), R)
 
-/*fun batchDistance(src1: 't [,], src2: 't [,], ~normType: int=NORM_L2,
+/*fun batchDistance[T](src1: T [,], src2: T [,], ~normType: int=NORM_L2,
                   ~K: int=0, ~update: int=0, ~crosscheck: bool=false): (float [,], int [])
-fun reduce(src: 't [,], s0: 's, ~dim: int, ~rtype: int): 's []*/
+fun reduce[T, S](src: T [,], s0: 's, ~dim: int, ~rtype: int): K []*/
 type rotatecode_t = ROTATE_90_CLOCKWISE | ROTATE_180 | ROTATE_90_COUTERCLOCKWISE
 @private fun rotate_(src: anyarr_t, rotateCode: rotatecode_t): uint8 [,]
 @ccode {
@@ -386,11 +386,11 @@ type rotatecode_t = ROTATE_90_CLOCKWISE | ROTATE_180 | ROTATE_90_COUTERCLOCKWISE
     return fx_status;
 }
 
-fun rotate(src: 't [,], rotateCode: rotatecode_t): 't [,] =
-    (reinterpret(rotate_(anyarray(src), rotateCode)) : 't [,])
+fun rotate[T](src: T [,], rotateCode: rotatecode_t): T [,] =
+    (reinterpret(rotate_(anyarray(src), rotateCode)) : T [,])
 
-//fun repeat(src: 't [,], ~ny: int, ~nx: int): 't [,]
-//fun checkRange(src: 't [+], ~quiet: bool=true, ~minVal: double=-DBL_MAX, ~maxVal: double=DBL_MAX): (bool, intx4)
+//fun repeat[T](src: T [,], ~ny: int, ~nx: int): T [,]
+//fun checkRange[T](src: T [+], ~quiet: bool=true, ~minVal: double=-DBL_MAX, ~maxVal: double=DBL_MAX): (bool, intx4)
 @private fun patchNans_(arr: anyarr_t, v: double): void
 @ccode {
     cv::Mat c_arr;
@@ -400,10 +400,10 @@ fun rotate(src: 't [,], rotateCode: rotatecode_t): 't [,] =
     )
     return fx_status;
 }
-fun patchNans(arr: 't [+], ~v: double=0) = patchNans_(anyarray(arr), v)
+fun patchNans[T](arr: T [+], ~v: double=0) = patchNans_(anyarray(arr), v)
 
-//fun gemm(src1: 't [,], src2: 't [,], src3: 't [,], ~alpha: double=1, ~beta: double=0, ~flags: int=0): 't [,]
-//fun mulTransposed(src1: 't [,], ~aTa: bool, ~delta: 't [,] = [], ~scale: double=1): 't [,]
+//fun gemm[T](src1: T [,], src2: T [,], src3: T [,], ~alpha: double=1, ~beta: double=0, ~flags: int=0): T [,]
+//fun mulTransposed[T](src1: T [,], ~aTa: bool, ~delta: T [,] = [], ~scale: double=1): T [,]
 @private fun transform_(src: anyarr_t, m: anyarr_t): uint8 [,]
 @ccode {
     memset(fx_result, 0, sizeof(*fx_result));
@@ -419,10 +419,10 @@ fun patchNans(arr: 't [+], ~v: double=0) = patchNans_(anyarray(arr), v)
     return fx_status;
 }
 
-fun transform(src: 't [], m: 'k [,]): 't [] =
-    (reinterpret(transform_(anyarray(src), anyarray(m))): 't [])
-fun transform(src: 't [,], m: 'k [,]): 't [,] =
-    (reinterpret(transform_(anyarray(src), anyarray(m))): 't [,])
+fun transform[T, K](src: T [], m: K [,]): T [] =
+    (reinterpret(transform_(anyarray(src), anyarray(m))): T [])
+fun transform[T, K](src: T [,], m: K [,]): T [,] =
+    (reinterpret(transform_(anyarray(src), anyarray(m))): T [,])
 
 @private fun perspectiveTransform_(src: anyarr_t, m: anyarr_t): uint8 [,]
 @ccode {
@@ -439,10 +439,10 @@ fun transform(src: 't [,], m: 'k [,]): 't [,] =
     return fx_status;
 }
 
-fun perspectiveTransform(src: 't [], m: 'k [,]): 't [] =
-    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): 't [])
-fun perspectiveTransform(src: 't [,], m: 'k [,]): 't [,] =
-    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): 't [,])
+fun perspectiveTransform[T, K](src: T [], m: K [,]): T [] =
+    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): T [])
+fun perspectiveTransform[T, K](src: T [,], m: K [,]): T [,] =
+    (reintrpret(perspectiveTransform_(anyarray(src), anyarray(m))): T [,])
 
 fun solveCubic(coeffs: double []): double []
 @ccode {
@@ -488,10 +488,10 @@ fun solvePoly(coeffs: double [], ~maxIters: int=300): doublex2 []
     return fx_status;
 }
 
-fun eigen(src: 't [,]): (bool, 't [], 't [,])
+fun eigen[T](src: T [,]): (bool, T [], T [,])
 {
     val (f, values, vectors) = eigen_(anyarray(src))
-    (f, (reintrpret(values): 't []), (reinterpet(vectors): 't [,]))
+    (f, (reintrpret(values): T []), (reinterpet(vectors): T [,]))
 }
 
 @private fun eigenNonSymmetric_(src: anyarr_t): (uint8 [], uint8 [,])
@@ -510,10 +510,10 @@ fun eigen(src: 't [,]): (bool, 't [], 't [,])
     return fx_status;
 }
 
-fun eigenNonSymmetric(src: 't [,]): ('t [], 't [,])
+fun eigenNonSymmetric[T](src: T [,]): (T [], T [,])
 {
     val (evals, evecs) = eigenNonSymmtric_(anyarray(src))
-    ((reinterpret(evals): 't []), (reinterpet(evecs): 't [,]))
+    ((reinterpret(evals): T []), (reinterpet(evecs): T [,]))
 }
 
 @private fun PCACompute_(data: anyarr_t, mean: anyarr_t, maxComponents: int): (uint8 [], uint8 [,])
@@ -534,10 +534,10 @@ fun eigenNonSymmetric(src: 't [,]): ('t [], 't [,])
     return fx_status;
 }
 
-fun PCACompute(data: 't [,], mean: 't [], ~maxComponents: int=0): ('t [], 't [,])
+fun PCACompute[T](data: T [,], mean: T [], ~maxComponents: int=0): (T [], T [,])
 {
     val (evals, evecs) = PCACompute_(anyarray(data), anyarray(mean))
-    (reinterpret(evals): 't [], reinterpet(evecs): 't [,])
+    (reinterpret(evals): T [], reinterpet(evecs): T [,])
 }
 
 @private fun PCAProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,]
@@ -557,10 +557,10 @@ fun PCACompute(data: 't [,], mean: 't [], ~maxComponents: int=0): ('t [], 't [,]
     return fx_status;
 }
 
-fun PCAProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
+fun PCAProject[T](data: T [,], mean: T [], eigenvectors: T [,]): T [,]
 {
     val proj = PCAProject_(anyarray(data), anyarray(mean), anyarray(eigenvectors))
-    (reinterpret(proj): 't [,])
+    (reinterpret(proj): T [,])
 }
 
 @private fun PCABackProject_(data: anyarr_t, mean: anyarr_t, eigenvectors: anyarr_t): uint8 [,]
@@ -580,10 +580,10 @@ fun PCAProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
     return fx_status;
 }
 
-fun PCABackProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
+fun PCABackProject[T](data: T [,], mean: T [], eigenvectors: T [,]): T [,]
 {
     val bproj = PCABackProject_(anyarray(data), anyarray(mean), anyarray(eigenvectors))
-    (reinterpret(bproj): 't [,])
+    (reinterpret(bproj): T [,])
 }
 
 @private fun SVDecomp_(src: anyarr_t, flags: int): (uint8 [,], uint8 [], uint8 [,])
@@ -605,10 +605,10 @@ fun PCABackProject(data: 't [,], mean: 't [], eigenvectors: 't [,]): 't [,]
     return fx_status;
 }
 
-fun SVDecomp(src: 't [,], ~flags: int=0): ('t [,], 't [], 't [,])
+fun SVDecomp[T](src: T [,], ~flags: int=0): (T [,], T [], T [,])
 {
     val (u, w, vt) = SVDecomp_(anyarray(src), flags)
-    ((reinterpet(u): 't [,]), (reinterpet(w): 't []), (reinterpet(vt): 't [,]))
+    ((reinterpet(u): T [,]), (reinterpet(w): T []), (reinterpet(vt): T [,]))
 }
 
 @private fun SVDecompValues_(src: anyarr_t, ~flags: int=0): uint8 []
@@ -624,8 +624,8 @@ fun SVDecomp(src: 't [,], ~flags: int=0): ('t [,], 't [], 't [,])
     return fx_status;
 }
 
-fun SVDecompValues(src: 't [,], ~flags: int=0): 't [] =
-    (reinterpet(SVDecompValues_(anyarray(src), flags)) : 't [])
+fun SVDecompValues[T](src: T [,], ~flags: int=0): T [] =
+    (reinterpet(SVDecompValues_(anyarray(src), flags)) : T [])
 
 @private fun SVBackSubst2D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 [,]
 @ccode {
@@ -646,8 +646,8 @@ fun SVDecompValues(src: 't [,], ~flags: int=0): 't [] =
     return fx_status;
 }
 
-fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't [,]): 't [,] =
-    (reinterpret(SVBackSubst2D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : 't [,])
+fun SVBackSubst[T](u: T [,], w: T [], vt: T [,], rhs: T [,]): T [,] =
+    (reinterpret(SVBackSubst2D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : T [,])
 
 @private fun SVBackSubst1D_(u: anyarr_t, w: anyarr_t, vt: anyarr_t, rhs: anyarr_t): uint8 []
 @ccode {
@@ -668,8 +668,8 @@ fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't [,]): 't [,] =
     return fx_status;
 }
 
-fun SVBackSubst(u: 't [,], w: 't [], vt: 't [,], rhs: 't []): 't [] =
-    (reinterpret(SVBackSubst1D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : 't [])
+fun SVBackSubst[T](u: T [,], w: T [], vt: T [,], rhs: T []): T [] =
+    (reinterpret(SVBackSubst1D_(anyarray(u), anyarray(w), anyarray(vt), anyarray(rhs))) : T [])
 
 val DFT_INVERSE=1
 val DFT_SCALE=2
@@ -690,8 +690,8 @@ val DFT_ROWS=4
     return fx_status;
 }
 
-fun dft(src: 't [], ~flags: int=0): 't [] =
-    (reinterpret(dft_(anyarray(src), flags)) : 't [])
+fun dft[T](src: T [], ~flags: int=0): T [] =
+    (reinterpret(dft_(anyarray(src), flags)) : T [])
 
 @private fun dft_(src: anyarr_t, flags: int, nonzeroRows: int): uint8 [,]
 @ccode {
@@ -708,14 +708,14 @@ fun dft(src: 't [], ~flags: int=0): 't [] =
     return fx_status;
 }
 
-fun dft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
-    (reinterpret(dft_(anyarray(src), flags, nonzeroRows)) : 't [])
+fun dft[T](src: T [,], ~flags: int=0, ~nonzeroRows: int=0): T [,] =
+    (reinterpret(dft_(anyarray(src), flags, nonzeroRows)) : T [])
 
-fun idft(src: 't [], ~flags: int=0): 't [] =
-    (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE)) : 't [])
+fun idft[T](src: T [], ~flags: int=0): T [] =
+    (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE)) : T [])
 
-fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
-    (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE, nonzeroRows)) : 't [,])
+fun idft[T](src: T [,], ~flags: int=0, ~nonzeroRows: int=0): T [,] =
+    (reinterpret(dft_(anyarray(src), flags^DFT_INVERSE, nonzeroRows)) : T [,])
 
 @private fun mulSpectrums1D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 []
 @ccode {
@@ -732,8 +732,8 @@ fun idft(src: 't [,], ~flags: int=0, ~nonzeroRows: int=0): 't [,] =
     return fx_status;
 }
 
-fun mulSpectrums(a: 't [], b: 't [], ~flags: int, ~conjB: bool=false): 't [] =
-    (reinterpret(mulSpectrums1D_(anyarray(a), anyarray(b), flags, conjB)) : 't [])
+fun mulSpectrums[T](a: T [], b: T [], ~flags: int, ~conjB: bool=false): T [] =
+    (reinterpret(mulSpectrums1D_(anyarray(a), anyarray(b), flags, conjB)) : T [])
 
 @private fun mulSpectrums2D_(a: anyarr_t, b: anyarr_t, flags: int, conjB: bool): uint8 []
 @ccode {
@@ -750,8 +750,8 @@ fun mulSpectrums(a: 't [], b: 't [], ~flags: int, ~conjB: bool=false): 't [] =
     return fx_status;
 }
 
-fun mulSpectrums(a: 't [,], b: 't [,], ~flags: int, ~conjB: bool=false): 't [,] =
-    (reinterpret(mulSpectrums2D_(anyarray(a), anyarray(b), flags, conjB)) : 't [,])
+fun mulSpectrums[T](a: T [,], b: T [,], ~flags: int, ~conjB: bool=false): T [,] =
+    (reinterpret(mulSpectrums2D_(anyarray(a), anyarray(b), flags, conjB)) : T [,])
 
 fun getOptimalDFTSize(vecsize: int): int
 @ccode {
@@ -792,23 +792,23 @@ val RNG_NORMAL : int = @ccode {cv::RNG::NORMAL}
     return fx_status;
 }
 
-fun randu(size: int, ~low: 't, ~high: 't): 't [] =
-    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_UNIFORM)) : 't [])
+fun randu[T](size: int, ~low: T, ~high: T): T [] =
+    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_UNIFORM)) : T [])
 
-fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
-    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_UNIFORM)) : 't [,])
+fun randu[T](size: (int, int), ~low: T, ~high: T): T [,] =
+    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_UNIFORM)) : T [,])
 
-fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
-    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_UNIFORM)) : 't [,,])
+fun randu[T](size: (int, int, int), ~low: T, ~high: T): T [,,] =
+    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_UNIFORM)) : T [,,])
 
-fun randn(size: int, ~mean: 't, ~stddev: 't): 't [] =
-    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [])
+fun randn[T](size: int, ~mean: T, ~stddev: T): T [] =
+    (reinterpret(rand_(1, (size, 0, 0, 0, 0), double(low), double(high), RNG_NORMAL)) : T [])
 
-fun randu(size: (int, int), ~low: 't, ~high: 't): 't [,] =
-    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [,])
+fun randu[T](size: (int, int), ~low: T, ~high: T): T [,] =
+    (reinterpret(rand_(2, (size.0, size.1, 0, 0, 0), double(low), double(high), RNG_NORMAL)) : T [,])
 
-fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
-    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_NORMAL)) : 't [,,])
+fun randu[T](size: (int, int, int), ~low: T, ~high: T): T [,,] =
+    (reinterpret(rand_(3, (size.0, size.1, size.2, 0, 0), double(low), double(high), RNG_NORMAL)) : T [,,])
 
 @private fun randShuffle_(arr: anyarr_t, iterFactor: double): void
 @ccode {
@@ -820,7 +820,7 @@ fun randu(size: (int, int, int), ~low: 't, ~high: 't): 't [,,] =
     return fx_status;
 }
 
-fun randShuffle(arr: 't [], ~iterFactor: double = 1.): void =
+fun randShuffle[T](arr: T [], ~iterFactor: double = 1.): void =
     randShuffle(anyarray(arr), iterFactor)
 
 @private fun kmeans_(data: anyarr_t, K: int, flags: int, maxIters: int, epsilon: double,
@@ -951,8 +951,8 @@ fun getStructuringElement(shape: int, ksize: intx2, ~anchor: intx2 = (-1, -1)): 
     return fx_status;
 }
 
-fun medianBlur(src: 't [,], ksize: int): 't [,] =
-    (reinterpret(medianBlur_(anyarray(src), ksize)) : 't [,])
+fun medianBlur[T](src: T [,], ksize: int): T [,] =
+    (reinterpret(medianBlur_(anyarray(src), ksize)) : T [,])
 
 @private fun GaussianBlur_(src: anyarr_t, ksize: intx2, sigma: double,
                  sigmaY: double, borderType: int): uint8 [,]
@@ -967,9 +967,9 @@ fun medianBlur(src: 't [,], ksize: int): 't [,] =
     return fx_status;
 }
 
-fun GaussianBlur(src: 't [,], ksize: intx2, ~sigma: double,
-                 ~sigmaY: double=0., ~borderType: int=BORDER_DEFAULT): 't [,] =
-    (reinterpret(GaussianBlur_(anyarray(src), ksize, sigma, sigmaY, borderType)) : 't [,])
+fun GaussianBlur[T](src: T [,], ksize: intx2, ~sigma: double,
+                 ~sigmaY: double=0., ~borderType: int=BORDER_DEFAULT): T [,] =
+    (reinterpret(GaussianBlur_(anyarray(src), ksize, sigma, sigmaY, borderType)) : T [,])
 
 @private fun bilateralFilter_(src: anyarr_t, d: int, sigmaColor: double,
                     sigmaSpace: double, borderType: int): uint8 [,]
@@ -984,9 +984,9 @@ fun GaussianBlur(src: 't [,], ksize: intx2, ~sigma: double,
     return fx_status;
 }
 
-fun bilateralFilter(src: 't [,], d: int, ~sigmaColor: double,
-                    ~sigmaSpace: double, ~borderType: int=BORDER_DEFAULT): 't [,] =
-    (reinterpret(bilteralFilter_(anyarray(src), d, sigmaColor, sigmaSpace, borderType)) : 't [,])
+fun bilateralFilter[T](src: T [,], d: int, ~sigmaColor: double,
+                    ~sigmaSpace: double, ~borderType: int=BORDER_DEFAULT): T [,] =
+    (reinterpret(bilteralFilter_(anyarray(src), d, sigmaColor, sigmaSpace, borderType)) : T [,])
 
 @private fun blur_(src: anyarr_t, ksize: intx2, anchor: intx2, borderType: int): uint8 [,]
 @ccode {
@@ -1000,9 +1000,9 @@ fun bilateralFilter(src: 't [,], d: int, ~sigmaColor: double,
     return fx_status;
 }
 
-fun blur(src: 't [,], ksize: intx2, ~anchor: intx2=(-1, -1),
-         ~borderType: int=BORDER_DEFAULT): 't [,] =
-    (reinterpret(blur_(anyarray(src), ksize, anchor, borderType)) : 't [,])
+fun blur[T](src: T [,], ksize: intx2, ~anchor: intx2=(-1, -1),
+         ~borderType: int=BORDER_DEFAULT): T [,] =
+    (reinterpret(blur_(anyarray(src), ksize, anchor, borderType)) : T [,])
 
 @private fun filter2D_(src: anyarr_t, kernel: anyarr_t, anchor: intx2,
                     delta: double, borderType: int): uint8 [,]
@@ -1019,9 +1019,9 @@ fun blur(src: 't [,], ksize: intx2, ~anchor: intx2=(-1, -1),
     return fx_status;
 }
 
-fun filter2D(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
-             ~delta: double=0., ~borderType: int=BORDER_DEFAULT): 't [,] =
-    (reinterpret(filter2D_(anyarray(src), anyarray(kernel), anchor, delta, borderType)) : 't [,])
+fun filter2D[T, K](src: T [,], kernel: K [,], ~anchor: intx2=(-1, -1),
+             ~delta: double=0., ~borderType: int=BORDER_DEFAULT): T [,] =
+    (reinterpret(filter2D_(anyarray(src), anyarray(kernel), anchor, delta, borderType)) : T [,])
 
 @private fun sepFilter2D_(src: anyarr_t, kernelX: anyarr_t, kernelY: anyarr_t,
                           anchor: intx2, delta: double, borderType: int): uint8 [,]
@@ -1041,10 +1041,10 @@ fun filter2D(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     return fx_status;
 }
 
-fun sepFilter2D(src: 't [,], kernelX: 'k [,], kernelY: 'k [,], ~anchor: intx2=(-1, -1),
-                ~delta: double=0., ~borderType: int=BORDER_DEFAULT): 't [,] =
+fun sepFilter2D[T, K](src: T [,], kernelX: K [,], kernelY: K [,], ~anchor: intx2=(-1, -1),
+                ~delta: double=0., ~borderType: int=BORDER_DEFAULT): T [,] =
     (reinterpret(sepFilter2D_(anyarray(src), anyarray(kernelX),
-            anyarray(kernelY), anchor, delta, borderType)) : 't [,])
+            anyarray(kernelY), anchor, delta, borderType)) : T [,])
 
 @private fun Sobel_(src: anyarr_t, dx: int, dy: int, ksize: int, scale: double,
                     delta: double, borderType: int): float [,]
@@ -1059,7 +1059,7 @@ fun sepFilter2D(src: 't [,], kernelX: 'k [,], kernelY: 'k [,], ~anchor: intx2=(-
     return fx_status;
 }
 
-fun Sobel(src: 't [,], dx: int, dy: int, ~ksize: int=3, ~scale: double=1.,
+fun Sobel[T](src: T [,], dx: int, dy: int, ~ksize: int=3, ~scale: double=1.,
           ~delta: double=0., ~borderType: int=BORDER_DEFAULT): float [,] =
     Sobel_(anyarray(src), dx, dy, ksize, scale, delta, borderType)
 
@@ -1096,7 +1096,7 @@ fun spatialGradient(src: uint8 [,], ~ksize: int=3,
     return fx_status;
 }
 
-fun Laplacian(src: 't [,], ~ksize: int = 1, ~scale: double = 1, ~delta: double = 0,
+fun Laplacian[T](src: T [,], ~ksize: int = 1, ~scale: double = 1, ~delta: double = 0,
               ~borderType: int=BORDER_DEFAULT): float [,] =
     Laplacian_(anyarray(src), ksize, scale, delta, borderType)
 
@@ -1215,9 +1215,9 @@ fun HoughCircles(src: uint8 [,], ~method: int=4, ~dp: double, ~minDist: double,
     return fx_status;
 }
 
-fun erode(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
-          ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): 't [,] =
-    (reinterpret(erode_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : 't [,])
+fun erode[T, K](src: T [,], kernel: K [,], ~anchor: intx2=(-1, -1),
+          ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): T [,] =
+    (reinterpret(erode_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : T [,])
 
 @private fun dilate_(src: anyarr_t, kernel: anyarr_t, anchor: intx2,
                      iterations: int, borderType: int): uint8 [,]
@@ -1234,9 +1234,9 @@ fun erode(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     return fx_status;
 }
 
-fun dilate(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
-           ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): 't [,] =
-    (reinterpret(dilate_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : 't [,])
+fun dilate[T, K](src: T [,], kernel: K [,], ~anchor: intx2=(-1, -1),
+           ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): T [,] =
+    (reinterpret(dilate_(anyarray(src), anyarray(kernel), anchor, iterations, borderType)) : T [,])
 
 @private fun morphologyEx_(src: anyarr_t, kernel: anyarr_t, anchor: intx2, op: int,
                            iterations: int, borderType: int): uint8 [,]
@@ -1254,11 +1254,11 @@ fun dilate(src: 't [,], kernel: 'k [,], ~anchor: intx2=(-1, -1),
     return fx_status;
 }
 
-fun morphologyEx(src: 't [,], kernel: 'k [,], ~op: int,
+fun morphologyEx[T, K](src: T [,], kernel: K [,], ~op: int,
                  ~anchor: intx2=(-1, -1),
-                 ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): 't [,] =
+                 ~iterations: int=1, ~borderType: int = BORDER_CONSTANT): T [,] =
     (reinterpret(morphologyEx_(anyarray(src), anyarray(kernel), anchor, op,
-                 iterations, borderType)) : 't [,])
+                 iterations, borderType)) : T [,])
 
 val INTER_LINEAR: int = @ccode {cv::INTER_LINEAR}
 val INTER_CUBIC: int = @ccode {cv::INTER_CUBIC}
@@ -1283,9 +1283,9 @@ val WARP_INVERSE_MAP: int = @ccode {cv::WARP_INVERSE_MAP}
     return fx_status;
 }
 
-fun resize(src: 't [,], dsize: intx2, ~fx: double=0., ~fy: double=0.,
-           ~interpolation: int = INTER_LINEAR ): 't [,] =
-    (reinterpret(resize_(anyarray(src), dsize, fx, fy, interpolation)) : 't [,])
+fun resize[T](src: T [,], dsize: intx2, ~fx: double=0., ~fy: double=0.,
+           ~interpolation: int = INTER_LINEAR ): T [,] =
+    (reinterpret(resize_(anyarray(src), dsize, fx, fy, interpolation)) : T [,])
 
 @private fun warpAffine_(src: anyarr_t, M: anyarr_t, dsize: intx2,
                interpolation: int, borderType: int,
@@ -1304,12 +1304,12 @@ fun resize(src: 't [,], dsize: intx2, ~fx: double=0., ~fy: double=0.,
     return fx_status;
 }
 
-fun warpAffine(src: 't [,], M: 'k [,], dsize: intx2,
+fun warpAffine[T, K](src: T [,], M: K [,], dsize: intx2,
                ~interpolation: int = INTER_LINEAR,
                ~borderType: int = BORDER_CONSTANT,
-               ~borderValue: doublex4 = (0., 0., 0., 0.)): 't [,] =
+               ~borderValue: doublex4 = (0., 0., 0., 0.)): T [,] =
     (reinterpret(warpAffine_(anyarray(src), anyarray(M), dsize,
-        interpolation, borderType, borderValue)) : 't [,])
+        interpolation, borderType, borderValue)) : T [,])
 
 @private fun warpPerspective_(src: anyarr_t, M: anyarr_t, dsize: intx2,
                interpolation: int, borderType: int,
@@ -1328,12 +1328,12 @@ fun warpAffine(src: 't [,], M: 'k [,], dsize: intx2,
     return fx_status;
 }
 
-fun warpPerspective(src: 't [,], M: 'k [,], dsize: intx2,
+fun warpPerspective[T, K](src: T [,], M: K [,], dsize: intx2,
                ~interpolation: int = INTER_LINEAR,
                ~borderType: int = BORDER_CONSTANT,
-               ~borderValue: doublex4 = (0., 0., 0., 0.)): 't [,] =
+               ~borderValue: doublex4 = (0., 0., 0., 0.)): T [,] =
     (reinterpret(warpPerspective_(anyarray(src), anyarray(M), dsize,
-        interpolation, borderType, borderValue)) : 't [,])
+        interpolation, borderType, borderValue)) : T [,])
 
 @private fun remap_(src: anyarr_t, map1: anyarr_t, map2: anyarr_t,
                    iterpolation: int, borderType: int,
@@ -1354,12 +1354,12 @@ fun warpPerspective(src: 't [,], M: 'k [,], dsize: intx2,
     return fx_status;
 }
 
-fun remap(src: 't [,], map1: 'k [,], map2: 'k [,],
+fun remap[T, K](src: T [,], map1: K [,], map2: K [,],
           ~iterpolation: int = INTER_LINEAR,
           ~borderType: int = BORDER_CONSTANT,
-          ~borderValue: doublex4 = (0., 0., 0., 0.)): 't [,] =
+          ~borderValue: doublex4 = (0., 0., 0., 0.)): T [,] =
     (reinterpret(remap_(anyarray(src), anyarray(map1), anyarray(map2),
-            interpolation, borderType, borderValue)) : 't [,])
+            interpolation, borderType, borderValue)) : T [,])
 
 fun getRotationMatrix2D(center: floatx2, angle: double, scale: double): double [,]
 @ccode {
@@ -1428,8 +1428,8 @@ fun getPerspectiveTransform(src: floatx2 [], dst: floatx2 [],
     )
     return fx_status;
 }
-fun getRectSubPix(src: 't [,], patchSize: intx2, center: floatx2): 't [,] =
-    (reinterpret(getRectSubPix_(anyarray(src), patchSize, center)) : 't [,])
+fun getRectSubPix[T](src: T [,], patchSize: intx2, center: floatx2): T [,] =
+    (reinterpret(getRectSubPix_(anyarray(src), patchSize, center)) : T [,])
 
 @private fun logPolar_(src: anyarr_t, center: floatx2, M: double, flags: int): uint8 [,]
 @ccode {
@@ -1444,8 +1444,8 @@ fun getRectSubPix(src: 't [,], patchSize: intx2, center: floatx2): 't [,] =
     return fx_status;
 }
 
-fun logPolar(src: 't [,], ~center: floatx2, ~M: double, ~flags: int): 't [,] =
-    (reinterpret(logPolar_(anyarray(src), center, M, flags)) : 't [,])
+fun logPolar[T](src: T [,], ~center: floatx2, ~M: double, ~flags: int): T [,] =
+    (reinterpret(logPolar_(anyarray(src), center, M, flags)) : T [,])
 
 @private fun linearPolar_(src: anyarr_t, center: floatx2, maxRadius: double, flags: int): uint8 [,]
 @ccode {
@@ -1460,8 +1460,8 @@ fun logPolar(src: 't [,], ~center: floatx2, ~M: double, ~flags: int): 't [,] =
     return fx_status;
 }
 
-fun linearPolar(src: 't [,], ~center: floatx2, ~maxRadius: double, ~flags: int): 't [,] =
-    (reinterpret(linearPolar_(anyarray(src), center, maxRadius, flags)) : 't [,])
+fun linearPolar[T](src: T [,], ~center: floatx2, ~maxRadius: double, ~flags: int): T [,] =
+    (reinterpret(linearPolar_(anyarray(src), center, maxRadius, flags)) : T [,])
 
 @private fun integral_(src: anyarr_t, sd: depth_t): uint8 [,]
 @ccode {
@@ -1477,8 +1477,8 @@ fun linearPolar(src: 't [,], ~center: floatx2, ~maxRadius: double, ~flags: int):
     return fx_status;
 }
 
-fun integral(src: 't [,], s0: 's): 's [,] =
-    (reinterpret(integral_(anyarray(src), elemtype(s0).0)) : 's [,])
+fun integral[T, S](src: T [,], s0: S): S [,] =
+    (reinterpret(integral_(anyarray(src), elemtype(s0).0)) : S [,])
 
 @private fun integral2_(src: anyarr_t, sd: depth_t, sqd: depth_t): (uint8 [,], uint8 [,])
 @ccode {
@@ -1498,10 +1498,10 @@ fun integral(src: 't [,], s0: 's): 's [,] =
     return fx_status;
 }
 
-fun integral2(src: 't [,], s0: 's, sq0: 'sq): ('s [,], 'sq [,])
+fun integral2[T, S, Sq](src: T [,], s0: S, sq0: Sq): (S [,], Sq [,])
 {
     val (s, sq) = integral2_(anyarray(src), elemtype(s0).0, elemtype(sq0).0)
-    (reinterpret(s) : 's [,], reinterpret(sq): 'sq [,])
+    (reinterpret(s) : S [,], reinterpret(sq): Sq [,])
 }
 
 @private fun phaseCorrelate_(src1: anyarr_t, src2: anyarr_t, window: anyarr_t): (doublex2, double)
@@ -1521,7 +1521,7 @@ fun integral2(src: 't [,], s0: 's, sq0: 'sq): ('s [,], 'sq [,])
     return fx_status;
 }
 
-fun phaseCorrelate(src1: 't [,], src2: 't [,], window: 'k [,]): (doublex2, double) =
+fun phaseCorrelate[T, K](src1: T [,], src2: T [,], window: K [,]): (doublex2, double) =
     phaseCorrelate_(anyarray(src1), anyarray(src2), anyarray(window))
 
 fun createHanningWindow(winSize: intx2): float [,]
@@ -1552,8 +1552,8 @@ fun createHanningWindow(winSize: intx2): float [,]
     return fx_status;
 }
 
-fun divSpectrums(src1: 't [,], src2: 't [,], flags: int, ~conj: bool=false): 't [,] =
-    (reinterpret(divSpectrums_(anyarray(src1), anyarray(src2), flags, conj)) : 't [,])
+fun divSpectrums[T](src1: T [,], src2: T [,], flags: int, ~conj: bool=false): T [,] =
+    (reinterpret(divSpectrums_(anyarray(src1), anyarray(src2), flags, conj)) : T [,])
 
 val THRESH_BINARY: int = @ccode {cv::THRESH_BINARY}
 val THRESH_BINARY_INV: int = @ccode {cv::THRESH_BINARY}
@@ -1576,8 +1576,8 @@ val THRESH_TRIANGLE: int = @ccode {cv::THRESH_BINARY}
     return fx_status;
 }
 
-fun threshold(src: 't [,], ~threshold: double, ~maxVal: double, ~op: int): 't [,] =
-    (reinterpret(threshold_(anyarray(src), threshold, maxVal, op)) : 't [,])
+fun threshold[T](src: T [,], ~threshold: double, ~maxVal: double, ~op: int): T [,] =
+    (reinterpret(threshold_(anyarray(src), threshold, maxVal, op)) : T [,])
 
 @private fun adaptiveThreshold_(src: anyarr_t, maxVal: double,
                       adaptiveMethod: int, thresholdType: int,
@@ -1595,10 +1595,10 @@ fun threshold(src: 't [,], ~threshold: double, ~maxVal: double, ~op: int): 't [,
     return fx_status;
 }
 
-fun adaptiveThreshold(src: 't [,], maxVal: double,
+fun adaptiveThreshold[T](src: T [,], maxVal: double,
                       ~adaptiveMethod: int, ~thresholdType: int,
-                      ~blockSize: int, ~C: double): 't [,] =
-    (reinterpret(adaptiveThreshold_(anyarray(src), maxVal, thresholdType, blockSize, C)) : 't [,])
+                      ~blockSize: int, ~C: double): T [,] =
+    (reinterpret(adaptiveThreshold_(anyarray(src), maxVal, thresholdType, blockSize, C)) : T [,])
 
 @private fun pyrDown_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,]
 @ccode {
@@ -1612,8 +1612,8 @@ fun adaptiveThreshold(src: 't [,], maxVal: double,
     return fx_status;
 }
 
-fun pyrDown(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
-    (reinterpret(pyrDown_(anyarray(src), dsize, borderType)) : 't [,])
+fun pyrDown[T](src: T [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): T [,] =
+    (reinterpret(pyrDown_(anyarray(src), dsize, borderType)) : T [,])
 
 @private fun pyrUp_(src: anyarr_t, dsize: intx2, borderType: int): uint8 [,]
 @ccode {
@@ -1627,8 +1627,8 @@ fun pyrDown(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT
     return fx_status;
 }
 
-fun pyrUp(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): 't [,] =
-    (reinterpret(pyrUp_(anyarray(src), dsize, borderType)) : 't [,])
+fun pyrUp[T](src: T [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT ): T [,] =
+    (reinterpret(pyrUp_(anyarray(src), dsize, borderType)) : T [,])
 
 @private fun calcHist_(ndims: int, src: anyarr_t, mask: anyarr_t,
                        channels: intx5, hsize: intx5, ranges: float [][],
@@ -1657,21 +1657,21 @@ fun pyrUp(src: 't [,], ~dsize: intx2=(0, 0), ~borderType: int = BORDER_DEFAULT )
     return fx_status;
 }
 
-fun calcHist(src: 't [+], hsize: int, ~mask: 'm [+],
+fun calcHist[T, M](src: T [+], hsize: int, ~mask: M [+],
             ~channel: int=0, ~ranges: float []=[],
             ~uniform: bool=true): float [] =
     (reinterpret(calcHist_(1, anyarray(src), anyarray(mask),
         (channel, 0, 0, 0, 0), (hsize, 0, 0, 0, 0),
         [ranges], uniform)) : float [])
 
-fun calcHist(src: ('t*2) [+], hsize: intx2, ~mask: 'm [+],
+fun calcHist[T, M](src: (T*2) [+], hsize: intx2, ~mask: M [+],
             ~channels: intx2 = (0, 1), ~ranges: float [][]=[],
             ~uniform: bool=true): float [,] =
     (reinterpret(calcHist_(2, anyarray(src), anyarray(mask),
         (channels.0, channels.1, 0, 0, 0), (hsize.0, hsize.1, 0, 0, 0),
         ranges, uniform)) : float [,])
 
-fun calcHist(src: ('t*3) [+], hsize: intx3, ~mask: 't [+],
+fun calcHist[T](src: (T*3) [+], hsize: intx3, ~mask: T [+],
             ~channels: intx3 = (0, 1, 2), ~ranges: float [][]=[],
             ~uniform: bool=true): float [,,] =
     (reinterpret(calcHist_(3, anyarray(src), anyarray(mask),
@@ -1705,20 +1705,20 @@ fun calcHist(src: ('t*3) [+], hsize: intx3, ~mask: 't [+],
     return fx_status;
 }
 
-fun calcBackProject(src: 't [,], hist: float [],
+fun calcBackProject[T](src: T [,], hist: float [],
                     ~channel: int=0, ~ranges: float []=[],
                     ~scale: double=1, ~uniform: bool=true): float [,] =
     (reinterpret(calcBackProject_(anyarray(src), anyarray(hist),
         (channel, 0, 0, 0, 0), (hsize, 0, 0, 0, 0),
         [ranges], uniform)) : float [])
 
-fun calcBackProject(src: 't [,], hist: float [,],
+fun calcBackProject[T](src: T [,], hist: float [,],
                     ~channels: intx2=(0, 1), ~ranges: float [][]=[],
                     ~scale: double=1, ~uniform: bool=true): float [,] =
     (reinterpret(calcBackProject_(anyarray(src), anyarray(hist),
         (channels.0, channels.1, 0, 0, 0), ranges, uniform)) : float [,])
 
-fun calcBackProject(src: 't [,], hist: float [,,],
+fun calcBackProject[T](src: T [,], hist: float [,,],
                     ~channels: intx3=(0, 1, 2), ~ranges: float [][]=[],
                     ~scale: double=1, ~uniform: bool=true): float [,] =
     (reinterpret(calcBackProject_(anyarray(src), anyarray(hist),
@@ -1853,7 +1853,7 @@ fun distanceTransform(src: uint8 [,], ~distanceType: int, ~maskSize: int=0): flo
     return fx_status;
 }
 
-fun floodFill(img: 't [,], seed: intx2, newVal: doublex4,
+fun floodFill[T](img: T [,], seed: intx2, newVal: doublex4,
               ~mask: uint8 [,]=[],
               ~loDiff: doublex4=(0., 0., 0., 0.),
               ~upDiff: doublex4=(0., 0., 0., 0.),
@@ -1879,8 +1879,8 @@ fun floodFill(img: 't [,], seed: intx2, newVal: doublex4,
     return fx_status;
 }
 
-fun blendLinear(src1: 't [,], src2: 't [,], w1: 'w [,], w2: 'w [,]): 't [,] =
-    (reinterpret(blendLinear_(anyarray(src1), anyarray(src2), anyarray(w1), anyarray(w2))) : 't [,])
+fun blendLinear[T, W](src1: T [,], src2: T [,], w1: W [,], w2: W [,]): T [,] =
+    (reinterpret(blendLinear_(anyarray(src1), anyarray(src2), anyarray(w1), anyarray(w2))) : T [,])
 
 val COLOR_BGR2BGRA: int = @ccode {cv::COLOR_BGR2BGRA}
 val COLOR_RGB2RGBA: int = @ccode {cv::COLOR_RGB2RGBA}
@@ -2160,16 +2160,16 @@ val COLOR_COLORCVT_MAX: int = @ccode {cv::COLOR_COLORCVT_MAX}
     return fx_status;
 }
 
-fun cvtColorToGray(src: ('t...) [,], code: int): 't [,] =
-    (reinterpret(cvtColor_(anyarray(src), code, 1)) : 't [,])
-fun cvtGrayToColor(src: 't [,], code: int): ('t*3) [,] =
-    (reinterpret(cvtColor_(anyarray(src), code, 3)) : ('t*3) [,])
-fun cvtGrayToColorAlpha(src: 't [,], code: int): ('t*3) [,] =
-    (reinterpret(cvtColor_(anyarray(src), code, 4)) : ('t*4) [,])
-fun cvtColor(src: ('t ...) [,], code: int): ('t*3) [,] =
-    (reinterpret(cvtColor_(anyarray(src), code, 3)) : ('t*3) [,])
-fun cvtColorAlpha(src: ('t ...) [,], code: int): ('t*4) [,] =
-    (reinterpret(cvtColor_(anyarray(src), code, 4)) : ('t*4) [,])
+fun cvtColorToGray[T](src: (T...) [,], code: int): T [,] =
+    (reinterpret(cvtColor_(anyarray(src), code, 1)) : T [,])
+fun cvtGrayToColor[T](src: T [,], code: int): (T*3) [,] =
+    (reinterpret(cvtColor_(anyarray(src), code, 3)) : (T*3) [,])
+fun cvtGrayToColorAlpha[T](src: T [,], code: int): (T*3) [,] =
+    (reinterpret(cvtColor_(anyarray(src), code, 4)) : (T*4) [,])
+fun cvtColor[T](src: (T ...) [,], code: int): (T*3) [,] =
+    (reinterpret(cvtColor_(anyarray(src), code, 3)) : (T*3) [,])
+fun cvtColorAlpha[T](src: (T ...) [,], code: int): (T*4) [,] =
+    (reinterpret(cvtColor_(anyarray(src), code, 4)) : (T*4) [,])
 
 @private fun cvtColorTwoPlane_(src1: anyarr_t, src2: anyarr_t, code: int, dstcn: int): uint8 [,]
 @ccode {
@@ -2186,10 +2186,10 @@ fun cvtColorAlpha(src: ('t ...) [,], code: int): ('t*4) [,] =
     return fx_status;
 }
 
-fun cvtColorTwoPlane(src1: 't [,], src2: ('t*2) [,], code: int): ('t*3) [,] =
-    (reinterpret(cvtColorTwoPlane_(anyarray(src1), anyarray(src2), code, 3)) : ('t*3) [,])
-fun cvtColorTwoPlaneAlpha(src1: 't [,], src2: ('t*2) [,], code: int): ('t*4) [,] =
-    (reinterpret(cvtColorTwoPlane_(anyarray(src1), anyarray(src2), code, 4)) : ('t*4) [,])
+fun cvtColorTwoPlane[T](src1: T [,], src2: (T*2) [,], code: int): (T*3) [,] =
+    (reinterpret(cvtColorTwoPlane_(anyarray(src1), anyarray(src2), code, 3)) : (T*3) [,])
+fun cvtColorTwoPlaneAlpha[T](src1: T [,], src2: (T*2) [,], code: int): (T*4) [,] =
+    (reinterpret(cvtColorTwoPlane_(anyarray(src1), anyarray(src2), code, 4)) : (T*4) [,])
 
 @private fun demosaic_(src: anyarr_t, code: int, dstcn: int): uint8 [,]
 @ccode {
@@ -2204,10 +2204,10 @@ fun cvtColorTwoPlaneAlpha(src1: 't [,], src2: ('t*2) [,], code: int): ('t*4) [,]
     return fx_status;
 }
 
-fun demosaic(src: 't [,], code: int): ('t*3) [,] =
-    (reinterpret(demosaic_(anyarray(src), code, 3)) : ('t*3) [,])
-fun demosaicAlpha(src: 't [,], code: int): ('t*4) [,] =
-    (reinterpret(demosaic_(anyarray(src), code, 4)) : ('t*4) [,])
+fun demosaic[T](src: T [,], code: int): (T*3) [,] =
+    (reinterpret(demosaic_(anyarray(src), code, 3)) : (T*3) [,])
+fun demosaicAlpha[T](src: T [,], code: int): (T*4) [,] =
+    (reinterpret(demosaic_(anyarray(src), code, 4)) : (T*4) [,])
 
 @private fun moments_(src: anyarr_t, binaryImage:bool): (double*10)
 @ccode {
@@ -2222,7 +2222,7 @@ fun demosaicAlpha(src: 't [,], code: int): ('t*4) [,] =
     return fx_status;
 }
 
-fun moments(src: 't [,], ~binaryImage:bool=false): (double*10) =
+fun moments[T](src: T [,], ~binaryImage:bool=false): (double*10) =
     moments_(anyarray(src), binaryImage)
 
 fun HuMoments(moments: (double*10)): (double*7)
@@ -2259,7 +2259,7 @@ val TM_CCOEFF_NORMED: int = @ccode {cv::TM_CCOEFF_NORMED}
     return fx_status;
 }
 
-fun matchTemplate(image: 't [,], templ: 't [,], method: int, ~mask: uint8 [,]=[]): float [,] =
+fun matchTemplate[T](image: T [,], templ: T [,], method: int, ~mask: uint8 [,]=[]): float [,] =
     matchTemplate_(anyarray(image), anyarray(templ), method, anyarray(mask))
 
 fun connectedComponents_(src: uint8 [,], connectivity: int): int32 [,]
@@ -2313,8 +2313,8 @@ fun connectedComponentsWithStats(src: uint8 [,], connectivity: int):
     return fx_status;
 }
 
-fun approxPolyDP(curve: 't [], epsilon: double, ~closed: bool): 't [] =
-    (reinterpret(approxPolyDP_(anyarray(curve), epsilon, closed)) : 't [])
+fun approxPolyDP[T](curve: T [], epsilon: double, ~closed: bool): T [] =
+    (reinterpret(approxPolyDP_(anyarray(curve), epsilon, closed)) : T [])
 
 @private fun arcLength_(curve: anyarr_t, closed: bool): double
 @ccode {
@@ -2327,7 +2327,7 @@ fun approxPolyDP(curve: 't [], epsilon: double, ~closed: bool): 't [] =
     return fx_status;
 }
 
-fun arcLength(curve: 't [], ~closed: bool): double =
+fun arcLength[T](curve: T [], ~closed: bool): double =
     arcLength_(anyarray(curve), closed)
 
 @private fun contourArea_(curve: anyarr_t, oriented: bool): double
@@ -2341,7 +2341,7 @@ fun arcLength(curve: 't [], ~closed: bool): double =
     return fx_status;
 }
 
-fun contourArea(src: 't [], ~oriented: bool=false): double =
+fun contourArea[T](src: T [], ~oriented: bool=false): double =
     contourArea_(anyarray(curve), oriented)
 
 @private fun boundingRect_(src: anyarr_t): intx4
@@ -2356,7 +2356,7 @@ fun contourArea(src: 't [], ~oriented: bool=false): double =
     return fx_status;
 }
 
-fun boundingRect(src: 't [+]): intx4 = boundingRect_(anyarray(src))
+fun boundingRect[T](src: T [+]): intx4 = boundingRect_(anyarray(src))
 
 @private fun minAreaRect_(points: anyarr_t): box_t
 @ccode {
@@ -2370,7 +2370,7 @@ fun boundingRect(src: 't [+]): intx4 = boundingRect_(anyarray(src))
     return fx_status;
 }
 
-fun minAreaRect(points: 't []): box_t = minAreaRect_(anyarray(points))
+fun minAreaRect[T](points: T []): box_t = minAreaRect_(anyarray(points))
 
 fun boxPoints(box: box_t): floatx2 []
 @ccode {
@@ -2400,7 +2400,7 @@ fun boxPoints(box: box_t): floatx2 []
     return fx_status;
 }
 
-fun minEnclosingCircle(points: 't []): (floatx2, float) =
+fun minEnclosingCircle[T](points: T []): (floatx2, float) =
     minEnclosingCircle_(anyarray(points))
 
 @private fun matchShapes_(contour1: anyarr_t, contour2: anyarr_t,
@@ -2417,7 +2417,7 @@ fun minEnclosingCircle(points: 't []): (floatx2, float) =
     return fx_status;
 }
 
-fun matchShapes(contour1: 't [], contour2: 't [], ~method: int, ~parameter: double): double =
+fun matchShapes[T](contour1: T [], contour2: T [], ~method: int, ~parameter: double): double =
     matchShapes_(anyarray(contour1), anyarray(contour2), method, parameter)
 
 @private fun convexHull_(points: anyarr_t, clockwise:bool, returnPoints: bool): uint8 []
@@ -2435,10 +2435,10 @@ fun matchShapes(contour1: 't [], contour2: 't [], ~method: int, ~parameter: doub
     return fx_status;
 }
 
-fun convexHull(points: 't [], ~clockwise:bool=false): 't [] =
-    (reinterpret(convexHull_(anyarray(points), clockwise, true)) : 't [])
+fun convexHull[T](points: T [], ~clockwise:bool=false): T [] =
+    (reinterpret(convexHull_(anyarray(points), clockwise, true)) : T [])
 
-fun convexHullIdx(points: 't [], ~clockwise:bool=false): 't [] =
+fun convexHullIdx[T](points: T [], ~clockwise:bool=false): T [] =
     (reinterpret(convexHull_(anyarray(points), clockwise, false)) : int32 [])
 
 @private fun isContourConvex_(contour: anyarr_t): bool
@@ -2451,7 +2451,7 @@ fun convexHullIdx(points: 't [], ~clockwise:bool=false): 't [] =
     return fx_status;
 }
 
-fun isContourConvex(contour: 't []): bool = isContourConvex_(anyarray(contour))
+fun isContourConvex[T](contour: T []): bool = isContourConvex_(anyarray(contour))
 
 @private fun intersectConvexConvex_(p1: anyarr_t, p2: anyarr_t, handleNested: bool): uint8 []
 @ccode {
@@ -2467,8 +2467,8 @@ fun isContourConvex(contour: 't []): bool = isContourConvex_(anyarray(contour))
     return fx_status;
 }
 
-fun intersectConvexConvex(p1: 't [], p2: 't [], ~handleNested: bool=true): 't [] =
-    (reinterpret(intersectConvexConvex_(anyarray(p1), anyarray(p2), handleNested)) : 't [])
+fun intersectConvexConvex[T](p1: T [], p2: T [], ~handleNested: bool=true): T [] =
+    (reinterpret(intersectConvexConvex_(anyarray(p1), anyarray(p2), handleNested)) : T [])
 
 @private fun fitEllipse_(points: anyarr_t): box_t
 @ccode {
@@ -2482,7 +2482,7 @@ fun intersectConvexConvex(p1: 't [], p2: 't [], ~handleNested: bool=true): 't []
     return fx_status;
 }
 
-fun fitEllipse(points: 't []): box_t = fitEllipse_(anyarray(points))
+fun fitEllipse[T](points: T []): box_t = fitEllipse_(anyarray(points))
 
 @private fun fitEllipseAMS_(points: anyarr_t): box_t
 @ccode {
@@ -2496,7 +2496,7 @@ fun fitEllipse(points: 't []): box_t = fitEllipse_(anyarray(points))
     return fx_status;
 }
 
-fun fitEllipseAMS(points: 't []): box_t = fitEllipseAMS_(anyarray(points))
+fun fitEllipseAMS[T](points: T []): box_t = fitEllipseAMS_(anyarray(points))
 
 @private fun fitEllipseDirect_(points: anyarr_t): box_t
 @ccode {
@@ -2510,7 +2510,7 @@ fun fitEllipseAMS(points: 't []): box_t = fitEllipseAMS_(anyarray(points))
     return fx_status;
 }
 
-fun fitEllipseDirect(points: 't []): box_t = fitEllipseDirect_(anyarray(points))
+fun fitEllipseDirect[T](points: T []): box_t = fitEllipseDirect_(anyarray(points))
 
 @private fun fitLine_(points: anyarr_t, distType: int,
                       param: double, reps: double, aeps: double): float []
@@ -2525,7 +2525,7 @@ fun fitEllipseDirect(points: 't []): box_t = fitEllipseDirect_(anyarray(points))
     return fx_status;
 }
 
-fun fitLine(points: 't [], ~distType: int, ~param: double, ~reps: double, ~aeps: double): float [] =
+fun fitLine[T](points: T [], ~distType: int, ~param: double, ~reps: double, ~aeps: double): float [] =
     fitLine_(anyarray(points), distType, param, reps, aeps)
 
 @private fun pointPolygonTest_(contour: anyarr_t, pt: floatx2, measureDist: bool): double
@@ -2538,7 +2538,7 @@ fun fitLine(points: 't [], ~distType: int, ~param: double, ~reps: double, ~aeps:
     return fx_status;
 }
 
-fun pointPolygonTest(contour: 't [], pt: floatx2, ~measureDist: bool): double =
+fun pointPolygonTest[T](contour: T [], pt: floatx2, ~measureDist: bool): double =
     pointPolygonTest_(anyarray(contour), pt, measureDist)
 
 fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, floatx2 [])
@@ -2571,7 +2571,7 @@ fun rotatedRectangleIntersection(rrect1: box_t, rrect2: box_t): (int, floatx2 []
     return fx_status;
 }
 
-fun applyColorMap(src: 't [,], ~colormap: int, ~usermap: uint8x3 []=[]): uint8x3 [,] =
+fun applyColorMap[T](src: T [,], ~colormap: int, ~usermap: uint8x3 []=[]): uint8x3 [,] =
     applyColorMap_(anyarray(src), colormap, anyarray(usermap))
 
 val FILLED  = -1
@@ -2579,9 +2579,9 @@ val LINE_4  = 4
 val LINE_8  = 8
 val LINE_AA = 16
 
-fun RGB(r: 't, g: 't, b: 't): doublex4 = (double(b), double(g), double(r), 0.)
-fun RGBA(r: 't, g: 't, b: 't, a: 't): doublex4 = (double(b), double(g), double(r), double(a))
-fun GRAY(g: 't): doublex4 = (double(g), double(g), double(g), 0.)
+fun RGB[T](r: T, g: T, b: T): doublex4 = (double(b), double(g), double(r), 0.)
+fun RGBA[T](r: T, g: T, b: T, a: T): doublex4 = (double(b), double(g), double(r), double(a))
+fun GRAY[T](g: T): doublex4 = (double(g), double(g), double(g), 0.)
 
 @private fun line_(img: anyarr_t, pt1: intx2, pt2: intx2, color: doublex4,
         thickness: int, lineType: int, shift: int): void
@@ -2595,7 +2595,7 @@ fun GRAY(g: 't): doublex4 = (double(g), double(g), double(g), 0.)
     return fx_status;
 }
 
-fun line(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
+fun line[T](img: T [,], pt1: intx2, pt2: intx2, color: doublex4,
         ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0): void =
     line_(anyarray(img), pt1, pt2, color, thickness, linetype, shift)
 
@@ -2612,7 +2612,7 @@ fun line(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
     return fx_status;
 }
 
-fun arrowedLine(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
+fun arrowedLine[T](img: T [,], pt1: intx2, pt2: intx2, color: doublex4,
                 ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0,
                 ~tipLength: double=0.1): void =
     allowedLine_(anyarray(img), pt1, pt2, color, thickness, lineType, shift, tipLength)
@@ -2629,11 +2629,11 @@ fun arrowedLine(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
     return fx_status;
 }
 
-fun rectangle(img: 't [,], pt1: intx2, pt2: intx2, color: doublex4,
+fun rectangle[T](img: T [,], pt1: intx2, pt2: intx2, color: doublex4,
               ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0): void =
     rectangle_(anyarray(img), pt1, pt2, color, thickness, lineType, shift)
 
-fun rectangle(img: 't [,], rect: intx4, color: doublex4,
+fun rectangle[T](img: T [,], rect: intx4, color: doublex4,
               ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0): void
 {
     val delta = 1 << shift
@@ -2654,7 +2654,7 @@ fun rectangle(img: 't [,], rect: intx4, color: doublex4,
     return fx_status;
 }
 
-fun circle(img: 't [,], center: intx2, radius: int, color: doublex4,
+fun circle[T](img: T [,], center: intx2, radius: int, color: doublex4,
             ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0): void =
     circle_(anyarray(img), center, radius, color, thickness, lineType, shift)
 
@@ -2672,7 +2672,7 @@ fun circle(img: 't [,], center: intx2, radius: int, color: doublex4,
     return fx_status;
 }
 
-fun ellipse(img: 't [,], center: intx2, axes: intx2, color: doublex4,
+fun ellipse[T](img: T [,], center: intx2, axes: intx2, color: doublex4,
             ~angle: double=0, ~startAngle: double=0, ~endAngle: double=360,
             ~thickness: int=1, ~lineType: int=LINE_8, ~shift: int=0): void =
     ellipse_(anyarray(img), center, axes, angle, startAngle, endAngle,
@@ -2691,7 +2691,7 @@ fun ellipse(img: 't [,], center: intx2, axes: intx2, color: doublex4,
     return fx_status;
 }
 
-fun ellipse(img: 't [,], box: box_t, color: doublex4,
+fun ellipse[T](img: T [,], box: box_t, color: doublex4,
             ~thickness: int=1, ~lineType: int=LINE_8): void =
     ellipse_(anyarray(img), box, color, thickness, lineType)
 
@@ -2717,7 +2717,7 @@ val MARKER_TRIANGLE_DOWN: int = @ccode {cv::MARKER_TRIANGLE_DOWN}
     return fx_status;
 }
 
-fun drawMarker(img: 't [,], pos: intx2, color: doublex4,
+fun drawMarker[T](img: T [,], pos: intx2, color: doublex4,
                ~markerType: int=MARKER_CROSS, ~markerSize: int=20,
                ~thickness: int=1, ~lineType: int=LINE_8): void =
     drawMaker_(anyarray(img), pos, color, markerType, markerSize, thickness, lineType)
@@ -2736,7 +2736,7 @@ fun drawMarker(img: 't [,], pos: intx2, color: doublex4,
     return fx_status;
 }
 
-fun fillConvexPoly(img: 't [,], points: int32x2 [], color: doublex4,
+fun fillConvexPoly[T](img: T [,], points: int32x2 [], color: doublex4,
                    ~lineType: int = LINE_8, ~shift: int=0): void =
     fillConvexPoly_(anyarray(img), anyarray(points), color, lineType, shift)
 
@@ -2760,7 +2760,7 @@ fun fillConvexPoly(img: 't [,], points: int32x2 [], color: doublex4,
     return fx_status;
 }
 
-fun fillPoly(img: 't [,], points: int32x2 [][], color: doublex4,
+fun fillPoly[T](img: T [,], points: int32x2 [][], color: doublex4,
              ~lineType: int = LINE_8, ~shift: int=0, ~offset: intx2=(0,0)): void =
     fillPoly_(anyarray(img), points, color, linetype, shift, offset)
 
@@ -2788,13 +2788,13 @@ fun fillPoly(img: 't [,], points: int32x2 [][], color: doublex4,
                           int thickness = 1, int lineType = LINE_8, int shift = 0 );
 }
 
-fun polylines(img: 't [,], points: int32x2 [][], color: doublex4,
+fun polylines[T](img: T [,], points: int32x2 [][], color: doublex4,
     ~isClosed: bool=true, ~thickness: int=1, ~lineType: int = LINE_8,
     ~shift: int=0, ~offset: intx2=(0,0)): void =
     polylines_(anyarray(img), points, color, isClosed, thickness, lineType, shift, offset)
 
 // [TODO]
-//fun drawContours(img: 't [,], contours: (int32x2 [], intx2 [], intx4 []),
+//fun drawContours[T](img: T [,], contours: (int32x2 [], intx2 [], intx4 []),
 //                 ~contourIdx: int, ~color: doublex4,
 //                 ~thickness: int=1, ~lineType: int=LINE_8,
 //                  ~maxLevel: int=1000000, ~offset: intx2=(0,0)): void
@@ -2895,7 +2895,7 @@ val PUT_TEXT_WRAP: int = 128 //@ccode {cv::PUT_TEXT_WRAP}
     return fx_status;
 }
 
-fun putText(img: 't [,], text: string, org: intx2, color: doublex4,
+fun putText[T](img: T [,], text: string, org: intx2, color: doublex4,
             ~fontFace: FontFace, ~size: int, ~weight: int=0,
             ~flags: int=PUT_TEXT_ALIGN_LEFT, ~wrap: intx2=(0,0)): void =
     putText_(anyarray(img), text, org, color, fontFace, size, weight, flags, wrap)
@@ -3030,7 +3030,7 @@ fun imread_gray(filename: string): uint8 [,]
     return fx_status;
 }
 
-fun imwrite(filename: string, img: 't [,], ~params: int []=[]) =
+fun imwrite[T](filename: string, img: T [,], ~params: int []=[]) =
     imwrite_(filename, anyarray(img), params)
 
 fun imdecode(buf: uint8 []): uint8x3 [,]
@@ -3078,7 +3078,7 @@ fun imdecode(buf: uint8 []): uint8 [,]
     return fx_status;
 }
 
-fun imencode(ext: string, img: 't [,], ~params: int []=[]): uint8 [] =
+fun imencode[T](ext: string, img: T [,], ~params: int []=[]): uint8 [] =
     imencode_(ext, anyarray(img), params)
 
 fun haveImageReader(filename: string): bool
@@ -3665,7 +3665,7 @@ fun VideoWriter.close(): void
     return FX_OK;
 }
 
-fun VideoWriter.write(img: 't [,]) = self.write_(anyarray(img))
+fun VideoWriter.write[T](img: T [,]) = self.write_(anyarray(img))
 
 //////////////////////////////// highgui ///////////////////////////////
 
@@ -3682,7 +3682,7 @@ fun VideoWriter.write(img: 't [,]) = self.write_(anyarray(img))
     return fx_status;
 }
 
-fun imshow(window: string, img: 't [,]) = imshow_(window, anyarray(img))
+fun imshow[T](window: string, img: T [,]) = imshow_(window, anyarray(img))
 
 @nothrow fun waitKey_(delay: int): int =
 @ccode {
@@ -3812,7 +3812,7 @@ fun Net.dump(): string
     return fx_status;
 }
 
-fun Net.forward(blob: 't [+], ~scaleFactor: double=1., ~mean: doublex3=(0., 0., 0.)): float [,,,]
+fun Net.forward[T](blob: T [+], ~scaleFactor: double=1., ~mean: doublex3=(0., 0., 0.)): float [,,,]
 {
     if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
     Net_forward_(self.net, anyarray(blob), scaleFactor, mean)
@@ -3860,7 +3860,7 @@ fun Net.forward(blob: 't [+], ~scaleFactor: double=1., ~mean: doublex3=(0., 0., 
     return fx_status;
 }
 
-fun Net.forward(blob: 't [+], ~outputs: string [], ~scaleFactor: double=1.,
+fun Net.forward[T](blob: T [+], ~outputs: string [], ~scaleFactor: double=1.,
                 ~mean: doublex3=(0., 0., 0.)): float [,,,][]
 {
     if (self.empty()) {throw OpenCVError("the network is not properly initialized")}
@@ -3940,13 +3940,13 @@ fun readNet(model: string, ~config: string="", ~framework: string=""): Net
     return fx_status;
 }
 
-fun blobFromImages(images: 't[,][], ~scaleFactor: double=1., ~size: intx2=(0, 0),
+fun blobFromImages[T](images: T[,][], ~scaleFactor: double=1., ~size: intx2=(0, 0),
                     ~mean: doublex3=(0., 0., 0.), ~swapRB: bool=false,
                     ~crop: bool=false): float [,,,] =
     blobFromImages_([for i <- images {anyarray(i)}],
                 scaleFactor, size, mean, swapRB, crop)
 
-fun blobFromImage(image: 't[,], ~scaleFactor: double=1., ~size: intx2=(0, 0),
+fun blobFromImage[T](image: T[,], ~scaleFactor: double=1., ~size: intx2=(0, 0),
                     ~mean: doublex3=(0., 0., 0.), ~swapRB: bool=false,
                     ~crop: bool=false): float [,,,] =
     blobFromImages_([anyarray(image)], scaleFactor, size,
@@ -4091,7 +4091,7 @@ fun DetectionModel.setInputCrop(crop: bool): void =
     return fx_status;
 }
 
-fun DetectionModel.detect(frame: 't [,], ~confThreshold: double=0.5,
+fun DetectionModel.detect[T](frame: T [,], ~confThreshold: double=0.5,
                         ~nmsThreshold: double=0.): (int32 [], float [], int32x4 [])
 {
     detect_(self.model, anyarray(frame), confThreshold, nmsThreshold)

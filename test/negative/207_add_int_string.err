@@ -4,13 +4,13 @@ Candidates:
  __add__(string, char) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'string',
  __add__(char, string) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'char',
  __add__(char, char) -> string @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'char',
- __add__('t list, 't list) -> 't list [generic: 't] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match ''t list',
+ __add__(T list, T list) -> T list [generic: T] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'T list',
  __add__(long, long) -> long @ Builtins.fx:L:C -- argument 1 of type 'int' does not match 'long',
- __add__(('t1 ...), ('t2 ...)) -> ('t3 ...) [generic: 't3, 't1, 't2, __var_tuple__] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match '('t1 ...)',
- __add__('t1, 't2 Complex.complex@3) -> 't3 Complex.complex@3 [generic: 't3, 't1, 't2] @ Complex.fx:L:C -- argument 2 of type 'string' does not match ''t2 Complex.complex@3',
- __add__('t1 Complex.complex@3, 't2) -> 't3 Complex.complex@3 [generic: 't3, 't1, 't2] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t1 Complex.complex@3',
- __add__('t1 Complex.complex@3, 't2 Complex.complex@3) -> 't3 Complex.complex@3 [generic: 't3, 't1, 't2] @ Complex.fx:L:C -- argument 1 of type 'int' does not match ''t1 Complex.complex@3',
- __add__('ta [+], 'tb [+]) -> 't3 [+] [generic: 't3, 'ta, 'tb, __var_array__] @ Array.fx:L:C -- argument 1 of type 'int' does not match ''ta [+]'
+ __add__((T1 ...), (T2 ...)) -> (T3 ...) [generic: T1, T2, T3, __var_tuple__] @ Builtins.fx:L:C -- argument 1 of type 'int' does not match '(T1 ...)',
+ __add__(T1, T2 Complex.complex@3) -> T3 Complex.complex@3 [generic: T1, T2, T3] @ Complex.fx:L:C -- argument 2 of type 'string' does not match 'T2 Complex.complex@3',
+ __add__(T1 Complex.complex@3, T2) -> T3 Complex.complex@3 [generic: T1, T2, T3] @ Complex.fx:L:C -- argument 1 of type 'int' does not match 'T1 Complex.complex@3',
+ __add__(T1 Complex.complex@3, T2 Complex.complex@3) -> T3 Complex.complex@3 [generic: T1, T2, T3] @ Complex.fx:L:C -- argument 1 of type 'int' does not match 'T1 Complex.complex@3',
+ __add__(Ta [+], Tb [+]) -> Tr [+] [generic: Tr, Ta, Tb, __var_array__] @ Array.fx:L:C -- argument 1 of type 'int' does not match 'Ta [+]'
 
  2 | val a = 1 + "x"
    |           ^

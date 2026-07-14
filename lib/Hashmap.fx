@@ -15,22 +15,22 @@ val HASH_ALIVE = 2
 val HASH_SIGN_MASK: hash_t = 9223372036854775808u64
 val PERTURB_SHIFT = 5
 
-type ('k, 'd) hashentry_t = {hv: hash_t; key: 'k; data: 'd}
+type hashentry_t[K, D] = {hv: hash_t; key: K; data: D}
 type index_t = int []
 
-class ('k, 'd) t
+class t[K, D]
 {
-    default_entry: ('k, 'd) hashentry_t
+    default_entry: hashentry_t[K, D]
     var nactive: int
     var tabsz: int
     var free: int
     var index: index_t
-    var table: ('k, 'd) hashentry_t []
+    var table: hashentry_t[K, D] []
 }
 
 fun makeindex(size: int): int [] = array(size, 0)
 
-fun empty(size0: int, k0: 'k, d0: 'd): ('k, 'd) Hashmap.t
+fun empty[K, D](size0: int, k0: K, d0: D): Hashmap.t[K, D]
 {
     var size = 8
     while size < size0 { size *= 2 }
@@ -43,30 +43,30 @@ fun empty(size0: int, k0: 'k, d0: 'd): ('k, 'd) Hashmap.t
         table=array(size, entry0) }
 }
 
-fun t.empty(): bool = self.nactive == 0
-fun t.size(): int = self.nactive
+fun empty[K, D](hm: Hashmap.t[K, D]): bool = hm.nactive == 0
+fun size[K, D](hm: Hashmap.t[K, D]): int = hm.nactive
 
-fun t.clear(): void {
-    val entry0 = self.default_entry
-    val table = self.table
+fun clear[K, D](hm: Hashmap.t[K, D]): void {
+    val entry0 = hm.default_entry
+    val table = hm.table
     for i <- 0:size(table) {
         table[i] = entry0
     }
-    self.nactive = 0
-    self.tabsz = 0
-    self.free = 0
-    self.index = makeindex(size(table)*2)
+    hm.nactive = 0
+    hm.tabsz = 0
+    hm.free = 0
+    hm.index = makeindex(size(table)*2)
 }
 
-fun t.copy(): ('k, 'd) Hashmap.t =
+fun copy[K, D](hm: Hashmap.t[K, D]): Hashmap.t[K, D] =
     Hashmap.t {
-        default_entry=self.default_entry, nactive=self.nactive,
-        tabsz=self.tabsz, free = self.free, index=copy(self.index),
-        table=copy(self.table) }
+        default_entry=hm.default_entry, nactive=hm.nactive,
+        tabsz=hm.tabsz, free = hm.free, index=copy(hm.index),
+        table=copy(hm.table) }
 
-@private fun add_fast_(tabsz: int, ht_index: index_t,
-                    ht_table: ('k, 'd) hashentry_t [],
-                    entry: ('k, 'd) hashentry_t): int
+@private fun add_fast_[K, D](tabsz: int, ht_index: index_t,
+                    ht_table: hashentry_t[K, D] [],
+                    entry: hashentry_t[K, D]): int
 {
     val idxsz = size(ht_index)
     val hv = entry.hv
@@ -90,36 +90,36 @@ fun t.copy(): ('k, 'd) Hashmap.t =
     tabsz + 1
 }
 
-@private fun t.grow(new_size: int): void
+@private fun grow[K, D](hm: Hashmap.t[K, D], new_size: int): void
 {
     //println(f"started growing to {new_size}")
-    val ht_table = self.table
-    val new_ht_table = array(new_size, self.default_entry)
+    val ht_table = hm.table
+    val new_ht_table = array(new_size, hm.default_entry)
     val new_ht_index = makeindex(new_size*2)
     var tabsz = 0
 
-    for j <- 0:self.tabsz {
+    for j <- 0:hm.tabsz {
         if ht_table[j].hv < HASH_SIGN_MASK {
             tabsz = add_fast_(tabsz, new_ht_index, new_ht_table, ht_table[j])
         }
     }
-    self.index = new_ht_index
-    self.table = new_ht_table
-    self.tabsz = tabsz
-    self.free = 0
+    hm.index = new_ht_index
+    hm.table = new_ht_table
+    hm.tabsz = tabsz
+    hm.free = 0
     //println(f"finished growing to {new_size}")
 }
 
-@private fun t.find_idx_(k: 'k): (int, int)
+@private fun find_idx_[K, D](hm: Hashmap.t[K, D], k: K): (int, int)
 {
     val hv = hash(k) & ~HASH_SIGN_MASK
-    val idxsz = size(self.index)
+    val idxsz = size(hm.index)
     var perturb = hv, found = -1
     var j = int(hv) & (idxsz - 1)
     for i <- 0:idxsz+14 {
-        val tidx = self.index[j]
+        val tidx = hm.index[j]
         if tidx >= HASH_ALIVE {
-            val entry = self.table[tidx - HASH_ALIVE]
+            val entry = hm.table[tidx - HASH_ALIVE]
             if entry.hv == hv && entry.key == k {
                 found = tidx - HASH_ALIVE
                 break
@@ -131,25 +131,25 @@ fun t.copy(): ('k, 'd) Hashmap.t =
     (j, found)
 }
 
-fun t.find_idx(k: 'k): int = self.find_idx_(k).1
-fun t.mem(k: 'k): bool = self.find_idx_(k).1 >= 0
-fun t.find_opt(k: 'k): 'd?
+fun find_idx[K, D](hm: Hashmap.t[K, D], k: K): int = hm.find_idx_(k).1
+fun mem[K, D](hm: Hashmap.t[K, D], k: K): bool = hm.find_idx_(k).1 >= 0
+fun find_opt[K, D](hm: Hashmap.t[K, D], k: K): D?
 {
-    val j = self.find_idx_(k).1
-    if j >= 0 { Some(self.table[j].data) } else { None }
+    val j = hm.find_idx_(k).1
+    if j >= 0 { Some(hm.table[j].data) } else { None }
 }
 
-fun t.check_free(): void
+fun check_free[K, D](hm: Hashmap.t[K, D]): void
 {
-    var free = self.free
+    var free = hm.free
     var count = 0
     print("free list: [")
     while free > 0 {
         count += 1
         val tidx = free - 1
         print(f" {tidx}")
-        assert(0 <= tidx < self.tabsz)
-        free = int(self.table[tidx].hv & ~HASH_SIGN_MASK)
+        assert(0 <= tidx < hm.tabsz)
+        free = int(hm.table[tidx].hv & ~HASH_SIGN_MASK)
     }
     println(f"]\nfree list is ok, {count} elements")
 }
@@ -163,30 +163,30 @@ fun print_and_reset()
     find_idx_stat_ncalls = 0
 }*/
 
-fun t.find_idx_or_insert(k: 'k): int
+fun find_idx_or_insert[K, D](hm: Hashmap.t[K, D], k: K): int
 {
     //find_idx_stat_ncalls += 1
     val hv = hash(k) & ~HASH_SIGN_MASK
-    var idxsz = size(self.index)
+    var idxsz = size(hm.index)
 
     //println("============================================================")
-    //println(f"new_nelems: {self.nactive+1}, free: {self.free-1}, tabsz: {self.tabsz}, idxsize: {size(self.index)}")
-    if self.nactive + 1 > (idxsz >> 1) {
-        while idxsz < (self.nactive + 1)*2 { idxsz *= 2 }
-        self.grow(max(idxsz/2, self.nactive + 1))
+    //println(f"new_nelems: {hm.nactive+1}, free: {hm.free-1}, tabsz: {hm.tabsz}, idxsize: {size(hm.index)}")
+    if hm.nactive + 1 > (idxsz >> 1) {
+        while idxsz < (hm.nactive + 1)*2 { idxsz *= 2 }
+        hm.grow(max(idxsz/2, hm.nactive + 1))
     }
 
-    //self.check_free()
+    //hm.check_free()
     var perturb = hv, found = -1, insert_idx = -1
     var j = int(hv) & (idxsz - 1)
     //var hash_iters = 0
 
     for i <- 0:idxsz+14 {
         //hash_iters += 1
-        val tidx = self.index[j]
+        val tidx = hm.index[j]
         //println(f"j={j}, tidx={tidx}")
         if tidx >= HASH_ALIVE {
-            val entry = self.table[tidx - HASH_ALIVE]
+            val entry = hm.table[tidx - HASH_ALIVE]
             if entry.hv == hv && entry.key == k {
                 found = tidx - HASH_ALIVE
                 break
@@ -204,73 +204,73 @@ fun t.find_idx_or_insert(k: 'k): int
     if found >= 0 {
         //println("got here (found)")
         if insert_idx >= 0 && insert_idx != j {
-            self.index[insert_idx] = found + HASH_ALIVE
-            self.index[j] = HASH_DELETED
+            hm.index[insert_idx] = found + HASH_ALIVE
+            hm.index[j] = HASH_DELETED
         }
     } else if insert_idx >= 0 {
-        found = self.free-1
-        //println(f"got here (not found); insert_idx={insert_idx}, found={self.free-1}")
+        found = hm.free-1
+        //println(f"got here (not found); insert_idx={insert_idx}, found={hm.free-1}")
         if found >= 0 {
-            //println(f"before & ~HASH_SIGN_MASK: {self.table[found].hv}")
-            self.free = int(self.table[found].hv & ~HASH_SIGN_MASK)
-            //println(f"new_free: {self.free-1}")
+            //println(f"before & ~HASH_SIGN_MASK: {hm.table[found].hv}")
+            hm.free = int(hm.table[found].hv & ~HASH_SIGN_MASK)
+            //println(f"new_free: {hm.free-1}")
         } else {
-            found = self.tabsz
-            self.tabsz += 1
-            assert(found < size(self.table))
+            found = hm.tabsz
+            hm.tabsz += 1
+            assert(found < size(hm.table))
         }
-        self.table[found] = hashentry_t {hv=hv, key=k, data=self.default_entry.data}
-        self.index[insert_idx] = found + HASH_ALIVE
-        self.nactive += 1
+        hm.table[found] = hashentry_t {hv=hv, key=k, data=hm.default_entry.data}
+        hm.index[insert_idx] = found + HASH_ALIVE
+        hm.nactive += 1
     } else {
         throw Fail("cannot insert element (full Hashtable?!)")
     }
     found
 }
 
-fun t.add(k: 'k, d: 'd): void
+fun add[K, D](hm: Hashmap.t[K, D], k: K, d: D): void
 {
-    val idx = self.find_idx_or_insert(k)
-    self.table[idx].data = d
+    val idx = hm.find_idx_or_insert(k)
+    hm.table[idx].data = d
 }
 
-fun t.remove(k: 'k): void {
-    val (j, tidx) = self.find_idx_(k)
+fun remove[K, D](hm: Hashmap.t[K, D], k: K): void {
+    val (j, tidx) = hm.find_idx_(k)
     if tidx >= 0 {
-        self.index[j] = HASH_DELETED
-        self.table[tidx].hv = uint64(self.free) | HASH_SIGN_MASK
-        self.free = tidx+1
-        //self.check_free()
-        self.nactive -= 1
+        hm.index[j] = HASH_DELETED
+        hm.table[tidx].hv = uint64(hm.free) | HASH_SIGN_MASK
+        hm.free = tidx+1
+        //hm.check_free()
+        hm.nactive -= 1
     }
 }
 
-fun t.list(): ('k, 'd) list =
-    [:: for j <- 0:self.tabsz {
-        if self.table[j].hv >= HASH_SIGN_MASK { continue }
-        val entry = self.table[j]
+fun list[K, D](hm: Hashmap.t[K, D]): list[K, D] =
+    [:: for j <- 0:hm.tabsz {
+        if hm.table[j].hv >= HASH_SIGN_MASK { continue }
+        val entry = hm.table[j]
         (entry.key, entry.data)
     }]
 
-fun t.add_list(data: ('k, 'd) list): void
+fun add_list[K, D](hm: Hashmap.t[K, D], data: list[K, D]): void
 {
-    var datasz = self.nactive + data.length()
-    var curr_size = size(self.table), new_size = curr_size
+    var datasz = hm.nactive + data.length()
+    var curr_size = size(hm.table), new_size = curr_size
     while new_size < datasz { new_size *= 2 }
-    if new_size > curr_size { self.grow(new_size) }
-    for (k, d) <- data { self.add(k, d) }
+    if new_size > curr_size { hm.grow(new_size) }
+    for (k, d) <- data { hm.add(k, d) }
 }
 
-fun from_list(k0: 'k, d0: 'd, data: ('k, 'd) list): ('k, 'd) Hashmap.t
+fun from_list[K, D](k0: K, d0: D, data: list[K, D]): Hashmap.t[K, D]
 {
     val ht = empty(data.length(), k0, d0)
     ht.add_list(data)
     ht
 }
 
-fun t.app(f: ('k, 'd)->void): void {
-    val table = self.table
-    for j <- 0:self.tabsz {
+fun app[K, D](hm: Hashmap.t[K, D], f: (K, D)->void): void {
+    val table = hm.table
+    for j <- 0:hm.tabsz {
         if table[j].hv < HASH_SIGN_MASK {
             val entry = table[j]
             f(entry.key, entry.data)
@@ -278,10 +278,10 @@ fun t.app(f: ('k, 'd)->void): void {
     }
 }
 
-fun t.foldl(f: ('k, 'd, 'r)->'r, res0: 'r): 'r {
-    val table = self.table
+fun foldl[K, D, Tr](hm: Hashmap.t[K, D], f: (K, D, Tr)->Tr, res0: Tr): Tr {
+    val table = hm.table
     var res = res0
-    for j <- 0:self.tabsz {
+    for j <- 0:hm.tabsz {
         if table[j].hv < HASH_SIGN_MASK {
             val entry = table[j]
             res = f(entry.key, entry.data, res)
@@ -290,22 +290,22 @@ fun t.foldl(f: ('k, 'd, 'r)->'r, res0: 'r): 'r {
     res
 }
 
-fun t.filter(f: ('k, 'd)->bool): void
+fun filter[K, D](hm: Hashmap.t[K, D], f: (K, D)->bool): void
 {
-    val idxsz = size(self.index)
-    val table = self.table
-    val key0 = self.default_entry.key
-    val data0 = self.default_entry.data
+    val idxsz = size(hm.index)
+    val table = hm.table
+    val key0 = hm.default_entry.key
+    val data0 = hm.default_entry.data
     for j <- 0:idxsz {
-        val tidx = self.index[j]
+        val tidx = hm.index[j]
         if tidx < HASH_ALIVE { continue }
         val (key,value) = table[tidx - HASH_ALIVE].key
         if !f(key,value) {
-            self.index[j] = HASH_DELETED
+            hm.index[j] = HASH_DELETED
             table[tidx - HASH_ALIVE] = hashentry_t {
-                hv = uint64(self.free) | HASH_SIGN_MASK, key=key0, data = data0}
-            self.free = tidx + 1
-            self.nactive -= 1
+                hv = uint64(hm.free) | HASH_SIGN_MASK, key=key0, data = data0}
+            hm.free = tidx + 1
+            hm.nactive -= 1
         }
     }
 }

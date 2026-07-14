@@ -77,7 +77,7 @@ fun find_seq(seq: uint8 [], substr: string)
     f"{freq}\t{substr.toupper()}"
 }
 
-var lines: string list = []
+var lines: list[string] = []
 val fname = match Sys.arguments() {
     | fname :: _ => fname
     | _ =>

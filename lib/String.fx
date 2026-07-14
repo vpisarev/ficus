@@ -14,7 +14,7 @@
 // call site unambiguous under least-generic overload ranking (resolve-1).
 @inline fun length(s: string): int = __intrin_size__(s)
 @inline fun join(sep: string, strs: string []): string = Builtins.join(sep, strs)
-@inline fun join(sep: string, strs: string list): string = Builtins.join(sep, strs)
+@inline fun join(sep: string, strs: list[string]): string = Builtins.join(sep, strs)
 @inline fun cmp(s1: string, s2: string): int = s1 <=> s2
 @pure fun copy(s: string): string = @ccode { return fx_make_str(s->data, s->length, fx_result) }
 
@@ -259,9 +259,9 @@
     return fx_substr(s, i, sz, 1, 0, fx_result);
 }
 
-fun tokens(s: string, f: char->bool): string list
+fun tokens(s: string, f: char->bool): list[string]
 {
-    val fold sl: string list = [], start = 0, sep = true for c@i <- s {
+    val fold sl: list[string] = [], start = 0, sep = true for c@i <- s {
         if f(c) {
             sl = if sep {sl} else {s[start:i] :: sl}
             sep = true
@@ -273,9 +273,9 @@ fun tokens(s: string, f: char->bool): string list
     (if sep {sl} else {s[start:] :: sl}).rev()
 }
 
-fun split(s: string, c: char, ~allow_empty:bool): string list
+fun split(s: string, c: char, ~allow_empty:bool): list[string]
 {
-    val fold sl: string list = [], start = 0, sep = true for ci@i <- s {
+    val fold sl: list[string] = [], start = 0, sep = true for ci@i <- s {
         if ci == c {
             sl = if sep && !allow_empty {sl} else {s[start:i] :: sl}
             start = i+1

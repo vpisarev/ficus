@@ -1,7 +1,7 @@
 212_negate_string.fx:2:9: error: the appropriate match for '__negate__' of type '(string -> <unknown>)' is not found.
 Candidates:
  __negate__(long) -> long @ Builtins.fx:L:C -- argument 1 of type 'string' does not match 'long',
- __negate__('t [+]) -> 't [+] [generic: 't, __var_array__] @ Array.fx:L:C -- argument 1 of type 'string' does not match ''t [+]'
+ __negate__(T [+]) -> T [+] [generic: T, __var_array__] @ Array.fx:L:C -- argument 1 of type 'string' does not match 'T [+]'
 
  2 | val x = -"abc"
    |         ^

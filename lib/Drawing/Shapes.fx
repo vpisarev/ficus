@@ -5,7 +5,7 @@
 
 ///////////// Draw basic shapes ///////////////
 
-fun filled_rectangle(image: 't [,], p1: intx2, p2: intx2, color: 't): void
+fun filled_rectangle[T](image: T [,], p1: intx2, p2: intx2, color: T): void
 {
     val (h, w) = image.size()
     val x0 = min(p1.0, p2.0), x1 = max(p1.0, p2.0)
@@ -24,7 +24,7 @@ fun filled_rectangle(image: 't [,], p1: intx2, p2: intx2, color: 't): void
     }
 }
 
-fun rectangle(image: 't [,], p1: intx2, p2: intx2, color: 't, ~thickness: int=1): void
+fun rectangle[T](image: T [,], p1: intx2, p2: intx2, color: T, ~thickness: int=1): void
 {
     val (h, w) = image.size()
     val x0 = min(p1.0, p2.0), x1 = max(p1.0, p2.0)
