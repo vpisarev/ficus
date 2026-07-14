@@ -65,9 +65,9 @@ type ktyp_t =
     | KTypString
     | KTypCPointer
     | KTypRawPointer: ktyp_t
-    | KTypFun: (ktyp_t list, ktyp_t)
-    | KTypTuple: ktyp_t list
-    | KTypRecord: (id_t, (id_t, ktyp_t) list)
+    | KTypFun: (list[ktyp_t], ktyp_t)
+    | KTypTuple: list[ktyp_t]
+    | KTypRecord: (id_t, list[id_t, ktyp_t])
     | KTypName: id_t
     | KTypArray: (int, ktyp_t)
     | KTypRRBVec: ktyp_t
@@ -107,38 +107,38 @@ type kexp_t =
     | KExpAtom: (atom_t, kctx_t)
     | KExpBinary: (binary_t, atom_t, atom_t, kctx_t)
     | KExpUnary: (unary_t, atom_t, kctx_t)
-    | KExpIntrin: (intrin_t, atom_t list, kctx_t)
+    | KExpIntrin: (intrin_t, list[atom_t], kctx_t)
     | KExpSync: (id_t, kexp_t)
-    | KExpSeq: (kexp_t list, kctx_t)
+    | KExpSeq: (list[kexp_t], kctx_t)
     | KExpIf: (kexp_t, kexp_t, kexp_t, kctx_t)
-    | KExpCall: (id_t, atom_t list, kctx_t)
-    | KExpICall: (id_t, int, atom_t list, kctx_t)
-    | KExpMkTuple: (atom_t list, kctx_t)
-    | KExpMkRecord: (atom_t list, kctx_t)
-    | KExpMkClosure: (id_t, id_t, atom_t list, kctx_t)
-    | KExpMkArray: (bool, (bool, atom_t) list list, kctx_t)
-    | KExpMkVector: ((bool, atom_t) list, kctx_t)
-    | KExpAt: (atom_t, border_t, interpolate_t, dom_t list, kctx_t)
+    | KExpCall: (id_t, list[atom_t], kctx_t)
+    | KExpICall: (id_t, int, list[atom_t], kctx_t)
+    | KExpMkTuple: (list[atom_t], kctx_t)
+    | KExpMkRecord: (list[atom_t], kctx_t)
+    | KExpMkClosure: (id_t, id_t, list[atom_t], kctx_t)
+    | KExpMkArray: (bool, list[list[bool, atom_t]], kctx_t)
+    | KExpMkVector: (list[bool, atom_t], kctx_t)
+    | KExpAt: (atom_t, border_t, interpolate_t, list[dom_t], kctx_t)
     | KExpMem: (id_t, int, kctx_t)
     | KExpAssign: (id_t, atom_t, loc_t)
-    | KExpMatch: ((kexp_t list, kexp_t) list, kctx_t)
+    | KExpMatch: (list[list[kexp_t], kexp_t], kctx_t)
     | KExpTryCatch: (kexp_t, kexp_t, kctx_t)
     | KExpThrow: (id_t, bool, loc_t)
     | KExpCast: (atom_t, ktyp_t, loc_t)
-    | KExpMap: ((kexp_t, (id_t, dom_t) list, id_t list) list, kexp_t, for_flags_t, kctx_t)
-    | KExpFor: ((id_t, dom_t) list, id_t list, kexp_t, for_flags_t, loc_t)
+    | KExpMap: (list[kexp_t, list[id_t, dom_t], list[id_t]], kexp_t, for_flags_t, kctx_t)
+    | KExpFor: (list[id_t, dom_t], list[id_t], kexp_t, for_flags_t, loc_t)
     | KExpWhile: (kexp_t, kexp_t, loc_t)
     | KExpDoWhile: (kexp_t, kexp_t, loc_t)
     | KExpCCode: (string, kctx_t)
     | KDefVal: (id_t, kexp_t, loc_t)
-    | KDefFun: kdeffun_t ref
-    | KDefExn: kdefexn_t ref
-    | KDefVariant: kdefvariant_t ref
-    | KDefInterface: kdefinterface_t ref
-    | KDefTyp: kdeftyp_t ref
-    | KDefClosureVars: kdefclosurevars_t ref
+    | KDefFun: ref[kdeffun_t]
+    | KDefExn: ref[kdefexn_t]
+    | KDefVariant: ref[kdefvariant_t]
+    | KDefInterface: ref[kdefinterface_t]
+    | KDefTyp: ref[kdeftyp_t]
+    | KDefClosureVars: ref[kdefclosurevars_t]
 
-type kcode_t = kexp_t list
+type kcode_t = list[kexp_t]
 
 type kdefval_t =
 {
@@ -162,12 +162,12 @@ type kdeffun_t =
 {
     kf_name: id_t;
     kf_cname: string;
-    kf_params: id_t list;
+    kf_params: list[id_t];
     kf_rt: ktyp_t;
     kf_body: kexp_t;
     kf_flags: fun_flags_t;
     kf_closure: kdefclosureinfo_t;
-    kf_scope: scope_t list;
+    kf_scope: list[scope_t];
     kf_loc: loc_t
 }
 
@@ -180,7 +180,7 @@ type kdefexn_t =
     ke_std: bool;
     ke_tag: id_t;
     ke_make: id_t;
-    ke_scope: scope_t list;
+    ke_scope: list[scope_t];
     ke_loc: loc_t
 }
 
@@ -190,12 +190,12 @@ type kdefvariant_t =
     kvar_cname: string;
     kvar_proto: id_t;
     kvar_props: ktprops_t?;
-    kvar_targs: ktyp_t list;
-    kvar_cases: (id_t, ktyp_t) list;
-    kvar_ctors: id_t list;
+    kvar_targs: list[ktyp_t];
+    kvar_cases: list[id_t, ktyp_t];
+    kvar_ctors: list[id_t];
     kvar_flags: var_flags_t;
-    kvar_ifaces: (id_t, id_t list) list;
-    kvar_scope: scope_t list;
+    kvar_ifaces: list[id_t, list[id_t]];
+    kvar_scope: list[scope_t];
     kvar_loc: loc_t
 }
 
@@ -205,8 +205,8 @@ type kdefinterface_t =
     ki_base: id_t;
     ki_cname: string;
     ki_id: id_t;
-    ki_all_methods: (id_t, ktyp_t) list;
-    ki_scope: scope_t list;
+    ki_all_methods: list[id_t, ktyp_t];
+    ki_scope: list[scope_t];
     ki_loc: loc_t
 }
 
@@ -216,9 +216,9 @@ type kdeftyp_t =
     kt_cname: string;
     kt_proto: id_t;
     kt_props: ktprops_t?;
-    kt_targs: ktyp_t list;
+    kt_targs: list[ktyp_t];
     kt_typ: ktyp_t;
-    kt_scope: scope_t list;
+    kt_scope: list[scope_t];
     kt_loc: loc_t
 }
 
@@ -226,9 +226,9 @@ type kdefclosurevars_t =
 {
     kcv_name: id_t;
     kcv_cname: string;
-    kcv_freevars: (id_t, ktyp_t) list;
-    kcv_orig_freevars: id_t list;
-    kcv_scope: scope_t list;
+    kcv_freevars: list[id_t, ktyp_t];
+    kcv_orig_freevars: list[id_t];
+    kcv_scope: list[scope_t];
     kcv_loc: loc_t
 }
 
@@ -238,8 +238,8 @@ type kmodule_t =
     km_idx: int;
     km_toposort_idx: int;
     km_cname: string;
-    km_top: kexp_t list;
-    km_deps: int list;
+    km_top: list[kexp_t];
+    km_deps: list[int];
     km_skip: bool;
     km_main: bool;
     km_pragmas: pragmas_t
@@ -248,16 +248,16 @@ type kmodule_t =
 type kinfo_t =
     | KNone
     | KVal: kdefval_t
-    | KFun: kdeffun_t ref
-    | KExn: kdefexn_t ref
-    | KVariant: kdefvariant_t ref
-    | KClosureVars: kdefclosurevars_t ref
-    | KInterface: kdefinterface_t ref
-    | KTyp: kdeftyp_t ref
+    | KFun: ref[kdeffun_t]
+    | KExn: ref[kdefexn_t]
+    | KVariant: ref[kdefvariant_t]
+    | KClosureVars: ref[kdefclosurevars_t]
+    | KInterface: ref[kdefinterface_t]
+    | KTyp: ref[kdeftyp_t]
 
 val _KLitVoid = KLitNil(KTypVoid)
 val _ALitVoid = AtomLit(_KLitVoid)
-var all_idks: kinfo_t vector [] = []
+var all_idks: vector[kinfo_t] [] = []
 var builtin_exn_NoMatchError = noid
 var builtin_exn_OutOfRangeError = noid
 var freeze_idks = false
@@ -372,13 +372,13 @@ fun get_kexp_end(e: kexp_t): loc_t = get_end_loc(get_kexp_loc(e))
 
 fun is_val_global(flags: val_flags_t): bool = flags.val_flag_global != []
 
-fun get_val_scope(flags: val_flags_t): scope_t list =
+fun get_val_scope(flags: val_flags_t): list[scope_t] =
     match flags.val_flag_global {
     | [] => [:: ScBlock(0)]
     | sc => sc
     }
 
-fun get_kscope(info: kinfo_t): scope_t list
+fun get_kscope(info: kinfo_t): list[scope_t]
 {
     | KNone => []
     | KVal ({kv_flags}) => get_val_scope(kv_flags)
@@ -390,7 +390,7 @@ fun get_kscope(info: kinfo_t): scope_t list
     | KTyp (ref {kt_scope}) => kt_scope
 }
 
-fun get_idk_scope(n: id_t, loc: loc_t): scope_t list = get_kscope(kinfo_(n, loc))
+fun get_idk_scope(n: id_t, loc: loc_t): list[scope_t] = get_kscope(kinfo_(n, loc))
 
 fun get_idk_loc(n: id_t, loc: loc_t): loc_t = get_kinfo_loc(kinfo_(n, loc))
 
@@ -429,7 +429,7 @@ fun idk2str(n: id_t, loc: loc_t) =
         } else { cname }
     }
 
-fun get_kf_typ(kf_params: id_t list, kf_rt: ktyp_t, loc: loc_t): ktyp_t =
+fun get_kf_typ(kf_params: list[id_t], kf_rt: ktyp_t, loc: loc_t): ktyp_t =
     KTypFun([::for a <- kf_params { get_kval(a, loc).kv_typ } ], kf_rt)
 
 fun get_kinfo_typ(info: kinfo_t, n: id_t, loc: loc_t): ktyp_t
@@ -471,7 +471,7 @@ fun get_atom_ktyp(a: atom_t, loc: loc_t): ktyp_t =
 fun get_code_loc(code: kcode_t, default_loc: loc_t) =
     loclist2loc(code.map(get_kexp_loc), default_loc)
 
-fun filter_out_nops(code: kcode_t): kexp_t list =
+fun filter_out_nops(code: kcode_t): list[kexp_t] =
     code.filter(fun (e) { | KExpNop _ => false | _ => true })
 
 fun code2kexp(code: kcode_t, loc: loc_t) =
@@ -494,7 +494,7 @@ fun rcode2kexp(code: kcode_t, loc: loc_t): kexp_t =
         KExpSeq(code.rev(), (t, final_loc))
     }
 
-fun kexp2code(e: kexp_t): kexp_t list
+fun kexp2code(e: kexp_t): list[kexp_t]
 {
     | KExpNop _ => []
     | KExpSeq(elist, _) => elist
@@ -513,7 +513,7 @@ fun get_kval(n: id_t, loc: loc_t): kdefval_t
     }
 }
 
-fun get_kvariant(t: ktyp_t, loc: loc_t): kdefvariant_t ref
+fun get_kvariant(t: ktyp_t, loc: loc_t): ref[kdefvariant_t]
 {
     val t = deref_ktyp(t, loc)
     match t {
@@ -526,7 +526,7 @@ fun get_kvariant(t: ktyp_t, loc: loc_t): kdefvariant_t ref
     }
 }
 
-fun get_kinterface_opt(t: ktyp_t, loc: loc_t): kdefinterface_t ref?
+fun get_kinterface_opt(t: ktyp_t, loc: loc_t): ref[kdefinterface_t]?
 {
     val t = deref_ktyp(t, loc)
     match t {
@@ -570,7 +570,7 @@ fun check_n_walk_atom(a: atom_t, loc: loc_t, callb: k_callb_t): atom_t =
         }
     }
 
-fun check_n_walk_al(al: atom_t list, loc: loc_t, callb: k_callb_t): atom_t list =
+fun check_n_walk_al(al: list[atom_t], loc: loc_t, callb: k_callb_t): list[atom_t] =
     [:: for a <- al {check_n_walk_atom(a, loc, callb)} ]
 
 fun check_n_walk_dom(d: dom_t, loc: loc_t, callb: k_callb_t): dom_t =
@@ -596,7 +596,7 @@ fun check_n_walk_id(n: id_t, loc: loc_t, callb: k_callb_t): id_t =
 fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
 {
     fun walk_ktyp_(t: ktyp_t) = check_n_walk_ktyp(t, loc, callb)
-    fun walk_ktl_(tl: ktyp_t list) = tl.map(walk_ktyp_)
+    fun walk_ktl_(tl: list[ktyp_t]) = tl.map(walk_ktyp_)
     fun walk_id_(n: id_t) = check_n_walk_id(n, loc, callb)
 
     match t {
@@ -622,18 +622,18 @@ fun walk_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t): ktyp_t
 fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
 {
     fun walk_atom_(a: atom_t, loc: loc_t): atom_t = check_n_walk_atom(a, loc, callb)
-    fun walk_al_(al: atom_t list, loc: loc_t): atom_t list =
+    fun walk_al_(al: list[atom_t], loc: loc_t): list[atom_t] =
         [:: for a <- al {walk_atom_(a, loc)} ]
     fun walk_ktyp_(t: ktyp_t, loc: loc_t): ktyp_t = check_n_walk_ktyp(t, loc, callb)
     fun walk_id_(n: id_t, loc: loc_t): id_t = check_n_walk_id(n, loc, callb)
-    fun walk_idlist_(nl: id_t list, loc: loc_t, update: bool): id_t list =
+    fun walk_idlist_(nl: list[id_t], loc: loc_t, update: bool): list[id_t] =
         [:: for n <- nl {
             if update {update_kval_(n, loc)} else {walk_id_(n, loc)}
         }]
     fun walk_kexp_(e: kexp_t): kexp_t = check_n_walk_kexp(e, callb)
     fun walk_kctx_((t: ktyp_t, loc: loc_t)): kctx_t = (walk_ktyp_(t, loc), loc)
     fun walk_dom_(d: dom_t, loc: loc_t): dom_t = check_n_walk_dom(d, loc, callb)
-    fun walk_idomlist_(idoml: (id_t, dom_t) list, loc: loc_t): (id_t, dom_t) list =
+    fun walk_idomlist_(idoml: list[id_t, dom_t], loc: loc_t): list[id_t, dom_t] =
         [:: for (n, d) <- idoml {
             val n = update_kval_(n, loc)
             (n, walk_dom_(d, loc))
@@ -664,7 +664,7 @@ fun walk_kexp(e: kexp_t, callb: k_callb_t): kexp_t
     | KExpIf(c, then_e, else_e, ctx) =>
         KExpIf(walk_kexp_(c), walk_kexp_(then_e), walk_kexp_(else_e), walk_kctx_(ctx))
     | KExpSeq(elist, ctx) =>
-        fun process_elist(elist: kexp_t list, result: kexp_t list) =
+        fun process_elist(elist: list[kexp_t], result: list[kexp_t]) =
             match elist {
             | e :: rest =>
                 val new_e = walk_kexp_(e)
@@ -897,7 +897,7 @@ fun check_n_fold_atom(a: atom_t, loc: loc_t, callb: k_fold_callb_t): void =
            | _ => {}
            }
     }
-fun check_n_fold_al(al: atom_t list, loc: loc_t, callb: k_fold_callb_t): void =
+fun check_n_fold_al(al: list[atom_t], loc: loc_t, callb: k_fold_callb_t): void =
     for a <- al { check_n_fold_atom(a, loc, callb) }
 
 fun check_n_fold_dom(d: dom_t, loc: loc_t, callb: k_fold_callb_t): void =
@@ -918,7 +918,7 @@ fun check_n_fold_id(k: id_t, loc: loc_t, callb: k_fold_callb_t) =
 fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
 {
     fun fold_ktyp_(t: ktyp_t) = check_n_fold_ktyp(t, loc, callb)
-    fun fold_ktl_(tl: ktyp_t list) = tl.app(fold_ktyp_)
+    fun fold_ktl_(tl: list[ktyp_t]) = tl.app(fold_ktyp_)
     fun fold_id_(n: id_t) = check_n_fold_id(n, loc, callb)
     match t {
     | KTypInt | KTypCInt | KTypSInt _ | KTypUInt _ | KTypLong | KTypFloat _ | KTypVoid
@@ -941,19 +941,19 @@ fun fold_ktyp(t: ktyp_t, loc: loc_t, callb: k_fold_callb_t): void
 fun fold_kexp(e: kexp_t, callb: k_fold_callb_t): void
 {
     fun fold_atom_(a: atom_t, loc: loc_t): void = check_n_fold_atom(a, loc, callb)
-    fun fold_al_(al: atom_t list, loc: loc_t): void =
+    fun fold_al_(al: list[atom_t], loc: loc_t): void =
         for a <- al { fold_atom_(a, loc) }
     fun fold_ktyp_(t: ktyp_t, loc: loc_t): void =
         check_n_fold_ktyp(t, loc, callb)
     fun fold_id_(n: id_t, loc: loc_t): void =
         check_n_fold_id(n, loc, callb)
-    fun fold_idlist_(nl: id_t list, loc: loc_t, kvals: bool): void =
+    fun fold_idlist_(nl: list[id_t], loc: loc_t, kvals: bool): void =
         for n <- nl {
             if kvals {fold_kval_(n, loc)} else {fold_id_(n, loc)}
         }
     fun fold_kexp_(e: kexp_t): void = check_n_fold_kexp(e, callb)
     fun fold_dom_(d: dom_t, loc: loc_t) = check_n_fold_dom(d, loc, callb)
-    fun fold_idoml_(idoml: (id_t, dom_t) list, loc: loc_t) =
+    fun fold_idoml_(idoml: list[id_t, dom_t], loc: loc_t) =
         for (k, d) <- idoml { fold_kval_(k, loc); fold_dom_(d, loc) }
     fun fold_kval_(n: id_t, loc: loc_t) =
         if n.m > 0 && n.i > 0 {
@@ -1242,7 +1242,7 @@ fun is_subarray(n: id_t, loc: loc_t): bool
     }
 }
 
-fun get_closure_freevars(f: id_t, loc: loc_t): ((id_t, ktyp_t) list, id_t list) =
+fun get_closure_freevars(f: id_t, loc: loc_t): (list[id_t, ktyp_t], list[id_t]) =
     match kinfo_(f, loc) {
     | KFun (ref {kf_closure={kci_fcv_t}}) =>
         if kci_fcv_t == noid {
@@ -1339,8 +1339,8 @@ fun kexp2id(m_idx: int, prefix: string, e: kexp_t, tref: bool,
     (i, code)
 }
 
-fun create_kdeffun(n: id_t, params: id_t list, rt: ktyp_t, flags: fun_flags_t,
-                   body_opt: kexp_t?, code: kcode_t, sc: scope_t list, loc: loc_t): kcode_t
+fun create_kdeffun(n: id_t, params: list[id_t], rt: ktyp_t, flags: fun_flags_t,
+                   body_opt: kexp_t?, code: kcode_t, sc: list[scope_t], loc: loc_t): kcode_t
 {
     val body = match body_opt { | Some(body) => body | _ => KExpNop(loc) }
     val kf = ref (kdeffun_t {
@@ -1351,8 +1351,8 @@ fun create_kdeffun(n: id_t, params: id_t list, rt: ktyp_t, flags: fun_flags_t,
     KDefFun(kf) :: code
 }
 
-fun create_kdefconstr(n: id_t, paramtyps: ktyp_t list, rt: ktyp_t, ctor: fun_constr_t,
-                      isinstance: bool, code: kcode_t, sc: scope_t list, loc: loc_t): kexp_t list
+fun create_kdefconstr(n: id_t, paramtyps: list[ktyp_t], rt: ktyp_t, ctor: fun_constr_t,
+                      isinstance: bool, code: kcode_t, sc: list[scope_t], loc: loc_t): list[kexp_t]
 {
     val km_idx = curr_module(sc)
     val params = [:: for t@idx <- paramtyps {
@@ -1464,7 +1464,7 @@ fun klit2str(lit: klit_t, cmode: bool, loc: loc_t): string
     }
 }
 
-fun ktl2str(tl: ktyp_t list): string
+fun ktl2str(tl: list[ktyp_t]): string
 {
     val (begin, end) = match tl {
     | [:: x] => ("", "")

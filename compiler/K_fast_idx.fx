@@ -84,8 +84,8 @@ type loop_idx_t =
     | LoopOverArr: (id_t, int)
 
 type affine_def_t = (kexp_t, bool, idx_class_t)
-type affine_map_t = (id_t, affine_def_t) Map.t
-type loop_idx_map_t = (id_t, loop_idx_t) Map.t
+type affine_map_t = Map.t[id_t, affine_def_t]
+type loop_idx_map_t = Map.t[id_t, loop_idx_t]
 
 fun is_loop_invariant(a: atom_t, inloop_vals: id_hashset_t, loc: loc_t): bool =
     match a {
@@ -189,9 +189,9 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
     fun optimize_for_(whole_e: kexp_t, for_clauses, body: kexp_t)
     {
         val for_loc = get_kexp_loc(whole_e)
-        var all_accesses: arr_access_t list = []
+        var all_accesses: list[arr_access_t] = []
         var pre_for_code: kcode_t = []
-        var arrsz_env: ((id_t, int), id_t) list = []
+        var arrsz_env: list[(id_t, int), id_t] = []
         var update_affine_defs = false
         val inloop_vals = declared([:: whole_e], 256)
         var affine_defs: affine_map_t = Map.empty(cmp_id)
@@ -660,7 +660,7 @@ fun optimize_idx_checks(km_idx: int, topcode: kcode_t)
     }]
 }
 
-fun optimize_idx_checks_all(kmods: kmodule_t list) =
+fun optimize_idx_checks_all(kmods: list[kmodule_t]) =
     [:: for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = optimize_idx_checks(km_idx, km_top)
@@ -677,12 +677,12 @@ fun optimize_idx_checks_all(kmods: kmodule_t list) =
     ptr = &arr[i0, i1, ..., i(n-2), 0]
     and then transformsarr[i0, i1, ..., i(n-2), 0]
 */
-fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
+fun linearize_arrays_access_(km_idx: int, topcode: list[kexp_t])
 {
-    fun optimize_for_linearize(whole_e: kexp_t, body: kexp_t, pre_for_code0: kexp_t list)
+    fun optimize_for_linearize(whole_e: kexp_t, body: kexp_t, pre_for_code0: list[kexp_t])
     {
         val for_loc = get_kexp_loc(whole_e)
-        var all_slices: ((id_t, atom_t list), atom_t) list = []
+        var all_slices: list[(id_t, list[atom_t]), atom_t] = []
         var pre_for_code = pre_for_code0
         val inloop_vals = declared([:: whole_e], 256)
 
@@ -787,7 +787,7 @@ fun linearize_arrays_access_(km_idx: int, topcode: kexp_t list)
     }]
 }
 
-fun linearize_arrays_access(kmods: kmodule_t list)
+fun linearize_arrays_access(kmods: list[kmodule_t])
 {
     [:: for km <- kmods {
         val {km_idx, km_top} = km

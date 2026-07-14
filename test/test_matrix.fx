@@ -8,10 +8,10 @@
 from UTest import *
 import Array
 
-fun refmul(a: 't [,], b: 't [,]): 't [,] {
+fun refmul[T](a: T [,], b: T [,]): T [,] {
     val (ma, na) = size(a), (mb, nb) = size(b)
     assert(na == mb)
-    val c = array((ma, nb), (0 :> 't))
+    val c = array((ma, nb), (0 :> T))
 
     if ma*na*nb < (1<<20)
     {

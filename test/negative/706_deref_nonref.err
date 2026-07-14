@@ -1,4 +1,4 @@
-706_deref_nonref.fx:3:10: error: incorrect type of value 'x': expected='<unknown> ref', actual='int'
+706_deref_nonref.fx:3:10: error: incorrect type of value 'x': expected='ref[<unknown>]', actual='int'
  3 | val y = *x
    |          ^
 

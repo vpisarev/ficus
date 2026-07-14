@@ -115,8 +115,8 @@ fun clrmsg(clr: msgcolor_t, msg: string)
 
 val error = clrmsg(MsgRed, "error")
 
-fun get_preamble(mfname: string): Lexer.token_t list {
-    var preamble: Lexer.token_t list = []
+fun get_preamble(mfname: string): list[Lexer.token_t] {
+    var preamble: list[Lexer.token_t] = []
     if Options.opt.use_preamble {
         val bare_name = Filename.remove_extension(Filename.basename(mfname))
         for (mname, from_import) <- [:: ("Builtins", true), ("Math", true),
@@ -147,7 +147,7 @@ fun get_preamble(mfname: string): Lexer.token_t list {
     }
 }
 
-fun find_ficus_dirs(): (string, string list)
+fun find_ficus_dirs(): (string, list[string])
 {
     var ficus_path = Sys.getpath("FICUS_PATH")
     // if 'ficus' is '<ficus_root>/bin/ficus'
@@ -179,7 +179,7 @@ fun find_ficus_dirs(): (string, string list)
     (found, ficus_path)
 }
 
-fun parse_all(fname0: string, ficus_path: string list): bool
+fun parse_all(fname0: string, ficus_path: list[string]): bool
 {
     val cwd = Filename.getcwd()
     val fname0 = Filename.normalize(cwd, fname0)
@@ -227,17 +227,17 @@ fun parse_all(fname0: string, ficus_path: string list): bool
     ok
 }
 
-type dep_graph_t = (int, int list) list
+type dep_graph_t = list[int, list[int]]
 
-fun toposort(graph: dep_graph_t): int list
+fun toposort(graph: dep_graph_t): list[int]
 {
     //print("before toposort: ")
     //println([::for (i, _) <- graph {(Ast.pp(Ast.get_module_name(i)), i)}])
     val graph = [for (_, deps) <- graph {deps}], nvtx = size(graph)
     val processed = array(nvtx, false)
-    var result: int list = []
+    var result: list[int] = []
 
-    fun dfs(i: int, visited: int list) {
+    fun dfs(i: int, visited: list[int]) {
         val deps = graph[i]
         if visited.mem(i) {
             val vlist = ", ".join([::for j <- visited { Ast.pp(Ast.get_module_name(j)) }])
@@ -260,14 +260,14 @@ fun toposort(graph: dep_graph_t): int list
     result.rev()
 }
 
-fun typecheck_all(modules: int list): bool
+fun typecheck_all(modules: list[int]): bool
 {
     Ast.all_compile_errs = []
     for m <- modules {Ast_typecheck.check_mod(m)}
     Ast.all_compile_errs == []
 }
 
-fun k_normalize_all(modules: int list): (kmodule_t list, bool)
+fun k_normalize_all(modules: list[int]): (list[kmodule_t], bool)
 {
     Ast.all_compile_errs = []
     K_form.init_all_idks()
@@ -275,7 +275,7 @@ fun k_normalize_all(modules: int list): (kmodule_t list, bool)
     (kmods, Ast.all_compile_errs == [])
 }
 
-fun k_skip_some(kmods: kmodule_t list)
+fun k_skip_some(kmods: list[kmodule_t])
 {
     val skip_flags = array(size(Ast.all_modules), false)
     val build_root_dir = Options.opt.build_rootdir
@@ -372,7 +372,7 @@ fun k_skip_some(kmods: kmodule_t list)
 
 fun prf(str: string) = pr_verbose(f"\t{str}")
 
-fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
+fun k_optimize_all(kmods: list[kmodule_t]): (list[kmodule_t], bool) {
     Ast.all_compile_errs = []
     val niters = Options.opt.optim_iters
     var temp_kmods = kmods
@@ -443,7 +443,7 @@ fun k_optimize_all(kmods: kmodule_t list): (kmodule_t list, bool) {
     (temp_kmods, Ast.all_compile_errs == [])
 }
 
-fun k2c_all(kmods: kmodule_t list)
+fun k2c_all(kmods: list[kmodule_t])
 {
     pr_verbose(clrmsg(MsgBlue, "Generating C code"))
     Ast.all_compile_errs = []
@@ -462,7 +462,7 @@ fun k2c_all(kmods: kmodule_t list)
 }
 
 // [TODO] add proper support for Windows
-fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
+fun run_cc(cmods: list[C_form.cmodule_t], ficus_root: string) {
     val osinfo = Sys.osname(true)
     val opt_level = Options.opt.optimize_level
     val opt_level_str = if opt_level <= 3 {string(opt_level)} else {"fast"}
@@ -615,7 +615,7 @@ fun run_cc(cmods: C_form.cmodule_t list, ficus_root: string) {
         (is_cpp, recompiled, clibs, ok_j, obj_filename)
     }]
 
-    var any_cpp = false, any_recompiled = false, all_clibs = ([] : string list), ok = ok, objs = []
+    var any_cpp = false, any_recompiled = false, all_clibs = ([] : list[string]), ok = ok, objs = []
     for (is_cpp, is_recompiled, clibs_j, ok_j, obj) <- results {
         any_cpp |= is_cpp; any_recompiled |= is_recompiled
         all_clibs = clibs_j + all_clibs; ok &= ok_j; objs = obj :: objs

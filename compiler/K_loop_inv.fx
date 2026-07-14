@@ -56,7 +56,7 @@ fun move_loop_invs(code: kcode_t)
     }
 
     fun mli_ktyp(t: ktyp_t, loc: loc_t, callb: k_callb_t) = t
-    fun mli_process_loop(e_idl_l: (kexp_t, (id_t, dom_t) list, id_t list) list,
+    fun mli_process_loop(e_idl_l: list[kexp_t, list[id_t, dom_t], list[id_t]],
                          body: kexp_t, loc: loc_t, callb: k_callb_t)
     {
         val saved_inloop = curr_inloop.copy()
@@ -124,7 +124,7 @@ fun move_loop_invs(code: kcode_t)
     [:: for e <- code { mli_kexp(e, mli_callb) } ]
 }
 
-fun move_loop_invs_all(kmods: kmodule_t list) =
+fun move_loop_invs_all(kmods: list[kmodule_t]) =
     [:: for km <- kmods {
         val {km_top} = km
         val new_top = move_loop_invs(km_top)

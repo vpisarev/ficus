@@ -219,9 +219,9 @@ from K_freevars import *
 import K_lift_simple
 import Hashmap, Hashset
 
-fun lift_all(kmods: kmodule_t list)
+fun lift_all(kmods: list[kmodule_t])
 {
-    type ll_subst_env_t = (id_t, (id_t, ktyp_t?)) Hashmap.t
+    type ll_subst_env_t = Hashmap.t[id_t, (id_t, ktyp_t?)]
     fun empty_subst_env(size0: int): ll_subst_env_t = Hashmap.empty(size0, noid, (noid, None))
 
     val globals = empty_id_hashset(256)
@@ -439,7 +439,7 @@ fun lift_all(kmods: kmodule_t list)
         | KDefFun kf =>
             val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_loc} = *kf
             val {kci_arg, kci_fcv_t, kci_make_fp, kci_wrap_f} = kf_closure
-            fun create_defclosure(kf: kdeffun_t ref, code: kcode_t, loc: loc_t)
+            fun create_defclosure(kf: ref[kdeffun_t], code: kcode_t, loc: loc_t)
             {
                 val {kf_name, kf_params, kf_rt, kf_closure={kci_make_fp=make_fp}, kf_flags, kf_loc} = *kf
                 val kf_typ = get_kf_typ(kf_params, kf_rt, kf_loc)

@@ -28,13 +28,13 @@ fun fib2(n: int) {
     fib2_(1, 1, n)
 }
 
-operator * (((a11, a12), (a21, a22)): (('t * 2) * 2),
-            ((b11, b12), (b21, b22)): (('t * 2) * 2)) =
+operator *[T] (((a11, a12), (a21, a22)): ((T, T), (T, T)),
+            ((b11, b12), (b21, b22)): ((T, T), (T, T))) =
     ((a11*b11 + a12*b21, a11*b12 + a12*b22),
      (a21*b11 + a22*b21, a21*b12 + a22*b22))
-operator ** (a: (('t * 2) * 2), n: int)
+operator **[T] (a: ((T, T), (T, T)), n: int)
 {
-    val _0 = (0:>'t), _1 = (1:>'t)
+    val _0 = (0:>T), _1 = (1:>T)
     var p = ((_1, _0), (_0, _1))
     var a = a, n = n
     while n > 0 {
@@ -89,10 +89,10 @@ for x@i <- a {
     if x < 0 {i1 = i; break}
 }
 
-fun gen_msg(i: int, a: 't []) = if i < 0 || i >= size(a) {"not found"} else {f"a[{i}]={a[i]}"}
+fun gen_msg[T](i: int, a: T []) = if i < 0 || i >= size(a) {"not found"} else {f"a[{i}]={a[i]}"}
 println(f"imperative search: negative number in {a}: {gen_msg(i1, a)}")
 
-fun find_idx_ret(a: 't [], f: 't -> bool): int
+fun find_idx_ret[T](a: T [], f: (T -> bool)): int
 {
     for x@i <- a {if f(x) {return i}}
     -1
@@ -106,7 +106,7 @@ println(f"fold-based search: negative number in {a}: {gen_msg(i3, a)}")
 
 exception BreakWith: int
 
-fun find_idx(a: 't [], f: 't -> bool): int
+fun find_idx[T](a: T [], f: (T -> bool)): int
 {
     val n = size(a)
     try
@@ -153,7 +153,7 @@ val pairs = ("a", 0) :: ("b", 33) :: ("rest", 2) :: []
 val r1 = pairs.assoc_opt(key1)
 val r2 = pairs.assoc_opt(key2)
 
-fun assoc_result(r: 'x?)
+fun assoc_result[X](r: X?)
 {
     | Some x => repr(x)
     | _ => "not found"

@@ -90,7 +90,7 @@ from K_form import *
         }
     }
 
-fun flatten_all(kmods: kmodule_t list)
+fun flatten_all(kmods: list[kmodule_t])
 {
     val callb = k_callb_t
     {

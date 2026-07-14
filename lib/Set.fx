@@ -41,23 +41,23 @@
  * =====
 */
 
-type 't cmp_t = ('t, 't) -> int
+type cmp_t[T] = (T, T) -> int
 type color_t = Red | Black
-type 't tree_t = Empty | Node: (color_t, 't tree_t, 't, 't tree_t)
-class 't t { root: 't tree_t; size: int; cmp: 't cmp_t }
+type tree_t[T] = Empty | Node: (color_t, tree_t[T], T, tree_t[T])
+class t[T] { root: tree_t[T]; size: int; cmp: cmp_t[T] }
 
 exception RBSetError
 
-fun empty(cmp: 't cmp_t): 't Set.t =
-    t { root=(Empty : 't tree_t), size=0, cmp=cmp }
+fun empty[T](cmp: cmp_t[T]): Set.t[T] =
+    t { root=(Empty : tree_t[T]), size=0, cmp=cmp }
 
-fun empty(s: 't Set.t): bool
+fun empty[T](s: Set.t[T]): bool
 {
-    | { root=(Empty : 't tree_t) } => true
+    | { root=(Empty : tree_t[T]) } => true
     | _ => false
 }
 
-@private fun mem_(t: 't tree_t, x: 't, cmp: 't cmp_t): bool =
+@private fun mem_[T](t: tree_t[T], x: T, cmp: cmp_t[T]): bool =
 match t
 {
     | Node(_, l, y, r) =>
@@ -68,9 +68,9 @@ match t
     | _ => false
 }
 
-fun mem(s: 't Set.t, x: 't): bool = mem_(s.root, x, s.cmp)
+fun mem[T](s: Set.t[T], x: T): bool = mem_(s.root, x, s.cmp)
 
-@private fun find_opt_(t: 't tree_t, x: 't, cmp: 't cmp_t): 't? =
+@private fun find_opt_[T](t: tree_t[T], x: T, cmp: cmp_t[T]): T? =
 match t
 {
     | Node(_, l, y, r) =>
@@ -81,9 +81,9 @@ match t
     | _ => None
 }
 
-fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
+fun find_opt[T](s: Set.t[T], x: T): T? = find_opt_(s.root, x, s.cmp)
 
-@private fun balance_left(l: 't tree_t, x: 't, r: 't tree_t): 't tree_t
+@private fun balance_left[T](l: tree_t[T], x: T, r: tree_t[T]): tree_t[T]
 {
     | (Node(Red, Node(Red, a, x, b), y, c), z, d) =>
         Node(Red, Node(Black, a, x, b), y, Node(Black, c, z, d))
@@ -93,7 +93,7 @@ fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
         Node(Black, l, x, r)
 }
 
-@private fun balance_right(l: 't tree_t, x: 't, r: 't tree_t): 't tree_t
+@private fun balance_right[T](l: tree_t[T], x: T, r: tree_t[T]): tree_t[T]
 {
     | (a, x, Node(Red, Node(Red, b, y, c), z, d)) =>
         Node(Red, Node(Black, a, x, b), y, Node(Black, c, z, d))
@@ -103,15 +103,15 @@ fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
         Node(Black, l, x, r)
 }
 
-@private fun blackify(t: 't tree_t): ('t tree_t, bool)
+@private fun blackify[T](t: tree_t[T]): (tree_t[T], bool)
 {
     | Node(Red, l, x, r) => (Node(Black, l, x, r), false)
     | _ => (t, true)
 }
 
-@private fun add_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int)
+@private fun add_[T](t: tree_t[T], x: T, cmp: cmp_t[T]): (tree_t[T], int)
 {
-    fun add_to_tree_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, int) =
+    fun add_to_tree_[T](t: tree_t[T], x: T, cmp: cmp_t[T]): (tree_t[T], int) =
     match t {
     | Node(Red, l, y, r) =>
         val c = cmp(x, y)
@@ -135,7 +135,7 @@ fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
             (if dsz > 0 {balance_right(l, y, r)} else {Node(Black, l, y, r)}, dsz)
         }
         else { (t, 0) }
-    | _ => (Node(Red, (Empty: 't tree_t), x, (Empty: 't tree_t)), 1)
+    | _ => (Node(Red, (Empty: tree_t[T]), x, (Empty: tree_t[T])), 1)
     }
 
     val (t, dsz) = add_to_tree_(t, x, cmp)
@@ -143,16 +143,16 @@ fun find_opt(s: 't Set.t, x: 't): 't? = find_opt_(s.root, x, s.cmp)
     (t, dsz)
 }
 
-fun add(s: 't Set.t, x: 't): 't Set.t
+fun add[T](s: Set.t[T], x: T): Set.t[T]
 {
     val (new_root, dsz) = add_(s.root, x, s.cmp)
     t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
-fun singleton(x: 't, cmp: 't cmp_t): 't Set.t =
+fun singleton[T](x: T, cmp: cmp_t[T]): Set.t[T] =
     t { root=Node(Black, Empty, x, Empty), size=1, cmp=cmp }
 
-@private fun unbalanced_left(t: 't tree_t, dsz: int): ('t tree_t, bool, int) =
+@private fun unbalanced_left[T](t: tree_t[T], dsz: int): (tree_t[T], bool, int) =
 match t
 {
     | Node(Red, Node(Black, a, x, b), y, c) =>
@@ -164,7 +164,7 @@ match t
     | _ => throw RBSetError
 }
 
-@private fun unbalanced_right(t: 't tree_t, dsz: int): ('t tree_t, bool, int) =
+@private fun unbalanced_right[T](t: tree_t[T], dsz: int): (tree_t[T], bool, int) =
 match t
 {
     | Node(Red, a, x, Node(Black, b, y, c)) =>
@@ -176,7 +176,7 @@ match t
     | _ => throw RBSetError
 }
 
-@private fun remove_min(t: 't tree_t): ('t tree_t, 't, bool)
+@private fun remove_min[T](t: tree_t[T]): (tree_t[T], T, bool)
 {
     | Node(Black, Empty, x, Empty) => (Empty, x, true)
     | Node(Black, Empty, x, Node(Red, l, y, r)) =>
@@ -204,7 +204,7 @@ match t
     | _ => throw RBSetError
 }
 
-@private fun remove_(t: 't tree_t, x: 't, cmp: 't cmp_t): ('t tree_t, bool, int) =
+@private fun remove_[T](t: tree_t[T], x: T, cmp: cmp_t[T]): (tree_t[T], bool, int) =
 match t
 {
     | Node(Black, l, y, r) =>
@@ -251,15 +251,15 @@ match t
         (Empty, false, 0)
 }
 
-fun remove(s: 't Set.t, x: 't): 't Set.t
+fun remove[T](s: Set.t[T], x: T): Set.t[T]
 {
     val (new_root, _, dsz) = remove_(s.root, x, s.cmp)
     t { root=new_root, size=s.size+dsz, cmp=s.cmp }
 }
 
-fun foldl(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r): 'r
+fun foldl[T, Tr](s: Set.t[T], f: (T, Tr) -> Tr, res0: Tr): Tr
 {
-    fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
+    fun update_[T](t: tree_t[T], f: (T, Tr) -> Tr, res: Tr): Tr =
     match t {
         | Node(_, l, x, r) => update_(r, f, f(x, update_(l, f, res)))
         | _ => res
@@ -267,9 +267,9 @@ fun foldl(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r): 'r
     update_(s.root, f, res0)
 }
 
-fun foldr(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r): 'r
+fun foldr[T, Tr](s: Set.t[T], f: (T, Tr) -> Tr, res0: Tr): Tr
 {
-    fun update_(t: 't tree_t, f: ('t, 'r) -> 'r, res: 'r): 'r =
+    fun update_[T](t: tree_t[T], f: (T, Tr) -> Tr, res: Tr): Tr =
     match t {
         | Node(_, l, x, r) => update_(l, f, f(x, update_(r, f, res)))
         | _ => res
@@ -277,9 +277,9 @@ fun foldr(s: 't Set.t, f: ('t, 'r) -> 'r, res0: 'r): 'r
     update_(s.root, f, res0)
 }
 
-fun all(s: 't Set.t, f: 't -> bool): bool
+fun all[T](s: Set.t[T], f: T -> bool): bool
 {
-    fun all_(t: 't tree_t, f: 't -> bool): bool =
+    fun all_[T](t: tree_t[T], f: T -> bool): bool =
     match t {
         | Node(_, l, x, r) => f(x) && all_(l, f) && all_(r, f)
         | _ => true
@@ -287,9 +287,9 @@ fun all(s: 't Set.t, f: 't -> bool): bool
     all_(s.root, f)
 }
 
-fun exists(s: 't Set.t, f: 't -> bool): bool
+fun exists[T](s: Set.t[T], f: T -> bool): bool
 {
-    fun exists_(t: 't tree_t, f: 't -> bool): bool =
+    fun exists_[T](t: tree_t[T], f: T -> bool): bool =
     match t {
         | Node(_, l, x, r) => f(x) || exists_(l, f) || exists_(r, f)
         | _ => false
@@ -297,9 +297,9 @@ fun exists(s: 't Set.t, f: 't -> bool): bool
     exists_(s.root, f)
 }
 
-fun app(s: 't Set.t, f: 't -> void): void
+fun app[T](s: Set.t[T], f: T -> void): void
 {
-    fun app_(t: 't tree_t, f: 't -> void): void =
+    fun app_[T](t: tree_t[T], f: T -> void): void =
     match t {
         | Node(_, l, x, r) => app_(l, f); f(x); app_(r, f)
         | _ => {}
@@ -308,9 +308,9 @@ fun app(s: 't Set.t, f: 't -> void): void
 }
 
 // similar to foldr, but does a specific task - constructs the list of results
-fun map(s: 't Set.t, f: 't -> 'r): 'res list
+fun map[T, Tr](s: Set.t[T], f: T -> Tr): list[Tr]
 {
-    fun update_list_(t: 't tree_t, f: 't -> 'r, res: 'r list): 'r list =
+    fun update_list_[T](t: tree_t[T], f: T -> Tr, res: list[Tr]): list[Tr] =
     match t {
         | Node(_, l, x, r) =>
             update_list_(l, f, f(x) :: update_list_(r, f, res))
@@ -319,9 +319,9 @@ fun map(s: 't Set.t, f: 't -> 'r): 'res list
     update_list_(s.root, f, [])
 }
 
-fun filter(s: 't Set.t, f: 't -> bool): 't Set.t
+fun filter[T](s: Set.t[T], f: T -> bool): Set.t[T]
 {
-    fun filter_(t: 't tree_t, f: 't -> bool, res: 't Set.t): 't Set.t =
+    fun filter_[T](t: tree_t[T], f: T -> bool, res: Set.t[T]): Set.t[T] =
     match t {
         | Node(_, l, x, r) =>
             val res = filter_(l, f, res)
@@ -332,7 +332,7 @@ fun filter(s: 't Set.t, f: 't -> bool): 't Set.t
     filter_(s.root, f, t {root=Empty, size=0, cmp=s.cmp})
 }
 
-fun add_list(s: 't Set.t, l: 't list): 't Set.t
+fun add_list[T](s: Set.t[T], l: list[T]): Set.t[T]
 {
     val cmp = s.cmp
     val fold new_root = s.root, size = s.size for x <- l {
@@ -343,11 +343,11 @@ fun add_list(s: 't Set.t, l: 't list): 't Set.t
     t {root=new_root, size=size, cmp=cmp}
 }
 
-fun from_list(cmp: 't cmp_t, l: 't list): 't Set.t = add_list(empty(cmp), l)
+fun from_list[T](cmp: cmp_t[T], l: list[T]): Set.t[T] = add_list(empty(cmp), l)
 
-fun list(s: 't Set.t): 't list
+fun list[T](s: Set.t[T]): list[T]
 {
-    fun update_list_(t: 't tree_t, res: 't list): 't list =
+    fun update_list_[T](t: tree_t[T], res: list[T]): list[T] =
     match t {
         | Node(_, l, x, r) =>
             update_list_(l, x :: update_list_(r, res))
@@ -356,9 +356,9 @@ fun list(s: 't Set.t): 't list
     update_list_(s.root, [])
 }
 
-fun diff(xs: 't Set.t, ys: 't Set.t): 't Set.t
+fun diff[T](xs: Set.t[T], ys: Set.t[T]): Set.t[T]
 {
-    fun update_(t: 't tree_t, cmp: 't cmp_t, res: 't tree_t, size: int): ('t tree_t, int) =
+    fun update_[T](t: tree_t[T], cmp: cmp_t[T], res: tree_t[T], size: int): (tree_t[T], int) =
     match t
     {
         | Node(_, l, x, r) =>
@@ -378,9 +378,9 @@ fun diff(xs: 't Set.t, ys: 't Set.t): 't Set.t
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun intersect(xs: 't Set.t, ys: 't Set.t): 't Set.t
+fun intersect[T](xs: Set.t[T], ys: Set.t[T]): Set.t[T]
 {
-    fun update_(t: 't tree_t, cmp: 't cmp_t, xs: 't tree_t, res: 't tree_t, size: int): ('t tree_t, int) =
+    fun update_[T](t: tree_t[T], cmp: cmp_t[T], xs: tree_t[T], res: tree_t[T], size: int): (tree_t[T], int) =
     match t
     {
         | Node(_, l, x, r) =>
@@ -398,13 +398,13 @@ fun intersect(xs: 't Set.t, ys: 't Set.t): 't Set.t
     // The complexity is O(log(size_xs)*size_ys).
     // If size(ys) ~ size(xs) ~ N then whatever algorithm we choose
     // (using balanced trees), it will have O(log(N)*N) complexity.
-    val (res, size) = update_(ys.root, xs.cmp, xs.root, (Empty : 't tree_t), 0)
+    val (res, size) = update_(ys.root, xs.cmp, xs.root, (Empty : tree_t[T]), 0)
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun union(xs: 't Set.t, ys: 't Set.t): 't Set.t
+fun union[T](xs: Set.t[T], ys: Set.t[T]): Set.t[T]
 {
-    fun update_(t: 't tree_t, cmp: 't cmp_t, res: 't tree_t, size: int): ('t tree_t, int) =
+    fun update_[T](t: tree_t[T], cmp: cmp_t[T], res: tree_t[T], size: int): (tree_t[T], int) =
     match t
     {
         | Node(_, l, x, r) =>
@@ -425,9 +425,9 @@ fun union(xs: 't Set.t, ys: 't Set.t): 't Set.t
     t {root=res, size=size, cmp=xs.cmp}
 }
 
-fun minelem(s: 't Set.t): 't
+fun minelem[T](s: Set.t[T]): T
 {
-    fun min_(t: 't tree_t) {
+    fun min_[T](t: tree_t[T]) {
         | Node(_, Empty, x, _) => x
         | Node(_, l, _, _) => min_(l)
         | _ => throw RBSetError
@@ -435,9 +435,9 @@ fun minelem(s: 't Set.t): 't
     min_(s.root)
 }
 
-fun maxelem(s: 't Set.t): 't
+fun maxelem[T](s: Set.t[T]): T
 {
-    fun max_(t: 't tree_t) {
+    fun max_[T](t: tree_t[T]) {
         | Node(_, _, x, Empty) => x
         | Node(_, _, _, r) => max_(r)
         | _ => throw RBSetError

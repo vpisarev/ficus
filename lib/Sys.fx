@@ -80,7 +80,7 @@ val osname = osname_()
 @pure fun cc_version(): string = @ccode { return fx_cc_version(fx_result) }
 
 fun appname(): string = argv.hd()
-fun arguments(): string list = argv.tl()
+fun arguments(): list[string] = argv.tl()
 
 @pure @nothrow fun tick_count(): int64 = @ccode { return fx_tick_count() }
 @pure @nothrow fun tick_frequency(): double = @ccode { return fx_tick_frequency() }
@@ -93,7 +93,7 @@ fun arguments(): string list = argv.tl()
     return time(0);
 }
 
-fun timeit(f: void -> void, ~updated_min: (void->void)?,
+fun timeit(f: void -> void, ~updated_min: (void -> void)?,
            ~iterations: int=1, ~batch: int=1, ): (double, double)
 {
     val nreal_iterations = max(iterations - 1, 1)
@@ -193,7 +193,7 @@ fun getenv(name: string, defval: string): string
     if s != "" {s} else {defval}
 }
 
-fun getpath(name: string): string list
+fun getpath(name: string): list[string]
 {
     val pathsep = if win32 {';'} else {':'}
     getenv(name).split(pathsep, allow_empty=false)

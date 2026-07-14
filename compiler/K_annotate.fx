@@ -100,7 +100,7 @@ fun find_recursive(top_code: kcode_t)
     // we just modify the values in-place.
     val iters0 = 10
     val all_typs = all_typ_deps.foldl(
-        fun (n: id_t, _, all_typs: id_t list) {n :: all_typs}, []).rev()
+        fun (n: id_t, _, all_typs: list[id_t]) {n :: all_typs}, []).rev()
     val _ = calc_sets_closure(iters0, all_typs, all_typ_deps)
 
     fun is_recursive(n: id_t): bool =
@@ -251,7 +251,7 @@ fun get_ktprops(t: ktyp_t, loc: loc_t): ktprops_t
     }
 */
 
-fun annotate_types(kmods: kmodule_t list)
+fun annotate_types(kmods: list[kmodule_t])
 {
     val top_code = [:: for {km_top} <- kmods {km_top} ].concat()
     //clear_typ_annotations(top_code)

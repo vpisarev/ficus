@@ -673,7 +673,7 @@ match op
 | _ => throw Ast.NNError(f"unexpected op {op.name()}")
 }
 
-@private fun run_constantOfShape(v: 't, out: 't []) = for _@idx <- out {out[idx] = v}
+@private fun run_constantOfShape[T](v: T, out: T []) = for _@idx <- out {out[idx] = v}
 
 fun run_constantOfShape(model: Ast.nnmodel_t, op: Ast.nnop_t) =
 match op {

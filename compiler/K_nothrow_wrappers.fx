@@ -32,7 +32,7 @@
 from Ast import *
 from K_form import *
 
-fun make_wrappers_for_nothrow(kmods: kmodule_t list)
+fun make_wrappers_for_nothrow(kmods: list[kmodule_t])
 {
     var curr_m_idx = -1
     fun wrapf_atom(a: atom_t, loc: loc_t, callb: k_callb_t) =

@@ -19,7 +19,7 @@ import File, Set
 
 fun typ2ktyp(t: typ_t, loc: loc_t): ktyp_t
 {
-    var id_stack: id_t list = []
+    var id_stack: list[id_t] = []
     fun typ2ktyp_(t: typ_t): ktyp_t {
         val t = deref_typ(t)
         match t {
@@ -103,9 +103,9 @@ fun lit2klit(l: lit_t, ktyp: ktyp_t, loc: loc_t) =
     | LitNull => KLitNil(KTypCPointer)
     }
 
-var idx_access_stack: (atom_t, int) list = []
+var idx_access_stack: list[atom_t, int] = []
 
-fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
+fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: list[scope_t])
 {
     val km_idx = curr_module(sc)
     val (etyp, eloc) = get_exp_ctx(e)
@@ -124,8 +124,8 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             val temp@@105 = GaussianBlur(img)
             for i@@105 <- temp@@123 { val r=i@@105.0, g=i@@105.1, b = i@@105.2; ... }
     */
-    fun transform_for(pe_l: (pat_t, exp_t) list, idx_pat: pat_t,
-                      code: kcode_t, sc: scope_t list, body_sc: scope_t list)
+    fun transform_for(pe_l: list[pat_t, exp_t], idx_pat: pat_t,
+                      code: kcode_t, sc: list[scope_t], body_sc: list[scope_t])
     {
         var idom_list = [], code = code, body_code = []
         for (pi, ei) <- pe_l {
@@ -155,7 +155,7 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
             idom_list = (i, di) :: idom_list
         }
         val loc = get_pat_loc(idx_pat)
-        val (at_ids: id_t list, body_code: kcode_t) =
+        val (at_ids: list[id_t], body_code: kcode_t) =
         match idx_pat {
         | PatAny _ => ([], body_code)
         | PatTyped(p, TypInt, loc) =>
@@ -747,13 +747,13 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list)
     }
 }
 
-fun exp2atom(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list): (atom_t, kcode_t)
+fun exp2atom(e: exp_t, code: kcode_t, tref: bool, sc: list[scope_t]): (atom_t, kcode_t)
 {
     val (e, code) = exp2kexp(e, code, tref, sc)
     kexp2atom(curr_module(sc), "v", e, tref, code)
 }
 
-fun arithm_subexp2atom(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list): (atom_t, kcode_t)
+fun arithm_subexp2atom(e: exp_t, code: kcode_t, tref: bool, sc: list[scope_t]): (atom_t, kcode_t)
 {
     val loc = get_exp_loc(e)
     val (a, code) = exp2atom(e, code, tref, sc)
@@ -764,13 +764,13 @@ fun arithm_subexp2atom(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list): (
     }
 }
 
-fun exp2id(e: exp_t, code: kcode_t, tref: bool, sc: scope_t list, msg: string): (id_t, kcode_t)
+fun exp2id(e: exp_t, code: kcode_t, tref: bool, sc: list[scope_t], msg: string): (id_t, kcode_t)
 {
     val (a, code) = exp2atom(e, code, tref, sc)
     (atom2id(a, get_exp_loc(e), msg), code)
 }
 
-fun exp2dom(e: exp_t, code: kcode_t, sc: scope_t list): (dom_t, kcode_t) =
+fun exp2dom(e: exp_t, code: kcode_t, sc: list[scope_t]): (dom_t, kcode_t) =
     match e {
     | ExpRange _ =>
         val (ek, code) = exp2kexp(e, code, false, sc)
@@ -785,10 +785,10 @@ fun exp2dom(e: exp_t, code: kcode_t, sc: scope_t list): (dom_t, kcode_t) =
     }
 
 type kpragma_t = (string, loc_t)
-fun eseq2code(eseq: exp_t list, code: kcode_t, sc: scope_t list): (kcode_t, kpragma_t list)
+fun eseq2code(eseq: list[exp_t], code: kcode_t, sc: list[scope_t]): (kcode_t, list[kpragma_t])
 {
-    var pragmas: kpragma_t list = []
-    fun knorm_eseq(eseq: exp_t list, code: kcode_t): kcode_t =
+    var pragmas: list[kpragma_t] = []
+    fun knorm_eseq(eseq: list[exp_t], code: kcode_t): kcode_t =
         match eseq {
         | DirPragma(prl, loc) :: rest =>
             for pr <- prl { pragmas = (pr, loc) :: pragmas }
@@ -829,7 +829,7 @@ fun pat_have_vars(p: pat_t): bool
 }
 
 /* version of Ast_typecheck.get_record_elems, but for already transformed types */
-fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t): ((id_t, int, ktyp_t, bool), (id_t, ktyp_t) list)
+fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t): ((id_t, int, ktyp_t, bool), list[id_t, ktyp_t])
 {
     val t = deref_ktyp(t, loc)
     val input_vn = match vn_opt { | Some(vn) => get_bare_name(vn) | _ => noid }
@@ -863,7 +863,7 @@ fun get_record_elems_k(vn_opt: id_t?, t: ktyp_t, loc: loc_t): ((id_t, int, ktyp_
 }
 
 fun match_record_pat(pat: pat_t, ptyp: ktyp_t):
-    ((id_t, int, ktyp_t, bool, bool), (id_t, pat_t, ktyp_t, int) list) =
+    ((id_t, int, ktyp_t, bool, bool), list[id_t, pat_t, ktyp_t, int]) =
     match pat {
     | PatRecord(rn_opt, relems, loc) =>
         val ((ctor, case_i, t, multiple_cases), relems_found) = get_record_elems_k(rn_opt, ptyp, loc)
@@ -883,7 +883,7 @@ fun match_record_pat(pat: pat_t, ptyp: ktyp_t):
     | _ => throw compile_err(get_pat_loc(pat), "record (or sometimes an exception) is expected")
     }
 
-fun match_variant_pat(pat: pat_t, ptyp: ktyp_t): ((id_t, int, ktyp_t), (pat_t, ktyp_t) list) =
+fun match_variant_pat(pat: pat_t, ptyp: ktyp_t): ((id_t, int, ktyp_t), list[pat_t, ktyp_t]) =
     match pat {
     | PatVariant(vn0, pl, loc) =>
         val {kvar_cases, kvar_ctors, kvar_loc} = *get_kvariant(ptyp, loc)
@@ -950,7 +950,7 @@ fun pat_need_checks(p: pat_t, ptyp: ktyp_t)
 }
 
 fun pat_propose_id(p: pat_t, ptyp: ktyp_t, temp_prefix: string,
-                   is_simple: bool, mutable_leaves: bool, sc: scope_t list)
+                   is_simple: bool, mutable_leaves: bool, sc: list[scope_t])
 {
     val km_idx = curr_module(sc)
     val p = pat_skip_typed(p)
@@ -978,7 +978,7 @@ fun pat_propose_id(p: pat_t, ptyp: ktyp_t, temp_prefix: string,
 }
 
 fun pat_simple_unpack(p: pat_t, ptyp: ktyp_t, e_opt: kexp_t?, code: kcode_t,
-                      temp_prefix: string, flags: val_flags_t, sc: scope_t list): (id_t, kcode_t)
+                      temp_prefix: string, flags: val_flags_t, sc: list[scope_t]): (id_t, kcode_t)
 {
     val km_idx = curr_module(sc)
     val (tup_elems, need_tref) =
@@ -1111,14 +1111,14 @@ type pat_info_t = {pinfo_p: pat_t; pinfo_typ: ktyp_t; pinfo_e: kexp_t; pinfo_tag
     The algorithm does not always produce the most optimal sequence of operations
     (e.g. some checks are easier to do than the others etc.), but probably it's a good-enough approximation
 */
-fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
-                           code: kcode_t, sc: scope_t list, loc: loc_t, catch_mode: bool)
+fun transform_pat_matching(a: atom_t, cases: list[pat_t, exp_t],
+                           code: kcode_t, sc: list[scope_t], loc: loc_t, catch_mode: bool)
 {
     var match_var_cases = empty_idset
     val km_idx = curr_module(sc)
 
     fun dispatch_pat(pinfo: pat_info_t,
-        (pl_c: pat_info_t list, pl_cu: pat_info_t list, pl_u: pat_info_t list))
+        (pl_c: list[pat_info_t], pl_cu: list[pat_info_t], pl_u: list[pat_info_t]))
     {
         val {pinfo_p=p, pinfo_typ=ptyp} = pinfo
         val need_checks = pat_need_checks(p, ptyp)
@@ -1154,12 +1154,12 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
             f"k-normalize: enxpected type '{t}'; record, variant of exception is expected here")
         }
 
-    fun process_next_subpat(plists: (pat_info_t list, pat_info_t list, pat_info_t list),
-                            (checks: kcode_t, code: kcode_t), case_sc: scope_t list)
+    fun process_next_subpat(plists: (list[pat_info_t], list[pat_info_t], list[pat_info_t]),
+                            (checks: kcode_t, code: kcode_t), case_sc: list[scope_t])
     {
         val temp_prefix = "v"
-        fun process_pat_list(tup_id: id_t, pti_l: (pat_t, ktyp_t, int) list,
-            plists: (pat_info_t list, pat_info_t list, pat_info_t list), alt_ei_opt: kexp_t?) =
+        fun process_pat_list(tup_id: id_t, pti_l: list[pat_t, ktyp_t, int],
+            plists: (list[pat_info_t], list[pat_info_t], list[pat_info_t]), alt_ei_opt: kexp_t?) =
             match pti_l {
             | [:: (PatAny _, _, _)] => plists
             | _ =>
@@ -1185,7 +1185,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
             }
 
         fun get_var_tag_cmp_and_extract(n: id_t, pinfo: pat_info_t, (checks: kcode_t, code: kcode_t),
-            vn: id_t, sc: scope_t list, loc: loc_t)
+            vn: id_t, sc: list[scope_t], loc: loc_t)
         {
             val {pinfo_tag=var_tag0, pinfo_typ} = pinfo
             val (c_args, vn_tag_val, vn_case_val) =
@@ -1450,7 +1450,7 @@ fun transform_pat_matching(a: atom_t, cases: (pat_t, exp_t) list,
     (k_cases, code)
 }
 
-fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
+fun transform_fun(df: ref[deffun_t], code: kcode_t, sc: list[scope_t]): kcode_t
 {
     val km_idx = curr_module(sc)
     val {df_name, df_templ_args, df_templ_inst, df_loc} = *df
@@ -1548,7 +1548,7 @@ fun transform_fun(df: deffun_t ref, code: kcode_t, sc: scope_t list): kcode_t
     }
 }
 
-fun transform_all_types_and_cons(elist: exp_t list, code: kcode_t, sc: scope_t list): kcode_t
+fun transform_all_types_and_cons(elist: list[exp_t], code: kcode_t, sc: list[scope_t]): kcode_t
 {
     val km_idx = curr_module(sc)
     fold code = code for e <- elist {
@@ -1747,7 +1747,7 @@ fun normalize_mod(minfo: defmodule_t, kcode_typedefs: kcode_t, toposort_idx: int
                 km_skip=false, km_pragmas=parse_pragmas(pragmas) }
 }
 
-fun normalize_all_modules(modules: int list): kmodule_t list
+fun normalize_all_modules(modules: list[int]): list[kmodule_t]
 {
     val n = modules.length()
     var modules_plus = []

@@ -30,7 +30,7 @@ fun draw_boxes(image: (uint8*3) [,], bboxes: (float*6) [],
 }
 
 var mname = "", lname = ""
-var images: string list = []
+var images: list[string] = []
 var ntasks = 4
 var use_fp16 = false
 var trace = false
@@ -45,7 +45,7 @@ var input_width = 0
 var input_height = 0
 var outname = "output.jpg"
 
-fun parse_args(args: string list)
+fun parse_args(args: list[string])
 {
     | "-ntasks" :: ntasks_ :: rest =>
         ntasks = ntasks_.to_int_or(0); parse_args(rest)

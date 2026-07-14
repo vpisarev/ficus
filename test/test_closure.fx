@@ -306,7 +306,7 @@ TEST("closure.object", fun()
 {
     fun closure_object(a: int)
     {
-        var res: int list = []
+        var res: list[int] = []
         val hs = [ @parallel for i <- 0:10 {
             val i_value = i
             fun h(ii: int) { res = (i_value + ii) :: res }
@@ -328,7 +328,7 @@ TEST("closure.object_in_tuple", fun()
 {
     fun closure_object(a: int)
     {
-        var res: (int list, float list) = ([], [])
+        var res: (list[int], list[float]) = ([], [])
         val hs = [ @parallel for i <- 0:10 {
             val i_value = i;
             fun h(ii: int) {res = ((i_value + ii) :: res.0, (i :> float) :: res.1) }
@@ -415,12 +415,12 @@ TEST("closure.self-refencing", fun()
 {
     type tree_t =
         | Leaf
-        | Node : tree_t list
+        | Node : list[tree_t]
 
     var leafs = 0
 
     fun leaf_printer(tree:tree_t){
-        fun commaconcat(lst: tree_t list, f: tree_t -> string) {
+        fun commaconcat(lst: list[tree_t], f: tree_t -> string) {
             match lst {
             | [] => ""
             | [:: hd] => f(hd)

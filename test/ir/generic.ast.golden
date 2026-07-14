@@ -7,7 +7,7 @@ import Rrbvec
 import Vector
 import Char
 import String
-template<'t> fun generic.ident@g0(x: 't): ('t -> <auto>) = { <<auto>>x }
+template<T> fun generic.ident@g0(x: T): (T -> <auto>) = { <<auto>>x }
 [[instances:
    @instance fun generic.ident@g1(generic.x@g2: string): (string -> string) = { <string>generic.x@g2 }
 

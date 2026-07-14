@@ -126,7 +126,7 @@ fun exists(name: string): bool
 }
 
 // throws NotFoundError if there is no such file in specified directories
-fun locate(name: string, dirs: string list): string
+fun locate(name: string, dirs: list[string]): string
 {
     val dir = find(for d <- dirs {exists(concat(d, name))})
     normalize(getcwd(), concat(dir, name))

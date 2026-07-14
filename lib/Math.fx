@@ -19,28 +19,28 @@ val DBL_MAX = __max__(0.)
 val FLT_EPSILON: float = @ccode {FLT_EPSILON}
 val DBL_EPSILON: double = @ccode {DBL_EPSILON}
 
-fun floor(x: 't [+]): int [+] = [for xi <- x {floor(xi)}]
-fun ceil(x: 't [+]): int [+] = [for xi <- x {ceil(xi)}]
-fun trunc(x: 't [+]): int [+] = [for xi <- x {trunc(xi)}]
-fun round(x: 't [+]): int [+] = [for xi <- x {round(xi)}]
+fun floor[T](x: T [+]): int [+] = [for xi <- x {floor(xi)}]
+fun ceil[T](x: T [+]): int [+] = [for xi <- x {ceil(xi)}]
+fun trunc[T](x: T [+]): int [+] = [for xi <- x {trunc(xi)}]
+fun round[T](x: T [+]): int [+] = [for xi <- x {round(xi)}]
 
-fun sqrt(x: 't [+]): 't [+] = [for xi <- x {sqrt(xi)}]
-fun atan(x: 't [+]): 't [+] = [for xi <- x {atan(xi)}]
-fun asin(x: 't [+]): 't [+] = [for xi <- x {asin(xi)}]
-fun acos(x: 't [+]): 't [+] = [for xi <- x {acos(xi)}]
-fun cos(x: 't [+]): 't [+] = [for xi <- x {cos(xi)}]
-fun sin(x: 't [+]): 't [+] = [for xi <- x {sin(xi)}]
-fun tan(x: 't [+]): 't [+] = [for xi <- x {tan(xi)}]
+fun sqrt[T](x: T [+]): T [+] = [for xi <- x {sqrt(xi)}]
+fun atan[T](x: T [+]): T [+] = [for xi <- x {atan(xi)}]
+fun asin[T](x: T [+]): T [+] = [for xi <- x {asin(xi)}]
+fun acos[T](x: T [+]): T [+] = [for xi <- x {acos(xi)}]
+fun cos[T](x: T [+]): T [+] = [for xi <- x {cos(xi)}]
+fun sin[T](x: T [+]): T [+] = [for xi <- x {sin(xi)}]
+fun tan[T](x: T [+]): T [+] = [for xi <- x {tan(xi)}]
 
-fun log(x: 't [+]): 't [+] = [for xi <- x {log(xi)}]
-fun exp(x: 't [+]): 't [+] = [for xi <- x {exp(xi)}]
+fun log[T](x: T [+]): T [+] = [for xi <- x {log(xi)}]
+fun exp[T](x: T [+]): T [+] = [for xi <- x {exp(xi)}]
 
-fun atanh(x: 't [+]): 't [+] = [for xi <- x {atanh(xi)}]
-fun asinh(x: 't [+]): 't [+] = [for xi <- x {asinh(xi)}]
-fun acosh(x: 't [+]): 't [+] = [for xi <- x {acosh(xi)}]
-fun cosh(x: 't [+]): 't [+] = [for xi <- x {cosh(xi)}]
-fun sinh(x: 't [+]): 't [+] = [for xi <- x {sinh(xi)}]
-fun tanh(x: 't [+]): 't [+] = [for xi <- x {tanh(xi)}]
+fun atanh[T](x: T [+]): T [+] = [for xi <- x {atanh(xi)}]
+fun asinh[T](x: T [+]): T [+] = [for xi <- x {asinh(xi)}]
+fun acosh[T](x: T [+]): T [+] = [for xi <- x {acosh(xi)}]
+fun cosh[T](x: T [+]): T [+] = [for xi <- x {cosh(xi)}]
+fun sinh[T](x: T [+]): T [+] = [for xi <- x {sinh(xi)}]
+fun tanh[T](x: T [+]): T [+] = [for xi <- x {tanh(xi)}]
 
 @inline fun floor(x: float): int = __intrin_floor__(x)
 @inline fun floor(x: double): int = __intrin_floor__(x)
@@ -125,13 +125,13 @@ fun tanh(x: 't [+]): 't [+] = [for xi <- x {tanh(xi)}]
     return (u.i & 0x7fffffffffffffffLL) == 0x7ff0000000000000LL;
 }
 
-fun hypot(a: 't, b: 't): 't {
+fun hypot[T](a: T, b: T): T {
     val aa = abs(a)
     val ab = abs(b)
     if aa > ab {
         val r = ab/aa
         aa*sqrt(1 + r*r)
-    } else if ab > (0 :> 't) {
+    } else if ab > (0 :> T) {
         val r = aa/ab
         ab*sqrt(1 + r*r)
     } else {
@@ -245,16 +245,16 @@ fun uniform(rng: RNG, a: float, b: float): float =
 fun uniform(rng: RNG, a: double, b: double): double =
     double(rng)*(b - a) + a
 
-fun uniform(rng: RNG, sz: int, a: 't, b: 't): 't [] =
+fun uniform[T](rng: RNG, sz: int, a: T, b: T): T [] =
     [for i <- 0:sz {uniform(rng, a, b)}]
 
-fun uniform(rng: RNG, (sz0, sz1): (int*2), a: 't, b: 't): 't [,] =
+fun uniform[T](rng: RNG, (sz0, sz1): (int*2), a: T, b: T): T [,] =
     [for i <- 0:sz0 for j <- 0:sz1 {uniform(rng, a, b)}]
 
-fun uniform(rng: RNG, (sz0, sz1, sz2): (int*3), a: 't, b: 't): 't [,,] =
+fun uniform[T](rng: RNG, (sz0, sz1, sz2): (int*3), a: T, b: T): T [,,] =
     [for i <- 0:sz0 for j <- 0:sz1 for k <- 0:sz2 {uniform(rng, a, b)}]
 
-fun uniform(rng: RNG, (sz0, sz1, sz2, sz3): (int*4), a: 't, b: 't): 't [,,,] =
+fun uniform[T](rng: RNG, (sz0, sz1, sz2, sz3): (int*4), a: T, b: T): T [,,,] =
     [for i <- 0:sz0 for j <- 0:sz1 for k <- 0:sz2 for l <- 0:sz3 {uniform(rng, a, b)}]
 
 fun jump(rng: RNG): RNG

@@ -9,7 +9,7 @@
 from Ast import *
 from C_form import *
 
-fun gen_std_fun(cname: string, argtyps: ctyp_t list, rt: ctyp_t)
+fun gen_std_fun(cname: string, argtyps: list[ctyp_t], rt: ctyp_t)
 {
     val n = gen_idc(1, cname)
     val cf = ref (cdeffun_t {

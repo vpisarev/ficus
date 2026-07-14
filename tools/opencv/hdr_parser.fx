@@ -63,7 +63,7 @@ type decl_t =
     | DeclFunc : {
         name: string
         rettype: string=""
-        args: arg_info_t list
+        args: list[arg_info_t]
         orig_rettype: string=""
         docstring: string=""
         name_alias: string=""
@@ -76,14 +76,14 @@ type decl_t =
     }
     | DeclEnum : {
         name: string
-        elems: arg_info_t list
+        elems: list[arg_info_t]
     }
     | DeclClass : {
         name: string
-        bases: string list
+        bases: list[string]
         name_alias: string
         docstring: string=""
-        members: arg_info_t list ref
+        members: ref[list[arg_info_t]]
         ismap: bool = false
         isparams: bool = false
         issimple: bool = false
@@ -120,12 +120,12 @@ type block_info_t
 
 class hdr_parser_t
 {
-    var block_stack: block_info_t list
+    var block_stack: list[block_info_t]
     gen_gpumat_decls: bool
     gen_umat_decls: bool
     hname: string
     var lineno: int
-    var namespaces: string Hashset.t
+    var namespaces: Hashset.t[string]
     wrap_mode: bool
 }
 
@@ -135,14 +135,14 @@ fun parse_err(self: hdr_parser_t, msg: string)
     Exit(-1)
 }
 
-fun batch_replace(s0: string, pairs: (string, string) list) =
+fun batch_replace(s0: string, pairs: list[(string, string)]) =
     fold s=s0 for (f, t) <- pairs {s = s.replace(f, t)}
 
 /*
 Finds the next token from the 'tlist' in the input 's', starting from position 'p'.
 Returns the first occurred token and its position, or ("", len(s)) when no token is found
 */
-fun hdr_parser_t.find_next_token(s: string, tlist: string list, pos0: int): (string, int) =
+fun hdr_parser_t.find_next_token(s: string, tlist: list[string], pos0: int): (string, int) =
     fold token="", tpos=length(s) for t <- tlist {
         val pos = s.find(t, pos0)
         if 0 <= pos < tpos {
@@ -175,7 +175,7 @@ fun parse(hname: string, ~wrap_mode:bool=true)
         wrap_mode=wrap_mode
     }
 
-    var decls: decl_t list = []
+    var decls: list[decl_t] = []
     val f = File.open(hname, "rt")
     var linelist = []
     while !f.eof() {
@@ -1116,7 +1116,7 @@ fun string(a: arg_info_t)
 /*
 Prints the list of declarations, retrieived by the parse() method
 */
-fun print_decls(decls: decl_t list) =
+fun print_decls(decls: list[decl_t]) =
     for d <- decls {
         | DeclFunc {name, rettype, args, name_alias, static_method, const_method, virtual_method, pure_virtual_method} =>
             val prefix = if static_method {"static "} else if virtual_method {"virtual "} else {""}

@@ -61,13 +61,13 @@ TEST("basic.fib", fun()
         fib2_(1, 1, n)
     }
 
-    operator * (((a11, a12), (a21, a22)): (('t * 2) * 2),
-            ((b11, b12), (b21, b22)): (('t * 2) * 2)) =
+    operator * [T](((a11, a12), (a21, a22)): ((T * 2) * 2),
+            ((b11, b12), (b21, b22)): ((T * 2) * 2)) =
         ((a11*b11 + a12*b21, a11*b12 + a12*b22),
         (a21*b11 + a22*b21, a21*b12 + a22*b22))
-    operator ** (a: (('t * 2) * 2), n: int)
+    operator ** [T](a: ((T * 2) * 2), n: int)
     {
-        val _0 = (0:>'t), _1 = (1:>'t)
+        val _0 = (0:>T), _1 = (1:>T)
         var p = ((_1, _0), (_0, _1))
         var a = a, n = n
         while n > 0 {
@@ -119,7 +119,7 @@ exception BreakWith: int
 
 TEST("basic.find", fun()
 {
-    fun find_iterative(a: 't [], f: 't->bool) {
+    fun find_iterative[T](a: T [], f: T->bool) {
         var i1 = 0, n = size(a)
         do
         {
@@ -130,10 +130,10 @@ TEST("basic.find", fun()
         if i1 < n {i1} else {-1}
     }
 
-    fun find_fold(a: 't [], f: 't->bool) =
+    fun find_fold[T](a: T [], f: T->bool) =
         find_opt(for i<-0:size(a) {f(a[i])}).value_or(-1)
 
-    fun find_exn(a: 't [], f: 't -> bool): int
+    fun find_exn[T](a: T [], f: T -> bool): int
     {
         val n = size(a)
         try
@@ -147,7 +147,7 @@ TEST("basic.find", fun()
         }
     }
 
-    fun find_return(a: 't [], f: 't->bool): int {
+    fun find_return[T](a: T [], f: T->bool): int {
         for x@i <- a {if f(x) {return i}}
         return -1
     }
@@ -167,7 +167,7 @@ TEST("basic.find", fun()
 
 TEST("basic.make_empty_list", fun()
 {
-    fun make_null(a:'t):'t list = []
+    fun make_null[T](a:T):list[T] = []
 
     val x = [:: 1, 2, 3]
     EXPECT_EQ(`make_null(x).length()`, 0)
@@ -194,14 +194,14 @@ TEST("basic.math", fun()
 
 TEST("basic.list.pattern_match", fun()
 {
-    fun f(l: int list) {
+    fun f(l: list[int]) {
         | [] => (0, 0)
         | [:: a] => (a, 1)
         | [:: a, d] => (a+d, 2)
         | _ => (-1, 56)
     }
 
-    var lst : int list = []
+    var lst : list[int] = []
     EXPECT_EQ(`f(lst)`, (0, 0))
 
     lst = [:: 1,]
@@ -244,13 +244,13 @@ TEST("basic.function.try_catch", fun()
 
 TEST("basic.types.templates", fun()
 {
-    type ('a, 'b) template_fun_t = 'a -> 'b
-    type 'a template_fun2_t = ('a, 'a) template_fun_t
-    type ('a, 'b) tuple_signature_t = ('a, 'b, 'a template_fun2_t -> 'b template_fun2_t)
-    type ('a, 'b) ct = A: ('a, 'a) template_fun_t | B: ('b, 'b) tuple_signature_t | C: ('a, 'b) ct
+    type template_fun_t[A, B] = A -> B
+    type template_fun2_t[A] = template_fun_t[A, A]
+    type tuple_signature_t[A, B] = (A, B, (template_fun2_t[A] -> template_fun2_t[B]))
+    type ct[A, B] = A: template_fun_t[A, B] | B: tuple_signature_t[B, B] | C: ct[A, B]
 
     // Check template_fun_t
-    val my_func: (int, string) template_fun_t = fun (x:int) {string(x)}
+    val my_func: template_fun_t[int, string] = fun (x:int) {string(x)}
     EXPECT_EQ(`my_func(3)`, "3")
 
     // Check template_fun2_t
@@ -258,17 +258,17 @@ TEST("basic.types.templates", fun()
     EXPECT_EQ(`my_func2(3)`, 9)
 
     // Check tuple_signature_t
-    val my_func3: double template_fun2_t = fun (x:double) {x*-3.}
-    val strange_tuple: (int, double) tuple_signature_t = (
+    val my_func3: template_fun2_t[double] = fun (x:double) {x*-3.}
+    val strange_tuple: tuple_signature_t[int, double] = (
             3,
             3.25,
-            (fun (f: int template_fun2_t) {my_func3} )
+            (fun (f: template_fun2_t[int]) {my_func3} )
         )
     EXPECT_EQ(`strange_tuple.0`, 3)
     EXPECT_EQ(`strange_tuple.1`, 3.25)
     EXPECT_EQ(`strange_tuple.2(my_func2)(3.0)`, -9.)
 
-    val ct_inst = C((A(cos) : (float, float) ct))
+    val ct_inst = C((A(cos) : ct[float, float]))
     EXPECT_EQ(`match ct_inst { | C(A(f)) => f(0.f) | _ => -1.f }`, 1.0f)
 })
 
@@ -290,17 +290,17 @@ TEST("basic.fstring_nested_literals", fun()
 
 TEST("basic.record", fun()
 {
-    type 't point_t = {x:'t; y:'t}
+    type point_t[T] = {x:T; y:T}
     val p = point_t {x=5, y=6}
-    fun mkpt(x: 't, y: 't) = point_t {x=x, y=y}
+    fun mkpt[T](x: T, y: T) = point_t {x=x, y=y}
 
     EXPECT_EQ(`f"{p}"`, "{x=5, y=6}")
     EXPECT_EQ(`f"{mkpt(1, 0).{x=7}}"`, "{x=7, y=0}")
     EXPECT_EQ(`f"{mkpt(1.5, 0.).{y=7.}}"`, "{x=1.5, y=7.0}")
 
-    type 't rect_t = {x: 't; y: 't; width: 't; height: 't}
+    type rect_t[T] = {x: T; y: T; width: T; height: T}
 
-    fun contains(r: 'z rect_t, p: 'z point_t) =
+    fun contains[Z](r: rect_t[Z], p: point_t[Z]) =
         r.x <= p.x < r.x + r.width &&
         r.y <= p.y < r.y + r.height
 
@@ -508,12 +508,12 @@ TEST("basic.self_assignment", fun()
 TEST("basic.ref", fun()
 {
     val y = Some("abc")
-    val u : string? ref = ref None
+    val u : ref[string?] = ref None
 
     *u = y
     EXPECT_EQ(`u->value_or("0")`, `y.value_or("1")`)
 
-    val nested_ref: int ref ref ref = ref (ref (ref 5))
+    val nested_ref: ref[ref[ref[int]]] = ref (ref (ref 5))
     EXPECT_EQ(`***nested_ref`, 5)
 
     ***nested_ref -= 5
@@ -540,12 +540,12 @@ TEST("basic.option", fun()
 TEST("basic.types.variant", fun()
 {
     type type_t = Unit | Bool | Int | Float
-                | Fun: ((type_t list), type_t)
-                | Tuple: type_t list
+                | Fun: (list[type_t], type_t)
+                | Tuple: list[type_t]
                 | Array: type_t
-                | Var: type_t? ref
+                | Var: ref[type_t?]
 
-    fun tlist2str(args: type_t list) {
+    fun tlist2str(args: list[type_t]) {
         | [] => ""
         | [:: a] => t2str(a)
         | a :: args1 => t2str(a) + ", " + tlist2str(args1)
@@ -590,9 +590,9 @@ TEST("basic.list", fun()
 
 TEST("basic.list.reverse", fun()
 {
-    fun list_reverse(l: 't list): 't list
+    fun list_reverse[T](l: list[T]): list[T]
     {
-        fun rev_(l_in: 't list, l_out: 't list): 't list =
+        fun rev_[T](l_in: list[T], l_out: list[T]): list[T] =
             match l_in {
                 | a :: rest => rev_(rest, (a :: l_out))
                 | [] => l_out
@@ -607,9 +607,9 @@ TEST("basic.list.reverse", fun()
 
 TEST("basic.list.map", fun()
 {
-    fun list_map(l: 'a list, f: 'a -> 'b): 'b list
+    fun list_map[A, B](l: list[A], f: A -> B): list[B]
     {
-        fun map_(l_in: 'a list, l_out: 'b list): 'b list =
+        fun map_[A, B](l_in: list[A], l_out: list[B]): list[B] =
             match l_in {
                 | a :: rest => map_(rest, (f(a) :: l_out))
                 | [] => l_out
@@ -620,16 +620,16 @@ TEST("basic.list.map", fun()
     val strings = list_map([:: 1, 2, 3], (string: int->string))
     EXPECT_EQ(`strings`, [:: "1", "2", "3"])
 
-    val cosines : double list = list_map([:: 1., 2., 3.], cos)
+    val cosines : list[double] = list_map([:: 1., 2., 3.], cos)
     val expected = [:: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454]
     EXPECT_NEAR(`cosines`, expected, DBL_EPSILON*10)
 })
 
 TEST("basic.list.zip", fun()
 {
-    fun list_zip(la: 'a list, lb: 'b list): ('a, 'b) list
+    fun list_zip[A, B](la: list[A], lb: list[B]): list[A, B]
     {
-        fun zip_(_: 'a list, _: 'b list, _: ('a, 'b) list) {
+        fun zip_[A, B](_: list[A], _: list[B], _: list[A, B]) {
             | (a :: rest_a, b :: rest_b, lab_out) => zip_(rest_a, rest_b, (a, b) :: lab_out)
             | (_, _, lab_out) => lab_out.rev()
         }
@@ -647,9 +647,9 @@ TEST("basic.list.zip", fun()
 
 TEST("basic.list.unzip", fun()
 {
-    fun list_unzip(lab: ('a, 'b) list): ('a list, 'b list)
+    fun list_unzip[A, B](lab: list[A, B]): (list[A], list[B])
     {
-        fun unzip_(lab_in: ('a, 'b) list, la_out: 'a list, lb_out: 'b list): ('a list, 'b list) =
+        fun unzip_[A, B](lab_in: list[A, B], la_out: list[A], lb_out: list[B]): (list[A], list[B]) =
             match lab_in {
                 | (a, b) :: rest_ab => unzip_(rest_ab, a :: la_out, b :: lb_out)
                 | _ => (la_out.rev(), lb_out.rev())
@@ -709,7 +709,7 @@ TEST("basic.loop.squares", fun()
 {
     fun gen_squares(n: int)
     {
-        var squares: int list = []
+        var squares: list[int] = []
         var i = 0
         while i < n {
             squares = i*i :: squares
@@ -728,9 +728,9 @@ TEST("basic.overloaded", fun()
     // element types. Mixed tuples like (1, "abc") no longer support `+`.
     val t = (1, 2) + (0.125, 0.25)
     EXPECT_EQ(t, (1.125, 2.25))
-    type 't point_t = {x: 't; y: 't}
+    type point_t[T] = {x: T; y: T}
 
-    operator + (p1: 't point_t, p2: 't point_t) =
+    operator + [T](p1: point_t[T], p2: point_t[T]) =
         point_t { x=p1.x + p2.x, y=p1.y + p2.y }
 
     EXPECT_EQ(`(point_t {x=1, y=2}) + (point_t {x=0, y=100})`, point_t {x=1, y=102})
@@ -791,12 +791,12 @@ TEST("basic.string", fun()
 
 TEST("basic.templates.variants", fun()
 {
-    type 't tree_t = Node: { balance:int; left:'t tree_t; right:'t tree_t } | Leaf: 't
+    type tree_t[T] = Node: { balance:int; left:tree_t[T]; right:tree_t[T] } | Leaf: T
     val node_list = Leaf(3) :: Leaf(5) :: (Node { balance=0, left=Leaf(1), right=Leaf(0) }) ::
         (Node { balance=-1, left=Leaf(1), right=Node {balance=0, left=Leaf(10), right=Leaf(100)}}) ::
         []
 
-    fun depth(t: 'x tree_t) {
+    fun depth[X](t: tree_t[X]) {
         | Leaf _ => 0
         | Node {balance, left, right} => 1 + max(depth(left), depth(right))
     }
@@ -807,15 +807,15 @@ TEST("basic.templates.variants", fun()
 
 TEST("basic.keyword_args", fun()
 {
-    fun sqrt(a: 't, ~n: int=2, ~use_abs:bool=false)
+    fun sqrt[T](a: T, ~n: int=2, ~use_abs:bool=false)
     {
         if n == 2 {Math.sqrt(a)}
         else {
             if n % 2 == 0 || use_abs {
-                pow(abs(a), (1./n :> 't))
+                pow(abs(a), (1./n :> T))
             } else {
-                val (a, s) = if a < (0.:>'t) {(-a, -1)} else {(a, 1)}
-                s*pow(a, (1./n :> 't))
+                val (a, s) = if a < (0.:>T) {(-a, -1)} else {(a, 1)}
+                s*pow(a, (1./n :> T))
             }
         }
     }
@@ -904,9 +904,9 @@ TEST("basic.checked_read_side_effect", fun() {
     // Holds for every checked (BorderNone) container read: array, vector,
     // string, rrbvec; independent of opt level (T2 runs O0 and O3).
     val ea: int [] = []
-    val ev: int vector = []
+    val ev: vector[int] = []
     val es: string = ""
-    val er: int rrbvec = []
+    val er: rrbvec[int] = []
     EXPECT_THROWS(fun() { ignore(ea[0]) },   OutOfRangeError)
     EXPECT_THROWS(fun() { ignore(ea[.-1]) }, OutOfRangeError)
     EXPECT_THROWS(fun() { ignore(ev[0]) },   OutOfRangeError)

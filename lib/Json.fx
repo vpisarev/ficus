@@ -67,7 +67,7 @@ fun parse_string(fname: string, s: string): t
     }
 
     fun parse_seq(strm: stream_t, pos: int): (int, t) {
-        var elems: t list = []
+        var elems: list[t] = []
         var vpos = pos
         while true {
             val (c, pos, _) = Lxu.skip_spaces(strm, vpos, false)
@@ -91,7 +91,7 @@ fun parse_string(fname: string, s: string): t
     }
 
     fun parse_map(strm: stream_t, pos: int) {
-        var elems: (string, t) list = []
+        var elems: list[string, t] = []
         var vpos = pos
         while true {
             val (c, pos, _) = Lxu.skip_spaces(strm, vpos, false)
@@ -252,7 +252,7 @@ fun print_to_file(js: t, filename: string): void
 }
 fun print(js: t): void = ignore(print_(js, 0, "", fun(s: string) {print(s)}))
 fun string(js: t): string {
-    var sl: string list = []
+    var sl: list[string] = []
     val _ = print_(js, 0, "", fun(s: string) {sl = s :: sl})
     "".join(sl.rev())
 }

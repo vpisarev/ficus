@@ -68,7 +68,7 @@ check("Ttup_int_vs_int_Utup", compare_typ_generality(a1, [:: t_id], b1, [:: u_id
 // IncompGeneric (ambiguity). Locked as the contract; the surgery session flips
 // this ONLY if the corpus (E4/E1) shows a real need for a keyword tie-break.
 val nop = ExpNop(noloc), df = default_val_flags()
-fun recf(fields: (id_t, typ_t) list, closed: bool) =
+fun recf(fields: list[(id_t, typ_t)], closed: bool) =
     TypRecord(ref ([:: for (n,t) <- fields {(df, n, t, nop)}], closed))
 val recA_open  = recf([:: (get_id("a"), TypInt)], false)
 val recA_clsd  = recf([:: (get_id("a"), TypInt)], true)

@@ -8,22 +8,22 @@ fun mkrange(n: int): int [] = [for i <- 0:n {i}]
 fun mkrange(a: int, b: int): int [] = [for i <- a:b {i}]
 fun mkrange(a: int, b: int, delta: int): int [] = [for i <- a:b:delta {i}]
 
-fun channels(a: ('t*2) [+]): int = 2
-fun channels(a: ('t*3) [+]): int = 3
-fun channels(a: ('t*4) [+]): int = 4
-fun channels(a: ('t*5) [+]): int = 5
+fun channels[T](a: (T*2) [+]): int = 2
+fun channels[T](a: (T*3) [+]): int = 3
+fun channels[T](a: (T*4) [+]): int = 4
+fun channels[T](a: (T*5) [+]): int = 5
 
-fun length(a: 't []): int = __intrin_size__(a)
-fun size(a: 't []): int = __intrin_size__(a)
-fun size(a: 't [,]): (int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
-fun size(a: 't [,,]): (int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
-fun size(a: 't [,,,]): (int, int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
+fun length[T](a: T []): int = __intrin_size__(a)
+fun size[T](a: T []): int = __intrin_size__(a)
+fun size[T](a: T [,]): (int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1))
+fun size[T](a: T [,,]): (int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1), __intrin_size__(a, 2))
+fun size[T](a: T [,,,]): (int, int, int, int) = (__intrin_size__(a, 0), __intrin_size__(a, 1),
                          __intrin_size__(a, 2), __intrin_size__(a, 3))
 
-fun total(a: 't [+]): int = fold p = 1 for szj <- size(a) { p*= szj }
-fun total(a: 't []): int = size(a)
+fun total[T](a: T [+]): int = fold p = 1 for szj <- size(a) { p*= szj }
+fun total[T](a: T []): int = size(a)
 
-@nothrow fun empty(a: 't [+]):bool
+@nothrow fun empty[T](a: T [+]):bool
 @ccode {
     if (!a->data || a->ndims == 0) return true;
     for(int i = 0; i < a->ndims; i++)
@@ -32,240 +32,240 @@ fun total(a: 't []): int = size(a)
     return false;
 }
 
-fun copy(a: 't [+]): 't [+] = [for x <- a {x}]
+fun copy[T](a: T [+]): T [+] = [for x <- a {x}]
 
-fun reshape(a: 't [+], size: (int*2)): 't [,]
+fun reshape[T](a: T [+], size: (int*2)): T [,]
 @ccode {
     return fx_reshape_arr(a, 2, &size->t0, 1, 1, fx_result);
 }
-fun reshape(a: 't [+], s0: int, s1: int): 't [,] = reshape(a, (s0, s1))
+fun reshape[T](a: T [+], s0: int, s1: int): T [,] = reshape(a, (s0, s1))
 
-fun reshape(a: 't [+], size: (int*3)): 't [,,]
+fun reshape[T](a: T [+], size: (int*3)): T [,,]
 @ccode {
     return fx_reshape_arr(a, 3, &size->t0, 1, 1, fx_result);
 }
-fun reshape(a: 't [+], s0: int, s1: int, s2: int): 't [,,] = reshape(a, (s0, s1, s2))
+fun reshape[T](a: T [+], s0: int, s1: int, s2: int): T [,,] = reshape(a, (s0, s1, s2))
 
-fun reshape(a: 't [+], size: (int*4)): 't [,,,]
+fun reshape[T](a: T [+], size: (int*4)): T [,,,]
 @ccode {
     return fx_reshape_arr(a, 4, &size->t0, 1, 1, fx_result);
 }
-fun reshape(a: 't [+], s0: int, s1: int, s2: int, s3: int): 't [,,,] = reshape(a, (s0, s1, s2, s3))
+fun reshape[T](a: T [+], s0: int, s1: int, s2: int, s3: int): T [,,,] = reshape(a, (s0, s1, s2, s3))
 
-fun reshape_multichan_(a: ('t ...)[+], nchannels: int, size: (int*4)): 't [,,,]
+fun reshape_multichan_[T](a: (T ...)[+], nchannels: int, size: (int*4)): T [,,,]
 @ccode {
     return fx_reshape_arr(a, 4, &size->t0, (int)nchannels, 1, fx_result);
 }
-fun reshape_multichan(a: ('t ...) [+], size: (int*4)): 't [,,,] = reshape_multichan_(a, channels(a), size)
-fun reshape_multichan_c3(a: 't [+], size: (int*2)): ('t*3) [,]
+fun reshape_multichan[T](a: (T ...) [+], size: (int*4)): T [,,,] = reshape_multichan_(a, channels(a), size)
+fun reshape_multichan_c3[T](a: T [+], size: (int*2)): (T*3) [,]
 @ccode {
     return fx_reshape_arr(a, 2, &size->t0, 1, 3, fx_result);
 }
-fun reshape_multichan_c3(a: 't [+], s0: int, s1: int): ('t*3) [,] = reshape_multichan_c3(a, (s0, s1))
+fun reshape_multichan_c3[T](a: T [+], s0: int, s1: int): (T*3) [,] = reshape_multichan_c3(a, (s0, s1))
 
-fun __negate__(a: 't [+]): 't [+] = [for x <- a {-x}]
+fun __negate__[T](a: T [+]): T [+] = [for x <- a {-x}]
 
-fun map(arr: 'a [+], f: 'a -> 'b): 'b [+] = [for x <- arr {f(x)}]
-fun assoc_opt(arr: ('a, 'b) [], key: 'a): 'b? =
+fun map[T, Tr](arr: T [+], f: T -> Tr): Tr [+] = [for x <- arr {f(x)}]
+fun assoc_opt[T1, T2](arr: (T1, T2) [], key: T1): T2? =
     match find_opt(for (a, b) <- arr {a == key}) {
     | Some((a, b)) => Some(b)
     | _ => None
     }
-fun assoc(arr: ('a, 'b) [], key: 'a): 'b =
+fun assoc[T1, T2](arr: (T1, T2) [], key: T1): T2 =
     match find_opt(for (a, b) <- arr {a == key}) {
     | Some((a, b)) => b
     | _ => throw NotFoundError
     }
 
-fun sat_uint8(a: 't [+]): uint8 [+] = [for x <- a {sat_uint8(x)}]
-fun sat_int8(a: 't [+]): int8 [+] = [for x <- a {sat_int8(x)}]
-fun sat_uint16(a: 't [+]): uint16 [+] = [for x <- a {sat_uint16(x)}]
-fun sat_int16(a: 't [+]): int16 [+] = [for x <- a {sat_int16(x)}]
+fun sat_uint8[T](a: T [+]): uint8 [+] = [for x <- a {sat_uint8(x)}]
+fun sat_int8[T](a: T [+]): int8 [+] = [for x <- a {sat_int8(x)}]
+fun sat_uint16[T](a: T [+]): uint16 [+] = [for x <- a {sat_uint16(x)}]
+fun sat_int16[T](a: T [+]): int16 [+] = [for x <- a {sat_int16(x)}]
 
-operator .+ (a: 'ta [+], b: 'tb): 't3 [+] =
+operator .+ [Ta, Tb, Tr](a: Ta [+], b: Tb): Tr [+] =
     [for x <- a {x .+ b}]
-operator .- (a: 'ta [+], b: 'tb): 't3 [+] =
+operator .- [Ta, Tb, Tr](a: Ta [+], b: Tb): Tr [+] =
     [for x <- a {x .- b}]
-operator .* (a: 'ta [+], b: 'tb): 't3 [+] =
+operator .* [Ta, Tb, Tr](a: Ta [+], b: Tb): Tr [+] =
     [for x <- a {x .* b}]
-operator ./ (a: 'ta [+], b: 'tb): 't3 [+] =
+operator ./ [Ta, Tb, Tr](a: Ta [+], b: Tb): Tr [+] =
     [for x <- a {x ./ b}]
-operator .% (a: 'ta [+], b: 'tb): 't3 [+] =
+operator .% [Ta, Tb, Tr](a: Ta [+], b: Tb): Tr [+] =
     [for x <- a {x .% b}]
-operator .** (a: 'ta [+], b: 'tb): 't3 [+] =
+operator .** [Ta, Tb, Tr](a: Ta [+], b: Tb): Tr [+] =
     [for x <- a {x .** b}]
 
-operator .+ (a: 'ta, b: 'tb [+]): 't3 [+] =
+operator .+ [Ta, Tb, Tr](a: Ta, b: Tb [+]): Tr [+] =
     [for y <- b {a .+ y}]
-operator .- (a: 'ta, b: 'tb [+]): 't3 [+] =
+operator .- [Ta, Tb, Tr](a: Ta, b: Tb [+]): Tr [+] =
     [for y <- b {a .- y}]
-operator .* (a: 'ta, b: 'tb [+]): 't3 [+] =
+operator .* [Ta, Tb, Tr](a: Ta, b: Tb [+]): Tr [+] =
     [for y <- b {a .* y}]
-operator ./ (a: 'ta, b: 'tb [+]): 't3 [+] =
+operator ./ [Ta, Tb, Tr](a: Ta, b: Tb [+]): Tr [+] =
     [for y <- b {a ./ y}]
-operator .% (a: 'ta, b: 'tb [+]): 't3 [+] =
+operator .% [Ta, Tb, Tr](a: Ta, b: Tb [+]): Tr [+] =
     [for y <- b {a .% y}]
-operator .** (a: 'ta, b: 'tb [+]): 't3 [+] =
+operator .** [Ta, Tb, Tr](a: Ta, b: Tb [+]): Tr [+] =
     [for y <- b {a .** y}]
 
-operator + (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator + [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x + y}]
-operator - (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator - [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x - y}]
-operator .+ (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator .+ [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x + y}]
-operator .- (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator .- [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x - y}]
-operator .* (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator .* [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x .* y}]
-operator ./ (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator ./ [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x ./ y}]
-operator .% (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator .% [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x .% y}]
-operator .** (a: 'ta [+], b: 'tb [+]): 't3 [+] =
+operator .** [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): Tr [+] =
     [for x <- a, y <- b {x .** y}]
 
-operator += (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x + b} }
-operator -= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x - b} }
-operator .*= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x * b} }
-operator ./= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x / b} }
-operator .%= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x % b} }
+operator += [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x + b} }
+operator -= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x - b} }
+operator .*= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x * b} }
+operator ./= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x / b} }
+operator .%= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x % b} }
 
-operator += (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x + y} }
-operator -= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x - y} }
-operator .*= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x * y} }
-operator ./= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x / y} }
-operator .%= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x % y} }
+operator += [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x + y} }
+operator -= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x - y} }
+operator .*= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x * y} }
+operator ./= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x / y} }
+operator .%= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x % y} }
 
-operator & (a: 't, b: 't [+]): 't [+] =
+operator & [T](a: T, b: T [+]): T [+] =
     [for y <- b {a & y}]
-operator | (a: 't, b: 't [+]): 't [+] =
+operator | [T](a: T, b: T [+]): T [+] =
     [for y <- b {a | y}]
-operator ^ (a: 't, b: 't [+]): 't [+] =
+operator ^ [T](a: T, b: T [+]): T [+] =
     [for y <- b {a ^ y}]
-operator & (a: 't [+], b: 't): 't [+] =
+operator & [T](a: T [+], b: T): T [+] =
     [for x <- a {x & b}]
-operator | (a: 't [+], b: 't): 't [+] =
+operator | [T](a: T [+], b: T): T [+] =
     [for x <- a {x | b}]
-operator ^ (a: 't [+], b: 't): 't [+] =
+operator ^ [T](a: T [+], b: T): T [+] =
     [for x <- a {x ^ b}]
 
-operator & (a: 't [+], b: 't [+]): 't [+] =
+operator & [T](a: T [+], b: T [+]): T [+] =
     [for x <- a, y <- b {x & y}]
-operator | (a: 't [+], b: 't [+]): 't [+] =
+operator | [T](a: T [+], b: T [+]): T [+] =
     [for x <- a, y <- b {x | y}]
-operator ^ (a: 't [+], b: 't [+]): 't [+] =
+operator ^ [T](a: T [+], b: T [+]): T [+] =
     [for x <- a, y <- b {x ^ y}]
 
-operator &= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x & b} }
-operator |= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x | b} }
-operator ^= (a: 'ta [+], b: 'tb): void { for x@idx <- a { a[idx] = x ^ b} }
+operator &= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x & b} }
+operator |= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x | b} }
+operator ^= [Ta, Tb, Tr](a: Ta [+], b: Tb): void { for x@idx <- a { a[idx] = x ^ b} }
 
-operator &= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x & y} }
-operator |= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x | y} }
-operator ^= (a: 'ta [+], b: 'tb [+]): void { for x@idx <- a, y <- b { a[idx] = x ^ y} }
+operator &= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x & y} }
+operator |= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x | y} }
+operator ^= [Ta, Tb, Tr](a: Ta [+], b: Tb [+]): void { for x@idx <- a, y <- b { a[idx] = x ^ y} }
 
-operator .<=> (a: 't [+], b: 't [+]): int [+] =
+operator .<=> [T](a: T [+], b: T [+]): int [+] =
     [for x <- a, y <- b {x <=> y}]
-operator .== (a: 't [+], b: 't [+]): bool [+] =
+operator .== [T](a: T [+], b: T [+]): bool [+] =
     [for x <- a, y <- b {x == y}]
-operator .!= (a: 't [+], b: 't [+]): bool [+] =
+operator .!= [T](a: T [+], b: T [+]): bool [+] =
     [for x <- a, y <- b {!(x == y)}]
-operator .< (a: 't [+], b: 't [+]): bool [+] =
+operator .< [T](a: T [+], b: T [+]): bool [+] =
     [for x <- a, y <- b {x < y}]
-operator .<= (a: 't [+], b: 't [+]): bool [+] =
+operator .<= [T](a: T [+], b: T [+]): bool [+] =
     [for x <- a, y <- b {!(y < x)}]
-operator .> (a: 't [+], b: 't [+]): bool [+] =
+operator .> [T](a: T [+], b: T [+]): bool [+] =
     [for x <- a, y <- b {y < x}]
-operator .>= (a: 't [+], b: 't [+]): bool [+] =
+operator .>= [T](a: T [+], b: T [+]): bool [+] =
     [for x <- a, y <- b {!(x < y)}]
 
-operator .<=> (x: 't, b: 't [+]): int [+] =
+operator .<=> [T](x: T, b: T [+]): int [+] =
     [for y <- b {x <=> y}]
-operator .== (x: 't, b: 't [+]): bool [+] =
+operator .== [T](x: T, b: T [+]): bool [+] =
     [for y <- b {x == y}]
-operator .!= (x: 't, b: 't [+]): bool [+] =
+operator .!= [T](x: T, b: T [+]): bool [+] =
     [for y <- b {!(x == y)}]
-operator .< (x: 't, b: 't [+]): bool [+] =
+operator .< [T](x: T, b: T [+]): bool [+] =
     [for y <- b {x < y}]
-operator .<= (x: 't, b: 't [+]): bool [+] =
+operator .<= [T](x: T, b: T [+]): bool [+] =
     [for y <- b {!(y < x)}]
-operator .> (x: 't, b: 't [+]): bool [+] =
+operator .> [T](x: T, b: T [+]): bool [+] =
     [for y <- b {y < x}]
-operator .>= (x: 't, b: 't [+]): bool [+] =
+operator .>= [T](x: T, b: T [+]): bool [+] =
     [for y <- b {!(x < y)}]
 
-operator .<=> (a: 't [+], y: 't): int [+] =
+operator .<=> [T](a: T [+], y: T): int [+] =
     [for x <- a {x <=> y}]
-operator .== (a: 't [+], y: 't): bool [+] =
+operator .== [T](a: T [+], y: T): bool [+] =
     [for x <- a {x == y}]
-operator .!= (a: 't [+], y: 't): bool [+] =
+operator .!= [T](a: T [+], y: T): bool [+] =
     [for x <- a {!(x == y)}]
-operator .< (a: 't [+], y: 't): bool [+] =
+operator .< [T](a: T [+], y: T): bool [+] =
     [for x <- a {x < y}]
-operator .<= (a: 't [+], y: 't): bool [+] =
+operator .<= [T](a: T [+], y: T): bool [+] =
     [for x <- a {!(y < x)}]
-operator .> (a: 't [+], y: 't): bool [+] =
+operator .> [T](a: T [+], y: T): bool [+] =
     [for x <- a {y < x}]
-operator .>= (a: 't [+], y: 't): bool [+] =
+operator .>= [T](a: T [+], y: T): bool [+] =
     [for x <- a {!(x < y)}]
 
-fun min(a: 't [+], b: 't [+]): 't [+] =
+fun min[T](a: T [+], b: T [+]): T [+] =
     [for x <- a, y <- b {min(x, y)}]
-fun max(a: 't [+], b: 't [+]): 't [+] =
+fun max[T](a: T [+], b: T [+]): T [+] =
     [for x <- a, y <- b {max(x, y)}]
 
-fun min(x: 't, b: 't [+]): 't [+] =
+fun min[T](x: T, b: T [+]): T [+] =
     [for y <- b {min(x, y)}]
-fun max(x: 't, b: 't [+]): 't [+] =
+fun max[T](x: T, b: T [+]): T [+] =
     [for y <- b {max(x, y)}]
 
-fun min(a: 't [+], y: 't): 't [+] =
+fun min[T](a: T [+], y: T): T [+] =
     [for x <- a {min(x, y)}]
-fun max(a: 't [+], y: 't): 't [+] =
+fun max[T](a: T [+], y: T): T [+] =
     [for x <- a {max(x, y)}]
 
-fun clip(a: 't [+], minv: 't, maxv: 't): 't [+] =
+fun clip[T](a: T [+], minv: T, maxv: T): T [+] =
     [for x <- a {min(max(x, minv), maxv)}]
-fun clip(a: 't [+], minv_arr: 't [+], maxv_arr: 't [+]): 't [+] =
+fun clip[T](a: T [+], minv_arr: T [+], maxv_arr: T [+]): T [+] =
     [for x <- a, minv <- minv_arr, maxv <- maxv_arr {min(max(x, minv), maxv)}]
 
-fun sum(a: 't [+]): double =
-    fold s = ((0 :> 't) :> double) for aj <- a {s += aj}
+fun sum[T](a: T [+]): double =
+    fold s = ((0 :> T) :> double) for aj <- a {s += aj}
 
-fun sum(a: 't [+], v0: 's): 's =
+fun sum[T, S](a: T [+], v0: S): S =
     fold s = v0 for aj <- a {s += aj}
 
-fun product(a: 't [+], v0: 's): 's =
+fun product[T, S](a: T [+], v0: S): S =
     fold p = v0 for aj <- a {p *= aj}
 
-fun mean(a: 't [+]): double = sum(a)/(max(total(a), 1) :> double)
+fun mean[T](a: T [+]): double = sum(a)/(max(total(a), 1) :> double)
 
-fun normInf(a: 't [+]): 't =
-    fold s = normInf(0 :> 't) for aj <- a {s = max(s, normInf(aj))}
+fun normInf[T](a: T [+]): T =
+    fold s = normInf(0 :> T) for aj <- a {s = max(s, normInf(aj))}
 
-fun normL1(a: 't [+]): double =
+fun normL1[T](a: T [+]): double =
     fold s = 0. for aj <- a {s += normL1(aj)}
 
-fun normL2sqr(a: 't [+]): double =
+fun normL2sqr[T](a: T [+]): double =
     fold s = 0. for aj <- a {s += normL2sqr(aj)}
 
-fun normL2(a: 't [+]): double = sqrt(normL2sqr(a))
+fun normL2[T](a: T [+]): double = sqrt(normL2sqr(a))
 
-fun normInf(a: 't [+], b: 't [+]): 't =
-    fold s = normInf(0 :> 't) for aj <- a, bj <- b {s = max(s, normInf(aj, bj))}
+fun normInf[T](a: T [+], b: T [+]): T =
+    fold s = normInf(0 :> T) for aj <- a, bj <- b {s = max(s, normInf(aj, bj))}
 
-fun normL1(a: 't [+], b: 't [+]): double =
+fun normL1[T](a: T [+], b: T [+]): double =
     fold s = 0. for aj <- a, bj <- b {s += normL1(aj, bj)}
 
-fun normL2sqr(a: 't [+], b: 't [+]): double =
+fun normL2sqr[T](a: T [+], b: T [+]): double =
     fold s = 0. for aj <- a, bj <- b {s += normL2sqr(aj, bj)}
 
-fun normL2(a: 't [+], b: 't [+]): double = sqrt(normL2sqr(a, b))
+fun normL2[T](a: T [+], b: T [+]): double = sqrt(normL2sqr(a, b))
 
-fun minindex(a: 't []): ('t, int) =
+fun minindex[T](a: T []): (T, int) =
     if a == [] {
-        (0 :> 't, -1)
+        (0 :> T, -1)
     } else {
         fold minv = a[0], mini = 0 for x@i <- a {
             if x < minv {
@@ -275,9 +275,9 @@ fun minindex(a: 't []): ('t, int) =
         }
     }
 
-fun maxindex(a: 't []): ('t, int) =
+fun maxindex[T](a: T []): (T, int) =
     if a == [] {
-        (0 :> 't, -1)
+        (0 :> T, -1)
     } else {
         fold maxv = a[0], maxi = 0 for x@i <- a {
             if x > maxv {
@@ -287,24 +287,24 @@ fun maxindex(a: 't []): ('t, int) =
         }
     }
 
-operator ' (a: 't [,]): 't [,]
+operator ' [T](a: T [,]): T [,]
 {
     val (m, n) = size(a)
     [for j <- 0:n for i <- 0:m {a[i, j]}]
 }
 
-operator ' (a: 't []): 't [,]
+operator ' [T](a: T []): T [,]
 {
     val n = size(a)
     [for j <- 0:n for i <- 0:1 {a[j]}]
 }
 
 // matrix product: not very efficient and is put here for now just as a placeholder
-operator * (a: 't [,], b: 't [,]): 't [,]
+operator * [T](a: T [,], b: T [,]): T [,]
 {
     val (ma, na) = size(a), (mb, nb) = size(b)
     assert(na == mb)
-    val c = array((ma, nb), (0 :> 't))
+    val c = array((ma, nb), (0 :> T))
 
     if ma*na*nb < (1<<20)
     {
@@ -327,57 +327,57 @@ operator * (a: 't [,], b: 't [,]): 't [,]
     c
 }
 
-operator * (a: float [,], b: float [,]): 't3 [,] = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
-operator * (a: double [,], b: double [,]): 't3 [,] = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
+operator * (a: float [,], b: float [,]): float [,] = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
+operator * (a: double [,], b: double [,]): double [,] = __intrin_gemm__(a, false, 0, -1, 1, 0, -1, 1, b, false, 0, -1, 1, 0, -1, 1)
 
-operator *= (a: 't [,], b: 't [,]): void {
+operator *= [T](a: T [,], b: T [,]): void {
     val temp = a*b
     a[:,:] = temp
 }
 
-fun row2matrix(a: 't []): 't [,]
+fun row2matrix[T](a: T []): T [,]
 {
     val n = size(a)
     [for i <- 0:1 for j <- 0:n {a[j]}]
 }
 
-operator * (a: 't [], b: 't [,]): 't [,] = row2matrix(a)*b
-operator * (a: 't [,], b: 't []): 't [,] = a*row2matrix(b)
+operator * [T](a: T [], b: T [,]): T [,] = row2matrix(a)*b
+operator * [T](a: T [,], b: T []): T [,] = a*row2matrix(b)
 
-operator * (a: 't [+], alpha: 't): 't [+] = [for x <- a {x*alpha}]
-operator * (alpha: 't, a: 't [+]): 't [+] = [for x <- a {x*alpha}]
+operator * [T](a: T [+], alpha: T): T [+] = [for x <- a {x*alpha}]
+operator * [T](alpha: T, a: T [+]): T [+] = [for x <- a {x*alpha}]
 
-fun diag(d: 't[]): 't [,]
+fun diag[T](d: T[]): T [,]
 {
     val n = size(d)
-    val a = array((n, n), (0 :> 't))
+    val a = array((n, n), (0 :> T))
     for i <- 0:n {a[i, i] = d[i]}
     a
 }
 
-fun diag(n: int, d: 't): 't [,]
+fun diag[T](n: int, d: T): T [,]
 {
-    val a = array((n, n), (0 :> 't))
-    if d != (0 :> 't) {
+    val a = array((n, n), (0 :> T))
+    if d != (0 :> T) {
         for i <- 0:n {a[i, i] = d}
     }
     a
 }
 
-fun random(rng: RNG, size: int, a: 't, b: 't): 't [] =
+fun random[T](rng: RNG, size: int, a: T, b: T): T [] =
     [for i <- 0:size {rng.uniform(a, b)}]
 
-fun random(rng: RNG, size: (int, int), a: 't, b: 't): 't [,] =
+fun random[T](rng: RNG, size: (int, int), a: T, b: T): T [,] =
     [for i <- 0:size.0 for j <- 0:size.1 {rng.uniform(a, b)}]
 
-fun random(rng: RNG, size: (int, int, int), a: 't, b: 't): 't [,,] =
+fun random[T](rng: RNG, size: (int, int, int), a: T, b: T): T [,,] =
     [for i <- 0:size.0 for j <- 0:size.1 for k <- 0:size.2 {rng.uniform(a, b)}]
 
-fun random(rng: RNG, size: (int, int, int, int), a: 't, b: 't): 't [,,,] =
+fun random[T](rng: RNG, size: (int, int, int, int), a: T, b: T): T [,,,] =
     [for i <- 0:size.0 for j <- 0:size.1
        for k <- 0:size.2 for l <- 0:size.3 {rng.uniform(a, b)}]
 
-fun shuffle(arr: 't [], rng: RNG): void
+fun shuffle[T](arr: T [], rng: RNG): void
 {
     val n = size(arr)
     if n > 1 {
@@ -397,7 +397,7 @@ fun shuffle(arr: 't [], rng: RNG): void
     }
 }
 
-fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int): void
+fun sort[T](arr: T [], lt: (T, T) -> bool, ~prefix: int): void
 {
     fun qsort_(lo: int, hi: int) {
         if lo+1 < hi {
@@ -453,7 +453,7 @@ fun sort(arr: 't [], lt: ('t, 't) -> bool, ~prefix: int): void
     qsort_(0, size(arr)-1)
 }
 
-fun sort(arr: 't [], lt: ('t, 't) -> bool): void = sort(arr, lt, prefix=size(arr))
+fun sort[T](arr: T [], lt: (T, T) -> bool): void = sort(arr, lt, prefix=size(arr))
 
 @ccode {
 /*
@@ -663,7 +663,7 @@ fun det(a: double [,]): double =
     return status < 0 ? status : FX_OK;
 }
 
-fun trace(a: 't [,]): double
+fun trace[T](a: T [,]): double
 {
     val (m, n) = size(a)
     fold s = 0. for i <- 0:min(m, n) {s += a[i, i]}

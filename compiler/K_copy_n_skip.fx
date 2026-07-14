@@ -146,9 +146,9 @@ from K_form import *
 import K_inline, K_pp
 import Map, Set, Hashmap, Hashset
 
-type subst_map_t = (id_t, id_t) Hashmap.t
+type subst_map_t = Hashmap.t[id_t, id_t]
 
-fun copy_some(kmods: kmodule_t list)
+fun copy_some(kmods: list[kmodule_t])
 {
     val toposort_idx = array(size(all_modules), 123456789)
     for {km_idx, km_toposort_idx} <- kmods {
@@ -162,7 +162,7 @@ fun copy_some(kmods: kmodule_t list)
     // The index is used for the further sorting to put
     // the copied functionality in more or less stable order, which
     // is similar to the order of defined functionality.
-    var all_copied: (id_t, (int, kexp_t)) list = []
+    var all_copied: list[id_t, (int, kexp_t)] = []
     var idx = 0
     for km <- kmods {
         val {km_top} = km

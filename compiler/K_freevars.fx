@@ -33,7 +33,7 @@ type fv_func_info_t =
     fv_called_funcs: id_hashset_t
 }
 
-type fv_env_t = (id_t, fv_func_info_t) Hashmap.t
+type fv_env_t = Hashmap.t[id_t, fv_func_info_t]
 
 fun empty_fv_env(size0: int){
     val fv_info0 = fv_func_info_t {
@@ -44,7 +44,7 @@ fun empty_fv_env(size0: int){
     Hashmap.empty(size0, noid, fv_info0)
 }
 
-fun collect_free_vars(kmods: kmodule_t list, globals: id_t Hashset.t,
+fun collect_free_vars(kmods: list[kmodule_t], globals: Hashset.t[id_t],
                                                 collect_function_info:bool,
                                                 only_mutable:bool,
                                                 transitive_closure:bool): fv_env_t {
@@ -108,7 +108,7 @@ fun collect_free_vars(kmods: kmodule_t list, globals: id_t Hashset.t,
     }
 
     if (transitive_closure) {
-        fun finalize_sets(iters: int, ll_all: id_t list)
+        fun finalize_sets(iters: int, ll_all: list[id_t])
         {
             var visited_funcs = empty_id_hashset(1024)
             val idset0 = empty_id_hashset(1)
@@ -165,7 +165,7 @@ fun sort_freevars(fvars: id_hashset_t){
     [:: for (_, fv) <- fvar_pairs_sorted {fv} ]
 }
 
-fun mutable_freevars2refs(kmods: kmodule_t list) {
+fun mutable_freevars2refs(kmods: list[kmodule_t]) {
 
     val globals = empty_id_hashset(256)
     for {km_top} <- kmods {

@@ -90,7 +90,7 @@ type assoc_t = AssocLeft | AssocRight
     fun pr_id_opt() = pr_id_opt_(true)
 
     fun pr_struct(prefix: string, n_opt: id_t?,
-                 elems: (id_t, ctyp_t) list, suffix: string)
+                 elems: list[id_t, ctyp_t], suffix: string)
     {
         pp.str(prefix + " ")
         match n_opt {
@@ -303,7 +303,7 @@ type assoc_t = AssocLeft | AssocRight
         pp.begin(); pp.str("\n"+ccode.strip()+"\n"); pp.end()
     }
 
-@private fun pp_elist(pp: PP.t, el: cexp_t list)
+@private fun pp_elist(pp: PP.t, el: list[cexp_t])
 {
     for e@i <- el {
         if i > 0 { pp.str(","); pp.space() }

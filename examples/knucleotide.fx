@@ -13,7 +13,7 @@
 import File, Sys
 import Hashmap
 
-type hashtab_t = (int64, int) Hashmap.t
+type hashtab_t = Hashmap.t[int64, int]
 
 val lut = {
     val L = array(256, 255u8)
@@ -77,7 +77,7 @@ fun find_seq(seq: uint8 [], substr: string)
     f"{freq}\t{substr.toupper()}"
 }
 
-var lines: string list = []
+var lines: list[string] = []
 val fname = match Sys.arguments() {
     | fname :: _ => fname
     | _ =>

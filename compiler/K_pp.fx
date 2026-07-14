@@ -41,7 +41,7 @@ val pp_ = Ast.pp
         pp.str(rp); pp.str(" "); pp.str(suf); pp.end()
     }
 
-    fun ppktyplist_(prefix: string, args: ktyp_t list) {
+    fun ppktyplist_(prefix: string, args: list[ktyp_t]) {
         pp.str(prefix)
         pp.cut();
         pp.begin()
@@ -172,9 +172,9 @@ val pp_ = Ast.pp
         pp.end(); pp.space()
         if closing { pp.begin(); pp.str("}"); pp.end() }
     }
-    fun ppatoms_(al: atom_t list) =
+    fun ppatoms_(al: list[atom_t]) =
         for a@i <- al { if i > 0 {pp.str(","); pp.space() }; pp_atom_(a) }
-    fun pp_for_hdr_(pre_exp: kexp_t, for_cl: (id_t, dom_t) list, at_ids: id_t list): void
+    fun pp_for_hdr_(pre_exp: kexp_t, for_cl: list[id_t, dom_t], at_ids: list[id_t]): void
     {
         pp.begin(); pp.str("for "); pp.cut()
         match pre_exp {
@@ -505,7 +505,7 @@ val pp_ = Ast.pp
     }
 }
 
-@private fun pp_exp_seq(pp: PP.t, eseq: kexp_t list, braces: bool)
+@private fun pp_exp_seq(pp: PP.t, eseq: list[kexp_t], braces: bool)
 {
     if braces { pp.str("{") }
     pp.beginv()
@@ -539,7 +539,7 @@ fun pp_kexp(e: kexp_t) {
     File.stdout.flush()
 }
 
-fun pp_top(title: string, code: kexp_t list) {
+fun pp_top(title: string, code: list[kexp_t]) {
     File.stdout.flush()
     val pp = PP.pprint_to_stdout(margin, default_indent=default_indent)
     pp.beginv(0)
@@ -555,12 +555,12 @@ fun pp_top(title: string, code: kexp_t list) {
     println(); File.stdout.flush()
 }
 
-fun pp_kmods(kmods: kmodule_t list) =
+fun pp_kmods(kmods: list[kmodule_t]) =
     for {km_cname, km_top}@i <- kmods {
         pp_top(f"\n///////// module {km_cname}: {km_top.length()} expressions //////////", km_top)
     }
 
-fun pp_top_to_string(code: kexp_t list) {
+fun pp_top_to_string(code: list[kexp_t]) {
     val pp = PP.pprint_to_string_list(margin, default_indent=default_indent)
     pp.beginv(0)
     for e@i <- code {

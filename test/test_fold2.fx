@@ -89,7 +89,7 @@ TEST("fold2.nested_inner_assigns_outer", fun() {
 // NEW semantics lock: a closure in the body captures the accumulator VAR (it
 // sees the final value), NOT a per-iteration immutable snapshot as old fold did.
 TEST("fold2.closure_captures_var", fun() {
-    val (s, fns) = fold (s, fns) = (0, ([]: (void -> int) list)) for x <- [1, 2, 3] {
+    val (s, fns) = fold (s, fns) = (0, ([]: list[(void -> int)])) for x <- [1, 2, 3] {
         s += x
         fns = (fun () { s }) :: fns
     }

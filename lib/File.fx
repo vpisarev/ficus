@@ -119,7 +119,7 @@ fun flush(f: File.t): void
     return FX_OK;
 }
 
-fun print(f: File.t, x: 't): void = print(f, string(x))
+fun print[T](f: File.t, x: T): void = print(f, string(x))
 
 fun print(f: File.t, x: string): void
 @ccode {
@@ -152,7 +152,7 @@ fun print(f: File.t, x: double): void
     return FX_OK;
 }
 
-fun println(f: File.t, x: 't): void
+fun println[T](f: File.t, x: T): void
 {
     print(f, x)
     print(f, "\n")
@@ -163,7 +163,7 @@ fun println(f: File.t): void
     print(f, "\n")
 }
 
-fun write(f: File.t, a: 't []): void
+fun write[T](f: File.t, a: T []): void
 @ccode {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);
@@ -172,7 +172,7 @@ fun write(f: File.t, a: 't []): void
     return count == count0 ? FX_OK : FX_EXN_IOError;
 }
 
-fun write(f: File.t, a: 't [,]): void
+fun write[T](f: File.t, a: T [,]): void
 @ccode {
     size_t step = a->dim[0].step, elem_size = a->dim[1].step;
     size_t count0 = (size_t)a->dim[1].size;
@@ -187,7 +187,7 @@ fun write(f: File.t, a: 't [,]): void
     return FX_OK;
 }
 
-fun read(f: File.t, a: 't []): int
+fun read[T](f: File.t, a: T []): int
 @ccode {
     if(!f->handle || !f->handle->ptr)
         FX_FAST_THROW_RET(FX_EXN_NullFileError);

@@ -39,8 +39,8 @@ type func_info_t =
     fi_km_idx: int;
 }
 
-type subst_map_t = (id_t, atom_t) Hashmap.t
-type fir_map_t = (id_t, func_info_t ref) Hashmap.t
+type subst_map_t = Hashmap.t[id_t, atom_t]
+type fir_map_t = Hashmap.t[id_t, ref[func_info_t]]
 
 fun find_recursive_funcs(km_idx: int, top_code: kcode_t): kcode_t
 {
@@ -100,7 +100,7 @@ fun find_recursive_funcs(km_idx: int, top_code: kcode_t): kcode_t
     top_code
 }
 
-fun find_recursive_funcs_all(kmods: kmodule_t list) =
+fun find_recursive_funcs_all(kmods: list[kmodule_t]) =
     [:: for km <- kmods {
         val {km_idx, km_top} = km
         val new_top = find_recursive_funcs(km_idx, km_top)
@@ -189,7 +189,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
         | Some _ => throw compile_err(loc, f"id is expected to be produced after renaming '{idk2str(i, loc)}', not literal")
         | _ => i
         }
-    fun subst_scope(sc: scope_t list, loc: loc_t): scope_t list =
+    fun subst_scope(sc: list[scope_t], loc: loc_t): list[scope_t] =
         match sc {
         | ScFun(f) :: rest =>
             val f = subst_id_(f, loc)
@@ -224,7 +224,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
         set_idk_entry(new_i, KVal(new_kv))
         new_i
     }
-    fun subst_kf_(kf: kdeffun_t ref, callb: k_callb_t)
+    fun subst_kf_(kf: ref[kdeffun_t], callb: k_callb_t)
     {
         val {kf_name, kf_params, kf_rt, kf_body, kf_closure, kf_scope, kf_loc} = *kf
         val {kci_arg, kci_fcv_t, kci_fp_typ, kci_make_fp, kci_wrap_f} = kf_closure
@@ -245,7 +245,7 @@ fun subst_names(km_idx: int, e: kexp_t, subst_map0: subst_map_t, rename: bool): 
     }
     fun subst_kexp_(e: kexp_t, callb: k_callb_t)
     {
-        fun subst_idlist_(nlist: id_t list, loc: loc_t) =
+        fun subst_idlist_(nlist: list[id_t], loc: loc_t) =
             [:: for n <- nlist {subst_id_(n, loc)} ]
         match e {
         /*| KDefVal (n, e, loc) =>
@@ -369,7 +369,7 @@ fun expand_call(km_idx: int, e: kexp_t) =
     | _ => (e, false)
     }
 
-fun inline_some(kmods: kmodule_t list)
+fun inline_some(kmods: list[kmodule_t])
 {
     var curr_km_idx = -1
     fun gen_default_func_info(nrefs: int) =

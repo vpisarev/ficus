@@ -1,6 +1,6 @@
 703_variant_pat_nonvariant.fx:2:21: error: the appropriate match for 'Some' of type '(<unknown> -> int)' is not found.
 Candidates:
- Some('t) -> 't option@12 [generic: 't] @ Builtins.fx:L:C -- the return type or the signature as a whole does not match
+ Some(T) -> option@12[T] [generic: T] @ Builtins.fx:L:C -- the return type or the signature as a whole does not match
 
  2 | val x = match 5 { | Some y => 1 | _ => 0 }
    |                     ^~~~
