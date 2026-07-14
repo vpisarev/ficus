@@ -1316,6 +1316,7 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
 {
     var is_private = false, is_pure = false, is_nothrow = false, is_inline = false
     var vts = ts, class_id = noid, fname = noid, loc = noloc
+    var templ_args: id_t list = []  // generics-1: declared `fun name[T,...]` params
 
     while true {
         match vts {
@@ -1341,23 +1342,40 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
             val (class_id_, fname_) =
                 if dot_pos >= 0 {(get_id(f[:dot_pos]), get_id(f[dot_pos+1:]))}
                 else {(noid, get_id(f))}
+            // generics-1: optional declared type params `fun name[T,...](...)`
+            val (ts, tparams) = match ts {
+                | (LSQUARE(false), _) :: rest => parse_bracket_tyvars_(rest, false, [])
+                | _ => (ts, [])
+                }
             vts = match ts {
                 | (LPAREN(_), _) :: rest => rest
                 | _ => throw parse_err(ts, "'(' is expected after function name")
                 }
-            class_id = class_id_; fname = fname_; loc = name_loc; break
-        | (OPERATOR, l1) :: (t, l2) :: (LPAREN _, _) :: rest =>
+            class_id = class_id_; fname = fname_; loc = name_loc; templ_args = tparams; break
+        | (OPERATOR, l1) :: (t, l2) :: _ =>
             // the operator symbol is the name: span 'operator X'.
-            vts = rest; fname = get_opname(t); loc = loclist2loc([:: l1, l2], l1)
-            if fname == noid { throw ParseError(l2, "invalid operator name") }
-            break
+            val opname = get_opname(t)
+            if opname == noid { throw ParseError(l2, "invalid operator name") }
+            // generics-1: optional declared type params `operator ==[T](...)`.
+            // After an operator symbol new_exp is true, so the '[' is LSQUARE(true)
+            // (unlike after a fun/type NAME); in operator-name position a '[' can
+            // only introduce type params, so accept either flag.
+            val (ts, tparams) = match vts.tl().tl() {
+                | (LSQUARE _, _) :: rest => parse_bracket_tyvars_(rest, false, [])
+                | rest => (rest, [])
+                }
+            vts = match ts {
+                | (LPAREN _, _) :: rest => rest
+                | _ => throw parse_err(ts, "'(' is expected after the operator name")
+                }
+            fname = opname; loc = loclist2loc([:: l1, l2], l1); templ_args = tparams; break
         | _ =>
             throw parse_err(vts, "'fun <funcname> (' is expected (after optional attributes)")
         }
     }
 
     val (ts, params, rt, prologue, have_keywords) = parse_fun_params(vts)
-    parse_body_and_make_fun(ts, fname, params, rt, prologue,
+    parse_body_and_make_fun(ts, fname, templ_args, params, rt, prologue,
         default_fun_flags().{
             fun_flag_private=is_private,
             fun_flag_nothrow=is_nothrow,
@@ -1437,7 +1455,7 @@ fun parse_lambda(ts: tklist_t): (tklist_t, exp_t)
     val (ts, params, rt, prologue, have_keywords) = parse_fun_params(ts)
     val fname = dup_id(parser_ctx.m_idx, std__lambda__)
     val fname_exp = make_ident(fname, loc)
-    val (ts, df) = parse_body_and_make_fun(ts, fname, params, rt, prologue,
+    val (ts, df) = parse_body_and_make_fun(ts, fname, [], params, rt, prologue,
         default_fun_flags().{fun_flag_private=true, fun_flag_have_keywords=have_keywords}, loc)
     (ts, ExpSeq([:: df, fname_exp], make_new_ctx(loc)))
 }
@@ -1506,7 +1524,7 @@ fun parse_fun_params(ts: tklist_t): (tklist_t, pat_t list, typ_t, exp_t list, bo
     }
 }
 
-fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: typ_t,
+fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, templ_args: id_t list, params: pat_t list, rt: typ_t,
                             prologue: exp_t list, fflags: fun_flags_t, loc: loc_t): (tklist_t, exp_t)
 {
     val (ts, params, body, fflags) = match ts {
@@ -1543,7 +1561,7 @@ fun parse_body_and_make_fun(ts: tklist_t, fname: id_t, params: pat_t list, rt: t
             | _ => make_new_typ()
             }
         }]
-    val df = ref (deffun_t { df_name=fname, df_templ_args=[],
+    val df = ref (deffun_t { df_name=fname, df_templ_args=templ_args,
         df_args=params, df_typ=TypFun(paramtyps, rt), df_body=body,
         df_flags=fflags, df_scope=[], df_loc=loc,
         df_templ_inst=ref [], df_env=empty_env})
@@ -1879,6 +1897,54 @@ fun typ2typlist(t: typ_t): typ_t list
     | _ => [:: t]
 }
 
+// generics-1: new bracketed type-application `Name[targs]`. Reinterpret the
+// already-parsed head type (a bare name) applied to the parsed argument list,
+// mirroring the postfix `targ list` reinterpretation in extend_typespec_nf_ so
+// both notations produce identical typ_t (list[T] == 'T list, etc.).
+fun apply_typ_targs(head: typ_t, targs: typ_t list, ts: tklist_t): typ_t =
+    match head {
+    | TypApp([], hname) =>
+        match (pp(hname), targs) {
+        | ("list", [:: t]) => TypList(t)
+        | ("rrbvec", [:: t]) => TypRRBVec(t)
+        | ("vector", [:: t]) => TypVector(t)
+        | ("ref", [:: t]) => TypRef(t)
+        | ("option", _) => TypApp(targs, get_id("option"))
+        | (("list"|"rrbvec"|"vector"|"ref"), _) =>
+            throw parse_err(ts, f"the built-in type '{pp(hname)}' expects exactly one type argument")
+        | _ => TypApp(targs, hname)
+        }
+    | _ => throw parse_err(ts, "bracketed type application '[...]' must follow a type name")
+    }
+
+// parse a comma-separated list of type arguments up to the closing ']'
+fun parse_typearg_list_(ts: tklist_t, expect_comma: bool, acc: typ_t list): (tklist_t, typ_t list) =
+    match ts {
+    | (COMMA, _) :: rest =>
+        if expect_comma { parse_typearg_list_(rest, false, acc) }
+        else { throw parse_err(ts, "extra ','?") }
+    | (RSQUARE, _) :: rest => (rest, acc.rev())
+    | _ =>
+        if expect_comma { throw parse_err(ts, "',' or ']' is expected in the type argument list") }
+        val (ts, t) = parse_typespec(ts)
+        parse_typearg_list_(ts, true, t :: acc)
+    }
+
+// parse a declared type-parameter list `[T, K, ...]` (bare identifiers) used by
+// the new `type name[params]` / `fun name[params]` forms. The opening '[' is
+// already consumed by the caller.
+fun parse_bracket_tyvars_(ts: tklist_t, expect_comma: bool, acc: id_t list): (tklist_t, id_t list) =
+    match ts {
+    | (COMMA, _) :: rest =>
+        if expect_comma { parse_bracket_tyvars_(rest, false, acc) }
+        else { throw parse_err(ts, "extra ','?") }
+    | (RSQUARE, _) :: rest => (rest, acc.rev())
+    | (IDENT(_, i), _) :: rest =>
+        if expect_comma { throw parse_err(ts, "',' is expected") }
+        parse_bracket_tyvars_(rest, true, get_id(i) :: acc)
+    | _ => throw parse_err(ts, "a type parameter name or ']' is expected")
+    }
+
 fun parse_atomic_typ_(ts: tklist_t): (tklist_t, typ_t)
 {
     | (IDENT(_, i), _) :: _ =>
@@ -1909,6 +1975,20 @@ fun parse_atomic_typ_(ts: tklist_t): (tklist_t, typ_t)
         (ts, t)
     | (TYVAR(i), _) :: rest =>
         (rest, TypApp([], get_id(i)))
+    | (REF _, _) :: rest =>
+        // generics-1: prefix `ref[T]`. `ref` is an expression-prefix keyword, so
+        // the '[' after it is LSQUARE(true) (not the value-adjacent LSQUARE(false)
+        // the postfix loop keys on) — parse the application here. Postfix `T ref`
+        // is unaffected (that `ref` is consumed by extend_typespec_nf_, not here).
+        match rest {
+        | (LSQUARE(_), _) :: rest2 =>
+            val (rest3, targs) = parse_typearg_list_(rest2, false, [])
+            match targs {
+            | [:: t] => (rest3, TypRef(t))
+            | _ => throw parse_err(rest, "ref[...] expects exactly one type argument")
+            }
+        | _ => (rest, TypApp([], get_id("ref")))
+        }
     | (LPAREN _, l1) :: rest =>
         parse_typtuple_(rest, false, [], l1)
     | (LBRACE, _) :: (ELLIPSIS, _) :: (RBRACE, _) :: rest =>
@@ -1934,8 +2014,12 @@ fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
         extend_typespec_nf_(rest, TypRef(result))
     | (LSQUARE(false), _) :: (PLUS _, _) :: (RSQUARE, _) :: rest =>
         extend_typespec_nf_(rest, TypVar(ref (Some(TypVarArray(result)))))
-    | (LSQUARE(false), _) :: rest =>
-        var vts = rest, ndims = 1
+    | (LSQUARE(false), _) :: (RSQUARE, _) :: rest =>
+        // `T []` — 1-D array (empty brackets are dims, not a type application)
+        extend_typespec_nf_(rest, TypArray(1, result))
+    | (LSQUARE(false), _) :: (COMMA, _) :: _ =>
+        // `T [,]`, `T [,,]` — dense multi-dim array (content is commas only)
+        var vts = ts.tl(), ndims = 1
         while true {
             match vts {
             | (COMMA, _) :: rest => vts = rest; ndims += 1
@@ -1944,6 +2028,12 @@ fun extend_typespec_nf_(ts: tklist_t, result: typ_t): (tklist_t, typ_t) =
             }
         }
         extend_typespec_nf_(vts, TypArray(ndims, result))
+    | (LSQUARE(false), _) :: rest =>
+        // generics-1: bracketed type application `Name[targs]`. Disambiguated
+        // from array dims by content: dims are commas/`+`/empty (handled above),
+        // a type expression here means a type-argument list.
+        val (ts, targs) = parse_typearg_list_(rest, false, [])
+        extend_typespec_nf_(ts, apply_typ_targs(result, targs, ts))
     | _ => (ts, result)
     }
 
@@ -2096,6 +2186,18 @@ fun parse_deftype(ts: tklist_t)
     val (ts, tname, loc) = match ts {
         | (IDENT(_, n), loc) :: rest => (rest, get_id(n), loc)
         | _ => throw parse_err(ts, "the type name is expected")
+        }
+
+    // generics-1: new `type name[T, K, ...]` form — the parameter list follows
+    // the name in brackets (coexists with the old prefix `('k,'d) name`; both
+    // together is an error).
+    val (ts, type_params) = match ts {
+        | (LSQUARE(false), _) :: rest =>
+            if type_params != [] { throw parse_err(ts,
+                "type parameters are given both before the name ('a name) and after it (name[A]); use only one form")
+            }
+            parse_bracket_tyvars_(rest, false, [])
+        | _ => (ts, type_params)
         }
 
     val (ts, ifaces) = match ts {

@@ -3776,7 +3776,7 @@ fun check_types(eseq: exp_t list, env: env_t, sc: scope_t list) =
 */
 fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
 {
-    val {df_name, df_args, df_typ, df_body, df_flags, df_loc} = *df
+    val {df_name, df_args, df_typ, df_body, df_flags, df_loc, df_templ_args} = *df
     val curr_m_idx = curr_module(sc)
     val df_name1 = dup_id(curr_m_idx, df_name)
     val rt = match df_typ {
@@ -3817,7 +3817,14 @@ fun reg_deffun(df: deffun_t ref, env: env_t, sc: scope_t list)
             }
         }
 
-    var args1: pat_t list = [], argtyps1: typ_t list = [], temp_env_acc = env, idset1_acc = empty_idset, templ_args1_acc = empty_idset, all_typed = true
+    // generics-1: bind any DECLARED type params (new `fun f[T,...](...)` form) so
+    // bare `T` references in the signature and body resolve, and seed them into
+    // the collected set. The '-prefix scan in check_pat below still handles the
+    // old `'t` form; a function uses one form or the other, and the two unite in
+    // df_templ_args.
+    val seed_env = fold e = env for targ <- df_templ_args { e = add_typ_to_env(targ, TypApp([], targ), e) }
+    val seed_targs = fold s = empty_idset for targ <- df_templ_args { s = s.add(targ) }
+    var args1: pat_t list = [], argtyps1: typ_t list = [], temp_env_acc = seed_env, idset1_acc = empty_idset, templ_args1_acc = seed_targs, all_typed = true
     for arg <- df_args {
         val t = make_new_typ()
         val (arg1, temp_env, idset1, templ_args1, typed) =
