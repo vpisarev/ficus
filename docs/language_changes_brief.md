@@ -150,17 +150,31 @@ warning+type-error.
 
 ## 3. Generics & types syntax
 
-### 3.1 Bracketed generic types — DECIDED direction
-`list[t]`-style application replaces `'t list` (spelling confirmed; `<t>`
-retired). Disambiguation vs indexing is semantic (Go/Nim precedent), or v1
-without explicit instantiation in expression position. Type and its
-auto-generated constructor functions are one entity in resolution (the
-resolve-1 machinery is ready for this). Multi-parameter types
-(`result[a, b]`) become natural. Corpus script: count type/value shadowings
-(expected ~0).
-- Generic *function* declaration syntax — CANDIDATE (todo-2026):
-  `fun add[u, v, r](a: u, b: v): r {...}` — return type in the parameter
-  list rhymes with the closed-signature (§1.7) world.
+### 3.1 Bracketed generic types — DECIDED & IMPLEMENTED (generics-1, 2026-07-15)
+`list[T]`-style application replaced `'t list` (spelling confirmed; `<t>`
+retired). Details in `docs/generics1_report.md`.
+- **Application is bracketed & prefix**: `list[T]`, `Map.t[K, V]`, `ref[T]`,
+  `T?` (option); arrays stay postfix `T [,]` / `T [+]` (only the quote drops).
+- **Type parameters are UPPERCASE and DECLARED** after the name and referenced
+  bare: `type tree_t[K, D] = ...`, `fun add[U, V, R](a: U, b: V): R`,
+  `operator ==[T](...)`, `class t[K, D]`. The apostrophe is gone from source;
+  the `'`-prefix survives only for compiler-internal auto-generated tyvars
+  (`'targ` for untyped params, `__var_tuple__`, ...).
+- **Disambiguation vs indexing/array-dims is by bracket CONTENT** (commas / `+`
+  / empty = array dims; a type expression = a type-argument list) -- no
+  expression-position instantiation was needed (Go/Nim precedent). `f[T](x)` is
+  DEFERRED indefinitely (would need parser disambiguation; the annotation
+  channels cover every use today).
+- **Types don't overload on arity** => `list[A, B]` == `list[(A, B)]` (a
+  single-param constructor folds several args into a tuple; mirrors the old
+  `('a, 'b) list`).
+- Type/value shadowing measured ~0 (census); the one uppercase-collision site
+  (`test_basic.fx` params vs A/B/C constructors) was hand-renamed.
+- Generic *function* declaration syntax landed as designed:
+  `fun add[U, V, R](a: U, b: V): R` -- rhymes with the closed-signature (§1.7)
+  world. A dedicated migrator (`-pr-generics-sites` + span-based rewriter,
+  removed at the flip) did the corpus; the compiler self-hosts in the new
+  notation with a byte-identical bootstrap (notation is purely surface).
 
 ### 3.2 Casts — CANDIDATE
 Drop `(x :> T)` in favor of constructor-call notation `T(x)` (enabled by 3.1;

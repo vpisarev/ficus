@@ -75,6 +75,17 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
 
 - Reserved words can't be identifiers: `ref`, `nan`, `nanf`, `null` (+ the
   obvious keywords). Misuse gives a confusing "pattern is expected" error.
+- **Generics (generics-1) are bracketed & prefix, params UPPERCASE and
+  DECLARED**: `list[T]`, `Map.t[K, V]`, `ref[T]`, `T?` (option); `type
+  tree_t[K, D] = …`, `fun add[U, V, R](a: U, b: V): R`, `operator ==[T](…)`,
+  `class t[K, D]`. The old `'t list` / `('k,'d) map` / implicit-`'t` forms were
+  REMOVED (parser rejects them with a "declare type parameters" / "postfix type
+  application was removed" hint). Arrays stay POSTFIX — only the quote drops:
+  `T [+]`, `T [,]`, `T []`. `list[A, B]` == `list[(A, B)]` (types don't overload
+  on arity → args fold to a tuple). No expression-position `f[T](x)` yet — infer
+  from args or annotate: `(Empty : Map.t[string, int])`. The `'`-prefix survives
+  ONLY for compiler-internal auto-generated tyvars (`'targ` for untyped params,
+  `__var_tuple__`); you never write it. Details: `docs/generics1_report.md`.
 - Casts parenthesize *with* the operand: `(x :> uint8)`, chained
   `((x :> uint32) :> int32)`. Simple types also work functionally: `uint32(x)`.
 - `println` takes ONE argument: `println(f"{a} {b}")` / `println((a, b))`.
@@ -138,8 +149,8 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
   typecheck error; unpinned kind → K-normalization asks for an annotation.
 - **Return annotations are viability filters**: an inferred (free) return
   unifies with any expected type and can steal under-constrained sites.
-  Generic operators annotate with a FRESH var (`: 't3 complex`, `: 't3 [+]`,
-  `: ('t3 ...)`); enforced by `tools/lint_op_returns.py lib` (CI).
+  Generic operators annotate with a FRESH var (`: complex[T3]`, `: T3 [+]`,
+  `: (T3 ...)`); enforced by `tools/lint_op_returns.py lib` (CI).
   `-Wimplicit-rettype` warns on module-level functions with inferred returns
   (user modules by default; `=all` adds stdlib — self-gated by
   `tools/rettype_gate.sh`, scope excludes NN/Onnx/Protobuf/OpenCV; keep it
@@ -147,7 +158,7 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
   Compiler sources not gated yet (annotate-3, ~340).
 - Annotation spellings: nullary fn type is `(void -> T)` not `(() -> T)`; a
   module's own type parses bare or qualified; uniform tuple `(int...)`;
-  any-dims array `T [+]`; input-dependent widened scalar → fresh `: 't3`.
+  any-dims array `T [+]`; input-dependent widened scalar → fresh `: T3`.
 - Comparing `-pr-resolve` censuses: gate on the (name | winner | outcome)
   multiset, not raw text (line:col shifts and expected-type sharpening are
   noise).
