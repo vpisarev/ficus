@@ -99,6 +99,7 @@ Ficus program consists of one or more source files that all have `.fx` extension
 
 At the lower level each expression is a sequence of tokens. Tokens include operators, identifiers, keywords, literals etc. Indentation and extra spaces mostly do not matter to the compiler; use the spaces at your taste. For example, here is the example of possibly poorly formatted but still valid code:
 
+  <!-- doctut: fragment -->
   ```
   if a>b {
      a
@@ -125,6 +126,7 @@ The comments are of two types:
 
 2. Single-line comments that start with `//` and take the rest of the line
 
+  <!-- doctut: fragment -->
   ```
   if a > b {
      a // a is the winner
@@ -140,6 +142,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
 1. breaking the line before a binary operator that can also be treated as an unary operator, i.e. `+`, `-` or `*`:
 
+   <!-- doctut: fragment -->
    ```
    val diff =  a
              - b
@@ -147,6 +150,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
    this is interpreted as `val diff = a; -b`, which is probably not what you want. In most cases such a mistake will produce a compile error message about non-void expressions in the middle of code blocks. The correct way of breaking such expressions into multiple lines is:
 
+   <!-- doctut: fragment -->
    ```
    val diff = a -
               b
@@ -154,6 +158,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
    or
 
+   <!-- doctut: fragment -->
    ```
    val diff = (a   // indicate that we have a single expression by enclosing it into parentheses
                -b)
@@ -163,6 +168,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
 2. breaking the line before the opening round paren `(` when calling a function:
 
+    <!-- doctut: fragment -->
     ```
     foo
     (
@@ -173,6 +179,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
     it will be parsed as `foo; (x, y)`, where the first expression just returns the function `foo` and the second one constructs 2-element tuple `(x, y)`. In this case the compiler will also report error about non-void expression `foo` in the middle of code block. In the case of function call attach `(` to the function name
 
+    <!-- doctut: fragment -->
     ```
     foo(
           x,
@@ -182,12 +189,14 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
     or
 
+    <!-- doctut: fragment -->
     ```
     foo(x, y)
     ```
 
 3. breaking the line before the opening square bracket `[` when accessing array or other indexable collection:
 
+    <!-- doctut: fragment -->
     ```
     mymatrix
         [
@@ -198,6 +207,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
     Just like in the case of functions, it will be parsed as `mymatrix; [i, j]`, where the first expression returns the matrix `mymatrix` and the second one constructs 2-element list `[x, y]`. Compiler will point to this issue as well. Put `[` to the same line of code and the problem is gone:
 
+    <!-- doctut: fragment -->
     ```
     mymatrix[
           i,
@@ -207,6 +217,7 @@ As noticed above, sometimes a newline maybe treated as the end of one expression
 
     or
 
+    <!-- doctut: fragment -->
     ```
     mymatrix[i, j]
     ```
@@ -220,6 +231,7 @@ There are the following types of tokens in Ficus:
 
   * 8-, 16-, 32- or 64-bit, signed or unsigned integers (the literals of type `int8, uint8, int16, uint16, int32, uint32, int, uint64, int64`, respectively), 16-, 32- or 64-bit floating-point numbers (of type `fp16`/`bf16`, `float` and `double`, respectively):
 
+    <!-- doctut: fragment -->
     ```
     42 // decimal integer
     0xffu8 // 8-bit unsigned integer in hexadecimal notation
@@ -242,6 +254,7 @@ There are the following types of tokens in Ficus:
 
   * boolean values (of type `bool`)
 
+    <!-- doctut: fragment -->
     ```
     true
     false
@@ -249,6 +262,7 @@ There are the following types of tokens in Ficus:
 
   * text strings (of type `string`)
 
+    <!-- doctut: fragment -->
     ```
     "abc"
     "hello, world!\n" // usual C-style ESC-sequences are supported
@@ -320,6 +334,7 @@ There are the following types of tokens in Ficus:
 
   * polymorphic literal — an empty list, vector or 1D, 2D etc. array (of type `list[T]`, `vector[T]`, `rrbvec[T]`, `T []`, `T [,]` etc., respectively)
 
+    <!-- doctut: fragment -->
     ```
     []
     ```
@@ -334,6 +349,7 @@ There are the following types of tokens in Ficus:
 
 * **keywords** — they look like identifiers and are used to form various syntactic constructions. You may not have an identifier with the same name as keyword. Here is a list of Ficus keywords:
 
+  <!-- doctut: fragment -->
   ```
   as break catch class continue do else exception
   false finally fold for from fun if import inf inff
@@ -343,6 +359,7 @@ There are the following types of tokens in Ficus:
 
   There are also **attribute-keywords** that start with `@` and are used to describe various properties of defined symbols, for-loops, code blocks etc. Here they are:
 
+  <!-- doctut: fragment -->
   ```
   @ccode @data @inline @nothrow @pragma
   @parallel @private @pure @sync @text @unzip
@@ -350,6 +367,7 @@ There are the following types of tokens in Ficus:
 
   The names of standard data types can also be treated as keywords:
 
+  <!-- doctut: fragment -->
   ```
   int8 uint8 int16 uint16 int32 uint32 int uint64 int64
   fp16 bf16 float double bool string char list vector rrbvec cptr exn
@@ -357,6 +375,7 @@ There are the following types of tokens in Ficus:
 
   But the important difference is that it's possible to define a function or a value with the name that matches the standard data type. In particular, it's the common practice — to give the name of target datatype to the type cast function:
 
+  <!-- doctut: fragment -->
   ```
   fun string[T](set: Set.t[T]) =
     join_embrace("{", "}", ", ", set.map(repr))
@@ -370,9 +389,10 @@ There are the following types of tokens in Ficus:
 
   **Binary**:
 
+  <!-- doctut: fragment -->
   ```
   // overridable binary operators
-  + − * / % **
+  + - * / % **
   .+ .- .* ./ .**
   == != > < <= >= <=> ===
   .== .!= .> .< .<= .>= .<=>
@@ -381,19 +401,19 @@ There are the following types of tokens in Ficus:
   // other binary operators
   .{...}
 
-  = += −= *= /= %= &= |= ^= >>= <<=
-  .={...}
+  = += -= *= /= %= &= |= ^= >>= <<=
 
   && || :: :>
   ```
 
   **Unary**
 
+  <!-- doctut: fragment -->
   ```
   // overridable prefix operator
   ~
   // other prefix operators
-  + − *
+  + - *
   .- ! \
 
   // overridable postfix operator
@@ -415,6 +435,7 @@ There are the following types of tokens in Ficus:
 
 * There are also various **delimiters** and **parentheses**
 
+  <!-- doctut: fragment -->
   ```
   -> => <- @ . , : ; [ ] ( ) { }
   ```
@@ -444,6 +465,7 @@ Values are variables are essentially named entities that are associated with som
 
 Most languages support both values and variables, but in imperative languages variables is the default and the recommended choice, whereas in functional languages values take the preference. Ficus supports both functional and imperative styles, but it's mainly a functional language, so it encourages you to use values. For example, in the current Ficus compiler, implemented in Ficus itself, there are ~4500 value declarations and just ~450 variable declarations. That is, variables are used 10x less frequently than values. Declarations of values and variables look very similar:
 
+<!-- doctut: fragment -->
 ```
 val <value_name> [ : <optional type spec>] = <expression>
 var <variable_name> [ : <optional type spec>] = <expression>
@@ -451,6 +473,7 @@ var <variable_name> [ : <optional type spec>] = <expression>
 
 You can read the values, and you can read and write variables. The type of declared value or variable is inferenced in most cases, but sometimes you need to specify it explicitly. Let's consider some examples:
 
+<!-- doctut: fragment -->
 ```
 val a = 5
 var b = "abc"
@@ -472,6 +495,7 @@ curr_list = 5 :: curr_list // append 5 to the beginning
 
 C/C++ users may think of a value as of a `const` variable, and, indeed, the concepts are very similar. But there is one important difference. A value may not be re-assigned, but if it holds a mutable object, e.g. array, you can still modify parts of the object, e.g. array elements:
 
+<!-- doctut: fragment -->
 ```
 val m3x3 = array((3, 3), 1.f) // make 3x3 floating-point matrix,
                               // filled with 1's.
@@ -487,7 +511,7 @@ You may ask, why to use values when variables are just as easy to declare and ar
 fun fibseq(n: int)
 {
     fun fib_(i: int, a: int, b: int, n: int, result: list[int]) =
-       if i < n {fib_(i+1, a+b, a, b::result)}
+       if i < n {fib_(i+1, a+b, a, n, b::result)}
        else {result.rev()}
     fib_(0, 1, 1, n, [])
 }
@@ -498,6 +522,7 @@ println(fibseq(30))
 
 There are cases when a value is computed using a complicated procedure, and so instead of having a single very complex expression we compute it step by step:
 
+<!-- doctut: fragment -->
 ```
 val a0 = compute_initial_a()
 val a1 = if a0<0 {foo(a0)} else {a0}
@@ -508,6 +533,7 @@ val a3 = baz(a2)
 
 The code looks ugly and is error-prone, e.g. we can suddenly mistype `a2` as `a1` in `a3` definition. To address this problem, in Ficus you can reuse the same value name multiple times:
 
+<!-- doctut: fragment -->
 ```
 val a = compute_initial_a()
 val a = foo(a)
@@ -518,6 +544,7 @@ val a = baz(a)
 
 It looks as if `a` was a variable, but internally compiler creates a new fresh name for each defined `a`, i.e. internally, after the type checker compiler phase, it will represent the code above as something like:
 
+<!-- doctut: fragment -->
 ```
 val a_1234 = compute_initial_a_780()
 val a_1235 = foo_542(a_1234)
@@ -530,12 +557,14 @@ val a_1237 = baz_927(a_1336)
 
 You can define multiple values at once by unpacking a tuple, a record or a single-case variant. All those structures, as well as *pattern-matching* expressions, are discussed later, but let's present the simplest and the most frequently used form of such construction:
 
+<!-- doctut: fragment -->
 ```
 val /* or var */ (x1, x2, ..., xn) = expr
 ```
 
 You can use `_` instead of some of `xj`, when you do not need particular values. Also, this unpacking may be done recursively:
 
+<!-- doctut: fragment -->
 ```
 // redefine the new a as min(a, b)
 // and at the same time the new b as max(a, b)
@@ -654,6 +683,7 @@ Ficus is a strictly and statically typed language, that is, each value has a typ
 
 Except for the *classes* and *interfaces*, which use a different syntax, new types can be defined with:
 
+<!-- doctut: fragment -->
 ```
 type typename = <type definition body>
 ```
@@ -668,6 +698,7 @@ type contour_t = vector[point]
 
 In the case of generic types (see [Generic Programming](#generic-programming) section for details) the syntax is a bit more complex:
 
+<!-- doctut: fragment -->
 ```
 // single-parameter case
 type typename[T] = <type definition body>
@@ -678,6 +709,7 @@ type typename[T1, ..., TN] = <type definition body>
 
 for example
 
+<!-- doctut: fragment -->
 ```
 type Complex[T] = {re: T, im: T}
 type hashtable_t[Key, Data] =
@@ -691,6 +723,7 @@ type hashtable_t[Key, Data] =
 
 Here is how the above-defined generic and non-generic types can be used:
 
+<!-- doctut: fragment -->
 ```
 fun convexhull(c: contour_t): contour_t { ... }
 // represent a contour as a vector of pairs of integers
@@ -745,7 +778,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     * `uint64` — unsigned 64-bit integers within 0..2^64-1 range. The literals have `u64` suffix.
     * `int64` — signed 64-bit integers within -2^63 .. 2^63-1 range. The literals have `i64` suffix.
     * `fp16` — 16-bit floating-point numbers (IEEE 754 half precision). It is a storage type: values are converted to `float` for arithmetic and back on store. The literals have `h` suffix.
-    * `bf16` — 16-bit "brain" floating-point numbers (the top 16 bits of a `float`; conversions round to nearest even). Also a storage type with `float` arithmetic.
+    * `bf16` — 16-bit "brain" floating-point numbers (the top 16 bits of a `float`; conversions round to nearest even). Also a storage type with `float` arithmetic. The literals have `bf` suffix.
     * `float` — single-precision (32-bit) floating-point numbers, as defined by IEEE754 standard. The literals have `f` suffix.
     * `double` — double-precision (64-bit) floating-point numbers, as defined by IEEE754 standard.
     * `long` - signed integer of unlimited (memory-limited) precision.
@@ -754,6 +787,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * boolean type `bool` that has only two possible values: `true` and `false`. There is no implicit conversion between `bool` and integer types; do it explicitly:
 
+  <!-- doctut: fragment -->
   ```
   val nz_x = x != 0
   val x = if nz_x {1} else {0}
@@ -820,6 +854,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * **reference**: `ref[T]`. Reference is a structure allocated in a heap that contains a value of the specified type and the reference counter. You can access and modify the stored value:
 
+    <!-- doctut: fragment -->
     ```
     var a = "to be" // initialize a variable
     val b = ref a   // create a reference with the same value
@@ -827,7 +862,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     println(*b)     // outputs "to be"
     b = ref "hello" // error: b cannot be assigned, it's a value
     val c = b     // copy the reference, share the content
-    fun append(sr: string ref, delta: string) = *sr += delta
+    fun append(sr: ref[string], delta: string) = *sr += delta
     append(c, " or not to be") // correct, change the c's
                              // (and b's) content
     println(*b)   // outputs "to be or not to be"
@@ -837,6 +872,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * **option**: `T?`, e.g. `int?`, `list[string, string]?` etc. Represents 'some value' or 'nothing'. Strictly speaking, it's a partial case of variant, which is discussed later in the tutorial. But it's so common and so useful that it got the special syntax (`?`). If  `x` is a value of type `T`, `Some(x)` would be a value of type `T?`. What about 'nothing'? Use `None`. Most of the time Ficus compiler will guess correctly, which `T?` it will belong to. When it's not, use explicit type specification, e.g. `(None : int?)`. Here is an example:
 
+    <!-- doctut: fragment -->
     ```
     // convert string to int, if it's possible
     fun str2int(s: string): int?
@@ -864,6 +900,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * **array**: `T []` — 1D array, `T [,]` — 2D array, `T [,,]` — 3D array etc. The type represents dense 1D or multi-dimensional arrays (currently, the compiler supports up to 5D arrays). All elements of array must have the same type. Size of an array can be arbitrary, but it's fixed at the moment of creation:
 
+    <!-- doctut: fragment -->
     ```
     // create a small 1D array (of type int [])
     // by listing its elements
@@ -906,6 +943,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * **list**: `list[T]`. List is an immutable single-connected list. All the elements must have the same type. There are 4 basic operations on lists: `List.hd()`, `List.tl()`, `::` (called *CONS* operation) and `List.empty()` (check for emptiness). List literals are made with `[: elem1, elem2, ..., elemn :]`:
 
+    <!-- doctut: fragment -->
     ```
     // make a list of 5 consequitive natural numbers
     val mylist1 = [:: 1, 2, 3, 4, 5]
@@ -927,7 +965,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
     // (see the records description above for
     // example detected_object_info_t definition)
     fun detect_objects(image: uint8 [,]) :
-        detected_object_info_t list = { ... }
+        list[detected_object_info_t] = { ... }
     ```
 
   note that you cannot modify a list, you can only decompose it and create a new list out of a part of an old list and some new elements that are always added in front.
@@ -935,12 +973,12 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 * **vector**: `rrbvec[T]`. Vector is an immutable 1D array built on top of so-called "Relaxed Radix Balanced trees" with quite efficient random access, iteration, slicing and concatenation operations.:
 
     ```
-    val small_vector = vector([1, 2, 3, 4, 5])
+    val small_vector = rrbvec([1, 2, 3, 4, 5])
 
     // make big vector vector([1, 2, 3, ..., N])
     val N = 1000000
     // use vector comprehension; [] inside () can be omitted
-    val big_vector = vector([for i <- 0:N {i+1}])
+    val big_vector = rrbvec([for i <- 0:N {i+1}])
 
     // random vector access is ~O(1) operation,
     // so the following loop is reasonably fast
@@ -955,11 +993,11 @@ Ficus includes the following built-in, automatically defined and user-defined ty
                         big_vector[800000:]
 
     // make a list with the same content as big_vector
-    val big_list = vector([for i <- 0:N {i+1}])
+    val big_list = [:: for i <- 0:N {i+1}]
 
     // may take forever, because accessing
     // n-th element of a list takes O(n) time.
-    for i <- 0:100000 { sum -= big_list.nth(rng(0, N)) }
+    for i <- 0:100000 { sum -= big_list.nth(rng.uniform(0, N-1)) }
     ```
 
   In principle, i-th element of vector can be ‘modified’ more or less efficiently with `vec[:i] + vector([new_values ...]) + vec[i+1:]`, but if you modify elements quite often, an array may be a better (10x-100x better) option.
@@ -979,7 +1017,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
     import Map
     // associative container with string keys and integer values
-    type str2int_map_t = (string, int) Map.t
+    type str2int_map_t = Map.t[string, int]
     ```
 
   In the second example it may look like the outer list is instantiated with 2 type arguments. But since the compiler always knows how many parameters each generic type has (the `list` has 1), it correctly interpreters `(int, (int, double) list)` as the single type argument.
@@ -994,6 +1032,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 *Code block* is simply a sequence of expressions enclosed in curly braces and separated by `;` or a newline. That is, it looks like:
 
+<!-- doctut: fragment -->
 ```
 {
     expr1
@@ -1007,12 +1046,14 @@ The formatting is almost arbitrary:
 
 a)
 
+<!-- doctut: fragment -->
 ```
 { expr1; expr2; ... ; expr_n }
 ```
 
 b)
 
+<!-- doctut: fragment -->
 ```
 { expr1
 expr2
@@ -1028,6 +1069,7 @@ Code block is also an expression, its type and its value matches the type and th
 
 You can put a code block anywhere where a single expression is expected, in which case you need to enclose this sequence into parentheses and curly braces `({ ... })`. Many expressions in Ficus, like conditional expressions, loops, pattern matching, try-catch etc. expect code blocks as their parts, and then only `{ ... }` should be used without `( ... )`:
 
+<!-- doctut: fragment -->
 ```
 // Parentheses and curly braces are necessary here,
 // because the compiler expects a single expression after "if".
@@ -1067,6 +1109,7 @@ fun print_in_red(msg: string) {
 
 or non-void. But, in order to give some protection from occasional programming errors, Ficus compiler reports an error when there is a non-void expression in the middle of code block.
 
+<!-- doctut: fragment -->
 ```
 fun dotprod((x1, y1, z1, w1): (float*4),
             (x2, y2, z2, w2): (float*4)) =
@@ -1078,6 +1121,7 @@ fun dotprod((x1, y1, z1, w1): (float*4),
 
 If you want to insert a non-void expression (e.g. call a function, where you are interested in side effects, not the result), you can use the 2 almost equivalent solutions:
 
+<!-- doctut: fragment -->
 ```
 show_image("result", my_result)
 
@@ -1128,6 +1172,7 @@ The scopes are handled using the following rules:
 
 The most general form of the conditional expression in Ficus is
 
+<!-- doctut: fragment -->
 ```
 if expr1 {
   exprs1 ...
@@ -1142,6 +1187,7 @@ else if expr2 {
 
 In other words, there is obligatory `then`-clause (with `exprs1`), there is optional `else`-clause and zero or more `else if`-clauses after `then` and before `else`. All the branches must have the same type, `void`, as in classical imperative languages, or non-void. The missing `else` branch is a shortcut for `else {}`. In this case all other branches must have `void` type. Here are some examples:
 
+<!-- doctut: fragment -->
 ```
 // error: if-branch has type 'double', else-branch has type 'void'
 val y = if x >= 0. {sqrt(x)}
@@ -1175,6 +1221,7 @@ fun month_days(m: int, year: int) =
 
 One more thing worth knowing about branches: the control-flow keywords `break`, `continue` and `return` are ordinary expressions (just like `throw`) and may be used as the value of a `match` arm or an `if` branch. Since such an expression never actually yields a value, it unifies with whatever type the other branches produce:
 
+<!-- doctut: fragment -->
 ```
 for s <- shapes {
     val area = match s {
@@ -1190,6 +1237,7 @@ for s <- shapes {
 
 This is imperative-style loop, where iterations are continued while the certain condition stays `true`:
 
+<!-- doctut: fragment -->
 ```
 while condition_expr { code_block ... }
 ```
@@ -1214,6 +1262,7 @@ Type of the loop body must be `void`, and type of the whole loop is `void` too.
 
 Another important construction is a loop over some value range, over multi-dimensional grid, or over some collection or collections:
 
+<!-- doctut: fragment -->
 ```
 // iteration over a range
 for id1 <- start_val1:end_val1[:step1]
@@ -1224,6 +1273,7 @@ for id1 <- start_val1:end_val1[:step1]
 
 In the first form of **for loop** you introduce an identifier `id1` of type `int` that will receive the subsequent values:
 
+<!-- doctut: fragment -->
 ```
 start_val1, start_val1 + step1, start_val1 + step1*2, ...
 ```
@@ -1255,6 +1305,7 @@ Note that the nested loops may use iteration values from the outer loops to spec
 
 The other form of the *for loop* is iteration over a collection:
 
+<!-- doctut: fragment -->
 ```
 // iteration over collections
 for elem1 <- collection11
@@ -1274,7 +1325,7 @@ val rng = RNG(0x12345u64)
 // fill image with random values
 for y <- 0:h
    for x <- 0:w {
-      image[y, x] = rng.uniform(0u8, 255u8))
+      image[y, x] = rng.uniform(0u8, 255u8)
    }
 
 // iterate over 2D image elements.
@@ -1300,12 +1351,14 @@ In the nested loop you can combine iteration over ranges and collections.
 
 There can also be simultaneous iteration over several collections, e.g. when we have two or more collections and want to process corresponding pairs/n-tuples of elements. The construction looks like:
 
+<!-- doctut: fragment -->
 ```
-for val1 <- expr1, val2 <— expr2 ... { exprs ... }
+for val1 <- expr1, val2 <- expr2 ... { exprs ... }
 ```
 
 For example, here is how to compute Hamming distance between 2 vectors:
 
+<!-- doctut: fragment -->
 ```
 val a = array(16, 0u8)
 val b = array(16, 0u8)
@@ -1323,12 +1376,14 @@ The *for* loop body, as well as the result, have `void` type. If the body has a 
 
 Sometimes it's useful to have an index of the currently processed element, not just the element itself. For example, we want to print a list of numbers and insert `,` between them. That is, we want to put comma before each element but the first one. One obvious way to do it is:
 
+<!-- doctut: fragment -->
 ```
 for i <- 0:n { if i > 0 {print ", "}; print(a[i]) }
 ```
 
 But `a[i]` will be a little slower (in the case of vectors it's much slower) and a little more verbose than in the previously shown loops where elements were extracted automatically. In the case of lists `a[i]` is not available at all, and we would need something like this:
 
+<!-- doctut: fragment -->
 ```
 var i = 0
 for x <- mylist { if i > 0 {print ", "}; print(x); i += 1 }
@@ -1338,6 +1393,7 @@ which is also a bit verbose and non-functional (a mutable variable is used).
 
 Because it's quite common case, there is special syntax for that to make the code faster, crisper and more functional:
 
+<!-- doctut: fragment -->
 ```
 for x@i <- mylist { if i > 0 {print ", "}; print(x) }
 ```
@@ -1366,6 +1422,7 @@ fun bounding_box(image: uint8 [,])
 
 Note that the iteration values, as well as the indices, are immutable values (that is, they are only updated automatically on each iteration):
 
+<!-- doctut: fragment -->
 ```
 for v@offset <- datastream {
    // error: offset cannot be modified by user
@@ -1377,6 +1434,7 @@ for v@offset <- datastream {
 
 In the previous example we had to declare variables outside the loop to update the coordinates. Iterating through an array or a few and accumulating/updating some result is such a typical task in data processing (it's called 'folding' or 'reduce') that Ficus has a dedicated form of *for-loop* which declares the accumulators for you:
 
+<!-- doctut: fragment -->
 ```
 fold acc1=initval1, acc2=initval2, ...
 for x1 <- domain1, x2 <- domain2 ...
@@ -1387,6 +1445,7 @@ for x1 <- domain1, x2 <- domain2 ...
 
 The expression consists of 2 parts. The first part declares the accumulators and their initial values; inside the loop they behave as ordinary mutable variables. The second part is a normal for-loop with a `void` body that updates the accumulators by plain assignments (`acc = ...`, `acc += ...` etc.); after the loop the whole `fold` expression yields the final accumulator value (a tuple of values in the case of multiple accumulators). `break` and `continue` work as in any other loop — `continue` simply means "the remaining updates of this iteration do not apply". Here are some examples:
 
+<!-- doctut: fragment -->
 ```
 val array = [ 1, 2, 3, 4, 5 ]
 // compute the sum of elements
@@ -1416,6 +1475,7 @@ fun bounding_box(image: uint8 [,])
 
 Note how natural the `bounding_box` body is: the `else`-branch that would just "return the accumulators unchanged" is simply not needed — if nothing is assigned, nothing changes. You may also have noticed that `minx, maxx, miny, maxy` had to be named twice, as accumulators inside `fold` and as the destructured results. It's inconvenient and error-prone (the order of values can be broken during refactoring), so there is a shortcut:
 
+<!-- doctut: fragment -->
 ```
 ...
 val fold minx = 1000000, maxx = -1, miny = 1000000, maxy = -1
@@ -1447,7 +1507,7 @@ all those operations can be implemented using `fold`, e.g.
 ```
 val mylist = [3, 5, 0, 7, 21]
 val fold all_odd = true for x <- mylist {
-    if x%2 == 0 {false} else {all_odd}
+    if x%2 == 0 {all_odd = false}
 }
 ```
 
@@ -1456,7 +1516,7 @@ but the problem with such implementation is that we are not able to stop earlier
 ```
 val mylist = [3, 5, 0, 7, 21, 42]
 var all_odd = true
-for x <- mylist { if x%2 == 0 {false; break} }
+for x <- mylist { if x%2 == 0 {all_odd = false; break} }
 ```
 
 Which stop earlier if needed, and for some reason is more crisp. But both implementations do not clear enough, not as clear as math quantifiers "for all", "exists". Each time such a common pattern is implemented, the programmer should not forget how to initialize the quantifier, not to forget inverse the condition in the case of "for all" etc. To address those issues, Ficus introduces special "macro"-like flavors of `fold` operation:
@@ -1472,6 +1532,7 @@ Which stop earlier if needed, and for some reason is more crisp. But both implem
 
 Some examples:
 
+<!-- doctut: fragment -->
 ```
 val mylist = [3, 5, 0, 7, 21, 42]
 println(all(for i <- mylist {i % 2 != 0})) // prints 'false'
@@ -1531,7 +1592,7 @@ fun matmul(A: double [,], B: double [,]) {
    [
        for i <- 0:ma
          for j <- 0:nb {
-            fold s=0. for k <- 0:na {s + A[i,k]*B[k,j]}
+            fold s=0. for k <- 0:na {s += A[i,k]*B[k,j]}
          }
    ]
 }
@@ -1558,6 +1619,7 @@ val S = [for i<-0:n+1 {
 Another common pattern in data processing is to iterate through a collection and retain only those elements that satisfy certain criteria. In functional languages there is often a high-order function, `List.filter` or similar, for that, and it's available in Ficus too. However, Ficus also provides 2 complementary comprehension-based methods to filter data:
 
 1. There is optional `when` clause in `for` header:
+    <!-- doctut: fragment -->
     ```
     for id1 <- domain1, id2 <- domain2, ... [when expr] {...}
     ```
@@ -1574,10 +1636,10 @@ fun is_prime(n: int) =
     }
 
 // use when clause
-val primes = [for i <- 2:100 when is_prime(i) {i}]
+val primes = [:: for i <- 2:100 when is_prime(i) {i}]
 
 // use continue
-val primes = [for i <- 2:100 {
+val primes = [:: for i <- 2:100 {
                 if !is_prime(i) {continue}
                 i
               }]
@@ -1603,6 +1665,7 @@ val ab_vector = vector(for a <- a_list, b <- b_list {(a, b)})
 
 Unzip operation requires some extra syntax:
 
+<!-- doctut: fragment -->
 ```
 ...
 val (a_array, b_array) =
@@ -1628,6 +1691,7 @@ The function declaration syntax is one of the following:
 
 1. function, which body is a single expression:
 
+  <!-- doctut: fragment -->
   ```
   fun func_name(arg1: T1, arg2: T2, ..., argn: Tn)
      [: optional_ret_type] = body_exp
@@ -1635,6 +1699,7 @@ The function declaration syntax is one of the following:
 
 2. function, which body is a code block:
 
+  <!-- doctut: fragment -->
   ```
   fun func_name(arg1: T1, arg2: T2, ..., argn: Tn)
      [: optional_ret_type] { exprs ... }
@@ -1698,6 +1763,7 @@ All the function parameters are immutable values, but there is important clarifi
 * you can think of a function parameter as of defined (using `val`) value.
 * it means that if a parameter is reference or array, you still cannot assign to it, but you can modify its content:
 
+<!-- doctut: fragment -->
 ```
 fun threshold(img: uint8 [,], t: int) {
    // error: cannot assign to a parameter
@@ -1718,7 +1784,8 @@ fun integrate(a: double, b: double, n: int, f: double->double)
     val h = (b - a)/n
     (fold sum = 0., left = f(a) for i <- 0:n {
         val right = f(a + (i+1)*h)
-        (sum + (left + right)*h*0.5, right)
+        sum += (left + right)*h*0.5
+        left = right
     }).0
 }
 
@@ -1733,6 +1800,7 @@ sort(sorted_idx, fun (i, j) {arr[i] < arr[j]})
 
 The example uses anonymous or lambda functions that are generally defined as:
 
+<!-- doctut: fragment -->
 ```
 fun (arg1 [: T1], arg2 [: T2], ..., argn[: Tn])
     [: optional_ret_type] {exprs...}
@@ -1744,6 +1812,7 @@ The differences from the regular function are:
 2. `=` form is unavailable, use `{}`
 3. it's not required to specify types of arguments, because lambda function usually has very small scope and its parameters types can often be inferenced from the way it's used. In particular, the standard `sort` function, used in the example above, is defined as:
 
+  <!-- doctut: fragment -->
   ```
   fun sort[T](arr: T [], less_than: (T, T)->bool) {...}
   ```
@@ -1760,7 +1829,7 @@ fun make_coin()
 {
     val rng = RNG(uint64(Sys.tick_count()))
     // warm up rng a bit
-    val _ = fold s = 0u64 for i <- 0:10 {s ^ rng.next()}
+    val _ = fold s = 0u64 for i <- 0:10 {s ^= rng.next()}
     fun () { if bool(rng) {"heads"} else {"tails"} }
 }
 val coin1 = make_coin()
@@ -1799,6 +1868,7 @@ Many of the functions typically have 1 or 2 parameters. But there are also compl
 
 In Ficus these 2 desirable properties are addressed using so-called named function parameters, identified by name, as opposite to the positional parameters, identified by their position in the list of parameters. A function may use just positional parameters, just named parameters or a mixture of them. In the latter case named parameters always follow positional parameters:
 
+<!-- doctut: fragment -->
 ```
 fun funcname([pos_arg1: Tp1, pos_arg2: Tp2, ...]
              [~named_arg1: Tn1 [=defval1],
@@ -1816,6 +1886,7 @@ That is, each named parameter:
 
 When such a function is called, first should be put the positional arguments in the same order as in declaration. Then the named arguments should be put for which there is no default values or which default values you want to override. The order of named arguments can be arbitrary, but the corresponding parameter name, followed by `=` should go before the argument value. Here is an example:
 
+<!-- doctut: fragment -->
 ```
 type detection_t = {
     x: int; y: int;
@@ -1830,7 +1901,7 @@ fun create_face_detector(
        meanvalue_r: double = 0.,
        meanvalue_g: double = 0.,
        meanvalue_b: double = 0.,
-       pix_scale: double = 1.): (uint8*3) [,] -> detection_t vector
+       pix_scale: double = 1.): (uint8*3) [,] -> vector[detection_t]
 {
     // load the model, remember the parameters
     ...
@@ -1845,7 +1916,7 @@ val detector = create_face_detector(
        meanvalue_r = 128.,
        meanvalue_g = 128.,
        meanvalue_b = 128.,
-       scale = 1./255) // leave the image size and channel order as-is
+       pix_scale = 1./255) // leave the image size and channel order as-is
 ...
 val faces = detector(myimage)
 ```
@@ -1856,6 +1927,7 @@ Named parameters add zero overhead compared to the positional parameters, so the
 
 Ficus includes imperative-style and yet sometimes very useful `return` operator with optional return value to exit from the function earlier. Just like any control flow operator in Ficus, `return` is also an expression. The whole return expression has `void` type, no matter if it returns some value or not.
 
+<!-- doctut: fragment -->
 ```
 fun foo(arg1: t1, ..., argn: tn) {
     ...
@@ -1887,7 +1959,7 @@ Different numeric types are not converted one to another implicitly, e.g. if a f
   ```
   val a = 34587345
   val b = 987654321
-  val product = (a :> uint64) * b
+  val product = (a :> uint64) * (b :> uint64)
   ```
 
   (the operator `:>` is actually quite universal and can also be used to convert numbers to/from string, or query class interfaces, see [Object-Oriented Programming](#object-oriented-programming))
@@ -1950,6 +2022,7 @@ type graph_t = list[int, list[int]]
 
 Tuples are constructed by putting two or more comma-separated elements in `()`:
 
+<!-- doctut: fragment -->
 ```
 val q: quaternion = (1.f, 0.f, 0.f, 0.f)
 // specify the type explicitly, but it's not necessary here
@@ -1963,6 +2036,7 @@ As mentioned previously, tuples can be used anonymously, without explicit type s
 
 Tuples are accessed using `tuple_expr.integer_literal` notation. Or you can unpack them:
 
+<!-- doctut: fragment -->
 ```
 val (q_re, qi, qj, qk) = q
 val (r, g, b) = magenta
@@ -2046,6 +2120,7 @@ This optimization and the syntactic sugar are more general, in fact. They can be
 
 The reverse operation is also available: a tuple of mutable locations may stand on the left side of `=`. The right-hand side is evaluated **completely** before the first store happens, so the assignments are simultaneous — which makes the classical idioms one-liners:
 
+<!-- doctut: fragment -->
 ```
 var a = 1, b = 1
 for _ <- 0:10 { (a, b) = (b, a + b) }  // Fibonacci, no temporaries
@@ -2054,6 +2129,7 @@ for _ <- 0:10 { (a, b) = (b, a + b) }  // Fibonacci, no temporaries
 
 Any component of the left side may be `_`, which simply discards the corresponding value (the right side is still evaluated in full):
 
+<!-- doctut: fragment -->
 ```
 val (q, _) = divmod(a, b)   // in a definition (pattern)
 (q, _) = divmod(a, b)       // ...and in an assignment to existing variables
@@ -2065,6 +2141,7 @@ A record is very similar to a tuple, except that the record elements (called fie
 
 Records are constructed using `record_name { name1=value1, ..., nameN=valueN }` notation, and then accessed using `expr.field_name` notation, and can also be unpacked:
 
+<!-- doctut: fragment -->
 ```
 type rect_t = {x: int; y: int; width: int; height: width}
 val r = rect { x=10, y=5, width=30, height=60 }
@@ -2106,7 +2183,7 @@ val r0 = Rect {x=0, y=0, width=100, height=50}
 val r1 = r0.{x = r0.x + 10} // r1 is the same as r0, just x is modified
 type object_t = {
     id: int=-1;
-    box: rect_t;
+    box: Rect;
     velocity: (int, int)
 }
 val obj = object_t {box=r1, velocity=(10, 5)}
@@ -2117,9 +2194,11 @@ var moved_obj = obj.{
        y = obj.box.y + obj.velocity.1
        }
     }
-// rec .= {updated_members} is a shortcut for
-// rec = rec . {updated_members}
-moved_obj .= {velocity=moved_obj.velocity/2}
+// To update a record field of mutable variable,
+// simply assign a new value to it,
+// as you do in other languages: 'record.field = new_value'
+// Augmentation operations are also supported
+moved_obj.velocity ./= 2
 ```
 
 Also, individual record elements can be assigned in the same situations as with tuples:
@@ -2134,6 +2213,7 @@ You can also think of it as of a little optimization.
 
 If we have a reference to a tuple or a record, we can first dereference the reference and then use `.` operator to access or modify the structure (including the record update operator)
 
+<!-- doctut: fragment -->
 ```
 val r = ref (Rect {x=1, y=1, width=10, height=10})
 println((*r).width*(*r).height)
@@ -2141,6 +2221,7 @@ println((*r).width*(*r).height)
 
 but there is a convenient shortcut, as in C/C++:
 
+<!-- doctut: fragment -->
 ```
 ...
 println(r->width*r->height)
@@ -2161,6 +2242,7 @@ The record can be stored as a reference value, then it can be updated easily. Bu
 
 There is a partial solution to make some of the record members references, but it will require some more typing as well. The recommended solution is to declare some of the members as mutable record members using `var`, for example:
 
+<!-- doctut: fragment -->
 ```
 type Tracker =
 {
@@ -2223,10 +2305,11 @@ val gradient = [for y <- 0:256 for x <- 0:256
 
 Once the arrays are created, they can be easily read and modified:
 
+<!-- doctut: continue -->
 ```
 fun sumpixels(img: uint8 [,]): int =
     // you can easily iterate though an array using for loop.
-    fold sum=0 for x <- img {sum + x}
+    fold sum=0 for x <- img {sum += x}
 
 // select the roi (region of interest);
 // the data is shared, not copied
@@ -2258,7 +2341,7 @@ val mtx = Hadamard(8, 1.)
 
 // take 5th row of a matrix, multiply all elements by 2,
 // and add the product to the 1st row of the same matrix
-mtx[1, :] += mtx[5, :]*2
+mtx[1, :] += mtx[5, :]*2.
 ```
 
 Such matrix transformations, as well as the ROI transformations in the previous example, are possible because a subarray extraction operation does not copy any data. It just creates a new header, initializes its size, type and dimensionality and then points it to the origin of the original array data with some offset. The reference counter of the original data is incremented. There are 2 exceptions from the rule:
@@ -2272,6 +2355,7 @@ When the subarray is not needed anymore, its destructed, the reference counter o
 
 When `A[i, j, k, ...]` occurs in the program, Ficus compiler generates the code that can be expressed with the following pseudo-code:
 
+<!-- doctut: fragment -->
 ```
 if (i < 0 || i >= A.size[0] ||
    j < 0 || j >= A.size[1] ||
@@ -2300,13 +2384,14 @@ fun matmul(A: double [,], B: double [,])
     val (ma, na) = size(A), (mb, nb) = size(B)
     assert(na == mb)
     [for i <- 0:ma for j <- 0:nb {
-        fold s = 0. for k <- 0:na {s + A[i,k]*B[k,j]}
+        fold s = 0. for k <- 0:na {s += A[i,k]*B[k,j]}
      }]
 }
 ```
 
 The generated code (in Ficus-like pseudo-code) will look like:
 
+<!-- doctut: fragment -->
 ```
 fun matmul(A: double [,], B: double [,])
 {
@@ -2336,6 +2421,7 @@ In principle, the next, more advanced version of the compiler could move the las
 
 Even faster method of accessing array elements is to request them in the for-loop header, for example:
 
+<!-- doctut: fragment -->
 ```
 // here x is extracted using '*(array_slice_ptr + loop_index)' C code
 fold sum = 0. for x <- arr {s + x}
@@ -2389,6 +2475,7 @@ In the signal/image processing, as well as deep learning, sometimes there is a n
 
 1. Produce slightly smaller array on the output, i.e. process only those elements of input array which are far enough from the border
 2. Copy the array into the middle of larger fresh array and then fill the remaining elements of this larger (padded) array using some formula (e.g. propagate the left-most elements of original input to the left boundary of the new array etc.):
+  <!-- doctut: fragment -->
   ```
   // original array:
   a b c d
@@ -2456,6 +2543,7 @@ The constructor family mirrors `array()`: `vector()` for an empty vector (annota
 
 Like arrays, vectors have *shared reference semantics*: `val w = v` is O(1) and makes `w` refer to the same storage, so a modification through one name is visible through the other. A **slice of a vector is therefore a copy**, not a view — a view into a buffer that may be reallocated by the next `push_back` would be a trap. Slices are quite powerful though, they can be assigned to, and the target range may change its length:
 
+<!-- doctut: fragment -->
 ```
 v[2:5] = []                 // remove elements 2..4
 novel[3:3] = new_chapters   // insert a whole collection at position 3
@@ -2464,6 +2552,7 @@ v[0:2] = vector([9, 9, 9])  // replace 2 elements with 3
 
 One more rule protects you from a classical bug. While a vector is being **iterated** (`for x <- v`, `for x@i <- v`), it is *read-locked*: structural modifications — `push_back`, `pop_back`, `resize`, the slice assignments above — throw an exception instead of silently corrupting the traversal. Reading elements and assigning to an *existing* element (`v[i] = a`) remain perfectly legal under the lock:
 
+<!-- doctut: continue -->
 ```
 for x <- v { if x < 0 { v.push_back(-x) } }   // throws: structural change during iteration
 for x@i <- v { v[i] = x*2 }                    // fine: no structural change
@@ -2653,6 +2742,7 @@ The following functions & method are available:
 * `re.findall(str, ignorecase=false, multiline=false): (int, int)[,]` — finds all non-overlapping substrings of `str` that match the regexp. Each row of the output matrix corresponds to a match (correspondingly, the number of rows is the number of found matches). Columns of the row, as in `prefixmatch` and `find`, correspond to the whole match and submatches.
 * `re.findall_str(str, ignorecase=false, multiline=false): string [,]` — the alternative version of `findall` that returns sub-strings.
 * `re.replace(str, subst, ignorecase=false, multiline=false): string` — replaces all non-overlapping matches with `subst`, where `subst` may use `\0`, `\1` etc. placeholders to re-use the original matches. For example:
+  <!-- doctut: continue -->
   ```
   val digits = Re.compile(r"\d+")
   // produces (123)-(456)
@@ -2719,9 +2809,9 @@ fun dilate3x3[Pix](img: Pix [,]): Pix [,]
         val a = max(img.clip[y-1,x-1],
           max(img.clip[y-1,x], img.clip[y-1, x+1]))
         val a = max(a, max(img.clip[y,x-1],
-          max(img.[y,x], img.clip[y, x+1])))
+          max(img.clip[y,x], img.clip[y, x+1])))
         max(a, max(img.clip[y+1,x-1],
-          max(img.clip[y+1,x]), img.clip[y+1, x+1])))
+          max(img.clip[y+1,x], img.clip[y+1, x+1])))
     }]
 }
 
@@ -2761,6 +2851,7 @@ and applying a generic type to arguments uses the same brackets: `list[int]`, `M
 
 You may have noticed that comprehensions or for-loops, processing 1D, 2D etc. arrays often looks the same, e.g. the implementation of pairwise addition of two arrays looks like
 
+<!-- doctut: fragment -->
 ```
 val result = [for x <- A, y <- B {x + y}]
 ```
@@ -2808,6 +2899,7 @@ fun string(r: {...}) = join_embrace("{", "}", ", ", [for (n, x) <- r {n+"="+repr
 # Lists
 
 An immutable single-connected list is important data structure in many functional languages, starting from Lisp. Lists consist of so-called *CONS* cells, each of those is a pair `(hd, tl)`, where `hd` is some list element and `tl` is *pointer* to the rest of the list or `[]` (null pointer). In Ficus all the list elements have the same type (unlike in Lisp and some other dynamically typed languages). The list containing numbers 1, 2 and 3 looks like:
+<!-- doctut: fragment -->
 ```
 +-----+   +-----+   +-----+
 |  1  +-->|  2  +-->|  3  |---+
@@ -2849,11 +2941,12 @@ The other big advantage of such lists is that virtually *all* possible operation
 * `l.tl()` — takes the second element of the first *CONS* cell, i.e. retrieves the list tail. If `l` is `[]`, exception `NullListError` is thrown
 * `x :: l` — builds the new list by constructing *CONS* cell `(x, l)`
 
+<!-- doctut: fragment -->
 ```
 val l0 = [:: 1, 2, 3]
 
 // [16, 9, 4, 0, 1, 2, 3]
-val fold l = l0 for i <- 0:5 {i*i :: l}
+val fold l = l0 for i <- 0:5 {l = i*i :: l}
 
 // error: all elements should have the same type
 val err1 = 3.14 :: l
@@ -2956,7 +3049,7 @@ fun list_find[T](l: list[T], pred: T->bool): T? =
         else {list_find(l.tl(), pred)}
     }
 val l = [:: 1, 2, 3]
-val first_even = list_find(fun (x) {x % 2 == 0}, l)
+val first_even = list_find(l, fun (x) {x % 2 == 0})
 println(if first_even.issome() {
         string(first_even.value())
     } else {
@@ -2966,11 +3059,12 @@ println(if first_even.issome() {
 
 Another common operation in list processing is mapping, where we process each list element and return the list of results:
 
+<!-- doctut: fragment -->
 ```
 // reimplementation of List.map()
 fun list_map[A, B](l: list[A], f: A->B): list[B] =
     list_foldl(list_rev(l),
-                fun (x: A, res: list[B]) {f(a) :: res},
+                fun (x: A, res: list[B]) {f(x) :: res},
                 ([] : list[B]))
 
 // here is another implementation, which is not tail-recursive,
@@ -2989,6 +3083,7 @@ As you can see, mapping is a partial case of the folding operation, where the re
 
 Because `List.foldl()` and `List.map()` are very common, Ficus provides more convenient notation for them using **for loop** and **folding loop** operators that we've seen earlier:
 
+<!-- doctut: fragment -->
 ```
 // use fold operator instead of List.foldl()
 fun list_length3[T](l: list[T]): int = fold len=0 for x <- l {len += 1}
@@ -3025,6 +3120,7 @@ Even though many of the list processing operations can be easily implemented, as
 * `lab.unzip()` — the inverse of `List.zip()`; returns a tuple of lists `(la, lb)`
 * `l.sort(lt)` — computes the sorted list using the comparison function `lt`:
 
+<!-- doctut: fragment -->
 ```
 val a = [:: ("a", 5), ("c", 0), ("A", 1)]
 // sorts the list of pairs by the first element;
@@ -3046,6 +3142,7 @@ Now we will see how the same basic operations on lists, as well as some other al
 
 Patterns are used extensively in Ficus; and we actually used them quite a bit already in the previous sections without noticing it. Those were restricted forms of pattern matching though. The most general form of pattern matching is done using `match` operator, which can be treated as a greatly extended variant of `switch` operator found in C/C++, Java and other classical languages. The syntax is the following:
 
+<!-- doctut: fragment -->
 ```
 match expr {
 | pattern1 => exprs1 // the first '|' after '{' is optional
@@ -3063,6 +3160,7 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
 * wildcard: `_`. It's successfully matched with any value and defines no captured variables. Why have such a pattern then? Well, it's actually quite useful. First of all, in the case of some complex patterns we may not care about certain parts of it, and then we use the wildcard. Also, it's often used as the very last pattern in `match` operator to define the "else" case (something like `default` in C's `switch`).
 * identifier: `some_identifier`. The identifier should start with a lowercase letter or underscore. There are no checks here, the matched value (or a part of it) is captured under name `some_identifier` and can be used in the corresponding action. Here is an example that illustrates it:
 
+  <!-- doctut: fragment -->
   ```
   match a - b {
   | 0 => println(f"{a} and {b} are equal")
@@ -3078,9 +3176,10 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
 * list pattern: `head_pattern :: tail_pattern`. The matched value is supposed to be a list. If it's empty then the match is unsuccessful (and we proceed to the next pattern, if any), otherwise the list head is matched with the `head_pattern` and the tail is matched with `tail_pattern`.
 * `as`-pattern: `pattern as ident`. The value (or a part of it) is matched with the `pattern`, if successfully, we capture the matched part under the name `ident`. While it does not make sense to write something like `| a as b => ...`, it makes more sense to write something like:
 
+    <!-- doctut: fragment -->
     ```
-    fun collect_tracked_cars(detected_objects: object_t list,
-                    result: object_t list): object_t list =
+    fun collect_tracked_cars(detected_objects: list[object_t],
+                    result: list[object_t]): list[object_t] =
         match detected_objects {
         | ({label=("car", _), id, box=r,
             tracked=true} as object) :: rest =>
@@ -3101,12 +3200,11 @@ Now, what is actually a pattern and how a value is matched with it? Pattern may 
         fold n_exact=0, n_near=0, n_far=0, max_diff=0
             for a <- A, b <- B {
                 match abs(a - b) {
-                | 0 =>
-                    (n_exact+1, n_near, n_far, max_diff)
+                | 0 => n_exact += 1
                 | diff when diff < eps =>
-                    (n_exact, n_near+1, n_far, max(diff, max_diff))
+                    n_near += 1; max_diff = max(diff, max_diff)
                 | diff =>
-                    (n_exact, n_near, n_far+1, max(diff, max_diff))
+                    n_far += 1; max_diff = max(diff, max_diff)
                 }
             }
     ```
@@ -3207,6 +3305,7 @@ Here are some important notes about the implementation:
 1. You can put a lot of stuff in each action clause of a `match` operator. Here we define 3 nested functions when the list is not empty. It really helps you to structure the code and assist those who will read it.
 2. When the function body is simply a `match` that takes all the function parameters on input, we can save some typing and write
 
+    <!-- doctut: fragment -->
     ```
     fun foo(args)
     {
@@ -3216,6 +3315,7 @@ Here are some important notes about the implementation:
 
     instead of
 
+    <!-- doctut: fragment -->
     ```
     fun foo(args) =
     match args {
@@ -3231,6 +3331,7 @@ Here are some important notes about the implementation:
 
 In fact, `match` is not the only place where patterns are used. We already used a restricted form of patterns in the previous sections. By the *restricted form* we mean patterns that do not require any checks, in other words, "capture-only" patterns. Here are some examples:
 
+<!-- doctut: fragment -->
 ```
 // unpack quaternion using capture-only pattern
 val (x, y, z, _) = q
@@ -3264,6 +3365,7 @@ In the [Lists](#lists) section we said that a single-connected immutable list we
 
 There is very elegant and very powerful solution for this problem, though, which is called *sum types*, introduced in `ML` programming language. Why is it named *sum type*? It comes from the set theory. Imagine we have a few types: `T1`, `T2`, ..., `Tn`. Each type defines a set of values that the instance of the type may have. Now, if we define a tuple:
 
+<!-- doctut: fragment -->
 ```
 type T = (T1, T2, ..., Tn)
 ```
@@ -3277,6 +3379,7 @@ type T = T1 * T2 * ... * Tn
 
 Ok, so how to define a type, which value set would be a union, or a sum of the value sets of `T1`, ..., `Tn`? In other words, we want something like `T1 + T2 + ... + Tn`. If we can define such a type, we could, for example, get a limited form of heterogeneous lists, where each element's type can be of one of `T1`, ..., `Tn`. We could represent such a "sum of types" or a "sum type" using a record, for example:
 
+<!-- doctut: fragment -->
 ```
 val T1_tag = 1
 val T2_tag = 2
@@ -3300,6 +3403,7 @@ but such representation is:
 
 If we have a real "union" in Ficus, like in C, that would solve the problem with memory, but would make the language dangerously unsafe. Instead, there is a safe, functional union type, a.k.a. *sum type*, *algebraic type* or *variant* in Ficus. We will use the term *variant* most of the time. This type is defined as:
 
+<!-- doctut: fragment -->
 ```
 type optional_type_parameters type_name =
     // the first '|' is optional
@@ -3329,16 +3433,17 @@ type expr =
         | Val: string
         | Binary: (binop, expr, expr)
         | Unary: (unop, expr)
-        | Call: (expr, expr list)
+        | Call: (expr, list[expr])
         | DefVal: (string, expr)
         | DefFun: (string, list[string], expr)
         | If: (expr, expr, expr)
-        | Seq: expr list
+        | Seq: list[expr]
 ```
 
 As you can see, `expr` references itself in some of the variant cases. That is, variant can represent recursive data structures!
 Let's write a function that computes factorial in this micro-language:
 
+<!-- doctut: continue -->
 ```
 val n = Val("n")
 val one = Num(1.0)
@@ -3353,9 +3458,10 @@ As you can see, variant instances can be constructed easily, because:
 
 Now, as long as we constructed a variant instance, we would like to somehow access it. Whereas with other functional types, like tuples or lists, you could use special access operators (`.`, `List.hd`, `List.tl`) or pattern matching, with variants there is no choice - you have to use pattern patching. Let's implement a part of the function that evaluates an expression of the defined above language:
 
+<!-- doctut: fragment -->
 ```
 type entry_type = ValEntry: (string, expr) | FunEntry: (string, expr)
-type env_t = entry_type list
+type env_t = list[entry_type]
 fun eval(e: expr, env: env_t): (expr, env_t) =
 match e {
 | Binary(bop, e1, e2) =>
@@ -3404,6 +3510,7 @@ Essentially, variant handling using `match` is very simple and looks similar to 
 
 **Note:** the examples with variant pattern matching also explain why there is such convention: variant tags should start with a capital letter, and captured variables should start with lowercase letter. Without such convention attribute-less variant tag could be confused with a captured variable, especially in the case of occasional typing mistakes. For example:
 
+<!-- doctut: fragment -->
 ```
 ...
 match (bop, e1, e2) {
@@ -3435,6 +3542,7 @@ val t3 = RBNode(5, Black, RBNode(1, Red, Empty, Empty),
 
 This is very similar to the Abstract Syntax Tree example above. Let's now implement a function that computes the tree depth:
 
+<!-- doctut: continue -->
 ```
 fun depth(t: rbtree)
 {
@@ -3461,12 +3569,14 @@ val t3 = RBNode("b", Black, RBNode("a", Red, Empty, Empty),
 
 We do not even need to "instantiate" the rbtree structure for text strings explicitly; in the case of a generic variant type the variant constructors become generic functions and they give you an instance of the proper type. The tricky part is handling `Empty` - what type is it supposed to return? `int rbtree`? `string rbtree`? or maybe some `object_t rbtree`? Often compiler figures this out automatically, from the context, but sometimes you'd need to put it explicitly, e.g.:
 
+<!-- doctut: continue -->
 ```
-val empty_int_rtbtree = (Empty : int rbtree)
+val empty_int_rtbtree = (Empty : rbtree[int])
 ```
 
 How much do the tree processing functions change? A little, actually:
 
+<!-- doctut: continue -->
 ```
 fun depth[T](t: rbtree[T])
 {
@@ -3479,6 +3589,7 @@ fun depth[T](t: rbtree[T])
 
 When a variant is defined, some of the cases may need quite complex attributes, so it makes sense to use records as attributes. The syntax directly supports such a feature. Here is variation of red-black tree definition using records:
 
+<!-- doctut: fragment -->
 ```
 type rbtree[T] =
     | Empty
@@ -3504,6 +3615,7 @@ As you may notice, records definitions can be directly embedded into variant def
 
 This is partial and seemingly useless case of variants, but it can be very useful actually. Suppose, we want to define a rational number type and overload operations for it (+, -, etc.). We could define the type and operations as following:
 
+<!-- doctut: fragment -->
 ```
 type ratio_t = (int, int)
 operator + ((n1, d1): ratio_t, (n2, d2): ratio_t) = ...
@@ -3545,6 +3657,7 @@ class option[T] = None | Some: T
 
 Also, Ficus compiler recognizes a shorter notation `T?` in addition to the traditional `T option`. But, as you can see, one of the fundamental Ficus types is actually a variant. To demonstrate its usefulness once again, let's implement a search function for Red-Black trees, assuming that the tree nodes contain pairs `(key, data)` and we try to find data associated with a certain key:
 
+<!-- doctut: fragment -->
 ```
 fun find_opt[Key, Data](t: rbtree[Key, Data], k0: Key): Data? =
 match t {
@@ -3558,6 +3671,7 @@ match t {
 
 By using this option type as find_opt return value, we eliminate the need to use some *magic* value or a separate *flag* to indicate that the specified key is not found:
 
+<!-- doctut: fragment -->
 ```
 val names = [:: "Bob", "Alice", "Sam"]
 for name <- names {
@@ -3574,6 +3688,7 @@ Exceptions is a safe, convenient and efficient mechanism for error handling, and
 
 A new exception is defined with a single line of code:
 
+<!-- doctut: fragment -->
 ```
 exception ExceptionName [ : optional_type_spec ]
 ```
@@ -3582,12 +3697,14 @@ exception ExceptionName [ : optional_type_spec ]
 
 To throw an exception, use `throw` operator:
 
+<!-- doctut: fragment -->
 ```
 throw expr
 ```
 
 where `expr` is of type `exn`. Note that constructing an exception does not automatically throw it, but usually `throw` is applied to just constructed exception:
 
+<!-- doctut: fragment -->
 ```
 fun foo()
 {
@@ -3606,6 +3723,7 @@ fun access_my_container(c: container_t, i: int)
 
 Handling exception is also easy, and it's also done using pattern matching, but it's not the `match` operator, it's `try-catch`:
 
+<!-- doctut: fragment -->
 ```
 try
     expr_or_code_block
@@ -3628,7 +3746,7 @@ val file_size =
         val f = File.open("log.txt", "rt")
         var fsz = -1i64
         try {
-           f.seek(0, File.SEEK_END)
+           f.seek(0i64, File.SEEK_END)
            fsz = f.tell()
         } finally {
            f.close()
@@ -3646,6 +3764,7 @@ Here we not just used `try-catch` expression to handle the case when the file ca
 
 What happens when the thrown exception does not match any of the patterns? It's thrown further, as if each `catch` block contained this:
 
+<!-- doctut: fragment -->
 ```
 catch {
 <patterns ... handlers>
@@ -3664,7 +3783,7 @@ fun isint(str: string): bool
     // if a string represents an integer
     try {
         for c <- str {
-            val digit = ord(c) - ord(#"0")
+            val digit = int(c) - int('0')
             if digit < 0 || digit > 9 {
                 // Break is the standard exception
                 throw Break
@@ -3686,6 +3805,7 @@ Since Ficus compiler generates C code by default, not C++, C++ exceptions are no
 
 Each Ficus source is treated by ficus compiler as a module. Big projects may be split into multiple files, representing meaningful and probably re-usable components, and then you can `import` one module into another one and make use of the imported module. By convention, modules that are meant to be imported into other modules, have mixed-case names and start with a capital latin letter, e.g. `MyModule.fx`. Once you created `MyModule.fx` and placed some definitions there, you can import it to another module and access its functionality using dot notation:
 
+<!-- doctut: fragment -->
 ```
 // MyModule.fx
 ...
@@ -3704,6 +3824,7 @@ There is Ficus standard library that includes a bunch of useful modules implemen
 
 1. `import-as`
 
+<!-- doctut: fragment -->
 ```
 // e.g. import SomeVeryLongModuleName as m
 import ModuleName as Alias
@@ -3711,6 +3832,7 @@ import ModuleName as Alias
 
 2. `from-import`
 
+<!-- doctut: fragment -->
 ```
 // import selected functionality
 from MyModule import fact
@@ -3737,6 +3859,7 @@ Note that because values are immutable, compiler does not distinguishes between 
 [**An implementation note**: *currently, only a part of this functionality is implemented. It's possible to organize modules in sub-directories, but there is no support for `__init__.fx`*]
 When you develop complex frameworks or apps, a flat module structure (i.e. one module per file) quickly becomes insufficient. One of possible workarounds could be a special naming scheme, i.e. use names like `DeepLearning_Nonlin_ReLU.fx` that help to group the modules. A better solution would be to use the mechanism of complex modules in Ficus that is quite similar to Python. Suppose, we want to make a complex module that provides interface to `OpenCV` computer vision library, which consists of multiple parts (`Core`, `Imgproc` etc.). We also want to put a sub-collection `Contrib` of experimental functionality that would also contain multiple parts (`DNN`, `Text` etc.). In Ficus all this package may be shaped like this:
 
+<!-- doctut: fragment -->
 ```
 ficus/lib # the parent lib directory, but it's not necessarily to put it there;
             # you can put packages everywhere you want,
@@ -3764,6 +3887,7 @@ import OpenCV as cv // cv alias is optional, of course
 
 * or import a particular part
 
+<!-- doctut: fragment -->
 ```
 import OpenCV.Contrib.Text
 import OpenCV.Contrib.Bioinspired as cv_bio
@@ -3771,6 +3895,7 @@ import OpenCV.Contrib.Bioinspired as cv_bio
 
 * or import particular functionality
 
+<!-- doctut: fragment -->
 ```
 from OpenCV.Imgproc import Canny
 ```
@@ -3779,6 +3904,7 @@ The following things should be kept in mind when you implement such complex modu
 
 * the implementation of this complex modules mechanism is pretty straightforward, there is no any magic about namespaces or dependencies. That is, you implement individual modules as usual, and `import` everything they need manually. Note that you need to specify complete paths with `.` of the imported modules when importing some parts of a complex module into others:
 
+<!-- doctut: fragment -->
 ```
 // OpenCV.Imgproc
 import OpenCV.Core // or use "import OpenCV.Core as Core"
@@ -3791,6 +3917,7 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
 
   1. bring everything to the same "namespace":
 
+    <!-- doctut: fragment -->
     ```
     // OpenCV/__init__.fx
     from OpenCV.Core import *
@@ -3800,6 +3927,7 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
 
     then user can write:
 
+    <!-- doctut: fragment -->
     ```
     import OpenCV as cv
     cv.dft(...)
@@ -3808,6 +3936,7 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
 
   2. serve as a "batch import" shortcut:
 
+    <!-- doctut: fragment -->
     ```
     // OpenCV/__init__.fx
     import OpenCV.Core as Core
@@ -3817,6 +3946,7 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
 
     then user can write:
 
+    <!-- doctut: fragment -->
     ```
     import OpenCV as cv
     cv.Core.dft(...)
@@ -3825,6 +3955,7 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
 
   3. provide various alternatives via multiple proxy modules, e.g.
 
+    <!-- doctut: fragment -->
     ```
     // OpenCV/All.fx
     import OpenCV.Core as Core
@@ -3834,6 +3965,7 @@ import OpenCV.Core // or use "import OpenCV.Core as Core"
 
     then user can write:
 
+    <!-- doctut: fragment -->
     ```
     import OpenCV.All as cv
     cv.Core.dft(...)
@@ -3861,12 +3993,14 @@ a missing value is replaced by `true`.
 
 The defined symbols are inserted into the beginning of each compiled module in the form:
 
+<!-- doctut: fragment -->
 ```
 @define symbol_name value
 ```
 
 Users can also put their own definitions using
 
+<!-- doctut: fragment -->
 ```
 @define symbol_name preprocessor_expression
 ```
@@ -3891,6 +4025,7 @@ which removes the definition, so that subsequent `defined(symbol_name)` return `
 
 It's possible to include and exclude certain parts of the compiled module using C-style conditional directives:
 
+<!-- doctut: fragment -->
 ```
 @if preprocessor_expr
     ...
@@ -3903,6 +4038,7 @@ It's possible to include and exclude certain parts of the compiled module using 
 
 with conventional shorter forms:
 
+<!-- doctut: fragment -->
 ```
 @ifdef symbol_name // equivalent to @if defined(symbol_name)
 ...
@@ -3915,6 +4051,7 @@ with conventional shorter forms:
 
 is also similar to C preprocessor:
 
+<!-- doctut: fragment -->
 ```
 // prints
 // '<location>: warning: <result_of_expression>' and
@@ -3931,6 +4068,7 @@ the arguments should be text strings or expressions that produce text strings.
 
 Here is a short hypothetical example. Let's say we have win32_ui.fx module:
 
+<!-- doctut: fragment -->
 ```
 // win32_ui.fx: Win32 UI backend, depends on Windows API
 ...
@@ -3938,6 +4076,7 @@ Here is a short hypothetical example. Let's say we have win32_ui.fx module:
 
 and linux_ui.fx module:
 
+<!-- doctut: fragment -->
 ```
 // linux_ui.fx: GTK+-based UI backend with the same API as Win32 UI
 ...
@@ -3945,6 +4084,7 @@ and linux_ui.fx module:
 
 We can now have the following *cross-platform* code:
 
+<!-- doctut: fragment -->
 ```
 // my_app.fx
 @if Platform == "Win32"
@@ -3961,6 +4101,7 @@ ui.run()
 
 that you can compile on different platforms with
 
+<!-- doctut: fragment -->
 ```
 ficus -app -D Platform=<target_platform> my_app.fx
 ```
@@ -3969,6 +4110,7 @@ ficus -app -D Platform=<target_platform> my_app.fx
 
 Besides the conditional compilation, the results of preprocessor expressions can also be put into the final code using the special `@{preprocessor_expression}` directive, e.g.
 
+<!-- doctut: fragment -->
 ```
 // myexample.fx
 ...
@@ -3987,6 +4129,7 @@ Being primarily a functional language, Ficus includes some elements of object-or
 
 A class is defined in Ficus almost like a record or a variant:
 
+<!-- doctut: fragment -->
 ```
 class [ optional_type_parameters ] class_name
     [ : list_of_implemented_interfaces ]
@@ -4010,6 +4153,7 @@ with a few differences:
 
 Here is example of some rectangle class and its usage:
 
+<!-- doctut: fragment -->
 ```
 class Rect[T]
 {
@@ -4108,6 +4252,7 @@ Interface is a collection of function declarations. Each class in Ficus may impl
 
 Here is a short example:
 
+<!-- doctut: fragment -->
 ```
 // let's define some base interface, to implement which the class should be able to name itself
 interface IBase
@@ -4220,6 +4365,7 @@ As the classical OOP books teach, there are 3 basic components of OOP:
 
 OOP in Ficus is super-efficient. When you call a class method, it's just as fast as a function call. A virtual table is only used when you have an instance of a class, cast it to some interface pointer, and then call its method, i.e. when compiler is not able to figure out, which exactly method to call:
 
+<!-- doctut: fragment -->
 ```
 interface Printable
 {
@@ -4262,6 +4408,7 @@ Great support for parallel programming has been one of the main design goals of 
 
 The first useful thing is the `@parallel for`:
 
+<!-- doctut: fragment -->
 ```
 val (h, w) = size(img)
 val out_img = [
@@ -4315,6 +4462,7 @@ Because ficus compiles Ficus to C, calling C/C++ from Ficus is easy. You can put
 * at the top, module level. Such `@ccode` fragments are often used to include some headers and define some helper functions and macros.
 * to define a function body (note that it's always required to specify the return type in this case):
 
+<!-- doctut: fragment -->
 ```
 fun func_name(arg1: T1, arg2: T2, ...): explicit_rettype
 @ccode {
@@ -4325,6 +4473,7 @@ fun func_name(arg1: T1, arg2: T2, ...): explicit_rettype
 
 * and to define values:
 
+<!-- doctut: fragment -->
 ```
 val identifier : explicit_type_spec = @ccode { c_code_value }
 ```
@@ -4384,6 +4533,7 @@ fun add_sat_u8(a: uint8 [], b: uint8 []): uint8 []
 
 And this is how it can be used:
 
+<!-- doctut: fragment -->
 ```
 import SSE2_Utils as sse2
 val n = 42
@@ -4485,12 +4635,10 @@ Json parser + pretty-printer, see `test_json.fx` unit test as the usage example.
 
 *To be explained in details*
 
-<!-- TODO(vadim): the option dump below is heavily outdated (v0.1.0-era); regenerate from the current `ficus -h` — it should now include -Wall/-Werror/-Wimplicit-rettype, -diag-format, -pr-resolve etc. The doctut verification session is instructed to cross-check this appendix against the real compiler. -->
-
 ```text
 $ ./bin/ficus -h
 
-Ficus compiler v0.1.0 (git 0.1.0_ocaml-30-gfb89571)
+Ficus compiler v1.0.0-alpha (git <noinfo>)
 
 Usage: ficus [options ...] <input_file.fx> [-- <app_args ...>]
 
@@ -4503,70 +4651,77 @@ where options can be some of:
     -pr-k           Print optimized K-form of the parsed files
                     (only a part of the generated K-form is retained
                     because of the dead code elimination step)
+    -pr-resolve     Trace overload resolution: for every call whose viable
+                    candidate set has >1 entry, print the candidates, the
+                    env-order winner (current behavior) and the generality
+                    winner (WP-E). Diagnostic only; does not change resolution.
     -no-c           Do not generate C code
     -app            Build application (default mode)
     -run            Build application and run it
     -O0             Optimization level 0: disable all optimizations
-                                except for the most essential ones
-    -O1             Optimization level 1 (default):
-                    enable most of the optimizations
+                                         except for the most essential ones
+    -O1             Optimization level 1 (default): enable most of the optimizations
     -O3             Optimization level 3: enable all optimizations
+    -Ofast          Optimization level 3; passes '-Ofast' to C/C++ compiler
     -no-openmp      Disable OpenMP (OpenMP is enabled by default)
     -debug          Turn on debug information, disable optimizations
                     (but it can be overwritten with further -On)
-    -optim-iters    The number of optimization iterations to
-                    perform (2 or 3 by default, depending on -O<n>)
-    -inline-threshold  Inline threshold (100 by default);
-                    the higher it is, the bigger functions are
-                    inlined; --inline-thresh=0 disables
-                    inline expansion
-    -relax          Do not require explicit typing of all
-                    global functions' parameters
-    -no-preamble    Do not auto-import 'Builtins', 'List' and
-                    a few other standard modules into
-                    each compiled module.
-    -Wno-unused     Do not report errors about
-                    unused values/functions
+    -optim-iters    The number of optimization iterations to perform (2 or 3 by default, depending on -O<n>)
+    -inline-threshold  Inline threshold (100 by default); the higher it is,
+                    the bigger functions are inlined;
+                    --inline-thresh=0 disables inline expansion
+    -relax          Do not require explicit typing of all global functions' parameters
+    -no-preamble    Do not auto-import 'Builtins', 'List', 'String' and
+                    a few other standard modules into each compiled module.
+    -Wno-unused     Do not report errors about unused values/functions
+    -Wimplicit-rettype  Warn about every module-level function whose return
+                    type is left to inference; the message prints the inferred
+                    type so the fix is copy-paste. Nested functions and lambdas
+                    are exempt. By default covers all USER modules (everything
+                    outside the stdlib) so a multi-file project is fully
+                    checked, not just the file named on the command line.
+    -Wimplicit-rettype=all  As above, but ALSO check the stdlib modules
+                    (used to gate the stdlib itself; normally you do not want
+                    warnings about library code you did not write).
+    -Wall           Enable all recommended warnings (currently just
+                    -Wimplicit-rettype)
+    -Werror         Treat all emitted warnings as errors: exit with a nonzero
+                    status if any warning was generated
+    -fmax-errors=N  Print at most N distinct type diagnostics per run (default
+                    100); the rest are summarized as 'further diagnostics
+                    suppressed'. The type checker recovers from an error and
+                    keeps going, so one run reports many independent problems.
+    -diag-format=FMT Diagnostic output format: 'human' (default, caret text) or
+                    'json' (one JSON object per diagnostic, jsonl on stdout, for
+                    a language server / IDE). Human format is unchanged.
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -D symbol       Define 'symbol=true' for preprocessor
     -D symbol=value Define 'symbol=value' for preprocessor.
                     The value may be one of the following:
                       * a boolean: true (or on), false (or off),
-                      * an integer (if the value starts with a digit or sign and
+                      * an integer (if the value starts with a digit, '+' or '-' and
                                     contains 1 or more decimal digits)
                       * text string: everything between double quotes or
-                            any combination of characters that does not
-                            contain spaces, '\' or quotes and does not start
-                            with a digit or '-'
-    -I <dir>        Add specified directory to the module
-                    search path
-    -B <build_root> Specifies the parent directory
-                    <build_root> where subdirectory
-                    <build_root>/__fxbuild__/<app_build_dir> with
-                    the generated files will be created.
-                    By default, <build_root> is the current
-                    working directory.
-    -c++            Use C++ compiler instead of C to compile
-                    the generated sources.
-                    'pragma "c++"' in .fx file also instructs
-                    Ficus compiler to use C++.
-    -cflags <cflags> Pass the specified flags, e.g.
-                    "-mavx2", to C/C++ compiler.
+                                     any combination of characters that does not
+                                     contain spaces, '' or quotes and does not start with a digit or '-'
+    -I <dir>        Add specified directory to the module search path
+    -B <build_root> Specifies the parent directory <build_root> where subdirectory
+                    <build_root>/__fxbuild__/<app_build_dir> with the generated files will be created.
+                    By default, <build_root> is the current working directory.
+    -c++            Use C++ compiler instead of C to compile the generated sources.
+                    'pragma "c++"' in .fx file also instructs ficus compiler to use C++.
+    -cflags <cflags> Pass the specified flags, e.g. "-mavx2", to C/C++ compiler.
                     If environment variable FICUS_CFLAGS is set,
                     its value is inserted before <cflags>
-    -clibs <clibs>  Pass the specified libs/linker flags to
-                    C/C++ compiler.
-                    If environment variable
-                    FICUS_LINK_LIBRARIES is set,
+    -clibs <clibs>  Pass the specified libs/linker flags to C/C++ compiler.
+                    If environment variable FICUS_LINK_LIBRARIES is set,
                     its value is inserted after <clibs>
     -verbose        Display various info during the build
     -h or -help or --help  Display this information
-    -v or -version  Display information about compiler and
-                   the platform, then exit.
-    —              Specify the application parameters when
-                   '-run' flag is used,
-                    e.g. './ficus -run myprog.fx — arg1 arg2'
+    -v or -version  Display information about compiler and the platform, then exit.
+    --              Specify the application parameters when '-run' flag is used,
+                    e.g. './ficus -run myprog.fx -- arg1 arg2'
 ```
 
 

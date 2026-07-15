@@ -483,3 +483,33 @@ lib/Map.fx:56: error: the appropriate match for ''k' is not found
   but it changes a stdlib signature — parked here, not fixed under generics-1.
 - Impact today: the emptiness-check overload of `Map.empty` is effectively
   uncallable; use `m.list().empty()` / `m.list() == []` as a workaround.
+
+## FB-030  `.=` record-update-assignment (`rec .= {…}`) is rejected by the parser  [found — doctut-1]
+Found while verifying the tutorial's "Modifying/updating record" section
+(doctut-1). The tutorial documents `rec .= {members}` as a shortcut for
+`rec = rec.{members}`, but the compiler rejects even the simplest form:
+```
+type R = {x: int; y: int}
+var r = R {x=0, y=0}
+r .= {x=5}    // error: expect a keyword element here '<ident> = ...'
+```
+```
+error: expect a keyword element here '<ident> = ...'
+ 3 | r .= {x=5}
+   |   ^~
+```
+The token and the AST node both exist — `Lexer.fx` emits `DOT_EQUAL` and
+`Parser.fx:1668` matches `(DOT_EQUAL, l2) :: (LBRACE, _) :: rest =>` and builds
+`ExpUpdateRecord`. But it then calls `parse_exp_list(ts, RBRACE, kw_mode=KwMust,
+…)` on **`ts`** — the token list still positioned at `.=` — instead of `rest`
+(positioned after the `{`). So `parse_exp_list` starts on `.= {…` and fails at
+the first non-keyword token. The functional form `r = r.{x=5}` works, and there
+are **zero** uses of `.=` in `lib/`, `compiler/` or `test/` — so the feature is
+effectively dead. Looks like a one-line fix (`ts` → `rest`, and skip the `{`),
+but it touches the compiler → parked here, not fixed under doctut-1.
+**Resolution (doctut-1):** Vadim removed `.=` from the tutorial entirely — the
+"Modifying/updating record" example now uses direct field assignment /
+`velocity ./= 2`, and `.={...}` was dropped from the operator listing — so that
+block is no longer fenced and IS compiled by the doctut leg. The parser
+mis-wiring itself stays in the compiler, latent: restore `.=` (or delete the
+dead `DOT_EQUAL` path) whenever convenient.

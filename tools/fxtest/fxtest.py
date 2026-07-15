@@ -518,6 +518,13 @@ def cmd_ir(args):
     return run_ir(REPO, FICUS, update=args.update_golden, jobs=args.jobs)
 
 
+def cmd_doctut(args):
+    """Extract & compile every code block in doc/ficustut.md so a syntax reform
+    that breaks a documented example breaks CI. Opt-in leg (like `lsp`)."""
+    from doctut import run_doctut  # noqa
+    return run_doctut(REPO, FICUS, jobs=args.jobs)
+
+
 def cmd_cfold(args):
     """Oracle: compile-time constant folding == runtime evaluation, over N random
     integer expressions at -O0 and -O3. Catches the FB-002 class (uint64 >> / div
@@ -649,6 +656,10 @@ def main(argv=None):
 
     p = sub.add_parser("lsp", help="build + drive the Ficus language server (optional)")
     p.set_defaults(func=cmd_lsp)
+
+    p = sub.add_parser("doctut", help="compile every code block in the tutorial (optional)")
+    add_common(p)
+    p.set_defaults(func=cmd_doctut)
 
     p = sub.add_parser("unit", help="wrap test_all.fx")
     add_common(p)
