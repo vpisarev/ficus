@@ -27,27 +27,43 @@
     },
     "strings": {
       "patterns": [
-        {
-          "name": "string.quoted.double.ficus",
-          "begin": "(f)?\"",
-          "beginCaptures": { "1": { "name": "storage.type.string.interpolated.ficus" } },
-          "end": "\"",
-          "patterns": [
-            { "name": "constant.character.escape.ficus", "match": "\\\\." },
-            {
-              "name": "meta.template.expression.ficus",
-              "begin": "\\{",
-              "end": "\\}",
-              "patterns": [{ "include": "$self" }]
-            }
-          ]
-        },
-        {
-          "name": "string.quoted.raw.ficus",
-          "begin": "r\"",
-          "end": "\""
-        }
+        { "include": "#fstring" },
+        { "include": "#rawstring" },
+        { "include": "#string" }
       ]
+    },
+    "fstring": {
+      "comment": "f\"...\": {expr} interpolates; {{ and }} are literal braces (Python-style)",
+      "name": "string.quoted.double.interpolated.ficus",
+      "begin": "f\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.ficus", "match": "\\\\." },
+        { "name": "constant.character.escape.brace.ficus", "match": "\\{\\{|\\}\\}" },
+        { "include": "#interpolation" }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.template.expression.ficus",
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        { "include": "#interpolation" },
+        { "include": "$self" }
+      ]
+    },
+    "rawstring": {
+      "name": "string.quoted.other.raw.ficus",
+      "begin": "r\"",
+      "end": "\"",
+      "patterns": [{ "name": "constant.character.escape.ficus", "match": "\\\\[\"']" }]
+    },
+    "string": {
+      "comment": "plain string: braces are literal, NO interpolation (like Python \"{\")",
+      "name": "string.quoted.double.ficus",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [{ "name": "constant.character.escape.ficus", "match": "\\\\." }]
     },
     "chars": {
       "name": "constant.character.ficus",

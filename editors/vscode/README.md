@@ -55,6 +55,20 @@ vsce package                                   # produces ficus-lsp-0.1.0.vsix
 code --install-extension ficus-lsp-0.1.0.vsix
 ```
 
+## Developing the grammar
+
+Syntax highlighting is a TextMate grammar (`ficus.tmLanguage.json`). After editing
+it, run the offline regression test (on the same engine VS Code uses):
+
+```sh
+npm install        # dev deps: vscode-textmate, vscode-oniguruma
+npm test           # node test/grammar.test.js
+```
+
+It locks the tricky cases: a plain `"{"` is a literal brace (interpolation applies
+only to `f"..."`, like Python), `{{`/`}}` are literal braces in f-strings, and
+`/* */` comments nest.
+
 ## Notes / v1 limitations
 
 Diagnostics update on **save**, not per keystroke (`didChange` is intentionally

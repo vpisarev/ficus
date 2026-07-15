@@ -42,5 +42,12 @@
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "vscode-textmate": "^9.0.0",
+    "vscode-oniguruma": "^2.0.1"
+  },
+  "scripts": {
+    "test": "node test/grammar.test.js"
   }
 }
