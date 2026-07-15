@@ -454,6 +454,35 @@ def cmd_corpus(args):
 # unit -- wrap test/test_all.fx
 # ============================================================================
 
+def cmd_lsp(args):
+    """lsp-1 Phase 1: build the Ficus language server (tools/FicusLsp.fx) and
+    drive it over a stdio pipe (tools/fxtest/lsp_driver.py). Optional leg."""
+    import unittest
+    src = os.path.join(REPO, "tools", "FicusLsp.fx")
+    if not os.path.exists(src):
+        print("[lsp] tools/FicusLsp.fx not present -- nothing to do")
+        return 0
+    os.makedirs(BUILD, exist_ok=True)
+    server = os.path.join(BUILD, "ficus-lsp")
+    broot = os.path.join(BUILD, "lsp_build")
+    os.makedirs(broot, exist_ok=True)
+    print("[lsp] building the server ...")
+    cp = subprocess.run([FICUS, "-o", server, "-B", broot, src],
+                        capture_output=True, text=True)
+    if cp.returncode != 0:
+        print(cp.stdout + cp.stderr)
+        print("[lsp] FAILED to build tools/FicusLsp.fx")
+        return 1
+    import lsp_driver
+    suite = lsp_driver.load_suite(FICUS, server)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    print_table("lsp (FicusLsp.fx over stdio)",
+                [Result("lsp_driver",
+                        PASS if result.wasSuccessful() else FAIL,
+                        f"{result.testsRun} test(s)")])
+    return 0 if result.wasSuccessful() else 1
+
+
 def cmd_unit(args):
     src = os.path.join(REPO, "test", "test_all.fx")
     print("[unit] running test/test_all.fx ...")
@@ -617,6 +646,9 @@ def main(argv=None):
     p.add_argument("--update-golden", action="store_true")
     add_common(p)
     p.set_defaults(func=cmd_ir)
+
+    p = sub.add_parser("lsp", help="build + drive the Ficus language server (optional)")
+    p.set_defaults(func=cmd_lsp)
 
     p = sub.add_parser("unit", help="wrap test_all.fx")
     add_common(p)

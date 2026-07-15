@@ -1,10 +1,9 @@
 # lsp-1 report — structured diagnostics + `-diag-format=json` (Phase 0 + 0.5)
 
-Branch `lsp-1` off master. Brief: `docs/lsp1_brief.md`. Plan checkpoint: **Phase 0
-(compiler json) + Phase 0.5 (capability tests + stdlib gap-fills) done, full
-ladder green, not pushed.** The Ficus server (Phase 1) and editor smoke (Phase 2)
-are the next checkpoint. This document is the review artifact for the first two
-phases.
+Branch `lsp-1` off master. Brief: `docs/lsp1_brief.md`. Status: **all four phases
+done — Phase 0 (compiler json), 0.5 (capability tests + stdlib gap-fills), 1 (the
+Ficus server), 2 (editor smoke + docs). Full ladder + lsp leg green, not pushed.**
+This document is the review artifact.
 
 ## The Phase-0 finding that reshaped the work
 
@@ -112,9 +111,64 @@ about (exact carets).
   compiler build as unused, and the `ficus.h` declaration doesn't alter generated
   C. T2 corpus exact-match confirms program C is unchanged.
 
-## Deferred to the next checkpoint
+## Phase 1 — the server (`tools/FicusLsp.fx`)
 
-Phase 1 (`tools/FicusLsp.fx`: JSON-RPC/stdio framing, publishDiagnostics,
-codeAction from `suggestions`) and Phase 2 (editor smoke + `docs/lsp.md`). Open
-items: MF-002 (thread parser did-you-mean into `suggestions`), MF-001
-(surrogate pairs), and v1.5 unsaved buffers via `-substitute-file`.
+A minimal LSP server **written in Ficus**, `-Wall`-clean, ~330 lines. JSON-RPC 2.0
+over stdio with `Content-Length` framing built on the Phase 0.5 byte-exact
+primitives (`read_exact` = `File.read(uint8[N])` + `String.from_utf8`; writes size
+the header with `String.utf8_length`). `Re` parses the `Content-Length` header.
+
+**Design.** A single-threaded synchronous loop: each analysis
+(`File.popen` → drain jsonl → `pclose_exit_status`) runs to completion (~0.13 s)
+before the next message is read, so an unbounded pileup of compiler processes is
+**impossible by construction** — the brief's requirement met without a kill/debounce
+mechanism, because there is never more than one child in flight.
+
+**Protocol subset.** `initialize`/`initialized`/`shutdown`/`exit` (exit code via
+`throw Exit(shutdown ? 0 : 1)`); `textDocumentSync {openClose, save}`;
+`textDocument/didOpen`+`didSave` → analyze → `publishDiagnostics`;
+`textDocument/codeAction` → a quickfix per suggestion; `didChange` accepted+ignored
+(v1 saves); `didClose` clears. Diagnostics convert Ficus 1-based `[col0,col1)` →
+LSP 0-based; `line`/`anchor` precision → whole-line range + anchor in the message.
+Suggestions ride each diagnostic's `data` field, so codeAction is **stateless**
+(reads them back from the client-echoed `context.diagnostics`). A nonzero child
+exit with no parseable jsonl → one internal-error diagnostic (crash-safe); any
+diagnostics (errors OR warnings) publish regardless of exit code; a clean run with
+none clears the file.
+
+### One request/response over the wire
+
+```
+--> {"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///…/typo.fx",…}}}
+<-- {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"file:///…/typo.fx","diagnostics":[
+      {"range":{"start":{"line":1,"character":8},"end":{"line":1,"character":14}},
+       "severity":1,"source":"ficus",
+       "message":"…for 'lenght'…; did you mean 'length'?",
+       "data":{"suggestions":["length"]}}]}}
+--> {"jsonrpc":"2.0","id":2,"method":"textDocument/codeAction","params":{…,"context":{"diagnostics":[<that diag>]}}}
+<-- {"jsonrpc":"2.0","id":2,"result":[
+      {"title":"Change to 'length'","kind":"quickfix","edit":{"changes":{"file:///…/typo.fx":[
+        {"range":{"start":{"line":1,"character":8},"end":{"line":1,"character":14}},"newText":"length"}]}}}]}
+```
+
+**Tests** (`tools/fxtest/lsp_driver.py`, Python-stdlib `unittest`, wired as
+`fxtest.py lsp`): typo → one diagnostic with the exact range + one quickfix; fix →
+cleared diagnostics; warning file → severity 2; garbage notification → server
+survives; missing compiler → internal-error diagnostic. 6/6 pass; the leg builds
+the server into `build/fxtest/` (nothing stray in the tree).
+
+## Phase 2 — editor smoke + docs
+
+`docs/lsp.md`: working neovim (`vim.filetype.add` + `vim.lsp.start`) and Emacs
+(eglot) configs, what works in v1, known limitations (save-only; code-point vs
+UTF-16 columns; ASCII-only percent-decoding), and the v1.5/v2 roadmap.
+
+## Deferred / open items
+
+- **MF-002** — thread the parser's module did-you-mean into `suggestions` (it is
+  message-only today; import quickfixes want it structured).
+- **MF-001** — Json.fx surrogate-pair *parse* combining (shared lexer change).
+- **v1.5** — unsaved buffers via a compiler `-substitute-file orig=tmp` flag so a
+  temp buffer analyzes as if at the real path (imports/module naming resolve),
+  making `didChange` live.
+- **v2** — go-to-definition via a compiler symbol dump.

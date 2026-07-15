@@ -46,7 +46,10 @@ bin/ficus -run test/test_all.fx           # the UTest suite directly
 
 Layers: T2 corpus differential (O0 vs O3), T3 golden diagnostics
 (`test/negative/`), T4 IR snapshots (`test/ir/`), T5 randomized suites
-(`test/rand/`). Plus `fxtest.py determinism` and `sanitize` (ASan+UBSan).
+(`test/rand/`). Plus `fxtest.py determinism` and `sanitize` (ASan+UBSan), and the
+optional `fxtest.py lsp` leg (builds `tools/FicusLsp.fx` — the Ficus language
+server, lsp-1 — and drives it over stdio via `tools/fxtest/lsp_driver.py`;
+editor setup + roadmap in `docs/lsp.md`).
 Harness is Python-3-stdlib-only. Compiler bugs found while on another task are
 recorded and fenced (not fixed) in `docs/found_bugs.md`.
 
