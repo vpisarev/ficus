@@ -660,6 +660,10 @@ operator .* [T1, T2, T3](a: (T1...), b: T2): (T3 ...) = (for aj <- a {aj * b})
 operator ./ [T1, T2, T3](a: (T1...), b: T2): (T3 ...) = (for aj <- a {aj / b})
 operator .* [T1, T2, T3](a: T1, b: (T2...)): (T3 ...) = (for bj <- b {a * bj})
 operator ./ [T1, T2, T3](a: T1, b: (T2...)): (T3 ...) = (for bj <- b {a / bj})
+// plain '/' also divides a uniform tuple by a scalar (so `(dx, dy) / n` and
+// `v /= n` scale a short vector). On a (tuple, tuple) call the more specific
+// complex / quaternion `/` below wins by specificity, so this never shadows it.
+operator / [T1, T2, T3](a: (T1...), b: T2): (T3 ...) = (for aj <- a {aj / b})
 operator + [T1, T2, T3](a: (T1...), b: (T2...)): (T3 ...) = (for aj <- a, bj <- b {aj + bj})
 operator - [T1, T2, T3](a: (T1...), b: (T2...)): (T3 ...) = (for aj <- a, bj <- b {aj - bj})
 operator .+ [T1, T2, T3](a: (T1...), b: (T2...)): (T3 ...) = (for aj <- a, bj <- b {aj + bj})
@@ -669,23 +673,6 @@ operator ./ [T1, T2, T3](a: (T1...), b: (T2...)): (T3 ...) = (for aj <- a, bj <-
 operator | [T](a: (T...), b: (T...)): (T...) = (for aj <- a, bj <- b {aj | bj})
 operator & [T](a: (T...), b: (T...)): (T...) = (for aj <- a, bj <- b {aj & bj})
 operator ^ [T](a: (T...), b: (T...)): (T...) = (for aj <- a, bj <- b {aj ^ bj})
-
-// complex multiplication
-operator * [T](a: (T*2), b: (T*2)): (T*2) =
-    (a.0*b.0 - a.1*b.1, a.0*b.1 + a.1*b.0)
-// and division
-operator / [T](a: (T*2), b: (T*2)): (T*2)
-{
-    val q = b.0*b.0 + b.1*b.1
-    ((a.0*b.0 + a.1*b.1)/q, (a.1*b.0 - a.0*b.1)/q)
-}
-
-// quaternion product
-operator * [T](a: (T*4), b: (T*4)): (T*4) =
-    (a.0*b.0 - a.1*b.1 - a.2*b.2 - a.3*b.3,
-    a.0*b.1 + a.1*b.0 + a.2*b.3 - a.3*b.2,
-    a.0*b.2 - a.1*b.3 + a.2*b.0 + a.3*b.1,
-    a.0*b.3 + a.1*b.2 - a.2*b.1 + a.3*b.0)
 
 // dot product
 fun dot[T](a: (T...), b: (T...)): T =
