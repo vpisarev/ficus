@@ -465,6 +465,8 @@ FX_INLINE char_ fx_str_elem_wrap(const fx_str_t* str, int_ idx)
 #define FX_STR_ELEM_WRAP(str, idx) \
     fx_str_elem_wrap(&(str), (idx))
 int fx_str2cstr(const fx_str_t* str, fx_cstr_t* cstr, char* buf, size_t bufsz);
+// number of bytes in the UTF-8 encoding of str, INCLUDING the trailing NUL
+size_t fx_str2cstr_size(const fx_str_t* str);
 size_t fx_str2cstr_slice(const fx_str_t* str, int_ start, int_ maxcount, char* buf);
 
 int fx_ascii2str(const char* cstr, int_ length, fx_str_t* str);

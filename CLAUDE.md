@@ -61,7 +61,14 @@ gated by `Ast.compiler_stage`) carry a gcc-style caret excerpt; middle/backend
 ones don't (locations drift). **Every `test/negative/` golden includes the
 excerpt**; the T3 harness compares excerpt lines verbatim — use
 `--update-golden` when adding cases. New legality checks belong in typecheck
-(caret + `-no-c`-visible), not C-gen.
+(caret + `-no-c`-visible), not C-gen. **`-diag-format=json` (lsp-1)** emits one
+JSON object per diagnostic (jsonl on stdout) instead of the human caret text —
+each carries `{file,line0,col0,line1,col1,precision,severity,message,suggestions,
+anchor?}`, 1-based (the LSP client converts). Human format is the default and is
+byte-identical; every `CompileError` now carries a structured `diag_t` twin, and
+json-mode goldens live in `test/negative/25x_json_*` (`// flags: -diag-format=json`).
+Stdlib helpers added for the server: `String.utf8_length`/`String.from_utf8`
+(byte-exact UTF-8 framing) and `Json.string(js, compact=true)` + proper escaping.
 
 **Spans (reform-prep-1).** `loc_t` is a true span now, not a point: the lexer
 returns each batch's `(begin, end)` and the parser stamps every token with it,

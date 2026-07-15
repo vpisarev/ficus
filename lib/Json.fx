@@ -154,12 +154,41 @@ fun parse_string(fname: string, s: string): t
     parse_value(strm, 0, true).1
 }
 
+// RFC-8259 string escaping: wrap in quotes and escape '"', '\\', the named
+// control chars, and any other control char (<0x20) as \u00XX. '/' and non-ASCII
+// are emitted verbatim (valid UTF-8 JSON). Replaces the old naive repr(), which
+// only added surrounding quotes -> Json.string produced INVALID JSON for any
+// value or key containing a quote, backslash, newline, etc. (lsp-1).
+fun json_escape(s: string): string {
+    val hexdigits = "0123456789abcdef"
+    val fold pieces = ([]: list[string]), verb = 0 for c@i <- s {
+        val code = ord(c)
+        val esc = match code {
+            | 34 => "\\\""
+            | 92 => "\\\\"
+            | 10 => "\\n"
+            | 13 => "\\r"
+            | 9  => "\\t"
+            | 8  => "\\b"
+            | 12 => "\\f"
+            | _ => if code < 32 {
+                       "\\u00" + string(hexdigits[(code >> 4) & 15]) + string(hexdigits[code & 15])
+                   } else { "" }
+        }
+        if esc != "" {
+            pieces = esc :: (if i > verb { s[verb:i] :: pieces } else { pieces })
+            verb = i + 1
+        }
+    }
+    "\"" + "".join((s[verb:] :: pieces).rev()) + "\""
+}
+
 fun scalar2string(js: t): (string, bool)
 {
     | Int i => (string(i), true)
     | Real f => (string(f), true)
     | Bool b => (string(b), true)
-    | Str s => (repr(s), true)
+    | Str s => (json_escape(s), true)
     | Null => ("null", true)
     | _ => ("", false)
 }
@@ -196,7 +225,7 @@ fun scalar2string(js: t): (string, bool)
         for (k, v)@i <- m {
             printf(newind)
             val v = process_comments(v, newind)
-            val prefix = f"{repr(k)}: "
+            val prefix = f"{json_escape(k)}: "
             printf(prefix)
             ignore(print_(v, l_newind + length(prefix), newind, printf))
             if i < n-1 {printf(",\n")}
@@ -251,8 +280,37 @@ fun print_to_file(js: t, filename: string): void
     f.close()
 }
 fun print(js: t): void = ignore(print_(js, 0, "", fun(s: string) {print(s)}))
-fun string(js: t): string {
+
+// Minified serializer (lsp-1): no whitespace, single line -- what wire protocols
+// (JSON-RPC / LSP) want. Comments are dropped (they are not valid strict JSON).
+@private fun compact_(js: t, printf: string -> void): void
+{
+    match js {
+    | Int i => printf(string(i))
+    | Real f => printf(string(f))
+    | Bool b => printf(string(b))
+    | Str s => printf(json_escape(s))
+    | Null => printf("null")
+    | Commented(_, nested_js) => compact_(nested_js, printf)
+    | Seq(l) =>
+        printf("[")
+        for x@i <- l { if i > 0 {printf(",")}; compact_(x, printf) }
+        printf("]")
+    | Map(m) =>
+        printf("{")
+        for (k, v)@i <- m {
+            if i > 0 {printf(",")}
+            printf(json_escape(k)); printf(":"); compact_(v, printf)
+        }
+        printf("}")
+    }
+}
+
+// ~compact=true emits minified single-line JSON; the default stays the
+// (unchanged) pretty-printed multi-line form.
+fun string(js: t, ~compact: bool=false): string {
     var sl: list[string] = []
-    val _ = print_(js, 0, "", fun(s: string) {sl = s :: sl})
+    val emit = fun(s: string) {sl = s :: sl}
+    if compact { compact_(js, emit) } else { ignore(print_(js, 0, "", emit)) }
     "".join(sl.rev())
 }
