@@ -100,7 +100,31 @@ fun get_end_loc(loc: loc_t) {
     loc_t {m_idx=m_idx, line0=line1, col0=col1, line1=line1, col1=col1}
 }
 
-exception CompileError: (loc_t, string)
+/* Structured diagnostic payload (lsp-1). diag-1 baked every diagnostic into a
+   single human-readable string at raise time (loc prefix + severity word + caret
+   excerpt + context tail). That is fine for the terminal but throws away the
+   structure a language server needs. So each CompileError now also carries a
+   diag_t with the parts kept separate; the human string is still built exactly as
+   before (byte-identical terminal output) and travels alongside. -diag-format=json
+   serializes the diag_t instead of printing the human string. */
+type diag_severity_t = DiagError | DiagWarning
+// exact  -> trust the column span (frontend stage: lexer/parser/typecheck/K-norm);
+// line   -> locations have drifted (middle/backend), point at the whole line;
+// anchor -> like line, but a "when instantiating ..." context tail names the site.
+type diag_precision_t = DiagExact | DiagLine | DiagAnchor
+type diag_t =
+{
+    severity: diag_severity_t;
+    // the raw message as passed to compile_err/compile_warning: no loc prefix,
+    // no caret excerpt, no context tail. May still contain a "; did you mean 'x'?"
+    // tail (the suggestions are ALSO exposed separately below for quickfixes).
+    raw_msg: string;
+    suggestions: list[string];
+    precision: diag_precision_t;
+    context: list[string]     // the all_compile_err_ctx stack at raise time
+}
+
+exception CompileError: (loc_t, string, diag_t)
 exception PropagateCompileError
 
 type lit_t =
@@ -593,7 +617,16 @@ fun edit_distance(a: string, b: string): int {
     }
 }
 
-fun compile_err(loc: loc_t, msg: string) {
+// Precision is stage-honest and captured at raise time (compiler_stage advances
+// as the driver runs, so deciding this at print time would tag everything a
+// backend error). Frontend => exact columns; past the AST => whole line, with
+// an 'anchor' refinement when a "when instantiating ..." context tail exists.
+fun diag_precision(): diag_precision_t =
+    if is_compiler_frontend() { DiagExact }
+    else if all_compile_err_ctx != [] { DiagAnchor }
+    else { DiagLine }
+
+fun compile_err(loc: loc_t, msg: string, ~suggestions: list[string] = []) {
     // Build the source excerpt HERE, at raise time, not at print time: the
     // precision (caret vs none) depends on compiler_stage, which advances as
     // the driver runs, so by end-of-run every error would look like a backend
@@ -604,7 +637,11 @@ fun compile_err(loc: loc_t, msg: string) {
         | [] => whole_msg
         | ctx => "\n\t".join(whole_msg :: ctx)
         }
-    CompileError(loc, whole_msg)
+    // The structured twin (lsp-1): keep the parts the human string flattened.
+    val diag = diag_t {
+        severity=DiagError, raw_msg=msg, suggestions=suggestions,
+        precision=diag_precision(), context=all_compile_err_ctx }
+    CompileError(loc, whole_msg, diag)
 }
 
 // diag-1: source-excerpt rendering for diagnostics. Lines are read lazily (only
@@ -655,14 +692,89 @@ fun loc_excerpt(loc: loc_t): string {
     }
 }
 
+// lsp-1: JSON string escaper for -diag-format=json. Hand-rolled here rather than
+// importing lib/Json.fx (that would add a bootstrap dependency for one emitter,
+// and its serializer does not escape control chars anyway). RFC-8259 correct:
+// escape '"' and '\', the named controls \n\r\t\b\f, any other control char
+// (<0x20) as \u00XX; '/' and non-ASCII are emitted verbatim (valid UTF-8 JSON).
+fun json_escape_str(s: string): string {
+    val hexdigits = "0123456789abcdef"
+    val fold pieces = ([]: list[string]), verb = 0 for c@i <- s {
+        val code = ord(c)
+        val esc = match code {
+            | 34 => "\\\""
+            | 92 => "\\\\"
+            | 10 => "\\n"
+            | 13 => "\\r"
+            | 9  => "\\t"
+            | 8  => "\\b"
+            | 12 => "\\f"
+            | _ => if code < 32 {
+                       "\\u00" + string(hexdigits[(code >> 4) & 15]) + string(hexdigits[code & 15])
+                   } else { "" }
+        }
+        if esc != "" {
+            pieces = esc :: (if i > verb { s[verb:i] :: pieces } else { pieces })
+            verb = i + 1
+        }
+    }
+    "".join((s[verb:] :: pieces).rev())
+}
+
+// lsp-1: serialize one structured diagnostic as a single-line JSON object (jsonl).
+// Locations stay 1-based (Ficus convention); the LSP client converts to 0-based.
+// The 'anchor' field appears only for non-exact precision (a drifted location the
+// caret can't be trusted for), naming the site via the context tail.
+fun diag2json(loc: loc_t, d: diag_t): string {
+    val fname = if loc.m_idx >= 0 { all_modules[loc.m_idx].dm_filename } else { "unknown" }
+    val sev = match d.severity { | DiagError => "error" | DiagWarning => "warning" }
+    val prec = match d.precision { | DiagExact => "exact" | DiagLine => "line" | DiagAnchor => "anchor" }
+    fun jstr(s: string) = "\"" + json_escape_str(s) + "\""
+    val sugg = "[" + ", ".join([:: for s <- d.suggestions { jstr(s) }]) + "]"
+    val parts = [::
+        "\"file\": " + jstr(fname),
+        f"\"line0\": {loc.line0}", f"\"col0\": {loc.col0}",
+        f"\"line1\": {loc.line1}", f"\"col1\": {loc.col1}",
+        "\"precision\": " + jstr(prec),
+        "\"severity\": " + jstr(sev),
+        "\"message\": " + jstr(d.raw_msg),
+        "\"suggestions\": " + sugg ]
+    val parts = match d.precision {
+        | DiagAnchor => match d.context { | a :: _ => parts + [:: "\"anchor\": " + jstr(a)] | [] => parts }
+        | _ => parts
+        }
+    "{" + ", ".join(parts) + "}"
+}
+
+fun diag_format_is_json(): bool = Options.opt.diag_format == "json"
+
+// lsp-1: emit a one-off frontend error (lexer/parser) as a json line. These do
+// not flow through the CompileError queue (a lexer/parse failure aborts parsing),
+// so their callers format inline; this covers only the json branch. They are
+// frontend by definition, hence DiagExact.
+fun emit_error_json(loc: loc_t, msg: string): void {
+    val diag = diag_t { severity=DiagError, raw_msg=msg, suggestions=[],
+                        precision=DiagExact, context=[] }
+    println(diag2json(loc, diag))
+}
+
 // non-fatal diagnostic: prints in the same format as an error but with
 // 'warning:' severity, does not stop compilation, and is counted. The
 // end-of-run summary and -Werror promotion are handled by the driver
 // (Compiler.print_all_compile_warns / process_all), which can see Options.
+// In json mode warnings emit their structured form inline (jsonl order does not
+// matter to the client) instead of the human line.
 fun compile_warning(loc: loc_t, msg: string) {
-    val whole_msg = f"{loc}: warning: {msg}"
-    println(whole_msg + loc_excerpt(loc))
     all_compile_warns = all_compile_warns + 1
+    if diag_format_is_json() {
+        val diag = diag_t {
+            severity=DiagWarning, raw_msg=msg, suggestions=[],
+            precision=diag_precision(), context=all_compile_err_ctx }
+        println(diag2json(loc, diag))
+    } else {
+        val whole_msg = f"{loc}: warning: {msg}"
+        println(whole_msg + loc_excerpt(loc))
+    }
 }
 
 fun push_compile_err(err: exn) { all_compile_errs = err :: all_compile_errs }
@@ -674,7 +786,8 @@ fun check_compile_errs() =
     }
 
 fun print_compile_err(err: exn) {
-    | CompileError(loc, msg) => println(msg)
+    | CompileError(loc, msg, diag) =>
+        println(if diag_format_is_json() { diag2json(loc, diag) } else { msg })
     | Fail(msg) => println(f"Failure: {msg}")
     | _ => println("\n\nException {err} occured")
 }
@@ -1330,7 +1443,7 @@ fun get_cast_fname(t: typ_t, loc: loc_t) =
     | TypFloat(64) => fname_to_double()
     | TypBool => fname_to_bool()
     | TypString => fname_string()
-    | _ => throw CompileError(loc, f"for type '{typ2str(t)}' there is no corresponding cast function")
+    | _ => throw compile_err(loc, f"for type '{typ2str(t)}' there is no corresponding cast function")
     }
 
 val reserved_keywords = Set.from_list(String.cmp, [:: "fx_result", "fx_status", "fx_fv"])

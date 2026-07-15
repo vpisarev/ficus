@@ -104,10 +104,27 @@ typedef struct _fx_R10Ast__loc_t {
    int_ col1;
 } _fx_R10Ast__loc_t;
 
-typedef struct _fx_T2R10Ast__loc_tS {
+typedef struct _fx_N20Ast__diag_severity_t {
+   int tag;
+} _fx_N20Ast__diag_severity_t;
+
+typedef struct _fx_N21Ast__diag_precision_t {
+   int tag;
+} _fx_N21Ast__diag_precision_t;
+
+typedef struct _fx_R11Ast__diag_t {
+   struct _fx_N20Ast__diag_severity_t severity;
+   fx_str_t raw_msg;
+   struct _fx_LS_data_t* suggestions;
+   struct _fx_N21Ast__diag_precision_t precision;
+   struct _fx_LS_data_t* context;
+} _fx_R11Ast__diag_t;
+
+typedef struct _fx_T3R10Ast__loc_tSR11Ast__diag_t {
    struct _fx_R10Ast__loc_t t0;
    fx_str_t t1;
-} _fx_T2R10Ast__loc_tS;
+   struct _fx_R11Ast__diag_t t2;
+} _fx_T3R10Ast__loc_tSR11Ast__diag_t;
 
 typedef struct _fx_LN12Ast__scope_t_data_t {
    int_ rc;
@@ -156,6 +173,11 @@ typedef struct _fx_ri_data_t {
    int_ rc;
    int_ data;
 } _fx_ri_data_t, *_fx_ri;
+
+typedef struct _fx_T2R10Ast__loc_tS {
+   struct _fx_R10Ast__loc_t t0;
+   fx_str_t t1;
+} _fx_T2R10Ast__loc_tS;
 
 typedef struct _fx_T2R9Ast__id_tN14K_form__ktyp_t {
    struct _fx_R9Ast__id_t t0;
@@ -1013,7 +1035,7 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t data;
 } _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
@@ -1048,21 +1070,61 @@ static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2
    fx_copy_str(t1, &fx_result->t1);
 }
 
-static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_free_R11Ast__diag_t(struct _fx_R11Ast__diag_t* dst)
 {
-   fx_free_str(&dst->t1);
+   fx_free_str(&dst->raw_msg);
+   _fx_free_LS(&dst->suggestions);
+   _fx_free_LS(&dst->context);
 }
 
-static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_copy_R11Ast__diag_t(struct _fx_R11Ast__diag_t* src, struct _fx_R11Ast__diag_t* dst)
+{
+   dst->severity = src->severity;
+   fx_copy_str(&src->raw_msg, &dst->raw_msg);
+   FX_COPY_PTR(src->suggestions, &dst->suggestions);
+   dst->precision = src->precision;
+   FX_COPY_PTR(src->context, &dst->context);
+}
+
+static void _fx_make_R11Ast__diag_t(
+   struct _fx_N20Ast__diag_severity_t* r_severity,
+   fx_str_t* r_raw_msg,
+   struct _fx_LS_data_t* r_suggestions,
+   struct _fx_N21Ast__diag_precision_t* r_precision,
+   struct _fx_LS_data_t* r_context,
+   struct _fx_R11Ast__diag_t* fx_result)
+{
+   fx_result->severity = *r_severity;
+   fx_copy_str(r_raw_msg, &fx_result->raw_msg);
+   FX_COPY_PTR(r_suggestions, &fx_result->suggestions);
+   fx_result->precision = *r_precision;
+   FX_COPY_PTR(r_context, &fx_result->context);
+}
+
+static void _fx_free_T3R10Ast__loc_tSR11Ast__diag_t(struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
+{
+   fx_free_str(&dst->t1);
+   _fx_free_R11Ast__diag_t(&dst->t2);
+}
+
+static void _fx_copy_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* src,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
 {
    dst->t0 = src->t0;
    fx_copy_str(&src->t1, &dst->t1);
+   _fx_copy_R11Ast__diag_t(&src->t2, &dst->t2);
 }
 
-static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+static void _fx_make_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_R10Ast__loc_t* t0,
+   fx_str_t* t1,
+   struct _fx_R11Ast__diag_t* t2,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* fx_result)
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);
+   _fx_copy_R11Ast__diag_t(t2, &fx_result->t2);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -1136,6 +1198,23 @@ static int _fx_cons_Li(int_ hd, struct _fx_Li_data_t* tl, bool addref_tl, struct
 static int _fx_make_ri(int_ arg, struct _fx_ri_data_t** fx_result)
 {
    FX_MAKE_REF_IMPL(_fx_ri, FX_COPY_SIMPLE);
+}
+
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static void _fx_free_T2R9Ast__id_tN14K_form__ktyp_t(struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
@@ -3348,7 +3427,12 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
    void*);
 
 FX_EXTERN_C_VAL(struct _fx_R9Ast__id_t _fx_g9Ast__noid)
-FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(struct _fx_R10Ast__loc_t*, fx_str_t*, fx_exn_t*, void*);
+FX_EXTERN_C int _fx_M3AstFM11compile_errE3RM5loc_tSLS(
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   struct _fx_LS_data_t*,
+   fx_exn_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(
    struct _fx_R9Ast__id_t*,
@@ -5535,7 +5619,7 @@ static int _fx_M8K_mangleFM15mangle_typname_LS4R9Ast__id_tLSR10Ast__loc_tNt10Has
             else {
                fx_exn_t v_10 = {0};
                fx_str_t slit_1 = FX_MAKE_STR("kvar_proto must be a variant");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kvar_loc_0, &slit_1, &v_10, 0), _fx_catch_1);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kvar_loc_0, &slit_1, 0, &v_10, 0), _fx_catch_1);
                FX_THROW(&v_10, false, _fx_catch_1);
 
             _fx_catch_1: ;
@@ -5652,7 +5736,7 @@ static int _fx_M8K_mangleFM15mangle_typname_LS4R9Ast__id_tLSR10Ast__loc_tNt10Has
                }
                fx_exn_t v_23 = {0};
                fx_str_t slit_7 = FX_MAKE_STR("kt_proto must be a type (record) definition");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kt_loc_0, &slit_7, &v_23, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kt_loc_0, &slit_7, 0, &v_23, 0), _fx_catch_4);
                FX_THROW(&v_23, false, _fx_catch_4);
 
             _fx_catch_4: ;
@@ -5729,7 +5813,7 @@ static int _fx_M8K_mangleFM15mangle_typname_LS4R9Ast__id_tLSR10Ast__loc_tNt10Has
       fx_str_t* kt_cname_2 = &v_28.kt_cname;
       if (FX_STR_LENGTH(*kt_cname_2) == 0) {
          fx_str_t slit_12 = FX_MAKE_STR("KTyp does not have a proper mangled name");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_12, &v_29, 0), _fx_catch_6);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_12, 0, &v_29, 0), _fx_catch_6);
          FX_THROW(&v_29, false, _fx_catch_6);
       }
       else {
@@ -5844,7 +5928,7 @@ static int _fx_M8K_mangleFM15mangle_typname_LS4R9Ast__id_tLSR10Ast__loc_tNt10Has
       const fx_str_t strs_4[] = { slit_20, v_44, slit_21 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &v_45), _fx_catch_8);
    }
-   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_45, &v_46, 0), _fx_catch_8);
+   FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_45, 0, &v_46, 0), _fx_catch_8);
    FX_THROW(&v_46, false, _fx_catch_8);
 
 _fx_catch_8: ;
@@ -5998,7 +6082,7 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
             const fx_str_t strs_0[] = { slit_7, v_0, slit_8 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_1), _fx_catch_7);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_1, &v_2, 0), _fx_catch_7);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_1, 0, &v_2, 0), _fx_catch_7);
          FX_THROW(&v_2, false, _fx_catch_7);
 
       _fx_catch_7: ;
@@ -6082,7 +6166,7 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
             const fx_str_t strs_1[] = { slit_13, v_3, slit_14 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_4), _fx_catch_12);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_4, &v_5, 0), _fx_catch_12);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_4, 0, &v_5, 0), _fx_catch_12);
          FX_THROW(&v_5, false, _fx_catch_12);
 
       _fx_catch_12: ;
@@ -6166,7 +6250,7 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
             const fx_str_t strs_2[] = { slit_19, v_6, slit_20 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_7), _fx_catch_17);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_7, &v_8, 0), _fx_catch_17);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_7, 0, &v_8, 0), _fx_catch_17);
          FX_THROW(&v_8, false, _fx_catch_17);
 
       _fx_catch_17: ;
@@ -6402,7 +6486,7 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
          else {
             fx_exn_t v_18 = {0};
             fx_str_t slit_30 = FX_MAKE_STR("the tuple has 0 elements");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_30, &v_18, 0), _fx_catch_29);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_30, 0, &v_18, 0), _fx_catch_29);
             FX_THROW(&v_18, false, _fx_catch_29);
 
          _fx_catch_29: ;
@@ -6550,7 +6634,7 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
       if (tag_0 == 23) {
          fx_exn_t v_25 = {0};
          fx_str_t slit_37 = FX_MAKE_STR("KTypErr cannot be mangled");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_37, &v_25, 0), _fx_catch_39);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_37, 0, &v_25, 0), _fx_catch_39);
          FX_THROW(&v_25, false, _fx_catch_39);
 
       _fx_catch_39: ;
@@ -6560,7 +6644,7 @@ static int _fx_M8K_mangleFM12mangle_ktyp_LS4N14K_form__ktyp_tLSR10Ast__loc_tNt10
       if (tag_0 == 24) {
          fx_exn_t v_26 = {0};
          fx_str_t slit_38 = FX_MAKE_STR("KTypModule cannot be mangled");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_38, &v_26, 0), _fx_catch_40);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_38, 0, &v_26, 0), _fx_catch_40);
          FX_THROW(&v_26, false, _fx_catch_40);
 
       _fx_catch_40: ;
@@ -7527,7 +7611,7 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp
                const fx_str_t strs_0[] = { slit_1, v_9, slit_2 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_10), _fx_catch_2);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kf_loc_0, &v_10, &v_11, 0), _fx_catch_2);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kf_loc_0, &v_10, 0, &v_11, 0), _fx_catch_2);
             FX_THROW(&v_11, false, _fx_catch_2);
          }
 
@@ -7611,7 +7695,7 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp
          else {
             fx_exn_t v_18 = {0};
             fx_str_t slit_4 = FX_MAKE_STR("mangle: invalid closure datatype (should be KClosureVars)");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kf_loc_0, &slit_4, &v_18, 0), _fx_catch_5);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kf_loc_0, &slit_4, 0, &v_18, 0), _fx_catch_5);
             FX_THROW(&v_18, false, _fx_catch_5);
 
          _fx_catch_5: ;
@@ -7962,7 +8046,7 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp
                const fx_str_t strs_4[] = { slit_8, v_46, slit_9, v_48, slit_10 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_4, 5, &v_49), _fx_catch_13);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&ki_loc_0, &v_49, &v_50, 0), _fx_catch_13);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&ki_loc_0, &v_49, 0, &v_50, 0), _fx_catch_13);
             FX_THROW(&v_50, false, _fx_catch_13);
 
          _fx_catch_13: ;
@@ -8077,7 +8161,7 @@ static int _fx_M8K_mangleFM18walk_kexp_n_mangleN14K_form__kexp_t2N14K_form__kexp
          else {
             fx_exn_t v_57 = {0};
             fx_str_t slit_11 = FX_MAKE_STR("after mangling record is not a record anymore");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kt_loc_0, &slit_11, &v_57, 0), _fx_catch_17);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kt_loc_0, &slit_11, 0, &v_57, 0), _fx_catch_17);
             FX_THROW(&v_57, false, _fx_catch_17);
 
          _fx_catch_17: ;

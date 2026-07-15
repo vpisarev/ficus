@@ -1,0 +1,1 @@
+{"file": "250_json_did_you_mean.fx", "line0": 8, "col0": 9, "line1": 8, "col1": 15, "precision": "exact", "severity": "error", "message": "the appropriate match for 'lenght' of type '<unknown>' is not found; did you mean 'length'?", "suggestions": ["length"]}

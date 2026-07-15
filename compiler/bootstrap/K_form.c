@@ -217,10 +217,27 @@ typedef struct _fx_R10Ast__loc_t {
    int_ col1;
 } _fx_R10Ast__loc_t;
 
-typedef struct _fx_T2R10Ast__loc_tS {
+typedef struct _fx_N20Ast__diag_severity_t {
+   int tag;
+} _fx_N20Ast__diag_severity_t;
+
+typedef struct _fx_N21Ast__diag_precision_t {
+   int tag;
+} _fx_N21Ast__diag_precision_t;
+
+typedef struct _fx_R11Ast__diag_t {
+   struct _fx_N20Ast__diag_severity_t severity;
+   fx_str_t raw_msg;
+   struct _fx_LS_data_t* suggestions;
+   struct _fx_N21Ast__diag_precision_t precision;
+   struct _fx_LS_data_t* context;
+} _fx_R11Ast__diag_t;
+
+typedef struct _fx_T3R10Ast__loc_tSR11Ast__diag_t {
    struct _fx_R10Ast__loc_t t0;
    fx_str_t t1;
-} _fx_T2R10Ast__loc_tS;
+   struct _fx_R11Ast__diag_t t2;
+} _fx_T3R10Ast__loc_tSR11Ast__diag_t;
 
 typedef struct _fx_T2il {
    int_ t0;
@@ -981,6 +998,11 @@ typedef struct _fx_LR10Ast__loc_t_data_t {
    struct _fx_R10Ast__loc_t hd;
 } _fx_LR10Ast__loc_t_data_t, *_fx_LR10Ast__loc_t;
 
+typedef struct _fx_T2R10Ast__loc_tS {
+   struct _fx_R10Ast__loc_t t0;
+   fx_str_t t1;
+} _fx_T2R10Ast__loc_tS;
+
 typedef struct _fx_Nt6option1N14K_form__kexp_t {
    int tag;
    union {
@@ -1653,7 +1675,7 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t data;
 } _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
@@ -1852,21 +1874,61 @@ static void _fx_make_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(
    FX_COPY_FP(r_cmp, &fx_result->cmp);
 }
 
-static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_free_R11Ast__diag_t(struct _fx_R11Ast__diag_t* dst)
 {
-   fx_free_str(&dst->t1);
+   fx_free_str(&dst->raw_msg);
+   _fx_free_LS(&dst->suggestions);
+   _fx_free_LS(&dst->context);
 }
 
-static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_copy_R11Ast__diag_t(struct _fx_R11Ast__diag_t* src, struct _fx_R11Ast__diag_t* dst)
+{
+   dst->severity = src->severity;
+   fx_copy_str(&src->raw_msg, &dst->raw_msg);
+   FX_COPY_PTR(src->suggestions, &dst->suggestions);
+   dst->precision = src->precision;
+   FX_COPY_PTR(src->context, &dst->context);
+}
+
+static void _fx_make_R11Ast__diag_t(
+   struct _fx_N20Ast__diag_severity_t* r_severity,
+   fx_str_t* r_raw_msg,
+   struct _fx_LS_data_t* r_suggestions,
+   struct _fx_N21Ast__diag_precision_t* r_precision,
+   struct _fx_LS_data_t* r_context,
+   struct _fx_R11Ast__diag_t* fx_result)
+{
+   fx_result->severity = *r_severity;
+   fx_copy_str(r_raw_msg, &fx_result->raw_msg);
+   FX_COPY_PTR(r_suggestions, &fx_result->suggestions);
+   fx_result->precision = *r_precision;
+   FX_COPY_PTR(r_context, &fx_result->context);
+}
+
+static void _fx_free_T3R10Ast__loc_tSR11Ast__diag_t(struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
+{
+   fx_free_str(&dst->t1);
+   _fx_free_R11Ast__diag_t(&dst->t2);
+}
+
+static void _fx_copy_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* src,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
 {
    dst->t0 = src->t0;
    fx_copy_str(&src->t1, &dst->t1);
+   _fx_copy_R11Ast__diag_t(&src->t2, &dst->t2);
 }
 
-static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+static void _fx_make_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_R10Ast__loc_t* t0,
+   fx_str_t* t1,
+   struct _fx_R11Ast__diag_t* t2,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* fx_result)
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);
+   _fx_copy_R11Ast__diag_t(t2, &fx_result->t2);
 }
 
 static void _fx_free_N10Ast__lit_t(struct _fx_N10Ast__lit_t* dst)
@@ -3974,6 +4036,23 @@ static int _fx_cons_LR10Ast__loc_t(
    FX_MAKE_LIST_IMPL(_fx_LR10Ast__loc_t, FX_COPY_SIMPLE_BY_PTR);
 }
 
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
+
 static void _fx_free_Nt6option1N14K_form__kexp_t(struct _fx_Nt6option1N14K_form__kexp_t* dst)
 {
    switch (dst->tag) {
@@ -5976,7 +6055,12 @@ FX_EXTERN_C int _fx_M3AstFM11get_end_locRM5loc_t1RM5loc_t(struct _fx_R10Ast__loc
 
 FX_EXTERN_C void _fx_M3AstFM7ScBlockN12Ast__scope_t1i(int_, struct _fx_N12Ast__scope_t*);
 
-FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(struct _fx_R10Ast__loc_t*, fx_str_t*, fx_exn_t*, void*);
+FX_EXTERN_C int _fx_M3AstFM11compile_errE3RM5loc_tSLS(
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   struct _fx_LS_data_t*,
+   fx_exn_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M3AstFM6stringS1RM4id_t(struct _fx_R9Ast__id_t*, fx_str_t*, void*);
 
@@ -8438,7 +8522,7 @@ FX_EXTERN_C int _fx_M6K_formFM15get_kinfo_cnameS2N15K_form__kinfo_tR10Ast__loc_t
    if (tag_0 == 1) {
       fx_exn_t v_0 = {0};
       fx_str_t slit_0 = FX_MAKE_STR("attempt to request cname of uninitialized symbol");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_0, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_0, 0), _fx_catch_0);
       FX_THROW(&v_0, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -8523,7 +8607,7 @@ FX_EXTERN_C int _fx_M6K_formFM13get_idk_cnameS2R9Ast__id_tR10Ast__loc_t(
          const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_3, 0, &v_4, 0), _fx_catch_0);
       FX_THROW(&v_4, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -8579,7 +8663,7 @@ FX_EXTERN_C int _fx_M6K_formFM7idk2strS2R9Ast__id_tR10Ast__loc_t(
             const fx_str_t strs_0[] = { slit_0, v_4, slit_1 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_5), _fx_catch_0);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_5, &v_6, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_5, 0, &v_6, 0), _fx_catch_0);
          FX_THROW(&v_6, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -8720,7 +8804,7 @@ FX_EXTERN_C int _fx_M6K_formFM10get_kf_typN14K_form__ktyp_t3LR9Ast__id_tN14K_for
             const fx_str_t strs_0[] = { slit_0, v_4, slit_1 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_5), _fx_catch_0);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_5, &v_6, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_5, 0, &v_6, 0), _fx_catch_0);
          FX_THROW(&v_6, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -8802,7 +8886,7 @@ FX_EXTERN_C int _fx_M6K_formFM10get_kf_typN14K_form__ktyp_t3LR9Ast__id_tN14K_for
             const fx_str_t strs_1[] = { slit_2, v_7, slit_3 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_8), _fx_catch_1);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&loc_1, &v_8, &v_9, 0), _fx_catch_1);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&loc_1, &v_8, 0, &v_9, 0), _fx_catch_1);
          FX_THROW(&v_9, false, _fx_catch_1);
 
       _fx_catch_1: ;
@@ -8849,7 +8933,7 @@ FX_EXTERN_C int _fx_M6K_formFM13get_kinfo_typN14K_form__ktyp_t3N15K_form__kinfo_
          const fx_str_t strs_0[] = { slit_0, v_1, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_2), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_2, &v_3, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_2, 0, &v_3, 0), _fx_catch_0);
       FX_THROW(&v_3, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -9333,7 +9417,7 @@ FX_EXTERN_C int _fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(
          const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_3, 0, &v_4, 0), _fx_catch_0);
       FX_THROW(&v_4, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -9415,7 +9499,7 @@ FX_EXTERN_C int _fx_M6K_formFM8get_kvalRM9kdefval_t2R9Ast__id_tR10Ast__loc_t(
          const fx_str_t strs_1[] = { slit_2, v_5, slit_3 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_6), _fx_catch_1);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&loc_1, &v_6, &v_7, 0), _fx_catch_1);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&loc_1, &v_6, 0, &v_7, 0), _fx_catch_1);
       FX_THROW(&v_7, false, _fx_catch_1);
 
    _fx_catch_1: ;
@@ -9468,7 +9552,7 @@ FX_EXTERN_C int _fx_M6K_formFM12get_kvariantrRM13kdefvariant_t2N14K_form__ktyp_t
             const fx_str_t strs_0[] = { slit_0, v_3, slit_1 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_4), _fx_catch_0);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_4, &v_5, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_4, 0, &v_5, 0), _fx_catch_0);
          FX_THROW(&v_5, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -9484,7 +9568,7 @@ FX_EXTERN_C int _fx_M6K_formFM12get_kvariantrRM13kdefvariant_t2N14K_form__ktyp_t
    else {
       fx_exn_t v_6 = {0};
       fx_str_t slit_2 = FX_MAKE_STR("variant (or sometimes an exception) is expected here");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_2, &v_6, 0), _fx_catch_2);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_2, 0, &v_6, 0), _fx_catch_2);
       FX_THROW(&v_6, false, _fx_catch_2);
 
    _fx_catch_2: ;
@@ -9873,7 +9957,7 @@ FX_EXTERN_C int _fx_M6K_formFM15check_n_walk_idR9Ast__id_t3R9Ast__id_tR10Ast__lo
          fx_exn_t v_3 = {0};
          fx_str_t slit_0 =
             FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_3, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_3, 0), _fx_catch_0);
          FX_THROW(&v_3, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -10062,7 +10146,7 @@ FX_EXTERN_C int _fx_M6K_formFM9walk_ktypN14K_form__ktyp_t3N14K_form__ktyp_tR10As
             fx_exn_t v_9 = {0};
             fx_str_t slit_0 =
                FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_9, 0), _fx_catch_5);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_9, 0), _fx_catch_5);
             FX_THROW(&v_9, false, _fx_catch_5);
 
          _fx_catch_5: ;
@@ -10104,7 +10188,7 @@ FX_EXTERN_C int _fx_M6K_formFM9walk_ktypN14K_form__ktyp_t3N14K_form__ktyp_tR10As
                fx_exn_t v_15 = {0};
                fx_str_t slit_1 =
                   FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_15, 0), _fx_catch_7);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_15, 0), _fx_catch_7);
                FX_THROW(&v_15, false, _fx_catch_7);
 
             _fx_catch_7: ;
@@ -10174,7 +10258,7 @@ FX_EXTERN_C int _fx_M6K_formFM9walk_ktypN14K_form__ktyp_t3N14K_form__ktyp_tR10As
             fx_exn_t v_20 = {0};
             fx_str_t slit_2 =
                FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_2, &v_20, 0), _fx_catch_11);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_2, 0, &v_20, 0), _fx_catch_11);
             FX_THROW(&v_20, false, _fx_catch_11);
 
          _fx_catch_11: ;
@@ -11816,7 +11900,7 @@ static int _fx_M6K_formFM8walk_id_R9Ast__id_t3R9Ast__id_tR10Ast__loc_tRM9k_callb
          fx_exn_t v_3 = {0};
          fx_str_t slit_0 =
             FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_3, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_3, 0), _fx_catch_0);
          FX_THROW(&v_3, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -11887,7 +11971,7 @@ static int _fx_M6K_formFM12walk_idlist_LR9Ast__id_t4LR9Ast__id_tR10Ast__loc_tBRM
                   fx_str_t slit_0 =
                      FX_MAKE_STR(
                         "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_7, 0), _fx_catch_0);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_7, 0), _fx_catch_0);
                   FX_THROW(&v_7, false, _fx_catch_0);
 
                _fx_catch_0: ;
@@ -11936,7 +12020,7 @@ static int _fx_M6K_formFM12walk_idlist_LR9Ast__id_t4LR9Ast__id_tR10Ast__loc_tBRM
                   fx_str_t slit_1 =
                      FX_MAKE_STR(
                         "internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_13, 0), _fx_catch_2);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_13, 0), _fx_catch_2);
                   FX_THROW(&v_13, false, _fx_catch_2);
 
                _fx_catch_2: ;
@@ -11969,7 +12053,7 @@ static int _fx_M6K_formFM12walk_idlist_LR9Ast__id_t4LR9Ast__id_tR10Ast__loc_tBRM
                fx_exn_t v_16 = {0};
                fx_str_t slit_2 =
                   FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_2, &v_16, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_2, 0, &v_16, 0), _fx_catch_4);
                FX_THROW(&v_16, false, _fx_catch_4);
 
             _fx_catch_4: ;
@@ -12124,7 +12208,7 @@ static int _fx_M6K_formFM14walk_idomlist_LT2R9Ast__id_tN13K_form__dom_t3LT2R9Ast
                fx_exn_t v_7 = {0};
                fx_str_t slit_0 =
                   FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_7, 0), _fx_catch_0);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_7, 0), _fx_catch_0);
                FX_THROW(&v_7, false, _fx_catch_0);
 
             _fx_catch_0: ;
@@ -12172,7 +12256,7 @@ static int _fx_M6K_formFM14walk_idomlist_LT2R9Ast__id_tN13K_form__dom_t3LT2R9Ast
                fx_exn_t v_13 = {0};
                fx_str_t slit_1 =
                   FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_13, 0), _fx_catch_2);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_13, 0), _fx_catch_2);
                FX_THROW(&v_13, false, _fx_catch_2);
 
             _fx_catch_2: ;
@@ -12264,7 +12348,7 @@ static int _fx_M6K_formFM12update_kval_R9Ast__id_t3R9Ast__id_tR10Ast__loc_tRM9k_
             fx_exn_t v_6 = {0};
             fx_str_t slit_0 =
                FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_6, 0), _fx_catch_0);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_6, 0), _fx_catch_0);
             FX_THROW(&v_6, false, _fx_catch_0);
 
          _fx_catch_0: ;
@@ -12312,7 +12396,7 @@ static int _fx_M6K_formFM12update_kval_R9Ast__id_t3R9Ast__id_tR10Ast__loc_tRM9k_
             fx_exn_t v_12 = {0};
             fx_str_t slit_1 =
                FX_MAKE_STR("internal error: inside walk_id the callback returned a literal, not id, which is unexpected.");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_12, 0), _fx_catch_2);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_12, 0), _fx_catch_2);
             FX_THROW(&v_12, false, _fx_catch_2);
 
          _fx_catch_2: ;
@@ -15130,7 +15214,7 @@ FX_EXTERN_C int _fx_M6K_formFM10is_mutableB2R9Ast__id_tR10Ast__loc_t(
          const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_3, 0, &v_4, 0), _fx_catch_0);
       FX_THROW(&v_4, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -15231,7 +15315,7 @@ FX_EXTERN_C int _fx_M6K_formFM11is_subarrayB2R9Ast__id_tR10Ast__loc_t(
          const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_3, 0, &v_4, 0), _fx_catch_0);
       FX_THROW(&v_4, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -15314,7 +15398,7 @@ FX_EXTERN_C int _fx_M6K_formFM20get_closure_freevarsT2LT2R9Ast__id_tN14K_form__k
                const fx_str_t strs_0[] = { slit_0, v_8, slit_1 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_9), _fx_catch_0);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_9, &v_10, 0), _fx_catch_0);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_9, 0, &v_10, 0), _fx_catch_0);
             FX_THROW(&v_10, false, _fx_catch_0);
 
          _fx_catch_0: ;
@@ -15340,7 +15424,7 @@ FX_EXTERN_C int _fx_M6K_formFM20get_closure_freevarsT2LT2R9Ast__id_tN14K_form__k
          const fx_str_t strs_1[] = { slit_2, v_11, slit_3 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_12), _fx_catch_2);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_12, &v_13, 0), _fx_catch_2);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_12, 0, &v_13, 0), _fx_catch_2);
       FX_THROW(&v_13, false, _fx_catch_2);
 
    _fx_catch_2: ;
@@ -15412,7 +15496,7 @@ FX_EXTERN_C int _fx_M6K_formFM10deref_ktypN14K_form__ktyp_t2N14K_form__ktyp_tR10
                const fx_str_t strs_0[] = { slit_0, v_4, slit_1 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_5), _fx_catch_2);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&loc_2, &v_5, &v_6, 0), _fx_catch_2);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&loc_2, &v_5, 0, &v_6, 0), _fx_catch_2);
             FX_THROW(&v_6, false, _fx_catch_2);
 
          _fx_catch_2: ;
@@ -15551,7 +15635,7 @@ FX_EXTERN_C int
    if (FX_REC_VARIANT_TAG(ktyp_0) == 7) {
       fx_exn_t v_1 = {0};
       fx_str_t slit_1 = FX_MAKE_STR("values of \'void\' type are not allowed");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_1, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_1, 0), _fx_catch_0);
       FX_THROW(&v_1, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -15646,7 +15730,7 @@ FX_EXTERN_C int _fx_M6K_formFM9kexp2atomT2N14K_form__atom_tLN14K_form__kexp_t5iS
       if (FX_REC_VARIANT_TAG(ktyp_0) == 7) {
          fx_exn_t v_11 = {0};
          fx_str_t slit_2 = FX_MAKE_STR("\'void\' expression or declaration cannot be converted to an atom");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kloc_0, &slit_2, &v_11, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kloc_0, &slit_2, 0, &v_11, 0), _fx_catch_0);
          FX_THROW(&v_11, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -15698,7 +15782,7 @@ FX_EXTERN_C int _fx_M6K_formFM9kexp2atomT2N14K_form__atom_tLN14K_form__kexp_t5iS
       if (FX_REC_VARIANT_TAG(ktyp_0) == 7) {
          fx_exn_t v_12 = {0};
          fx_str_t slit_4 = FX_MAKE_STR("values of \'void\' type are not allowed");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&kloc_0, &slit_4, &v_12, 0), _fx_catch_1);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&kloc_0, &slit_4, 0, &v_12, 0), _fx_catch_1);
          FX_THROW(&v_12, false, _fx_catch_1);
 
       _fx_catch_1: ;
@@ -15771,7 +15855,7 @@ FX_EXTERN_C int _fx_M6K_formFM7atom2idR9Ast__id_t3N14K_form__atom_tR10Ast__loc_t
    }
    else if (tag_0 == 2) {
       fx_exn_t v_0 = {0};
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, msg_0, &v_0, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, msg_0, 0, &v_0, 0), _fx_catch_0);
       FX_THROW(&v_0, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -15814,7 +15898,7 @@ FX_EXTERN_C int _fx_M6K_formFM7kexp2idT2R9Ast__id_tLN14K_form__kexp_t6iSN14K_for
    }
    else if (tag_0 == 2) {
       fx_exn_t v_3 = {0};
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&v_2, msg_0, &v_3, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&v_2, msg_0, 0, &v_3, 0), _fx_catch_0);
       FX_THROW(&v_3, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -15969,7 +16053,7 @@ FX_EXTERN_C int
       if (FX_REC_VARIANT_TAG(t_0) == 7) {
          fx_exn_t v_13 = {0};
          fx_str_t slit_4 = FX_MAKE_STR("values of \'void\' type are not allowed");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_4, &v_13, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_4, 0, &v_13, 0), _fx_catch_0);
          FX_THROW(&v_13, false, _fx_catch_0);
 
       _fx_catch_0: ;
@@ -16123,7 +16207,7 @@ FX_EXTERN_C int _fx_M6K_formFM9ktyp2str_S2N14K_form__ktyp_tB(
          const fx_str_t strs_2[] = { slit_11, v_2, slit_12 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_3), _fx_catch_2);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&_fx_g10Ast__noloc, &v_3, &v_4, 0), _fx_catch_2);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&_fx_g10Ast__noloc, &v_3, 0, &v_4, 0), _fx_catch_2);
       FX_THROW(&v_4, false, _fx_catch_2);
 
    _fx_catch_2: ;
@@ -16816,7 +16900,7 @@ FX_EXTERN_C int _fx_M6K_formFM8klit2strS3N14K_form__klit_tBR10Ast__loc_t(
          const fx_str_t strs_16[] = { slit_46, v_59, slit_47, v_60, slit_48 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_16, 5, &v_61), _fx_catch_9);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_61, &v_62, 0), _fx_catch_9);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_61, 0, &v_62, 0), _fx_catch_9);
       FX_THROW(&v_62, false, _fx_catch_9);
 
    _fx_catch_9: ;

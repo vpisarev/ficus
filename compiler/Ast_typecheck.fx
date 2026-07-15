@@ -697,7 +697,7 @@ fun coerce_types(t1: typ_t, t2: typ_t, allow_tuples: bool,
 
     try {
         Some(coerce_types_(deref_typ(t1), deref_typ(t2)))
-    } catch { | CompileError(_, _) => None }
+    } catch { | CompileError(_, _, _) => None }
 }
 
 fun find_all(n: id_t, env: env_t): list[env_entry_t] =
@@ -1001,13 +1001,13 @@ fun is_real_typ(t: typ_t) {
 }
 
 // diag-1: up to two visible names closest to `n` within an edit-distance
-// threshold (scaled by length), as a "; did you mean 'x'?" tail -- gcc/clang
-// style. Empty when nothing is close. Skips the name itself and compiler
-// gensym/internal names (leading '_').
-fun suggest_similar(n: id_t, env: env_t): string {
+// threshold (scaled by length). Skips the name itself and compiler
+// gensym/internal names (leading '_'). lsp-1 split this into the name LIST (also
+// fed to the structured diagnostic for editor quickfixes) and the tail formatter.
+fun suggest_similar_names(n: id_t, env: env_t): list[string] {
     val target = pp(n)
     val tlen = target.length()
-    if tlen == 0 { "" }
+    if tlen == 0 { [] }
     else {
         val thresh = if tlen <= 4 { 1 } else { 2 }
         val cand = env.foldl(fun (key: id_t, _: list[env_entry_t], acc: list[int, string]) {
@@ -1031,19 +1031,28 @@ fun suggest_similar(n: id_t, env: env_t): string {
                 | [] => acc.rev()
                 }
             }
-        match take2(cand, "", []) {
-        | [] => ""
-        | a :: [] => f"; did you mean '{a}'?"
-        | a :: b :: _ => f"; did you mean '{a}' or '{b}'?"
-        }
+        take2(cand, "", [])
     }
 }
+
+// the "; did you mean 'x'?" human tail built from the candidate list (diag-1).
+fun suggest_tail(cands: list[string]): string =
+    match cands {
+    | [] => ""
+    | a :: [] => f"; did you mean '{a}'?"
+    | a :: b :: _ => f"; did you mean '{a}' or '{b}'?"
+    }
+
+fun suggest_similar(n: id_t, env: env_t): string = suggest_tail(suggest_similar_names(n, env))
 
 fun report_not_found(n: id_t, loc: loc_t) =
     compile_err(loc, f"the appropriate match for '{pp(n)}' is not found")
 
-fun report_not_found_env(n: id_t, env: env_t, loc: loc_t) =
-    compile_err(loc, f"the appropriate match for '{pp(n)}' is not found{suggest_similar(n, env)}")
+fun report_not_found_env(n: id_t, env: env_t, loc: loc_t) {
+    val cands = suggest_similar_names(n, env)
+    compile_err(loc, f"the appropriate match for '{pp(n)}' is not found{suggest_tail(cands)}",
+                suggestions=cands)
+}
 
 /* one-line explanation of why a function candidate does not accept the call:
    arity, keyword acceptance, or the first mismatching argument (tested with
@@ -1128,14 +1137,18 @@ fun report_not_found_typed(n: id_t, t: typ_t, possible_matches: list[env_entry_t
     // With candidates, list them (name exists, the call does not match any).
     // With none, the name is genuinely unknown -> offer an edit-distance
     // "did you mean" over the visible names (diag-1).
-    val tail =
-        if strs != [] { "." + join_embrace("\nCandidates:\n\t", "\n", ",\n\t", strs) }
+    // When overloads exist we list them (no single-name quickfix). Otherwise the
+    // name is unknown -> an edit-distance suggestion, also exposed structurally
+    // for editor quickfixes (lsp-1).
+    val (tail, sugg) =
+        if strs != [] { ("." + join_embrace("\nCandidates:\n\t", "\n", ",\n\t", strs), []) }
         else {
-            val s = suggest_similar(n, env)
-            if s == "" { "." } else { s }
+            val cands = suggest_similar_names(n, env)
+            val s = suggest_tail(cands)
+            (if s == "" { "." } else { s }, cands)
         }
     compile_err(loc, f"the appropriate match for '{nstr}' of \
-                type '{typ2str(t)}' is not found{tail}")
+                type '{typ2str(t)}' is not found{tail}", suggestions=sugg)
 }
 
 fun find_first[T](n: id_t, env: env_t, env0: env_t, sc: list[scope_t],
@@ -1634,7 +1647,7 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
         val (_, relems) = match etyp {
             | TypApp(_, _) =>
                 try get_record_elems(None, etyp, false, eloc)
-                catch { | CompileError(_, _) => (noid, []) }
+                catch { | CompileError(_, _, _) => (noid, []) }
             | _ => (noid, [])
             }
         match (is_range, etyp, relems) {
@@ -2516,7 +2529,7 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
                             } ]
             ExpCall(new_f, new_args, ctx)
         } catch {
-        | CompileError(_, _) as ex =>
+        | CompileError(_, _, _) as ex =>
             /* fallback for so called "object types": if we have expression like
                 some_exp.foo(args) where some_exp's type is a class,
                 (i.e. "list", "string" or some user type declared in some <Module>
@@ -2737,9 +2750,9 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
         // the healthy branch determines it, like a jumping throw/ctrlflow sibling.
         val new_c = check_exp(c, env, sc)
         val new_e1 = try { check_exp(e1, env, sc) }
-                     catch { | CompileError(_, _) as err => push_compile_err(err); e1 }
+                     catch { | CompileError(_, _, _) as err => push_compile_err(err); e1 }
         val new_e2 = try { check_exp(e2, env, sc) }
-                     catch { | CompileError(_, _) as err => push_compile_err(err); e2 }
+                     catch { | CompileError(_, _, _) as err => push_compile_err(err); e2 }
         ExpIf(new_c, new_e1, new_e2, ctx)
     | ExpWhile(c, body, _) =>
         val (ctyp, cloc) = get_exp_ctx(c)
@@ -3191,12 +3204,12 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
                 | _ => e2
                 }
             } catch {
-            | CompileError(_, _) =>
+            | CompileError(_, _, _) =>
                 try {
                     val fname = get_cast_fname(t2, eloc)
                     check_and_make_call(fname, [:: e1])
                 } catch {
-                | CompileError(_, _) =>
+                | CompileError(_, _, _) =>
                     throw compile_err(eloc, f"invalid cast operation: '{typ2str(t1)}' to '{typ2str(t2)}'")
                 }
             }
@@ -3369,13 +3382,13 @@ fun check_eseq(eseq: list[exp_t], env: env_t, sc: list[scope_t], create_sc: bool
                                                         sc, false, true, is_mutable)
                     (DefVal(p1, e1, flags, loc) :: eseq_acc, env1)
                 } catch {
-                | (CompileError(_, _) | PropagateCompileError) as err =>
+                | (CompileError(_, _, _) | PropagateCompileError) as err =>
                     // A direct RHS failure arrives as CompileError. A failure
                     // INSIDE a block-valued RHS -- e.g. the fold desugar
                     // `val (a,b): (..) = { ..failed stmt..; (a,b) }` (FB-022) --
                     // has already been reported by the block's own check_eseq
                     // and reaches us as PropagateCompileError; don't re-push it.
-                    match err { | CompileError(_, _) => push_compile_err(err) | _ => {} }
+                    match err { | CompileError(_, _, _) => push_compile_err(err) | _ => {} }
                     // Bind every name the pattern introduces so later statements
                     // don't cascade into spurious "undefined". With a usable
                     // annotation, bind each name to its ANNOTATED type -- the
@@ -3393,7 +3406,7 @@ fun check_eseq(eseq: list[exp_t], env: env_t, sc: list[scope_t], create_sc: bool
                                     check_pat(p1, t1, env, empty_idset, empty_idset,
                                               sc, false, true, is_mutable)
                                 env1
-                            } catch { | CompileError(_, _) | PropagateCompileError =>
+                            } catch { | CompileError(_, _, _) | PropagateCompileError =>
                                 poison_pattern_vars(p1, TypErr, flags, sc, curr_m_idx, env) })
                         | _ => poison_pattern_vars(p, TypErr, flags, sc, curr_m_idx, env)
                         }
@@ -3411,7 +3424,7 @@ fun check_eseq(eseq: list[exp_t], env: env_t, sc: list[scope_t], create_sc: bool
                     if df->df_templ_args == [] {
                         try { check_deffun(df, env) }
                         catch {
-                        | CompileError(_, _) as err =>
+                        | CompileError(_, _, _) as err =>
                             // Body failed. The function was registered in `env`
                             // with its declared signature BEFORE the body check
                             // (so recursion resolves) -- that pre-registration IS
@@ -3473,7 +3486,7 @@ fun check_eseq(eseq: list[exp_t], env: env_t, sc: list[scope_t], create_sc: bool
                 (e :: eseq_acc, env)
             }
         } catch {
-            | CompileError(_, _) as err =>
+            | CompileError(_, _, _) as err =>
                 push_compile_err(err)
                 (e :: eseq_acc, env)
             | PropagateCompileError => (e :: eseq_acc, env)
@@ -3575,7 +3588,7 @@ fun check_directives(eseq: list[exp_t], env: env_t, sc: list[scope_t]) {
             env_acc = fold env = env_acc for (m, alias) <- impdirs {
                 env = try {
                     import_mod(env, alias, m, true, eloc)
-                } catch { | CompileError(_, _) as err => push_compile_err(err); env }
+                } catch { | CompileError(_, _, _) as err => push_compile_err(err); env }
             }
         | DirImportFrom(m, implist, eloc) =>
             val env =
@@ -3594,13 +3607,13 @@ fun check_directives(eseq: list[exp_t], env: env_t, sc: list[scope_t]) {
                             throw compile_err(eloc, f"no symbol {pp(k)} found in {pp(get_module_name(m))}")
                         }
                         import_entries(env, m, k, entries, eloc)
-                    } catch { | CompileError(_, _) as err => push_compile_err(err); env }
+                    } catch { | CompileError(_, _, _) as err => push_compile_err(err); env }
                 }
                 // after processing "from m import ..." we also implicitly insert "import m"
                 // [TODO] for each 'imported from' variant type we also need to import all its constructors
                 val alias = get_module_name(m)
                 import_mod(env, alias, m, true, eloc)
-            } catch { | CompileError(_, _) as err => push_compile_err(err);  env_acc }
+            } catch { | CompileError(_, _, _) as err => push_compile_err(err);  env_acc }
             env_acc = env
             mlist = (m, eloc) :: mlist
         | DirPragma(prl, eloc) => {}
@@ -4621,7 +4634,7 @@ fun check_pat(pat: pat_t, typ: typ_t, env: env_t, idset: idset_t, typ_vars: idse
                     } } ]
                 (PatRecord(if ctor != noid {Some(ctor)} else {None}, new_relems, loc), false)
             } catch {
-            | CompileError(_, _) as err when rn_opt.issome() =>
+            | CompileError(_, _, _) as err when rn_opt.issome() =>
                 check_pat_(PatVariant(rn_opt.value_or(noid), [:: PatRecord(None, relems, loc)], loc), t)
             }
         | PatCons(p1, p2, loc) =>
@@ -4684,7 +4697,7 @@ fun check_cases( cases: list[pat_t, exp_t], inptyp: typ_t, outtyp: typ_t,
                   match the whole expression type (or the type of previous case(s))")
             (p1, check_exp(e, env1, case_sc))
         } catch {
-        | CompileError(_, _) as err => push_compile_err(err); (p, e)
+        | CompileError(_, _, _) as err => push_compile_err(err); (p, e)
         }
     } ]
 }
@@ -4720,5 +4733,5 @@ fun check_mod(m_idx: int)
             else { new_env }}, empty_env)
         all_modules[m_idx].dm_defs = seq
         all_modules[m_idx].dm_env = env
-    } catch { | CompileError(_, _) as err => push_compile_err(err) | PropagateCompileError => {} }
+    } catch { | CompileError(_, _, _) as err => push_compile_err(err) | PropagateCompileError => {} }
 }

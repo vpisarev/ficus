@@ -931,12 +931,12 @@ fun pat_need_checks(p: pat_t, ptyp: ktyp_t)
                 val (_, typed_var_pl) = match_variant_pat(p, ptyp)
                 exists(for (p, t) <- typed_var_pl {pat_need_checks(p, t)})
             })
-        } catch { | CompileError(_, _) as e => check_if_exn(e, loc) }
+        } catch { | CompileError(_, _, _) as e => check_if_exn(e, loc) }
     | PatRecord(rn_opt, _, loc) =>
         try {
             val ((_, _, _, multiple_cases, _), typed_rec_pl) = match_record_pat(p, ptyp)
             multiple_cases || exists(for (_, pi, ti, _) <- typed_rec_pl {pat_need_checks(pi, ti)})
-        } catch { | CompileError(_, _) as e => check_if_exn(e, loc) }
+        } catch { | CompileError(_, _, _) as e => check_if_exn(e, loc) }
     | PatRef(p, loc) =>
         val t = match ptyp {
                 | KTypRef(t) => t

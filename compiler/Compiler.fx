@@ -214,12 +214,19 @@ fun parse_all(fname0: string, ficus_path: list[string]): bool
             }
             catch {
             | Lxu.LexerError((l, c), msg) =>
-                println(f"{mfname}:{l}:{c}: error: {msg}\n"); ok = false
+                if Ast.diag_format_is_json() {
+                    Ast.emit_error_json(Ast.loc_t {m_idx=m_idx, line0=l, col0=c, line1=l, col1=c}, msg)
+                } else {
+                    println(f"{mfname}:{l}:{c}: error: {msg}\n")
+                }
+                ok = false
             | Parser.ParseError(loc, msg) =>
                 // parse errors are frontend, so a caret excerpt is honest and
                 // helpful (esp. import not-found: the underline lands on the
                 // module name). reform-prep-1.
-                println(f"{loc}: error: {msg}{Ast.loc_excerpt(loc)}\n"); ok = false
+                if Ast.diag_format_is_json() { Ast.emit_error_json(loc, msg) }
+                else { println(f"{loc}: error: {msg}{Ast.loc_excerpt(loc)}\n") }
+                ok = false
             | e => println(f"{mfname}: exception {e} occured"); ok = false
             }
         }
@@ -668,7 +675,7 @@ fun print_all_compile_errs()
         // tail: the same generic-body error reached from N distinct call sites
         // is one bug, reported once (with whichever context came first).
         val msg = match e {
-            | Ast.CompileError(_, msg) => msg
+            | Ast.CompileError(_, msg, _) => msg
             | Fail(msg) => "Failure: " + msg
             | _ => ""
             }
@@ -677,7 +684,7 @@ fun print_all_compile_errs()
         else { if key != "" { seen.add(key) }; e :: acc }
     }
     fun errkey(e: exn): (int, int, int) = match e {
-        | Ast.CompileError(loc, _) => (loc.m_idx, loc.line0, loc.col0)
+        | Ast.CompileError(loc, _, _) => (loc.m_idx, loc.line0, loc.col0)
         | _ => (1000000000, 0, 0)     // non-positional (e.g. Fail) sort last
         }
     val sorted = uniq.rev().sort(fun (a: exn, b: exn) {
@@ -692,11 +699,15 @@ fun print_all_compile_errs()
             if i >= cap { break }
             Ast.print_compile_err(e)
         }
-        if nerrs > cap {
-            println(f"\n{nerrs - cap} further diagnostic(s) suppressed \
-                     (-fmax-errors={cap}).")
+        // json mode: the cap/dedup/sort still apply, but the human summary lines
+        // are suppressed -- the client counts diagnostics itself (lsp-1).
+        if !Ast.diag_format_is_json() {
+            if nerrs > cap {
+                println(f"\n{nerrs - cap} further diagnostic(s) suppressed \
+                         (-fmax-errors={cap}).")
+            }
+            println(f"\n{nerrs} errors occured during type checking.")
         }
-        println(f"\n{nerrs} errors occured during type checking.")
     }
 }
 
@@ -705,7 +716,9 @@ fun print_all_compile_errs()
 fun print_all_compile_warns()
 {
     val nwarns = Ast.all_compile_warns
-    if nwarns != 0 {
+    // json mode: warnings were already emitted inline as jsonl by compile_warning;
+    // suppress the human count summary (the client counts). lsp-1.
+    if nwarns != 0 && !Ast.diag_format_is_json() {
         val plural = if nwarns == 1 {"warning"} else {"warnings"}
         if Options.opt.Werror {
             println(f"\n{nwarns} {plural} generated (treated as errors due to -Werror).")
@@ -767,10 +780,14 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
         // the IR and source locations start to drift, so diagnostics from here
         // on drop the caret (they keep the plain file:line form).
         Ast.compiler_stage = Ast.CompilerMiddle
-        val (kmods, ok) = if ok {
-            pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
-            k_optimize_all(kmods)
-        } else { ([], false) }
+        val (kmods, ok) = if Options.opt.print_k || Options.opt.gen_c {
+            if ok {
+                pr_verbose(clrmsg(MsgBlue, "K-form optimization started"))
+                k_optimize_all(kmods)
+            } else { ([], false) }
+        } else {
+            (kmods, ok)
+        }
         if ok {
             pr_verbose(clrmsg(MsgBlue, "K-form optimization complete"))
             if Options.opt.print_k { K_pp.pp_kmods(kmods) }
@@ -793,7 +810,7 @@ and there are <ficus_root>/runtime and <ficus_root>/lib.
         print_all_compile_errs()
         match e {
         | Fail(msg) => println(f"{error}: {msg}")
-        | Ast.CompileError(loc, msg) as e => Ast.print_compile_err(e)
+        | Ast.CompileError(loc, msg, _) as e => Ast.print_compile_err(e)
         | CumulativeParseError => {}
         | _ => println(f"\n\n{error}: Exception {e} occured")
         }
