@@ -60,6 +60,31 @@ vim.api.nvim_create_autocmd("FileType", {
 Diagnostics appear on `:w`. Trigger a quickfix with `vim.lsp.buf.code_action()`
 (map it to e.g. `<leader>ca`) while on a "did you mean" error.
 
+## VS Code
+
+Unlike neovim/eglot, VS Code has no built-in generic LSP client — it needs a
+small extension. One is provided in `editors/vscode/` (a thin client + a TextMate
+grammar for syntax highlighting). Setup:
+
+```sh
+bin/ficus -o ficus-lsp tools/FicusLsp.fx      # build the server
+cd editors/vscode
+npm install                                    # fetch vscode-languageclient
+ln -sf ../../ficus-lsp ficus-lsp               # let the extension find the binary
+```
+
+Then either **(a)** open `editors/vscode` in VS Code and press **F5** (launches an
+Extension Development Host), or **(b)** install it for real:
+`ln -sfn "$PWD" ~/.vscode/extensions/ficus-lsp-0.1.0` and restart VS Code. In
+Settings set **`ficus.ficusPath`** to the absolute path of `bin/ficus`.
+
+Open a `.fx` file: syntax highlights immediately; diagnostics appear **on save**
+(v1 syncs on save — turn on `files.autoSave: afterDelay` for a near-live feel),
+and `Ctrl+.` on a did-you-mean applies the quickfix. See
+`editors/vscode/README.md` for details. Note: diagnostics from imported modules
+are routed to those modules' own files (shown in the Problems panel and in the
+module when opened), not drawn in the file you have open.
+
 ## Emacs (eglot)
 
 ```elisp

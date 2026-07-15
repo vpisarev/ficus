@@ -1,0 +1,46 @@
+{
+  "name": "ficus-lsp",
+  "displayName": "Ficus",
+  "description": "Ficus language support (live diagnostics + did-you-mean quickfixes) via the Ficus language server.",
+  "version": "0.1.0",
+  "publisher": "ficus",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:ficus"],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ficus",
+        "aliases": ["Ficus", "ficus"],
+        "extensions": [".fx"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ficus",
+        "scopeName": "source.ficus",
+        "path": "./ficus.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Ficus",
+      "properties": {
+        "ficus.serverPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the ficus-lsp binary. If empty, the extension looks for 'ficus-lsp' in this extension's folder."
+        },
+        "ficus.ficusPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the bin/ficus compiler. If empty, the server looks for bin/ficus under the workspace root, then on PATH."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

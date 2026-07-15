@@ -46,3 +46,7 @@ mytest/
 # ocamlbuild targets
 *.byte
 *.native
+
+# lsp-1: the compiled language server binary (build it with
+# `bin/ficus -o ficus-lsp tools/FicusLsp.fx`)
+/ficus-lsp

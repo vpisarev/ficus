@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Ficus",
+  "scopeName": "source.ficus",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#chars" },
+    { "include": "#numbers" },
+    { "include": "#constants" },
+    { "include": "#keywords" },
+    { "include": "#attributes" },
+    { "include": "#types" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.ficus", "begin": "//", "end": "$" },
+        { "include": "#block-comment" }
+      ]
+    },
+    "block-comment": {
+      "name": "comment.block.ficus",
+      "begin": "/\\*",
+      "end": "\\*/",
+      "patterns": [{ "include": "#block-comment" }]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.ficus",
+          "begin": "(f)?\"",
+          "beginCaptures": { "1": { "name": "storage.type.string.interpolated.ficus" } },
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.ficus", "match": "\\\\." },
+            {
+              "name": "meta.template.expression.ficus",
+              "begin": "\\{",
+              "end": "\\}",
+              "patterns": [{ "include": "$self" }]
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.raw.ficus",
+          "begin": "r\"",
+          "end": "\""
+        }
+      ]
+    },
+    "chars": {
+      "name": "constant.character.ficus",
+      "match": "'(\\\\.|[^'\\\\])'"
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.hex.ficus", "match": "\\b0[xX][0-9a-fA-F_]+[a-zA-Z0-9]*" },
+        { "name": "constant.numeric.float.ficus", "match": "\\b[0-9][0-9_]*\\.[0-9_]*([eE][-+]?[0-9]+)?[a-zA-Z]*" },
+        { "name": "constant.numeric.float.ficus", "match": "\\b[0-9][0-9_]*[eE][-+]?[0-9]+[a-zA-Z]*" },
+        { "name": "constant.numeric.integer.ficus", "match": "\\b[0-9][0-9_]*([iIuUlL][0-9]*|[hH]|bf|f)?\\b" }
+      ]
+    },
+    "constants": {
+      "name": "constant.language.ficus",
+      "match": "\\b(true|false|null|inf|inff|nan|nanf)\\b"
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.ficus",
+          "match": "\\b(if|else|match|for|while|do|break|continue|return|throw|try|catch|finally|when|fold|with)\\b"
+        },
+        {
+          "name": "keyword.other.ficus",
+          "match": "\\b(fun|val|var|type|class|exception|interface|operator|import|from|as|ref|pragma)\\b"
+        }
+      ]
+    },
+    "attributes": {
+      "name": "storage.modifier.attribute.ficus",
+      "match": "@(ccode|inline|nothrow|parallel|private|sync|pure|unzip|data|data_le|data_be|text|if|ifdef|ifndef|elif|else|endif|define|undef|error|warning)\\b"
+    },
+    "types": {
+      "name": "support.type.ficus",
+      "match": "\\b(int|float|double|bool|char|string|void|uint8|int8|uint16|int16|uint32|int32|uint64|int64|half|fp16|bf16|fp32|fp64|list|vector|rrbvec|option|exn)\\b"
+    }
+  }
+}
