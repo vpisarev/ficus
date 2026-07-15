@@ -28,9 +28,11 @@ import File, Json, Sys, Filename, String, Re
 var g_ficus_path = "bin/ficus"
 var g_root_path = ""
 var g_shutdown = false
-// URIs we last published NON-EMPTY diagnostics to, so a later analysis can clear
-// a file whose diagnostics have gone away (e.g. an imported module got fixed).
-var g_published: list[string] = []
+// Per analysis-root bookkeeping: opened-file URI -> the URIs its LAST analysis
+// published NON-EMPTY diagnostics to. Scoped per root because each analysis
+// compiles ONE file's import graph; clearing must not reach across roots (else
+// analyzing a leaf module would wipe an unrelated file's diagnostics).
+var g_published: list[(string, list[string])] = []
 val g_log = Sys.getenv("FICUS_LSP_LOG", "") != ""
 
 // Content-Length header, case-insensitive, capturing the byte count.
@@ -259,11 +261,14 @@ fun analyze_and_publish(uri: string): void {
         publish(du, group)
         if group != [] { published_now = du :: published_now }
     }
-    // clear any file we published to last time that has no diagnostics now
-    for old <- g_published {
+    // clear only the files THIS root published to last time that it no longer
+    // touches (a diagnostic here went away). Other roots are left alone.
+    val prev = match g_published.assoc_opt(uri) { | Some(l) => l | _ => [] }
+    for old <- prev {
         if !target_uris.mem(old) { publish(old, []) }
     }
-    g_published = published_now
+    g_published = (uri, published_now) ::
+                  g_published.filter(fun (kv: (string, list[string])) { kv.0 != uri })
 }
 
 //////////////////// request handlers ////////////////////

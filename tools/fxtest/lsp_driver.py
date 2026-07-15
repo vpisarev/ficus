@@ -202,6 +202,39 @@ class LspTests(unittest.TestCase):
         self.assertEqual(len(pubs.get(uri(helper), [])), 1)
         self.assertEqual(pubs[uri(helper)][0]["severity"], 2)
 
+    def test_analyzing_leaf_module_does_not_clear_importer(self):
+        # Repro of the cross-root clearing bug: open an importer (both it and its
+        # imported leaf module have warnings), then open/save the LEAF on its own.
+        # Analyzing the leaf must NOT wipe the importer's diagnostics.
+        leaf = self._write("leafmod.fx", "fun twice(x: int) = x*2\n")
+        root = self._write(
+            "rootmod.fx",
+            "import leafmod\nfun mainfn(x: int) = x+1\n"
+            "val y = leafmod.twice(mainfn(21))\nprintln(y)\n")
+
+        def notify_open(path):
+            self.cli.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri(path), "languageId": "ficus", "version": 1,
+                "text": open(path).read()}})
+
+        notify_open(root)                       # publishes for root and leaf
+        for _ in range(2):
+            self.cli.read_notification("textDocument/publishDiagnostics")
+
+        notify_open(leaf)                        # analyze the leaf on its own
+        self.cli.notify("textDocument/didSave",  # then re-save the importer
+                        {"textDocument": {"uri": uri(root)}})
+        pubs = []
+        for _ in range(3):                       # fixed server emits exactly 1 + 2
+            p = self.cli.read_notification("textDocument/publishDiagnostics")
+            pubs.append((p["params"]["uri"], p["params"]["diagnostics"]))
+
+        # the importer must never have been cleared to empty by the leaf analysis
+        cleared = [u for (u, d) in pubs if u == uri(root) and d == []]
+        self.assertEqual(cleared, [], "leaf analysis wiped the importer's diagnostics")
+        root_pubs = [d for (u, d) in pubs if u == uri(root)]
+        self.assertTrue(root_pubs and len(root_pubs[-1]) >= 1)
+
     def test_compiler_failure_reports_internal_error(self):
         # point the server at a missing compiler -> the child exits nonzero with
         # no parseable jsonl -> the server survives and reports ONE internal-error
