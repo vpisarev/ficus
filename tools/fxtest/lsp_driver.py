@@ -183,6 +183,25 @@ class LspTests(unittest.TestCase):
         pub = self._open(path)
         self.assertEqual(pub["params"]["diagnostics"], [])
 
+    def test_imported_module_diagnostics_routed_to_own_uri(self):
+        # A compile pulls in imports, so a warning in an imported module must be
+        # published under THAT module's uri -- not drawn in the opened file.
+        helper = self._write("helpermod.fx", "fun twice(x: int) = x*2\n")
+        main = self._write(
+            "usesit.fx",
+            "import helpermod\nval y = helpermod.twice(21)\nprintln(y)\n")
+        self.cli.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri(main), "languageId": "ficus", "version": 1,
+            "text": open(main).read()}})
+        pubs = {}
+        for _ in range(2):  # one publish for main, one for the imported module
+            p = self.cli.read_notification("textDocument/publishDiagnostics")
+            pubs[p["params"]["uri"]] = p["params"]["diagnostics"]
+        # the opened file is clean; the warning lands on the module's own uri
+        self.assertEqual(pubs.get(uri(main)), [])
+        self.assertEqual(len(pubs.get(uri(helper), [])), 1)
+        self.assertEqual(pubs[uri(helper)][0]["severity"], 2)
+
     def test_compiler_failure_reports_internal_error(self):
         # point the server at a missing compiler -> the child exits nonzero with
         # no parseable jsonl -> the server survives and reports ONE internal-error

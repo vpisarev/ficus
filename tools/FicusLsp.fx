@@ -28,6 +28,9 @@ import File, Json, Sys, Filename, String, Re
 var g_ficus_path = "bin/ficus"
 var g_root_path = ""
 var g_shutdown = false
+// URIs we last published NON-EMPTY diagnostics to, so a later analysis can clear
+// a file whose diagnostics have gone away (e.g. an imported module got fixed).
+var g_published: list[string] = []
 val g_log = Sys.getenv("FICUS_LSP_LOG", "") != ""
 
 // Content-Length header, case-insensitive, capturing the byte count.
@@ -133,10 +136,18 @@ fun uri_to_path(uri: string): string {
     percent_decode(u)
 }
 
+// path -> file:// URI (minimal percent-encoding; '%' first so we don't double-
+// encode). Used for diagnostics that belong to an imported module, not the file
+// the client opened -- for the opened file we reuse the client's exact URI.
+fun path_to_uri(path: string): string =
+    "file://" + path.replace("%", "%25").replace(" ", "%20")
+                    .replace("#", "%23").replace("?", "%3F")
+
 //////////////////// diagnostics ////////////////////
 
 type ficus_diag_t =
 {
+    file: string;
     line0: int; col0: int; line1: int; col1: int;
     precision: string; severity: string; message: string; anchor: string;
     suggestions: list[string]
@@ -148,6 +159,7 @@ fun parse_ficus_diag(line: string): ficus_diag_t? {
         try {
             val js = Json.parse_string("diag", line)
             Some(ficus_diag_t {
+                file = jstr_of(jget(js, "file")),
                 line0 = jint_of(jget(js, "line0")), col0 = jint_of(jget(js, "col0")),
                 line1 = jint_of(jget(js, "line1")), col1 = jint_of(jget(js, "col1")),
                 precision = jstr_of(jget(js, "precision")),
@@ -219,15 +231,39 @@ fun publish(uri: string, diags: list[Json.t]): void =
                ("params", jobj([("uri", Json.Str(uri)), ("diagnostics", jarr(diags))]))]))
 
 fun analyze_and_publish(uri: string): void {
-    val (diags, raw, code) = run_analysis(uri_to_path(uri))
-    // Any parsed diagnostics (errors OR warnings) are published as-is. A nonzero
-    // exit with NO parseable diagnostics means the compiler crashed -> one
-    // internal-error diagnostic. A clean exit with none clears the file.
-    val lsp_diags =
-        if diags != [] { [:: for d <- diags { to_lsp_diagnostic(d) }] }
-        else if code != 0 { [:: internal_error_diag("\n".join(raw))] }
-        else { [] }
-    publish(uri, lsp_diags)
+    val main_path = uri_to_path(uri)
+    val (diags, raw, code) = run_analysis(main_path)
+    // A compile pulls in the whole import graph, so diagnostics can belong to
+    // OTHER files (imported modules). Group by the diagnostic's own `file` and
+    // publish each group under its own URI -- otherwise a warning in an imported
+    // module would be drawn in the file the client happens to have open. The
+    // opened file reuses the client's exact URI (so it matches regardless of path
+    // normalization); imported modules get a synthesized file:// URI.
+    fun diag_uri(d: ficus_diag_t): string =
+        if d.file == main_path { uri } else { path_to_uri(d.file) }
+
+    // distinct target URIs, always including the opened file (so it clears)
+    var target_uris = [:: uri]
+    for d <- diags {
+        val du = diag_uri(d)
+        if !target_uris.mem(du) { target_uris = du :: target_uris }
+    }
+
+    var published_now: list[string] = []
+    for du <- target_uris {
+        val group0 = diags.filter(fun (d) { diag_uri(d) == du }).map(to_lsp_diagnostic)
+        // a nonzero exit with no parseable diagnostics anywhere = compiler crash
+        val group = if du == uri && group0 == [] && diags == [] && code != 0 {
+                        [:: internal_error_diag("\n".join(raw))]
+                    } else { group0 }
+        publish(du, group)
+        if group != [] { published_now = du :: published_now }
+    }
+    // clear any file we published to last time that has no diagnostics now
+    for old <- g_published {
+        if !target_uris.mem(old) { publish(old, []) }
+    }
+    g_published = published_now
 }
 
 //////////////////// request handlers ////////////////////
