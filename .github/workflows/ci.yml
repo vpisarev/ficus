@@ -144,6 +144,14 @@ jobs:
         if: steps.mode.outputs.nightly == 'true'
         run: python3 tools/fxtest/fxtest.py sanitize
 
+      # Nightly: compile every code block in doc/ficustut.md so a syntax reform
+      # that breaks a documented example is caught (doctut-1). Cheap (~80 -no-c
+      # compiles); nightly to keep the per-PR leg lean -- run it locally after a
+      # reform with `python3 tools/fxtest/fxtest.py doctut`.
+      - name: fxtest doctut (tutorial examples)
+        if: steps.mode.outputs.nightly == 'true'
+        run: python3 tools/fxtest/fxtest.py doctut --jobs "$(getconf _NPROCESSORS_ONLN)"
+
       # On failure, keep the generated C and build dirs for post-mortem.
       - name: Upload build artifacts on failure
         if: failure()

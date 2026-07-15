@@ -22,6 +22,7 @@ src/result.pgm
 bin/
 tools/ocaml2fx/ocaml2fx
 tools/ocaml2fx/*.fx
+sandbox/
 
 # ocamlbuild working directory
 _build/
