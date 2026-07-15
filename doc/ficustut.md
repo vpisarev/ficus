@@ -798,7 +798,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
 * type `void`. It's not a first-class type, as in some other functional languages. It can only be used to specify a function return type or specify that the function does not take any parameters.
 
-* The type `string` represents Unicode strings. The string literals have been discussed earlier and the further [Text Strings](#strings) section covers text strings in more details.
+* The type `string` represents Unicode strings. The string literals have been discussed earlier and the further section (see [Text Strings](#strings)) covers the topic in more details.
 
 * The type `char` represents a single unicode character.
 
@@ -1022,7 +1022,7 @@ Ficus includes the following built-in, automatically defined and user-defined ty
 
   In the second example it may look like the outer list is instantiated with 2 type arguments. But since the compiler always knows how many parameters each generic type has (the `list` has 1), it correctly interpreters `(int, (int, double) list)` as the single type argument.
 
-* **class** and **interface**. These two are used to represent classes and abstract interfaces, respectively. See [Object-Oriented Programming](#oop) section for details.
+* **class** and **interface**. These two are used to represent classes and abstract interfaces, respectively. See [Object-oriented Programming](#oop) section for details.
 
 * **exception**. `exn` type. Exceptions is a classical error processing mechanism that is often preferable to the manual function return value inspection. Similarly to some other functional languages, such as OCaml or F#, and unlike some traditional languages, such as C++ or Python, exceptions in Ficus are not instances of classes, possibly derived from a certain base class. Instead, they are instances of the special type `exn`. New exceptions are introduced using `exception` keyword where at minimum the name of the new exception is specified and at maximum some extra attributes are added to the exception (i.e. the information that you want to pass when the exception is thrown). See the section [Exceptions](#exceptions) for details.
 
@@ -3325,7 +3325,7 @@ Here are some important notes about the implementation:
 
     in some cases, like here, we can even omit names in the function parameters, because we will name them in the patterns. Note that in this case the leading `|` after `{` is needed to distinguish a pattern-matching body from a regular function body.
 3. `match` and recursive functions are best friends, in functional programs, especially performing symbolic data analysis, you will often see them together.
-4. When we discussed [functions](#Functions) and, in particular, [list processing functions](#Lists), we encouraged you to use tail-recursive functions whenever possible. In this implementation `merge` and `scan` are not tail-recursive. This is because the tail-recursive variants would produce reversed lists, while we would like to avoid repetitive list reversion, i.e. we trade excessive list cell allocations for the extra consumed stack space.
+4. When we discussed functions (see [Functions](#functions)) and, in particular, list processing functions (see [Lists](#lists)), we encouraged you to use tail-recursive functions whenever possible. In this implementation `merge` and `scan` are not tail-recursive. This is because the tail-recursive variants would produce reversed lists, while we would like to avoid repetitive list reversion, i.e. we trade excessive list cell allocations for the extra consumed stack space.
 
 ## Capture-only patterns
 
@@ -3653,7 +3653,7 @@ We already covered the option type before. Here we just state that option is not
 class option[T] = None | Some: T
 ```
 
-(where `class` is used instead of `type` to enable object-oriented notation for some of option-related functions, see [Object Oriented Programming](#object-oriented-programming) section).
+(where `class` is used instead of `type` to enable object-oriented notation for some of option-related functions, see [Object-oriented Programming](#object-oriented-programming) section).
 
 Also, Ficus compiler recognizes a shorter notation `T?` in addition to the traditional `T option`. But, as you can see, one of the fundamental Ficus types is actually a variant. To demonstrate its usefulness once again, let's implement a search function for Red-Black trees, assuming that the tree nodes contain pairs `(key, data)` and we try to find data associated with a certain key:
 
