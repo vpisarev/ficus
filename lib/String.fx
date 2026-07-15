@@ -356,3 +356,23 @@ fun escaped(s: string, ~quotes: bool=true): string
     }
     Builtins.join("", (q :: s[verb:] :: ll).rev())
 }
+
+// Number of BYTES in the UTF-8 encoding of the string. This differs from
+// length(), which counts code points -- e.g. utf8_length("é") == 2 but
+// "é".length() == 1. Needed wherever a byte count is required (LSP
+// 'Content-Length' framing, binary protocols, ...).
+fun utf8_length(s: string): int
+@ccode {
+    // fx_str2cstr_size counts the encoded bytes plus a trailing NUL, without
+    // allocating a cstr copy; subtract the NUL to get the payload byte count.
+    *fx_result = (int_)(fx_str2cstr_size(s) - 1);
+    return FX_OK;
+}
+
+// Decode a UTF-8 byte buffer into a string. Complements File.read_utf8 (which
+// only decodes a whole file named by path): this decodes an in-memory buffer,
+// e.g. exactly-N-bytes read from a stream with File.read(f, uint8[N]).
+fun from_utf8(bytes: uint8 []): string
+@ccode {
+    return fx_cstr2str((char*)bytes->data, bytes->dim[0].size, fx_result);
+}

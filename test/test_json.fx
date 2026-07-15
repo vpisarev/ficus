@@ -149,3 +149,28 @@ EXPECT_EQ(`pprinted`,
    \"greeting\": \"你好\"
 }")
 })
+
+// lsp-1 / Phase 0.5: the serializer must emit valid JSON (the old repr() did
+// not escape). Locks proper escaping of both values and keys, the compact mode,
+// the \u00XX form for control chars, and parse/serialize round-trip idempotence.
+TEST("json.escape_and_compact", fun() {
+    val js = Json.Map([
+        ("pa\\th", Json.Str("q\"u\\o\nte")),     // backslash in key; quote/backslash/newline in value
+        ("arr", Json.Seq([Json.Int(1i64), Json.Str("x\ty")])),
+        ("ctrl", Json.Str(string([chr(7), chr(31)]))),   // control chars ->  
+        ("t", Json.Bool(true)),
+        ("n", Json.Null),
+    ])
+    val c = Json.string(js, compact=true)
+    // compact is a single line (no embedded newline)
+    EXPECT_EQ(c.contains('\n'), false)
+    // the escapes are present and correct
+    EXPECT_EQ(c.contains("\"pa\\\\th\""), true)      // key: backslash escaped
+    EXPECT_EQ(c.contains("q\\\"u\\\\o\\nte"), true)  // value: quote, backslash, newline
+    EXPECT_EQ(c.contains("x\\ty"), true)             // tab
+    EXPECT_EQ(c.contains("\\u0007"), true)           // control char -> \u00XX
+    EXPECT_EQ(c.contains("\\u001f"), true)
+    // round-trip: parsing the compact form then re-serializing is idempotent
+    val reparsed = Json.parse_string("test", c)
+    EXPECT_EQ(Json.string(reparsed, compact=true), c)
+})

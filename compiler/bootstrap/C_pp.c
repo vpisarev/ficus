@@ -80,6 +80,7 @@ typedef struct _fx_R18Options__options_t {
    bool W_implicit_rettype_all;
    bool Werror;
    int_ max_errors;
+   fx_str_t diag_format;
 } _fx_R18Options__options_t;
 
 typedef struct _fx_Ta2i {
@@ -128,10 +129,27 @@ typedef struct _fx_R10Ast__loc_t {
    int_ col1;
 } _fx_R10Ast__loc_t;
 
-typedef struct _fx_T2R10Ast__loc_tS {
+typedef struct _fx_N20Ast__diag_severity_t {
+   int tag;
+} _fx_N20Ast__diag_severity_t;
+
+typedef struct _fx_N21Ast__diag_precision_t {
+   int tag;
+} _fx_N21Ast__diag_precision_t;
+
+typedef struct _fx_R11Ast__diag_t {
+   struct _fx_N20Ast__diag_severity_t severity;
+   fx_str_t raw_msg;
+   struct _fx_LS_data_t* suggestions;
+   struct _fx_N21Ast__diag_precision_t precision;
+   struct _fx_LS_data_t* context;
+} _fx_R11Ast__diag_t;
+
+typedef struct _fx_T3R10Ast__loc_tSR11Ast__diag_t {
    struct _fx_R10Ast__loc_t t0;
    fx_str_t t1;
-} _fx_T2R10Ast__loc_tS;
+   struct _fx_R11Ast__diag_t t2;
+} _fx_T3R10Ast__loc_tSR11Ast__diag_t;
 
 typedef struct _fx_LN12Ast__scope_t_data_t {
    int_ rc;
@@ -211,6 +229,11 @@ typedef struct _fx_R5PP__t {
    struct _fx_FPLS0 get_f;
    struct _fx_rR11PP__state_t_data_t* r;
 } _fx_R5PP__t;
+
+typedef struct _fx_T2R10Ast__loc_tS {
+   struct _fx_R10Ast__loc_t t0;
+   fx_str_t t1;
+} _fx_T2R10Ast__loc_tS;
 
 typedef struct _fx_T2R9Ast__id_tN14K_form__ktyp_t {
    struct _fx_R9Ast__id_t t0;
@@ -854,7 +877,7 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t data;
 } _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
@@ -941,6 +964,7 @@ static void _fx_free_R18Options__options_t(struct _fx_R18Options__options_t* dst
    _fx_free_LS(&dst->include_path);
    _fx_free_LT2SN17Options__optval_t(&dst->defines);
    fx_free_str(&dst->output_name);
+   fx_free_str(&dst->diag_format);
 }
 
 static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src, struct _fx_R18Options__options_t* dst)
@@ -980,6 +1004,7 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->W_implicit_rettype_all = src->W_implicit_rettype_all;
    dst->Werror = src->Werror;
    dst->max_errors = src->max_errors;
+   fx_copy_str(&src->diag_format, &dst->diag_format);
 }
 
 static void _fx_make_R18Options__options_t(
@@ -1018,6 +1043,7 @@ static void _fx_make_R18Options__options_t(
    bool r_W_implicit_rettype_all,
    bool r_Werror,
    int_ r_max_errors,
+   fx_str_t* r_diag_format,
    struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
@@ -1055,6 +1081,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->W_implicit_rettype_all = r_W_implicit_rettype_all;
    fx_result->Werror = r_Werror;
    fx_result->max_errors = r_max_errors;
+   fx_copy_str(r_diag_format, &fx_result->diag_format);
 }
 
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
@@ -1074,21 +1101,61 @@ static void _fx_make_T2Ta2iS(struct _fx_Ta2i* t0, fx_str_t* t1, struct _fx_T2Ta2
    fx_copy_str(t1, &fx_result->t1);
 }
 
-static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_free_R11Ast__diag_t(struct _fx_R11Ast__diag_t* dst)
 {
-   fx_free_str(&dst->t1);
+   fx_free_str(&dst->raw_msg);
+   _fx_free_LS(&dst->suggestions);
+   _fx_free_LS(&dst->context);
 }
 
-static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_copy_R11Ast__diag_t(struct _fx_R11Ast__diag_t* src, struct _fx_R11Ast__diag_t* dst)
+{
+   dst->severity = src->severity;
+   fx_copy_str(&src->raw_msg, &dst->raw_msg);
+   FX_COPY_PTR(src->suggestions, &dst->suggestions);
+   dst->precision = src->precision;
+   FX_COPY_PTR(src->context, &dst->context);
+}
+
+static void _fx_make_R11Ast__diag_t(
+   struct _fx_N20Ast__diag_severity_t* r_severity,
+   fx_str_t* r_raw_msg,
+   struct _fx_LS_data_t* r_suggestions,
+   struct _fx_N21Ast__diag_precision_t* r_precision,
+   struct _fx_LS_data_t* r_context,
+   struct _fx_R11Ast__diag_t* fx_result)
+{
+   fx_result->severity = *r_severity;
+   fx_copy_str(r_raw_msg, &fx_result->raw_msg);
+   FX_COPY_PTR(r_suggestions, &fx_result->suggestions);
+   fx_result->precision = *r_precision;
+   FX_COPY_PTR(r_context, &fx_result->context);
+}
+
+static void _fx_free_T3R10Ast__loc_tSR11Ast__diag_t(struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
+{
+   fx_free_str(&dst->t1);
+   _fx_free_R11Ast__diag_t(&dst->t2);
+}
+
+static void _fx_copy_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* src,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
 {
    dst->t0 = src->t0;
    fx_copy_str(&src->t1, &dst->t1);
+   _fx_copy_R11Ast__diag_t(&src->t2, &dst->t2);
 }
 
-static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+static void _fx_make_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_R10Ast__loc_t* t0,
+   fx_str_t* t1,
+   struct _fx_R11Ast__diag_t* t2,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* fx_result)
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);
+   _fx_copy_R11Ast__diag_t(t2, &fx_result->t2);
 }
 
 static int _fx_cons_LN12Ast__scope_t(
@@ -1239,6 +1306,23 @@ static void _fx_make_R5PP__t(
    FX_COPY_FP(r_print_f, &fx_result->print_f);
    FX_COPY_FP(r_get_f, &fx_result->get_f);
    FX_COPY_PTR(r_r, &fx_result->r);
+}
+
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
 }
 
 static void _fx_free_T2R9Ast__id_tN14K_form__ktyp_t(struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
@@ -3038,7 +3122,12 @@ static int _fx_M4C_ppFM9pr_id_optv3Nt6option1R9Ast__id_tR10Ast__loc_tR5PP__t(
    struct _fx_R5PP__t*,
    void*);
 
-FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(struct _fx_R10Ast__loc_t*, fx_str_t*, fx_exn_t*, void*);
+FX_EXTERN_C int _fx_M3AstFM11compile_errE3RM5loc_tSLS(
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   struct _fx_LS_data_t*,
+   fx_exn_t*,
+   void*);
 
 FX_EXTERN_C int _fx_M2PPFM5spacev1RM1t(struct _fx_R5PP__t*, void*);
 
@@ -3604,7 +3693,7 @@ FX_EXTERN_C int _fx_M4C_ppFM9pp_ctyp__v7R5PP__tSSN14C_form__ctyp_tNt6option1R9As
             const fx_str_t strs_0[] = { slit_1, v_2, slit_2 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_catch_1);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_catch_1);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_3, 0, &v_4, 0), _fx_catch_1);
          FX_THROW(&v_4, false, _fx_catch_1);
 
       _fx_catch_1: ;
@@ -4726,7 +4815,7 @@ FX_EXTERN_C int _fx_M4C_ppFM14pprint_fun_hdrv5R5PP__tR9Ast__id_tBR10Ast__loc_tB(
          const fx_str_t strs_0[] = { slit_0, v_4, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_5), _fx_catch_0);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_5, &v_6, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_5, 0, &v_6, 0), _fx_catch_0);
       FX_THROW(&v_6, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -5375,7 +5464,7 @@ FX_EXTERN_C int _fx_M4C_ppFM9pp_cstmt_v2R5PP__tN15C_form__cstmt_t(
             const fx_str_t strs_2[] = { slit_41, v_13, slit_42 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_14), _fx_catch_32);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(cf_loc_1, &v_14, &v_15, 0), _fx_catch_32);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(cf_loc_1, &v_14, 0, &v_15, 0), _fx_catch_32);
          FX_THROW(&v_15, false, _fx_catch_32);
 
       _fx_catch_32: ;

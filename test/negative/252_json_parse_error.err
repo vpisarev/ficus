@@ -1,0 +1,1 @@
+{"file": "252_json_parse_error.fx", "line0": 6, "col0": 19, "line1": 6, "col1": 21, "precision": "exact", "severity": "error", "message": "unxpected token '->'. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here", "suggestions": []}

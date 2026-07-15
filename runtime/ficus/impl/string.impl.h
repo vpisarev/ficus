@@ -89,7 +89,7 @@ void fx_free_cstr(fx_cstr_t* str)
     }
 }
 
-static size_t fx_str2cstr_size(const fx_str_t* str)
+size_t fx_str2cstr_size(const fx_str_t* str)
 {
     size_t sz = 1;
     int_ i, len = str->length;

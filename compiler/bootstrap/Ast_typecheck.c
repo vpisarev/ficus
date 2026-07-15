@@ -135,6 +135,7 @@ typedef struct _fx_R18Options__options_t {
    bool W_implicit_rettype_all;
    bool Werror;
    int_ max_errors;
+   fx_str_t diag_format;
 } _fx_R18Options__options_t;
 
 typedef struct _fx_Ta2i {
@@ -347,10 +348,27 @@ typedef struct _fx_R10Ast__loc_t {
    int_ col1;
 } _fx_R10Ast__loc_t;
 
-typedef struct _fx_T2R10Ast__loc_tS {
+typedef struct _fx_N20Ast__diag_severity_t {
+   int tag;
+} _fx_N20Ast__diag_severity_t;
+
+typedef struct _fx_N21Ast__diag_precision_t {
+   int tag;
+} _fx_N21Ast__diag_precision_t;
+
+typedef struct _fx_R11Ast__diag_t {
+   struct _fx_N20Ast__diag_severity_t severity;
+   fx_str_t raw_msg;
+   struct _fx_LS_data_t* suggestions;
+   struct _fx_N21Ast__diag_precision_t precision;
+   struct _fx_LS_data_t* context;
+} _fx_R11Ast__diag_t;
+
+typedef struct _fx_T3R10Ast__loc_tSR11Ast__diag_t {
    struct _fx_R10Ast__loc_t t0;
    fx_str_t t1;
-} _fx_T2R10Ast__loc_tS;
+   struct _fx_R11Ast__diag_t t2;
+} _fx_T3R10Ast__loc_tSR11Ast__diag_t;
 
 typedef struct _fx_T2il {
    int_ t0;
@@ -1128,6 +1146,11 @@ typedef struct _fx_rB_data_t {
    bool data;
 } _fx_rB_data_t, *_fx_rB;
 
+typedef struct _fx_T2R10Ast__loc_tS {
+   struct _fx_R10Ast__loc_t t0;
+   fx_str_t t1;
+} _fx_T2R10Ast__loc_tS;
+
 typedef struct _fx_R5Re__t {
    fx_cptr_t handle;
 } _fx_R5Re__t;
@@ -1416,6 +1439,11 @@ typedef struct _fx_T2R9Ast__id_tLT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN1
    struct _fx_LT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_t_data_t* t1;
 } _fx_T2R9Ast__id_tLT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_t;
 
+typedef struct _fx_T2SLS {
+   fx_str_t t0;
+   struct _fx_LS_data_t* t1;
+} _fx_T2SLS;
+
 typedef struct _fx_FPNt6option1N10Ast__typ_t1N16Ast__env_entry_t {
    int (*fp)(struct _fx_N16Ast__env_entry_t_data_t*, struct _fx_Nt6option1N10Ast__typ_t_data_t**, void*);
    fx_fcv_t* fcv;
@@ -1647,7 +1675,7 @@ typedef struct {
 
 typedef struct {
    int_ rc;
-   struct _fx_T2R10Ast__loc_tS data;
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t data;
 } _fx_E17Ast__CompileError_data_t;
 
 typedef struct {
@@ -1742,6 +1770,7 @@ static void _fx_free_R18Options__options_t(struct _fx_R18Options__options_t* dst
    _fx_free_LS(&dst->include_path);
    _fx_free_LT2SN17Options__optval_t(&dst->defines);
    fx_free_str(&dst->output_name);
+   fx_free_str(&dst->diag_format);
 }
 
 static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src, struct _fx_R18Options__options_t* dst)
@@ -1781,6 +1810,7 @@ static void _fx_copy_R18Options__options_t(struct _fx_R18Options__options_t* src
    dst->W_implicit_rettype_all = src->W_implicit_rettype_all;
    dst->Werror = src->Werror;
    dst->max_errors = src->max_errors;
+   fx_copy_str(&src->diag_format, &dst->diag_format);
 }
 
 static void _fx_make_R18Options__options_t(
@@ -1819,6 +1849,7 @@ static void _fx_make_R18Options__options_t(
    bool r_W_implicit_rettype_all,
    bool r_Werror,
    int_ r_max_errors,
+   fx_str_t* r_diag_format,
    struct _fx_R18Options__options_t* fx_result)
 {
    FX_COPY_PTR(r_app_args, &fx_result->app_args);
@@ -1856,6 +1887,7 @@ static void _fx_make_R18Options__options_t(
    fx_result->W_implicit_rettype_all = r_W_implicit_rettype_all;
    fx_result->Werror = r_Werror;
    fx_result->max_errors = r_max_errors;
+   fx_copy_str(r_diag_format, &fx_result->diag_format);
 }
 
 static void _fx_free_T2Ta2iS(struct _fx_T2Ta2iS* dst)
@@ -2219,21 +2251,61 @@ static void _fx_make_Rt6Set__t1R9Ast__id_t(
    FX_COPY_FP(r_cmp, &fx_result->cmp);
 }
 
-static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_free_R11Ast__diag_t(struct _fx_R11Ast__diag_t* dst)
 {
-   fx_free_str(&dst->t1);
+   fx_free_str(&dst->raw_msg);
+   _fx_free_LS(&dst->suggestions);
+   _fx_free_LS(&dst->context);
 }
 
-static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+static void _fx_copy_R11Ast__diag_t(struct _fx_R11Ast__diag_t* src, struct _fx_R11Ast__diag_t* dst)
+{
+   dst->severity = src->severity;
+   fx_copy_str(&src->raw_msg, &dst->raw_msg);
+   FX_COPY_PTR(src->suggestions, &dst->suggestions);
+   dst->precision = src->precision;
+   FX_COPY_PTR(src->context, &dst->context);
+}
+
+static void _fx_make_R11Ast__diag_t(
+   struct _fx_N20Ast__diag_severity_t* r_severity,
+   fx_str_t* r_raw_msg,
+   struct _fx_LS_data_t* r_suggestions,
+   struct _fx_N21Ast__diag_precision_t* r_precision,
+   struct _fx_LS_data_t* r_context,
+   struct _fx_R11Ast__diag_t* fx_result)
+{
+   fx_result->severity = *r_severity;
+   fx_copy_str(r_raw_msg, &fx_result->raw_msg);
+   FX_COPY_PTR(r_suggestions, &fx_result->suggestions);
+   fx_result->precision = *r_precision;
+   FX_COPY_PTR(r_context, &fx_result->context);
+}
+
+static void _fx_free_T3R10Ast__loc_tSR11Ast__diag_t(struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
+{
+   fx_free_str(&dst->t1);
+   _fx_free_R11Ast__diag_t(&dst->t2);
+}
+
+static void _fx_copy_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* src,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* dst)
 {
    dst->t0 = src->t0;
    fx_copy_str(&src->t1, &dst->t1);
+   _fx_copy_R11Ast__diag_t(&src->t2, &dst->t2);
 }
 
-static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+static void _fx_make_T3R10Ast__loc_tSR11Ast__diag_t(
+   struct _fx_R10Ast__loc_t* t0,
+   fx_str_t* t1,
+   struct _fx_R11Ast__diag_t* t2,
+   struct _fx_T3R10Ast__loc_tSR11Ast__diag_t* fx_result)
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);
+   _fx_copy_R11Ast__diag_t(t2, &fx_result->t2);
 }
 
 static void _fx_free_N10Ast__lit_t(struct _fx_N10Ast__lit_t* dst)
@@ -4385,6 +4457,23 @@ static int _fx_make_rB(bool arg, struct _fx_rB_data_t** fx_result)
    FX_MAKE_REF_IMPL(_fx_rB, FX_COPY_SIMPLE);
 }
 
+static void _fx_free_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* dst)
+{
+   fx_free_str(&dst->t1);
+}
+
+static void _fx_copy_T2R10Ast__loc_tS(struct _fx_T2R10Ast__loc_tS* src, struct _fx_T2R10Ast__loc_tS* dst)
+{
+   dst->t0 = src->t0;
+   fx_copy_str(&src->t1, &dst->t1);
+}
+
+static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1, struct _fx_T2R10Ast__loc_tS* fx_result)
+{
+   fx_result->t0 = *t0;
+   fx_copy_str(t1, &fx_result->t1);
+}
+
 static void _fx_free_R5Re__t(struct _fx_R5Re__t* dst)
 {
    fx_free_cptr(&dst->handle);
@@ -5165,6 +5254,24 @@ static void _fx_make_T2R9Ast__id_tLT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_t
    struct _fx_T2R9Ast__id_tLT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_t* fx_result)
 {
    fx_result->t0 = *t0;
+   FX_COPY_PTR(t1, &fx_result->t1);
+}
+
+static void _fx_free_T2SLS(struct _fx_T2SLS* dst)
+{
+   fx_free_str(&dst->t0);
+   _fx_free_LS(&dst->t1);
+}
+
+static void _fx_copy_T2SLS(struct _fx_T2SLS* src, struct _fx_T2SLS* dst)
+{
+   fx_copy_str(&src->t0, &dst->t0);
+   FX_COPY_PTR(src->t1, &dst->t1);
+}
+
+static void _fx_make_T2SLS(fx_str_t* t0, struct _fx_LS_data_t* t1, struct _fx_T2SLS* fx_result)
+{
+   fx_copy_str(t0, &fx_result->t0);
    FX_COPY_PTR(t1, &fx_result->t1);
 }
 
@@ -6194,7 +6301,12 @@ static int _fx_M13Ast_typecheckFM8check_1_N10Ast__typ_t2N10Ast__typ_tR16Ast__ast
    struct _fx_N10Ast__typ_t_data_t**,
    void*);
 
-FX_EXTERN_C int _fx_M3AstFM11compile_errE2RM5loc_tS(struct _fx_R10Ast__loc_t*, fx_str_t*, fx_exn_t*, void*);
+FX_EXTERN_C int _fx_M3AstFM11compile_errE3RM5loc_tSLS(
+   struct _fx_R10Ast__loc_t*,
+   fx_str_t*,
+   struct _fx_LS_data_t*,
+   fx_exn_t*,
+   void*);
 
 FX_EXTERN_C_VAL(struct _fx_R18Options__options_t _fx_g12Options__opt)
 static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10Ast__typ_tBBBR10Ast__loc_ti(
@@ -14381,7 +14493,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM5unifyv4N10Ast__typ_tN10Ast__typ_tR10Ast__
    FX_CALL(_fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(t1_0, t2_0, loc_0, true, &v_1, 0),
       _fx_cleanup);
    if (!v_1) {
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, msg_0, &v_0, 0), _fx_cleanup); FX_THROW(&v_0, false, _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, msg_0, 0, &v_0, 0), _fx_cleanup); FX_THROW(&v_0, false, _fx_cleanup);
    }
 
 _fx_cleanup: ;
@@ -14554,7 +14666,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
             else {
                fx_str_t slit_0 =
                   FX_MAKE_STR("implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_0, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_0, 0), _fx_catch_4);
                FX_THROW(&v_0, false, _fx_catch_4);
             }
 
@@ -14611,7 +14723,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
             else {
                fx_str_t slit_1 =
                   FX_MAKE_STR("implicit type coercion for (int, uint32/uint64) pair is not allowed; use explicit type cast");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_1, 0), _fx_catch_6);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_1, 0), _fx_catch_6);
                FX_THROW(&v_1, false, _fx_catch_6);
             }
 
@@ -14678,7 +14790,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
                fx_str_t slit_2 =
                   FX_MAKE_STR(
                      "implicit type coercion for this (signed, unsigned) pair of integer is not allowed; use explicit type cast");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_2, &v_2, 0), _fx_catch_9);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_2, 0, &v_2, 0), _fx_catch_9);
                FX_THROW(&v_2, false, _fx_catch_9);
             }
 
@@ -14704,7 +14816,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
                fx_str_t slit_3 =
                   FX_MAKE_STR(
                      "implicit type coercion for this (unsigned, signed) pair of integer is not allowed; use explicit type cast");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_3, &v_3, 0), _fx_catch_10);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_3, 0, &v_3, 0), _fx_catch_10);
                FX_THROW(&v_3, false, _fx_catch_10);
             }
 
@@ -14869,7 +14981,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
             _fx_LN10Ast__typ_t tl2_1 = t2_2->u.TypTuple;
             if (!allow_tuples_0) {
                fx_str_t slit_4 = FX_MAKE_STR("tuples are not allowed in this operation");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_4, &v_4, 0), _fx_catch_20);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_4, 0, &v_4, 0), _fx_catch_20);
                FX_THROW(&v_4, false, _fx_catch_20);
             }
             else {
@@ -14907,7 +15019,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
                }
                else {
                   fx_str_t slit_5 = FX_MAKE_STR("tuples have different number of elements");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_5, &v_6, 0), _fx_catch_20);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_5, 0, &v_6, 0), _fx_catch_20);
                   FX_THROW(&v_6, false, _fx_catch_20);
                }
             }
@@ -14932,7 +15044,7 @@ static int _fx_M13Ast_typecheckFM13coerce_types_N10Ast__typ_t7N10Ast__typ_tN10As
       }
       fx_exn_t v_9 = {0};
       fx_str_t slit_6 = FX_MAKE_STR("the types cannot be implicitly coerced; use explicit type cast");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_6, &v_9, 0), _fx_catch_21);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_6, 0, &v_9, 0), _fx_catch_21);
       FX_THROW(&v_9, false, _fx_catch_21);
 
    _fx_catch_21: ;
@@ -15798,7 +15910,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__v1N14Ast__id_info_t(struct _fx_N14A
             const fx_str_t strs_0[] = { slit_0, v_1, slit_1, v_2 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &v_3), _fx_catch_0);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&cv_0->t1, &v_3, &v_4, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&cv_0->t1, &v_3, 0, &v_4, 0), _fx_catch_0);
          FX_THROW(&v_4, false, _fx_catch_0);
       }
 
@@ -15865,7 +15977,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM30check_for_rec_field_duplicatesv2LR9Ast__
                const fx_str_t strs_0[] = { slit_0, v_0, slit_1 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_1), _fx_catch_0);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_1, &v_2, 0), _fx_catch_0);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_1, 0, &v_2, 0), _fx_catch_0);
             FX_THROW(&v_2, false, _fx_catch_0);
          }
 
@@ -16028,7 +16140,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM22try_unify_with_literalN10Ast__exp_t3N10A
                   const fx_str_t strs_0[] = { slit_0, v_2, slit_1, v_3, slit_2, v_4, slit_3, v_5, slit_4 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_0, 9, &v_6), _fx_catch_4);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc2_0, &v_6, &v_7, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc2_0, &v_6, 0, &v_7, 0), _fx_catch_4);
                FX_THROW(&v_7, false, _fx_catch_4);
             }
             int tag_0 = FX_REC_VARIANT_TAG(t1__0);
@@ -16079,7 +16191,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM22try_unify_with_literalN10Ast__exp_t3N10A
                   const fx_str_t strs_1[] = { slit_5, v_15, slit_6 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_16), _fx_catch_3);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc2_0, &v_16, &v_17, 0), _fx_catch_3);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc2_0, &v_16, 0, &v_17, 0), _fx_catch_3);
                FX_THROW(&v_17, false, _fx_catch_3);
 
             _fx_catch_3: ;
@@ -16129,7 +16241,7 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM22try_unify_with_literalN10Ast__exp_t3N10A
                const fx_str_t strs_2[] = { slit_7, v_18, slit_8, v_19, slit_9 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_2, 5, &v_20), _fx_catch_6);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc2_0, &v_20, &v_21, 0), _fx_catch_6);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc2_0, &v_20, 0, &v_21, 0), _fx_catch_6);
             FX_THROW(&v_21, false, _fx_catch_6);
          }
          _fx_LN10Ast__exp_t lstend_0 = 0;
@@ -16212,7 +16324,8 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM22try_unify_with_literalN10Ast__exp_t3N10A
    FX_CALL(_fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(t1_0, t2_0, &eloc2_0, true, &v_26, 0),
       _fx_catch_7);
    if (!v_26) {
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc2_0, msg_0, &v_25, 0), _fx_catch_7); FX_THROW(&v_25, false, _fx_catch_7);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc2_0, msg_0, 0, &v_25, 0), _fx_catch_7);
+      FX_THROW(&v_25, false, _fx_catch_7);
    }
    FX_COPY_PTR(e2_0, fx_result);
 
@@ -16294,7 +16407,7 @@ FX_EXTERN_C int
                      0), _fx_catch_5);
                if (!v_8) {
                   fx_str_t slit_0 = FX_MAKE_STR("inconsistent literal type");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(lloc_0, &slit_0, &v_3, 0), _fx_catch_5);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(lloc_0, &slit_0, 0, &v_3, 0), _fx_catch_5);
                   FX_THROW(&v_3, false, _fx_catch_5);
                }
                _fx_make_T2N10Ast__typ_tR10Ast__loc_t(lt_0, lloc_0, &v_4);
@@ -16424,7 +16537,7 @@ FX_EXTERN_C int
                      const fx_str_t strs_0[] = { slit_1, v_15, slit_2, v_16, slit_3, v_17, slit_4 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 7, &v_18), _fx_catch_4);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_18, &v_19, 0), _fx_catch_4);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_18, 0, &v_19, 0), _fx_catch_4);
                   FX_THROW(&v_19, false, _fx_catch_4);
 
                _fx_catch_4: ;
@@ -16458,7 +16571,7 @@ FX_EXTERN_C int
                   0), _fx_catch_6);
             if (!v_22) {
                fx_str_t slit_5 = FX_MAKE_STR("the actual type of the default expression does not match the specified type");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&loci_0, &slit_5, &v_21, 0), _fx_catch_6);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&loci_0, &slit_5, 0, &v_21, 0), _fx_catch_6);
                FX_THROW(&v_21, false, _fx_catch_6);
             }
             FX_CALL(
@@ -16644,7 +16757,7 @@ FX_EXTERN_C int
    if (tag_0 == 22) {
       fx_exn_t v_1 = {0};
       fx_str_t slit_0 = FX_MAKE_STR("the records, which elements we request, is not finalized");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_1, 0), _fx_catch_1);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_1, 0), _fx_catch_1);
       FX_THROW(&v_1, false, _fx_catch_1);
 
    _fx_catch_1: ;
@@ -16677,7 +16790,7 @@ FX_EXTERN_C int
          }
          fx_exn_t v_8 = {0};
          fx_str_t slit_1 = FX_MAKE_STR("proper instance of the template record or variant type is not found");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_8, 0), _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_8, 0), _fx_catch_2);
          FX_THROW(&v_8, false, _fx_catch_2);
 
       _fx_catch_2: ;
@@ -16733,7 +16846,7 @@ FX_EXTERN_C int
                               const fx_str_t strs_0[] = { slit_2, v_12, slit_3, v_13, slit_4 };
                               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_14), _fx_catch_3);
                            }
-                           FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_14, &v_15, 0), _fx_catch_3);
+                           FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_14, 0, &v_15, 0), _fx_catch_3);
                            FX_THROW(&v_15, false, _fx_catch_3);
                         }
                         _fx_make_T2R9Ast__id_tLT4R16Ast__val_flags_tR9Ast__id_tN10Ast__typ_tN10Ast__exp_t(&_fx_g9Ast__noid,
@@ -16860,7 +16973,7 @@ FX_EXTERN_C int
                FX_CALL(fx_strjoin(0, 0, 0, strs_2, 5, &msg_0), _fx_catch_5);
             }
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &msg_0, &v_27, 0), _fx_catch_5);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &msg_0, 0, &v_27, 0), _fx_catch_5);
          FX_THROW(&v_27, false, _fx_catch_5);
 
       _fx_catch_5: ;
@@ -16897,7 +17010,7 @@ FX_EXTERN_C int
          const fx_str_t strs_3[] = { slit_10, v_28, slit_11 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_29), _fx_catch_7);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_29, &v_30, 0), _fx_catch_7);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_29, 0, &v_30, 0), _fx_catch_7);
       FX_THROW(&v_30, false, _fx_catch_7);
 
    _fx_catch_7: ;
@@ -16923,7 +17036,7 @@ FX_EXTERN_C int
    }
    fx_exn_t v_31 = {0};
    fx_str_t slit_12 = FX_MAKE_STR("attempt to treat non-record and non-variant as a record");
-   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_12, &v_31, 0), _fx_catch_9);
+   FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_12, 0, &v_31, 0), _fx_catch_9);
    FX_THROW(&v_31, false, _fx_catch_9);
 
 _fx_catch_9: ;
@@ -17225,10 +17338,10 @@ _fx_cleanup: ;
    return fx_status;
 }
 
-FX_EXTERN_C int _fx_M13Ast_typecheckFM15suggest_similarS2R9Ast__id_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(
+FX_EXTERN_C int _fx_M13Ast_typecheckFM21suggest_similar_namesLS2R9Ast__id_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(
    struct _fx_R9Ast__id_t* n_0,
    struct _fx_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t* env_0,
-   fx_str_t* fx_result,
+   struct _fx_LS_data_t** fx_result,
    void* fx_fv)
 {
    fx_str_t target_0 = {0};
@@ -17236,14 +17349,10 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM15suggest_similarS2R9Ast__id_tRt6Map__t2R9
    _fx_Nt11Map__tree_t2R9Ast__id_tLN16Ast__env_entry_t v_0 = 0;
    _fx_LT2iS cand_0 = 0;
    _fx_LT2iS cand_1 = 0;
-   _fx_LS v_1 = 0;
    int fx_status = 0;
    FX_CALL(_fx_M3AstFM2ppS1RM4id_t(n_0, &target_0, 0), _fx_cleanup);
    int_ tlen_0 = FX_STR_LENGTH(target_0);
-   if (tlen_0 == 0) {
-      fx_str_t slit_0 = FX_MAKE_STR(""); fx_copy_str(&slit_0, fx_result);
-   }
-   else {
+   if (tlen_0 != 0) {
       int_ thresh_0;
       if (tlen_0 <= 4) {
          thresh_0 = 1;
@@ -17265,39 +17374,39 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM15suggest_similarS2R9Ast__id_tRt6Map__t2R9
          }
       }
       if (cand_0 != 0) {
-         _fx_LT2iS v_2 = cand_0->tl;
-         if (v_2 != 0) {
-            if (v_2->tl == 0) {
+         _fx_LT2iS v_1 = cand_0->tl;
+         if (v_1 != 0) {
+            if (v_1->tl == 0) {
                fx_str_t s1_0 = {0};
                fx_str_t s2_0 = {0};
-               _fx_LT2iS v_3 = 0;
-               _fx_T2iS* b_0 = &v_2->hd;
+               _fx_LT2iS v_2 = 0;
+               _fx_T2iS* b_0 = &v_1->hd;
                _fx_T2iS* a_0 = &cand_0->hd;
                int_ d1_0 = b_0->t0;
                fx_copy_str(&b_0->t1, &s1_0);
                int_ d2_0 = a_0->t0;
                fx_copy_str(&a_0->t1, &s2_0);
-               bool v_4;
+               bool v_3;
                if (d1_0 < d2_0) {
-                  v_4 = true;
+                  v_3 = true;
                }
                else if (d1_0 == d2_0) {
-                  int_ v_5 = _fx_F7__cmp__i2SS(&s1_0, &s2_0, 0); v_4 = v_5 < 0;
+                  int_ v_4 = _fx_F7__cmp__i2SS(&s1_0, &s2_0, 0); v_3 = v_4 < 0;
                }
                else {
-                  v_4 = false;
+                  v_3 = false;
                }
-               if (v_4) {
-                  FX_CALL(_fx_cons_LT2iS(a_0, 0, true, &v_3), _fx_catch_0);
-                  FX_CALL(_fx_cons_LT2iS(b_0, v_3, true, &cand_1), _fx_catch_0);
+               if (v_3) {
+                  FX_CALL(_fx_cons_LT2iS(a_0, 0, true, &v_2), _fx_catch_0);
+                  FX_CALL(_fx_cons_LT2iS(b_0, v_2, true, &cand_1), _fx_catch_0);
                }
                else {
                   FX_COPY_PTR(cand_0, &cand_1);
                }
 
             _fx_catch_0: ;
-               if (v_3) {
-                  _fx_free_LT2iS(&v_3);
+               if (v_2) {
+                  _fx_free_LT2iS(&v_2);
                }
                FX_FREE_STR(&s2_0);
                FX_FREE_STR(&s1_0);
@@ -17343,46 +17452,8 @@ FX_EXTERN_C int _fx_M13Ast_typecheckFM15suggest_similarS2R9Ast__id_tRt6Map__t2R9
 
    _fx_endmatch_0: ;
       FX_CHECK_EXN(_fx_cleanup);
-      fx_str_t slit_1 = FX_MAKE_STR("");
-      FX_CALL(_fx_M13Ast_typecheckFM5take2LS3LT2iSSLS(cand_1, &slit_1, 0, &v_1, 0), _fx_cleanup);
-      if (v_1 == 0) {
-         fx_str_t slit_2 = FX_MAKE_STR(""); fx_copy_str(&slit_2, fx_result); goto _fx_endmatch_1;
-      }
-      if (v_1 != 0) {
-         if (v_1->tl == 0) {
-            fx_str_t slit_3 = FX_MAKE_STR("; did you mean \'");
-            fx_str_t* a_1 = &v_1->hd;
-            fx_str_t slit_4 = FX_MAKE_STR("\'?");
-            {
-               const fx_str_t strs_0[] = { slit_3, *a_1, slit_4 };
-               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, fx_result), _fx_catch_3);
-            }
-
-         _fx_catch_3: ;
-            goto _fx_endmatch_1;
-         }
-      }
-      if (v_1 != 0) {
-         _fx_LS v_6 = v_1->tl;
-         if (v_6 != 0) {
-            fx_str_t slit_5 = FX_MAKE_STR("; did you mean \'");
-            fx_str_t* a_2 = &v_1->hd;
-            fx_str_t slit_6 = FX_MAKE_STR("\' or \'");
-            fx_str_t* b_1 = &v_6->hd;
-            fx_str_t slit_7 = FX_MAKE_STR("\'?");
-            {
-               const fx_str_t strs_1[] = { slit_5, *a_2, slit_6, *b_1, slit_7 };
-               FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, fx_result), _fx_catch_4);
-            }
-
-         _fx_catch_4: ;
-            goto _fx_endmatch_1;
-         }
-      }
-      FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);
-
-   _fx_endmatch_1: ;
-      FX_CHECK_EXN(_fx_cleanup);
+      fx_str_t slit_0 = FX_MAKE_STR("");
+      FX_CALL(_fx_M13Ast_typecheckFM5take2LS3LT2iSSLS(cand_1, &slit_0, 0, fx_result, 0), _fx_cleanup);
    }
 
 _fx_cleanup: ;
@@ -17396,9 +17467,6 @@ _fx_cleanup: ;
    }
    if (cand_1) {
       _fx_free_LT2iS(&cand_1);
-   }
-   if (v_1) {
-      _fx_free_LS(&v_1);
    }
    return fx_status;
 }
@@ -17925,11 +17993,16 @@ FX_EXTERN_C int
    _fx_N10Ast__typ_t v_0 = 0;
    _fx_Nt6option1LN10Ast__typ_t call_argtyps_opt_0 = {0};
    _fx_LS strs_0 = 0;
-   fx_str_t tail_0 = {0};
-   fx_str_t v_1 = {0};
-   fx_str_t s_0 = {0};
+   _fx_T2SLS v_1 = {0};
    fx_str_t v_2 = {0};
    fx_str_t v_3 = {0};
+   _fx_LS cands_0 = 0;
+   fx_str_t s_0 = {0};
+   fx_str_t v_4 = {0};
+   fx_str_t tail_0 = {0};
+   _fx_LS sugg_0 = 0;
+   fx_str_t v_5 = {0};
+   fx_str_t v_6 = {0};
    int fx_status = 0;
    FX_CALL(_fx_M3AstFM2ppS1RM4id_t(n_0, &nstr_0, 0), _fx_cleanup);
    FX_CALL(_fx_M3AstFM9deref_typN10Ast__typ_t1N10Ast__typ_t(t_0, &v_0, 0), _fx_cleanup);
@@ -17977,44 +18050,44 @@ FX_EXTERN_C int
       }
       if (call_argtyps_opt_0.tag == 2) {
          if (info_0.tag == 3) {
-            fx_str_t v_4 = {0};
-            fx_str_t v_5 = {0};
+            fx_str_t v_7 = {0};
+            fx_str_t v_8 = {0};
             _fx_rR13Ast__deffun_t df_0 = info_0.u.IdFun;
-            FX_CALL(_fx_M6Ast_ppFM10fun2sigstrS1rR13Ast__deffun_t(df_0, &v_4, 0), _fx_catch_0);
+            FX_CALL(_fx_M6Ast_ppFM10fun2sigstrS1rR13Ast__deffun_t(df_0, &v_7, 0), _fx_catch_0);
             FX_CALL(
                _fx_M13Ast_typecheckFM19fun_mismatch_reasonS4rR13Ast__deffun_tLN10Ast__typ_tLN12Ast__scope_tR10Ast__loc_t(df_0,
-                  call_argtyps_opt_0.u.Some, sc_0, loc_0, &v_5, 0), _fx_catch_0);
+                  call_argtyps_opt_0.u.Some, sc_0, loc_0, &v_8, 0), _fx_catch_0);
             fx_str_t slit_0 = FX_MAKE_STR(" -- ");
             {
-               const fx_str_t strs_1[] = { v_4, slit_0, v_5 };
+               const fx_str_t strs_1[] = { v_7, slit_0, v_8 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &res_0), _fx_catch_0);
             }
 
          _fx_catch_0: ;
-            FX_FREE_STR(&v_5);
-            FX_FREE_STR(&v_4);
+            FX_FREE_STR(&v_8);
+            FX_FREE_STR(&v_7);
             goto _fx_endmatch_0;
          }
       }
       _fx_N10Ast__typ_t tj_0 = 0;
-      fx_str_t v_6 = {0};
-      fx_str_t v_7 = {0};
+      fx_str_t v_9 = {0};
+      fx_str_t v_10 = {0};
       FX_CALL(_fx_M3AstFM14get_idinfo_typN10Ast__typ_t2N14Ast__id_info_tRM5loc_t(&info_0, loc_0, &tj_0, 0), _fx_catch_1);
       _fx_R10Ast__loc_t locj_0;
       FX_CALL(_fx_M3AstFM14get_idinfo_locRM5loc_t1N14Ast__id_info_t(&info_0, &locj_0, 0), _fx_catch_1);
-      FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(tj_0, &v_6, 0), _fx_catch_1);
-      FX_CALL(_fx_M3AstFM6stringS1RM5loc_t(&locj_0, &v_7, 0), _fx_catch_1);
+      FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(tj_0, &v_9, 0), _fx_catch_1);
+      FX_CALL(_fx_M3AstFM6stringS1RM5loc_t(&locj_0, &v_10, 0), _fx_catch_1);
       fx_str_t slit_1 = FX_MAKE_STR("\'");
       fx_str_t slit_2 = FX_MAKE_STR(": ");
       fx_str_t slit_3 = FX_MAKE_STR("\' defined at ");
       {
-         const fx_str_t strs_2[] = { slit_1, nstr_0, slit_2, v_6, slit_3, v_7 };
+         const fx_str_t strs_2[] = { slit_1, nstr_0, slit_2, v_9, slit_3, v_10 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_2, 6, &res_0), _fx_catch_1);
       }
 
    _fx_catch_1: ;
-      FX_FREE_STR(&v_7);
-      FX_FREE_STR(&v_6);
+      FX_FREE_STR(&v_10);
+      FX_FREE_STR(&v_9);
       if (tj_0) {
          _fx_free_N10Ast__typ_t(&tj_0);
       }
@@ -18040,33 +18113,75 @@ FX_EXTERN_C int
       fx_str_t slit_6 =
          FX_MAKE_STR(",\n"
             U"\t");
-      FX_CALL(_fx_F12join_embraceS4SSSLS(&slit_4, &slit_5, &slit_6, strs_0, &v_1, 0), _fx_cleanup);
+      FX_CALL(_fx_F12join_embraceS4SSSLS(&slit_4, &slit_5, &slit_6, strs_0, &v_2, 0), _fx_cleanup);
       fx_str_t slit_7 = FX_MAKE_STR(".");
       {
-         const fx_str_t strs_3[] = { slit_7, v_1 };
-         FX_CALL(fx_strjoin(0, 0, 0, strs_3, 2, &tail_0), _fx_cleanup);
+         const fx_str_t strs_3[] = { slit_7, v_2 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_3, 2, &v_3), _fx_cleanup);
       }
+      _fx_make_T2SLS(&v_3, 0, &v_1);
    }
    else {
       FX_CALL(
-         _fx_M13Ast_typecheckFM15suggest_similarS2R9Ast__id_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(n_0, env_0, &s_0, 0),
-         _fx_cleanup);
+         _fx_M13Ast_typecheckFM21suggest_similar_namesLS2R9Ast__id_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(n_0, env_0,
+            &cands_0, 0), _fx_cleanup);
+      if (cands_0 == 0) {
+         fx_str_t slit_8 = FX_MAKE_STR(""); fx_copy_str(&slit_8, &s_0); goto _fx_endmatch_1;
+      }
+      if (cands_0 != 0) {
+         if (cands_0->tl == 0) {
+            fx_str_t slit_9 = FX_MAKE_STR("; did you mean \'");
+            fx_str_t* a_0 = &cands_0->hd;
+            fx_str_t slit_10 = FX_MAKE_STR("\'?");
+            {
+               const fx_str_t strs_4[] = { slit_9, *a_0, slit_10 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &s_0), _fx_catch_3);
+            }
+
+         _fx_catch_3: ;
+            goto _fx_endmatch_1;
+         }
+      }
+      if (cands_0 != 0) {
+         _fx_LS v_11 = cands_0->tl;
+         if (v_11 != 0) {
+            fx_str_t slit_11 = FX_MAKE_STR("; did you mean \'");
+            fx_str_t* a_1 = &cands_0->hd;
+            fx_str_t slit_12 = FX_MAKE_STR("\' or \'");
+            fx_str_t* b_0 = &v_11->hd;
+            fx_str_t slit_13 = FX_MAKE_STR("\'?");
+            {
+               const fx_str_t strs_5[] = { slit_11, *a_1, slit_12, *b_0, slit_13 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_5, 5, &s_0), _fx_catch_4);
+            }
+
+         _fx_catch_4: ;
+            goto _fx_endmatch_1;
+         }
+      }
+      FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);
+
+   _fx_endmatch_1: ;
+      FX_CHECK_EXN(_fx_cleanup);
       if (FX_STR_LENGTH(s_0) == 0) {
-         fx_str_t slit_8 = FX_MAKE_STR("."); fx_copy_str(&slit_8, &tail_0);
+         fx_str_t slit_14 = FX_MAKE_STR("."); fx_copy_str(&slit_14, &v_4);
       }
       else {
-         fx_copy_str(&s_0, &tail_0);
+         fx_copy_str(&s_0, &v_4);
       }
+      _fx_make_T2SLS(&v_4, cands_0, &v_1);
    }
-   FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(t_0, &v_2, 0), _fx_cleanup);
-   fx_str_t slit_9 = FX_MAKE_STR("the appropriate match for \'");
-   fx_str_t slit_10 = FX_MAKE_STR("\' of type \'");
-   fx_str_t slit_11 = FX_MAKE_STR("\' is not found");
+   fx_copy_str(&v_1.t0, &tail_0);
+   FX_COPY_PTR(v_1.t1, &sugg_0);
+   FX_CALL(_fx_M3AstFM7typ2strS1N10Ast__typ_t(t_0, &v_5, 0), _fx_cleanup);
+   fx_str_t slit_15 = FX_MAKE_STR("the appropriate match for \'");
+   fx_str_t slit_16 = FX_MAKE_STR("\' of type \'");
+   fx_str_t slit_17 = FX_MAKE_STR("\' is not found");
    {
-      const fx_str_t strs_4[] = { slit_9, nstr_0, slit_10, v_2, slit_11, tail_0 };
-      FX_CALL(fx_strjoin(0, 0, 0, strs_4, 6, &v_3), _fx_cleanup);
+      const fx_str_t strs_6[] = { slit_15, nstr_0, slit_16, v_5, slit_17, tail_0 };
+      FX_CALL(fx_strjoin(0, 0, 0, strs_6, 6, &v_6), _fx_cleanup);
    }
-   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, fx_result, 0), _fx_cleanup);
+   FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_6, sugg_0, fx_result, 0), _fx_cleanup);
 
 _fx_cleanup: ;
    FX_FREE_STR(&nstr_0);
@@ -18077,11 +18192,20 @@ _fx_cleanup: ;
    if (strs_0) {
       _fx_free_LS(&strs_0);
    }
-   FX_FREE_STR(&tail_0);
-   FX_FREE_STR(&v_1);
-   FX_FREE_STR(&s_0);
+   _fx_free_T2SLS(&v_1);
    FX_FREE_STR(&v_2);
    FX_FREE_STR(&v_3);
+   if (cands_0) {
+      _fx_free_LS(&cands_0);
+   }
+   FX_FREE_STR(&s_0);
+   FX_FREE_STR(&v_4);
+   FX_FREE_STR(&tail_0);
+   if (sugg_0) {
+      _fx_free_LS(&sugg_0);
+   }
+   FX_FREE_STR(&v_5);
+   FX_FREE_STR(&v_6);
    return fx_status;
 }
 
@@ -19044,7 +19168,7 @@ _fx_endmatch_3: ;
             const fx_str_t strs_0[] = { slit_0, v_4, slit_1 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_5), _fx_cleanup);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_5, &v_6, 0), _fx_cleanup);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_5, 0, &v_6, 0), _fx_cleanup);
          FX_THROW(&v_6, false, _fx_cleanup);
       }
    }
@@ -19065,7 +19189,7 @@ _fx_endmatch_3: ;
             const fx_str_t strs_1[] = { slit_2, v_8, slit_3 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_9), _fx_cleanup);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_9, &v_10, 0), _fx_cleanup);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_9, 0, &v_10, 0), _fx_cleanup);
          FX_THROW(&v_10, false, _fx_cleanup);
       }
       bool res_1;
@@ -19132,7 +19256,7 @@ _fx_endmatch_3: ;
                   const fx_str_t strs_2[] = { slit_4, v_35, slit_5, v_36 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_2, 4, &v_37), _fx_catch_12);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_37, &v_38, 0), _fx_catch_12);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_37, 0, &v_38, 0), _fx_catch_12);
                FX_THROW(&v_38, false, _fx_catch_12);
 
             _fx_catch_12: ;
@@ -19182,7 +19306,7 @@ _fx_endmatch_3: ;
                   &v_45, 0), _fx_catch_14);
             if (!v_45) {
                fx_str_t slit_6 = FX_MAKE_STR("inconsistent type of the instantiated function");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_6, &v_42, 0), _fx_catch_14);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_6, 0, &v_42, 0), _fx_catch_14);
                FX_THROW(&v_42, false, _fx_catch_14);
             }
             _fx_make_T2R9Ast__id_tN10Ast__typ_t(&inst_name_0, t_1, &v_43);
@@ -19611,7 +19735,7 @@ static int
             const fx_str_t strs_8[] = { slit_26, v_27, slit_27, why_0, slit_28, cand_lines_0, slit_29, hint_0 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_8, 8, &v_28), _fx_catch_15);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_28, &v_29, 0), _fx_catch_15);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_28, 0, &v_29, 0), _fx_catch_15);
          FX_THROW(&v_29, false, _fx_catch_15);
       }
       else {
@@ -19818,7 +19942,7 @@ static int
                      _fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(dv_typ_0, t_0, loc_0, true,
                         &v_11, 0), _fx_catch_1);
                   if (!v_11) {
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_7, &v_8, 0), _fx_catch_1);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_7, 0, &v_8, 0), _fx_catch_1);
                      FX_THROW(&v_8, false, _fx_catch_1);
                   }
                   bool v_12;
@@ -19869,7 +19993,7 @@ static int
                         _fx_g24Ast_typecheck__TypModule, t_0, loc_0, true, &v_15, 0), _fx_catch_3);
                   if (!v_15) {
                      fx_str_t slit_4 = FX_MAKE_STR("unexpected module name");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_4, &v_13, 0), _fx_catch_3);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_4, 0, &v_13, 0), _fx_catch_3);
                      FX_THROW(&v_13, false, _fx_catch_3);
                   }
                   _fx_make_T2R9Ast__id_tN10Ast__typ_t(i_0, t_0, &v_14);
@@ -19931,7 +20055,7 @@ static int
                         &v_20, 0), _fx_catch_7);
                   if (!v_20) {
                      fx_str_t slit_5 = FX_MAKE_STR("uncorrect type of exception constructor and/or its arguments");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_5, &v_17, 0), _fx_catch_7);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_5, 0, &v_17, 0), _fx_catch_7);
                      FX_THROW(&v_17, false, _fx_catch_7);
                   }
                   _fx_make_T2R9Ast__id_tN10Ast__typ_t(i_0, t_0, &v_18);
@@ -20678,7 +20802,7 @@ static int _fx_M13Ast_typecheckFM12__lambda__1_v1N14Ast__id_info_t(struct _fx_N1
                const fx_str_t strs_0[] = { slit_0, v_2, slit_1, v_3 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &v_4), _fx_catch_0);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_4, &v_5, 0), _fx_catch_0);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_4, 0, &v_5, 0), _fx_catch_0);
             FX_THROW(&v_5, false, _fx_catch_0);
          }
       }
@@ -20757,7 +20881,7 @@ static int _fx_M13Ast_typecheckFM12__lambda__1_v1N14Ast__id_info_t(struct _fx_N1
                const fx_str_t strs_1[] = { slit_2, v_10, slit_3, v_11 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_1, 4, &v_12), _fx_catch_3);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_12, &v_13, 0), _fx_catch_3);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_12, 0, &v_13, 0), _fx_catch_3);
             FX_THROW(&v_13, false, _fx_catch_3);
          }
       }
@@ -20838,7 +20962,7 @@ static int _fx_M13Ast_typecheckFM12__lambda__2_v1N14Ast__id_info_t(struct _fx_N1
                      const fx_str_t strs_0[] = { slit_0, v_2, slit_1, v_3 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &v_4), _fx_catch_0);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_4, &v_5, 0), _fx_catch_0);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_4, 0, &v_5, 0), _fx_catch_0);
                   FX_THROW(&v_5, false, _fx_catch_0);
                }
 
@@ -20928,7 +21052,7 @@ FX_EXTERN_C int
       const fx_str_t strs_0[] = { slit_0, v_3, slit_1, v_4, slit_2, v_5 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_0, 6, &v_6), _fx_catch_1);
    }
-   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &v_6, &v_7, 0), _fx_catch_1);
+   FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &v_6, 0, &v_7, 0), _fx_catch_1);
    FX_THROW(&v_7, false, _fx_catch_1);
 
 _fx_catch_1: ;
@@ -21384,7 +21508,7 @@ FX_EXTERN_C int
                      if (exn_0.tag == FX_EXN_OutOfRangeError) {
                         fx_exn_t v_17 = {0};
                         fx_str_t slit_4 = FX_MAKE_STR("the tuple index is out of range");
-                        FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc2_0, &slit_4, &v_17, 0), _fx_catch_8);
+                        FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc2_0, &slit_4, 0, &v_17, 0), _fx_catch_8);
                         FX_THROW(&v_17, false, _fx_catch_8);
 
                      _fx_catch_8: ;
@@ -21448,7 +21572,7 @@ FX_EXTERN_C int
                   else {
                      fx_exn_t v_19 = {0};
                      fx_str_t slit_7 = FX_MAKE_STR("__tag__ can only be requestd for variants and exceptions");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_7, &v_19, 0), _fx_catch_11);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_7, 0, &v_19, 0), _fx_catch_11);
                      FX_THROW(&v_19, false, _fx_catch_11);
 
                   _fx_catch_11: ;
@@ -21664,7 +21788,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_1[] = { slit_10, v_35, slit_11 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_36), _fx_catch_19);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_36, &v_37, 0), _fx_catch_19);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_36, 0, &v_37, 0), _fx_catch_19);
                FX_THROW(&v_37, false, _fx_catch_19);
 
             _fx_catch_19: ;
@@ -21686,7 +21810,7 @@ FX_EXTERN_C int
          }
          fx_exn_t v_38 = {0};
          fx_str_t slit_12 = FX_MAKE_STR("unsupported element access operation");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_12, &v_38, 0), _fx_catch_21);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_12, 0, &v_38, 0), _fx_catch_21);
          FX_THROW(&v_38, false, _fx_catch_21);
 
       _fx_catch_21: ;
@@ -21743,12 +21867,12 @@ FX_EXTERN_C int
                   new_e1_1, &ectx_0, &eloc_0, &v_42, 0), _fx_catch_23);
             if (!v_42) {
                fx_str_t slit_14 = FX_MAKE_STR("the left side of an assignment is an immutable value");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc1_1, &slit_14, &v_39, 0), _fx_catch_23);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc1_1, &slit_14, 0, &v_39, 0), _fx_catch_23);
                FX_THROW(&v_39, false, _fx_catch_23);
             }
             else {
                fx_str_t slit_15 = FX_MAKE_STR("the left side of an assignment is not an l-value");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc1_1, &slit_15, &v_40, 0), _fx_catch_23);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc1_1, &slit_15, 0, &v_40, 0), _fx_catch_23);
                FX_THROW(&v_40, false, _fx_catch_23);
             }
          }
@@ -22499,7 +22623,7 @@ FX_EXTERN_C int
                      const fx_str_t strs_5[] = { slit_32, v_98, slit_33 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_99), _fx_catch_41);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc1_4, &v_99, &v_100, 0), _fx_catch_41);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc1_4, &v_99, 0, &v_100, 0), _fx_catch_41);
                   FX_THROW(&v_100, false, _fx_catch_41);
                }
                if ((probably_result_0 != 0) + 1 == 2) {
@@ -22590,7 +22714,7 @@ FX_EXTERN_C int
                const fx_str_t strs_6[] = { slit_34, v_108 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_6, 2, &v_109), _fx_catch_42);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_109, &v_110, 0), _fx_catch_42);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_109, 0, &v_110, 0), _fx_catch_42);
             FX_THROW(&v_110, false, _fx_catch_42);
 
          _fx_catch_42: ;
@@ -22966,7 +23090,7 @@ FX_EXTERN_C int
                const fx_str_t strs_7[] = { slit_39, v_126 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_7, 2, &v_127), _fx_catch_55);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_127, &v_128, 0), _fx_catch_55);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_127, 0, &v_128, 0), _fx_catch_55);
             FX_THROW(&v_128, false, _fx_catch_55);
 
          _fx_catch_55: ;
@@ -23564,7 +23688,7 @@ FX_EXTERN_C int
             const fx_str_t strs_10[] = { slit_55, v_155, slit_56 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_10, 3, &v_156), _fx_catch_73);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_156, &v_157, 0), _fx_catch_73);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_156, 0, &v_157, 0), _fx_catch_73);
          FX_THROW(&v_157, false, _fx_catch_73);
 
       _fx_catch_73: ;
@@ -23814,7 +23938,7 @@ FX_EXTERN_C int
                const fx_str_t strs_11[] = { slit_72, v_171, slit_73, v_172, slit_74 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_11, 5, &v_173), _fx_catch_80);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_173, &v_174, 0), _fx_catch_80);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_173, 0, &v_174, 0), _fx_catch_80);
             FX_THROW(&v_174, false, _fx_catch_80);
 
          _fx_catch_80: ;
@@ -23883,7 +24007,7 @@ FX_EXTERN_C int
                   if (FX_REC_VARIANT_TAG(v_176) != 10) {
                      fx_exn_t v_177 = {0};
                      fx_str_t slit_80 = FX_MAKE_STR("floor/ceil/round intrinsics must have a single floating-point argument");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_80, &v_177, 0), _fx_catch_82);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_80, 0, &v_177, 0), _fx_catch_82);
                      FX_THROW(&v_177, false, _fx_catch_82);
 
                   _fx_catch_82: ;
@@ -23919,7 +24043,7 @@ FX_EXTERN_C int
             fx_exn_t v_178 = {0};
             fx_str_t slit_83 =
                FX_MAKE_STR("the argument and the result of intrinsic math function must be \'float\' or \'double\'");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_83, &v_178, 0), _fx_catch_84);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_83, 0, &v_178, 0), _fx_catch_84);
             FX_THROW(&v_178, false, _fx_catch_84);
 
          _fx_catch_84: ;
@@ -24273,8 +24397,8 @@ FX_EXTERN_C int
                                                                      FX_MAKE_STR(
                                                                         "multiplied matrices should contain float or double elements");
                                                                   FX_CALL(
-                                                                     _fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_100,
-                                                                        &v_228, 0), _fx_catch_86);
+                                                                     _fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_100,
+                                                                        0, &v_228, 0), _fx_catch_86);
                                                                   FX_THROW(&v_228, false, _fx_catch_86);
                                                                }
                                                                fx_str_t slit_101 =
@@ -24501,7 +24625,7 @@ FX_EXTERN_C int
             fx_str_t slit_102 =
                FX_MAKE_STR(
                   "there should be exactly one or two argument of __intrin_size__ intrinsic. In the latter case the second parameter must be literal integer");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_102, &v_240, 0), _fx_catch_88);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_102, 0, &v_240, 0), _fx_catch_88);
             FX_THROW(&v_240, false, _fx_catch_88);
 
          _fx_catch_88: ;
@@ -24546,7 +24670,7 @@ FX_EXTERN_C int
                }
                if (t_7) {
                   fx_str_t slit_104 = FX_MAKE_STR("the argument of __intrin_size__ is outside of array dimensionality");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_104, &v_241, 0), _fx_catch_89);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_104, 0, &v_241, 0), _fx_catch_89);
                   FX_THROW(&v_241, false, _fx_catch_89);
                }
 
@@ -24556,7 +24680,7 @@ FX_EXTERN_C int
             }
             fx_exn_t v_242 = {0};
             fx_str_t slit_105 = FX_MAKE_STR("the argument of __intrin_size__ must be a string, a rrbvec or an array");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_105, &v_242, 0), _fx_catch_90);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_105, 0, &v_242, 0), _fx_catch_90);
             FX_THROW(&v_242, false, _fx_catch_90);
 
          _fx_catch_90: ;
@@ -24621,7 +24745,7 @@ FX_EXTERN_C int
             }
             fx_exn_t v_251 = {0};
             fx_str_t slit_106 = FX_MAKE_STR("__intrin_push__ intrinsic expects exactly two arguments (vector, element)");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_106, &v_251, 0), _fx_catch_92);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_106, 0, &v_251, 0), _fx_catch_92);
             FX_THROW(&v_251, false, _fx_catch_92);
 
          _fx_catch_92: ;
@@ -24712,7 +24836,7 @@ FX_EXTERN_C int
             }
             fx_exn_t v_259 = {0};
             fx_str_t slit_110 = FX_MAKE_STR("__intrin_pop__ intrinsic expects exactly one argument (vector)");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_110, &v_259, 0), _fx_catch_94);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_110, 0, &v_259, 0), _fx_catch_94);
             FX_THROW(&v_259, false, _fx_catch_94);
 
          _fx_catch_94: ;
@@ -24777,7 +24901,7 @@ FX_EXTERN_C int
                const fx_str_t strs_13[] = { slit_113, v_261, slit_114 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_13, 3, &v_262), _fx_catch_96);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_262, &v_263, 0), _fx_catch_96);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_262, 0, &v_263, 0), _fx_catch_96);
             FX_THROW(&v_263, false, _fx_catch_96);
 
          _fx_catch_96: ;
@@ -25077,7 +25201,7 @@ FX_EXTERN_C int
                                  else {
                                     fx_exn_t v_283 = {0};
                                     fx_str_t slit_120 = FX_MAKE_STR("after duplication function is not a function anymore!");
-                                    FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&v_275.df_loc, &slit_120, &v_283, 0),
+                                    FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&v_275.df_loc, &slit_120, 0, &v_283, 0),
                                        _fx_catch_105);
                                     FX_THROW(&v_283, false, _fx_catch_105);
 
@@ -25583,7 +25707,7 @@ FX_EXTERN_C int
          _fx_R10Ast__loc_t new_aloc_0 = v_314.t1;
          if (interp_0.tag != 1) {
             fx_str_t slit_130 = FX_MAKE_STR("inter-element interpolation is not supported yet");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_130, &v_315, 0), _fx_catch_141);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_130, 0, &v_315, 0), _fx_catch_141);
             FX_THROW(&v_315, false, _fx_catch_141);
          }
          if (idxs_0 != 0) {
@@ -25715,7 +25839,7 @@ FX_EXTERN_C int
                            else {
                               fx_exn_t v_325 = {0};
                               fx_str_t slit_135 = FX_MAKE_STR("the argument of the flatten operation must be an array");
-                              FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_135, &v_325, 0), _fx_catch_126);
+                              FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_135, 0, &v_325, 0), _fx_catch_126);
                               FX_THROW(&v_325, false, _fx_catch_126);
 
                            _fx_catch_126: ;
@@ -25828,7 +25952,7 @@ FX_EXTERN_C int
                      fx_str_t slit_136 =
                         FX_MAKE_STR(
                            "each scalar index in array access op must have some integer type or bool; in the case of interpolation it can also be float or double");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&new_iloc_0, &slit_136, &v_340, 0), _fx_catch_129);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&new_iloc_0, &slit_136, 0, &v_340, 0), _fx_catch_129);
                      FX_THROW(&v_340, false, _fx_catch_129);
                   }
                }
@@ -26030,7 +26154,7 @@ FX_EXTERN_C int
                fx_str_t slit_146 =
                   FX_MAKE_STR(
                      "border extrapolation is used with an array, which elements are too large ({elem_sz} bytes) or have unsupported type \'{typ2str(et)\'");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_146, &v_358, 0), _fx_catch_137);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_146, 0, &v_358, 0), _fx_catch_137);
                FX_THROW(&v_358, false, _fx_catch_137);
             }
 
@@ -26077,7 +26201,7 @@ FX_EXTERN_C int
          if (interp_0.tag != 1) {
             fx_exn_t v_359 = {0};
             fx_str_t slit_149 = FX_MAKE_STR("element interpolation is not supported yet");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_149, &v_359, 0), _fx_catch_139);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_149, 0, &v_359, 0), _fx_catch_139);
             FX_THROW(&v_359, false, _fx_catch_139);
 
          _fx_catch_139: ;
@@ -26169,7 +26293,7 @@ FX_EXTERN_C int
             if (FX_REC_VARIANT_TAG(e2_3) == 1) {
                fx_exn_t v_364 = {0};
                fx_str_t slit_152 = FX_MAKE_STR("if() expression of non-void type has no \'else\' branch");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&loc2_0, &slit_152, &v_364, 0), _fx_catch_142);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&loc2_0, &slit_152, 0, &v_364, 0), _fx_catch_142);
                FX_THROW(&v_364, false, _fx_catch_142);
 
             _fx_catch_142: ;
@@ -26418,7 +26542,7 @@ FX_EXTERN_C int
          bool is_nested_0 = flags_0->for_flag_nested;
          if (flags_0->for_flag_unzip) {
             fx_str_t slit_158 = FX_MAKE_STR("@unzip for does not make sense outside of comprehensions");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_158, &v_371, 0), _fx_catch_152);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_158, 0, &v_371, 0), _fx_catch_152);
             FX_THROW(&v_371, false, _fx_catch_152);
          }
          _fx_N12Ast__scope_t v_376;
@@ -26718,7 +26842,7 @@ FX_EXTERN_C int
          if (t_12) {
             fx_str_t slit_161 =
                FX_MAKE_STR("tuple comprehension with iteration over non-tuples and non-records is not supported");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_161, &v_378, 0), _fx_catch_164);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_161, 0, &v_378, 0), _fx_catch_164);
             FX_THROW(&v_378, false, _fx_catch_164);
          }
          if (make_list_0) {
@@ -26739,7 +26863,7 @@ FX_EXTERN_C int
          if (trsz_2 > 0) {
             if (flags_1->for_flag_unzip) {
                fx_str_t slit_167 = FX_MAKE_STR("@unzip for is not supported in tuple/record comprehensions");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_167, &v_379, 0), _fx_catch_164);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_167, 0, &v_379, 0), _fx_catch_164);
                FX_THROW(&v_379, false, _fx_catch_164);
             }
             if (map_clauses_1 != 0) {
@@ -26751,7 +26875,7 @@ FX_EXTERN_C int
             }
             fx_exn_t v_412 = {0};
             fx_str_t slit_168 = FX_MAKE_STR("tuple comprehension with nested for is not supported yet");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_168, &v_412, 0), _fx_catch_154);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_168, 0, &v_412, 0), _fx_catch_154);
             FX_THROW(&v_412, false, _fx_catch_154);
 
          _fx_catch_154: ;
@@ -26966,7 +27090,7 @@ FX_EXTERN_C int
                            const fx_str_t strs_18[] = { slit_172, v_419, slit_173, v_420, slit_174 };
                            FX_CALL(fx_strjoin(0, 0, 0, strs_18, 5, &v_421), _fx_catch_160);
                         }
-                        FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_421, &v_422, 0), _fx_catch_160);
+                        FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_421, 0, &v_422, 0), _fx_catch_160);
                         FX_THROW(&v_422, false, _fx_catch_160);
                      }
                      int_ i_1 = 0;
@@ -27031,7 +27155,7 @@ FX_EXTERN_C int
                      const fx_str_t strs_19[] = { slit_175, v_424, slit_176, v_426, slit_177 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_19, 5, &v_427), _fx_catch_161);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_427, &v_428, 0), _fx_catch_161);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_427, 0, &v_428, 0), _fx_catch_161);
                   FX_THROW(&v_428, false, _fx_catch_161);
 
                _fx_catch_161: ;
@@ -27059,7 +27183,7 @@ FX_EXTERN_C int
                if (FX_REC_VARIANT_TAG(v_400) == 14) {
                   fx_exn_t v_429 = {0};
                   fx_str_t slit_178 = FX_MAKE_STR("comprehension body cannot have \'void\' type");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_178, &v_429, 0), _fx_catch_163);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_178, 0, &v_429, 0), _fx_catch_163);
                   FX_THROW(&v_429, false, _fx_catch_163);
 
                _fx_catch_163: ;
@@ -27277,7 +27401,7 @@ FX_EXTERN_C int
          else {
             fx_exn_t v_440 = {0};
             fx_str_t slit_183 = FX_MAKE_STR("return statement occurs outside of a function body");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_183, &v_440, 0), _fx_catch_169);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_183, 0, &v_440, 0), _fx_catch_169);
             FX_THROW(&v_440, false, _fx_catch_169);
 
          _fx_catch_169: ;
@@ -27409,7 +27533,7 @@ FX_EXTERN_C int
                         fx_exn_t v_470 = {0};
                         fx_str_t slit_188 =
                            FX_MAKE_STR("incorrect type of expanded collection (it should be an array, list or string)");
-                        FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_188, &v_470, 0), _fx_catch_172);
+                        FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_188, 0, &v_470, 0), _fx_catch_172);
                         FX_THROW(&v_470, false, _fx_catch_172);
 
                      _fx_catch_172: ;
@@ -27422,7 +27546,7 @@ FX_EXTERN_C int
                      if (d_0 > 2) {
                         fx_str_t slit_189 =
                            FX_MAKE_STR("currently expansion of more than 2-dimensional arrays is not supported");
-                        FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_189, &v_464, 0), _fx_catch_173);
+                        FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_189, 0, &v_464, 0), _fx_catch_173);
                         FX_THROW(&v_464, false, _fx_catch_173);
                      }
                      FX_CALL(_fx_M13Ast_typecheckFM6stringS1S(&collname_0, &v_465, 0), _fx_catch_173);
@@ -27514,7 +27638,7 @@ FX_EXTERN_C int
                      const fx_str_t strs_22[] = { slit_193, v_456, slit_194, v_457, slit_195 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_22, 5, &v_458), _fx_catch_175);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&elem_loc_0, &v_458, &v_459, 0), _fx_catch_175);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&elem_loc_0, &v_458, 0, &v_459, 0), _fx_catch_175);
                   FX_THROW(&v_459, false, _fx_catch_175);
                }
                bool t_14;
@@ -27589,7 +27713,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_23[] = { slit_196, v_443, slit_197, v_445, slit_198 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_23, 5, &v_446), _fx_catch_179);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&elem_loc_1, &v_446, &v_447, 0), _fx_catch_179);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&elem_loc_1, &v_446, 0, &v_447, 0), _fx_catch_179);
                FX_THROW(&v_447, false, _fx_catch_179);
             }
             bool have_expanded_0;
@@ -27624,7 +27748,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_24[] = { slit_199, v_448, slit_200, v_450, slit_201 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_24, 5, &v_451), _fx_catch_179);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&elem_loc_1, &v_451, &v_452, 0), _fx_catch_179);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&elem_loc_1, &v_451, 0, &v_452, 0), _fx_catch_179);
                FX_THROW(&v_452, false, _fx_catch_179);
             }
             int_ dims_1;
@@ -27780,7 +27904,7 @@ FX_EXTERN_C int
                   fx_str_t slit_208 =
                      FX_MAKE_STR(
                         "incorrect type \'{typ2str(etyp1)} of the expanded collection (it should be an 1D array, list or string)");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc1_10, &slit_208, &v_484, 0), _fx_catch_181);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc1_10, &slit_208, 0, &v_484, 0), _fx_catch_181);
                   FX_THROW(&v_484, false, _fx_catch_181);
 
                _fx_catch_181: ;
@@ -28204,7 +28328,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_27[] = { slit_218, v_508, slit_219 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_27, 3, &v_509), _fx_catch_193);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&ei_loc_0, &v_509, &v_510, 0), _fx_catch_193);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&ei_loc_0, &v_509, 0, &v_510, 0), _fx_catch_193);
                FX_THROW(&v_510, false, _fx_catch_193);
 
             _fx_catch_193: ;
@@ -28486,7 +28610,7 @@ FX_EXTERN_C int
                                  const fx_str_t strs_28[] = { slit_222, v_527, slit_223, v_529, slit_224 };
                                  FX_CALL(fx_strjoin(0, 0, 0, strs_28, 5, &v_530), _fx_catch_199);
                               }
-                              FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_530, &v_531, 0), _fx_catch_199);
+                              FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_530, 0, &v_531, 0), _fx_catch_199);
                               FX_THROW(&v_531, false, _fx_catch_199);
 
                            _fx_catch_199: ;
@@ -28547,7 +28671,7 @@ FX_EXTERN_C int
                                     const fx_str_t strs_29[] = { slit_225, v_535, slit_226, v_537, slit_227 };
                                     FX_CALL(fx_strjoin(0, 0, 0, strs_29, 5, &v_538), _fx_catch_201);
                                  }
-                                 FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_538, &v_539, 0), _fx_catch_201);
+                                 FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_538, 0, &v_539, 0), _fx_catch_201);
                                  FX_THROW(&v_539, false, _fx_catch_201);
                               }
                               FX_CALL(_fx_cons_LN10Ast__exp_t(e1_9, 0, true, &v_540), _fx_catch_201);
@@ -28626,7 +28750,7 @@ FX_EXTERN_C int
                                     const fx_str_t strs_30[] = { slit_228, v_546, slit_229, v_548, slit_230, v_550, slit_231 };
                                     FX_CALL(fx_strjoin(0, 0, 0, strs_30, 7, &v_551), _fx_catch_203);
                                  }
-                                 FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_551, &v_552, 0), _fx_catch_203);
+                                 FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_551, 0, &v_552, 0), _fx_catch_203);
                                  FX_THROW(&v_552, false, _fx_catch_203);
                               }
                               FX_CALL(_fx_cons_LN10Ast__exp_t(e1_9, 0, true, &v_553), _fx_catch_203);
@@ -28747,7 +28871,7 @@ FX_EXTERN_C int
                const fx_str_t strs_31[] = { slit_233, v_561, slit_234, v_563, slit_235 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_31, 5, &v_564), _fx_catch_211);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_564, &v_565, 0), _fx_catch_211);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_564, 0, &v_565, 0), _fx_catch_211);
             FX_THROW(&v_565, false, _fx_catch_211);
          }
          _fx_N10Ast__exp_t e2_4 = 0;
@@ -28835,7 +28959,7 @@ FX_EXTERN_C int
                         const fx_str_t strs_32[] = { slit_237, v_574, slit_238, v_576, slit_239 };
                         FX_CALL(fx_strjoin(0, 0, 0, strs_32, 5, &v_577), _fx_catch_209);
                      }
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &v_577, &v_578, 0), _fx_catch_209);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &v_577, 0, &v_578, 0), _fx_catch_209);
                      FX_THROW(&v_578, false, _fx_catch_209);
 
                   _fx_catch_209: ;
@@ -29113,7 +29237,7 @@ FX_EXTERN_C int
          fx_exn_t v_586 = {0};
          fx_str_t slit_244 =
             FX_MAKE_STR("internal err: should not get here; all the declarations and directives must be handled in check_eseq");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_244, &v_586, 0), _fx_catch_220);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_244, 0, &v_586, 0), _fx_catch_220);
          FX_THROW(&v_586, false, _fx_catch_220);
 
       _fx_catch_220: ;
@@ -29270,7 +29394,7 @@ static int
          fx_str_t slit_1 =
             FX_MAKE_STR("for over tuple: invalid result of\n"
                U"                                     check_pat result (id is expected)");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_1, &v_10, 0), _fx_catch_4);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_1, 0, &v_10, 0), _fx_catch_4);
          FX_THROW(&v_10, false, _fx_catch_4);
 
       _fx_catch_4: ;
@@ -29361,7 +29485,7 @@ static int
          }
          fx_exn_t v_20 = {0};
          fx_str_t slit_3 = FX_MAKE_STR("for over record: invalid result of check_pat result (id is expected)");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_3, &v_20, 0), _fx_catch_8);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_3, 0, &v_20, 0), _fx_catch_8);
          FX_THROW(&v_20, false, _fx_catch_8);
 
       _fx_catch_8: ;
@@ -29434,7 +29558,7 @@ static int
       fx_exn_t v_25 = {0};
       fx_str_t slit_5 =
          FX_MAKE_STR("unsupported iteration domain; it should be a range, array, list, string, tuple or a record");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_5, &v_25, 0), _fx_catch_11);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_5, 0, &v_25, 0), _fx_catch_11);
       FX_THROW(&v_25, false, _fx_catch_11);
 
    _fx_catch_11: ;
@@ -29566,7 +29690,7 @@ static int
          _fx_R10Ast__loc_t v_13;
          FX_CALL(_fx_M3AstFM11get_exp_locRM5loc_t1N10Ast__exp_t(ei_1, &v_13, 0), _fx_catch_2);
          fx_str_t slit_0 = FX_MAKE_STR("the dimensionalities of simultaneously iterated containers/ranges do not match");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&v_13, &slit_0, &v_5, 0), _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&v_13, &slit_0, 0, &v_5, 0), _fx_catch_2);
          FX_THROW(&v_5, false, _fx_catch_2);
       }
       bool t_1;
@@ -29595,7 +29719,7 @@ static int
          else {
             fx_str_t slit_2 = FX_MAKE_STR("cannot iterate over tuples/records of different size"); fx_copy_str(&slit_2, &v_6);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&v_14, &v_6, &v_7, 0), _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&v_14, &v_6, 0, &v_7, 0), _fx_catch_2);
          FX_THROW(&v_7, false, _fx_catch_2);
       }
       trsz_0 = trszj_0;
@@ -30090,7 +30214,7 @@ static int
          }
          fx_exn_t v_37 = {0};
          fx_str_t slit_0 = FX_MAKE_STR("when iterating through record, a 2-element tuple should be used as pattern");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &slit_0, &v_37, 0), _fx_catch_5);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &slit_0, 0, &v_37, 0), _fx_catch_5);
          FX_THROW(&v_37, false, _fx_catch_5);
 
       _fx_catch_5: ;
@@ -30404,7 +30528,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                   const fx_str_t strs_0[] = { slit_0, *kw_0, slit_1 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_0), _fx_catch_0);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_0, &v_1, 0), _fx_catch_0);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_0, 0, &v_1, 0), _fx_catch_0);
                FX_THROW(&v_1, false, _fx_catch_0);
             }
             _fx_LN12Ast__scope_t* outer_sc_0 = &sc_2->tl;
@@ -30454,7 +30578,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
             const fx_str_t strs_1[] = { slit_2, *kw_0, slit_3 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_2), _fx_catch_1);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_2, &v_3, 0), _fx_catch_1);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_2, 0, &v_3, 0), _fx_catch_1);
          FX_THROW(&v_3, false, _fx_catch_1);
 
       _fx_catch_1: ;
@@ -30479,7 +30603,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                      const fx_str_t strs_2[] = { slit_4, *kw_0, slit_5 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_5), _fx_catch_2);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_5, &v_6, 0), _fx_catch_2);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_5, 0, &v_6, 0), _fx_catch_2);
                   FX_THROW(&v_6, false, _fx_catch_2);
                }
                else if (vcase_0->t1) {
@@ -30489,7 +30613,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                      const fx_str_t strs_3[] = { slit_6, *kw_0, slit_7 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_7), _fx_catch_2);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_7, &v_8, 0), _fx_catch_2);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_7, 0, &v_8, 0), _fx_catch_2);
                   FX_THROW(&v_8, false, _fx_catch_2);
                }
                else {
@@ -30504,7 +30628,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                      fx_str_t slit_8 =
                         FX_MAKE_STR(
                            "\'break\' cannot be used inside nested for-loop because of ambiguity. Use explicit curly braces, e.g. \'for ... { for ... { for ... { break }}}\' to exit a single for-loop, or use exceptions, e.g. the standard \'Break\' exception to exit nested loops.");
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &slit_8, &v_9, 0), _fx_catch_2);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &slit_8, 0, &v_9, 0), _fx_catch_2);
                      FX_THROW(&v_9, false, _fx_catch_2);
                   }
                   else {
@@ -30536,7 +30660,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                   const fx_str_t strs_4[] = { slit_9, *kw_0, slit_10 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &v_10), _fx_catch_3);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_10, &v_11, 0), _fx_catch_3);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_10, 0, &v_11, 0), _fx_catch_3);
                FX_THROW(&v_11, false, _fx_catch_3);
             }
             else {
@@ -30560,7 +30684,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                   const fx_str_t strs_5[] = { slit_11, *kw_0, slit_12 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_12), _fx_catch_4);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_12, &v_13, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_12, 0, &v_13, 0), _fx_catch_4);
                FX_THROW(&v_13, false, _fx_catch_4);
             }
             else {
@@ -30584,7 +30708,7 @@ static int _fx_M13Ast_typecheckFM13check_inside_v6LN12Ast__scope_tBR10Ast__loc_t
                   const fx_str_t strs_6[] = { slit_13, *kw_0, slit_14 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_6, 3, &v_14), _fx_catch_5);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_14, &v_15, 0), _fx_catch_5);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_14, 0, &v_15, 0), _fx_catch_5);
                FX_THROW(&v_15, false, _fx_catch_5);
             }
             else {
@@ -30684,7 +30808,8 @@ static int
       _fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(f_real_typ_0, f_expected_typ_0, &floc_0,
          true, &v_7, 0), _fx_cleanup);
    if (!v_7) {
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&floc_0, &v_5, &v_6, 0), _fx_cleanup); FX_THROW(&v_6, false, _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&floc_0, &v_5, 0, &v_6, 0), _fx_cleanup);
+      FX_THROW(&v_6, false, _fx_cleanup);
    }
    FX_CALL(
       _fx_M13Ast_typecheckFM9check_expN10Ast__exp_t3N10Ast__exp_tRt6Map__t2R9Ast__id_tLN16Ast__env_entry_tLN12Ast__scope_t(
@@ -30942,7 +31067,7 @@ static int _fx_M13Ast_typecheckFM9is_lvalueB4BN10Ast__exp_tT2N10Ast__typ_tR10Ast
                      const fx_str_t strs_0[] = { slit_0, v_6, slit_1, v_7, slit_2 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_8), _fx_catch_5);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_8, &v_9, 0), _fx_catch_5);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_8, 0, &v_9, 0), _fx_catch_5);
                   FX_THROW(&v_9, false, _fx_catch_5);
 
                _fx_catch_5: ;
@@ -31065,7 +31190,7 @@ static int
             &eloc1_0, true, &v_2, 0), _fx_catch_0);
       if (!v_2) {
          fx_str_t slit_0 = FX_MAKE_STR("explicitly specified component of a range must be an integer");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc1_0, &slit_0, &v_1, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc1_0, &slit_0, 0, &v_1, 0), _fx_catch_0);
          FX_THROW(&v_1, false, _fx_catch_0);
       }
       FX_CALL(
@@ -31229,7 +31354,7 @@ static int
                   const fx_str_t strs_0[] = { slit_3, v_1, slit_4, v_2, slit_5 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_3), _fx_catch_0);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_3, &v_4, 0), _fx_catch_0);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_3, 0, &v_4, 0), _fx_catch_0);
                FX_THROW(&v_4, false, _fx_catch_0);
 
             _fx_catch_0: ;
@@ -31258,7 +31383,7 @@ static int
             else {
                fx_exn_t v_5 = {0};
                fx_str_t slit_7 = FX_MAKE_STR("interpolation was specified more than once");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &slit_7, &v_5, 0), _fx_catch_1);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &slit_7, 0, &v_5, 0), _fx_catch_1);
                FX_THROW(&v_5, false, _fx_catch_1);
 
             _fx_catch_1: ;
@@ -31401,7 +31526,7 @@ static int
       int_ v_2 = _fx_M13Ast_typecheckFM6lengthi1LN10Ast__exp_t(idxs_0, 0);
       if (v_2 != 1) {
          fx_str_t slit_0 = FX_MAKE_STR("tuple index in array access op must be the only index");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(tuploc_0, &slit_0, &v_1, 0), _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(tuploc_0, &slit_0, 0, &v_1, 0), _fx_catch_2);
          FX_THROW(&v_1, false, _fx_catch_2);
       }
       bool __fold_result___0 = true;
@@ -31560,7 +31685,8 @@ static int _fx_M13Ast_typecheckFM13check_map_typv8N10Ast__typ_tN10Ast__typ_tiR10
          _fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(coll_typ_0, v_1, eloc_0, true, &v_25, 0),
          _fx_cleanup);
       if (!v_25) {
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_5, &v_6, 0), _fx_cleanup); FX_THROW(&v_6, false, _fx_cleanup);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_5, 0, &v_6, 0), _fx_cleanup);
+         FX_THROW(&v_6, false, _fx_cleanup);
       }
    }
    else if (make_vector_0) {
@@ -31581,7 +31707,7 @@ static int _fx_M13Ast_typecheckFM13check_map_typv8N10Ast__typ_tN10Ast__typ_tiR10
          _fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(coll_typ_0, v_7, eloc_0, true, &v_26, 0),
          _fx_cleanup);
       if (!v_26) {
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_11, &v_12, 0), _fx_cleanup);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_11, 0, &v_12, 0), _fx_cleanup);
          FX_THROW(&v_12, false, _fx_cleanup);
       }
    }
@@ -31603,7 +31729,7 @@ static int _fx_M13Ast_typecheckFM13check_map_typv8N10Ast__typ_tN10Ast__typ_tiR10
          _fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(coll_typ_0, v_13, eloc_0, true, &v_27,
             0), _fx_cleanup);
       if (!v_27) {
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_17, &v_18, 0), _fx_cleanup);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_17, 0, &v_18, 0), _fx_cleanup);
          FX_THROW(&v_18, false, _fx_cleanup);
       }
    }
@@ -31625,7 +31751,7 @@ static int _fx_M13Ast_typecheckFM13check_map_typv8N10Ast__typ_tN10Ast__typ_tiR10
          _fx_M13Ast_typecheckFM11maybe_unifyB4N10Ast__typ_tN10Ast__typ_tR10Ast__loc_tB(coll_typ_0, v_19, eloc_0, true, &v_28,
             0), _fx_cleanup);
       if (!v_28) {
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_23, &v_24, 0), _fx_cleanup);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_23, 0, &v_24, 0), _fx_cleanup);
          FX_THROW(&v_24, false, _fx_cleanup);
       }
    }
@@ -31798,7 +31924,7 @@ static int _fx_M13Ast_typecheckFM9make_castN10Ast__exp_t4N10Ast__exp_tN10Ast__ty
                const fx_str_t strs_0[] = { slit_1, v_9, slit_2, v_10, slit_3 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_11), _fx_catch_4);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_11, &v_12, 0), _fx_catch_4);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_11, 0, &v_12, 0), _fx_catch_4);
             FX_THROW(&v_12, false, _fx_catch_4);
          }
          _fx_LN10Ast__exp_t lstend_0 = 0;
@@ -32003,7 +32129,7 @@ static int _fx_M13Ast_typecheckFM9make_castN10Ast__exp_t4N10Ast__exp_tN10Ast__ty
       const fx_str_t strs_1[] = { slit_4, v_27, slit_5, v_28, slit_6 };
       FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &v_29), _fx_catch_9);
    }
-   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_29, &v_30, 0), _fx_catch_9);
+   FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_29, 0, &v_30, 0), _fx_catch_9);
    FX_THROW(&v_30, false, _fx_catch_9);
 
 _fx_catch_9: ;
@@ -32290,7 +32416,7 @@ _fx_endmatch_0: ;
             _fx_R10Ast__loc_t v_6;
             FX_CALL(_fx_M3AstFM11get_exp_locRM5loc_t1N10Ast__exp_t(e_1, &v_6, 0), _fx_catch_3);
             fx_str_t slit_0 = FX_MAKE_STR("definition or directive occurs in the end of block; put some expression after it");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&v_6, &slit_0, &v_4, 0), _fx_catch_3);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&v_6, &slit_0, 0, &v_4, 0), _fx_catch_3);
             FX_THROW(&v_4, false, _fx_catch_3);
          }
          FX_CALL(_fx_cons_LN10Ast__exp_t(e_1, eseq_acc_0, true, &v_5), _fx_catch_3);
@@ -32321,7 +32447,7 @@ _fx_endmatch_0: ;
          }
          if (t_2) {
             fx_str_t slit_1 = FX_MAKE_STR("value definition occurs in the end of block; put some expression after it");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_1, &v_7, 0), _fx_catch_12);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_1, 0, &v_7, 0), _fx_catch_12);
             FX_THROW(&v_7, false, _fx_catch_12);
          }
          bool is_mutable_0 = flags_0->val_flag_mutable;
@@ -32529,7 +32655,7 @@ _fx_endmatch_0: ;
             _fx_R13Ast__deffun_t* v_20 = &df_1->data;
             _fx_R10Ast__loc_t v_21 = v_20->df_loc;
             fx_str_t slit_3 = FX_MAKE_STR("function definition occurs in the end of block; put some expression after it");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&v_21, &slit_3, &v_15, 0), _fx_catch_15);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&v_21, &slit_3, 0, &v_15, 0), _fx_catch_15);
             FX_THROW(&v_15, false, _fx_catch_15);
          }
          bool warn_rettype_0;
@@ -32662,7 +32788,7 @@ _fx_endmatch_0: ;
             fx_str_t slit_4 =
                FX_MAKE_STR(
                   "break/continue/return operator should not be followed by any other operators in the same linear code sequence");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_4, &v_30, 0), _fx_catch_16);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_4, 0, &v_30, 0), _fx_catch_16);
             FX_THROW(&v_30, false, _fx_catch_16);
          }
 
@@ -32702,7 +32828,7 @@ _fx_endmatch_0: ;
          fx_str_t slit_5 =
             FX_MAKE_STR(
                "non-void expression occurs before the end of code block. Check the line breaks; if it\'s valid, use ignore() function to dismiss the error");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&eloc_0, &slit_5, &v_33, 0), _fx_catch_17);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&eloc_0, &slit_5, 0, &v_33, 0), _fx_catch_17);
          FX_THROW(&v_33, false, _fx_catch_17);
       }
 
@@ -32921,7 +33047,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__B5N16Ast__env_entry_tR9Ast__id_tBR1
                   const fx_str_t strs_0[] = { slit_0, v_1 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_2), _fx_catch_0);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_2, &v_3, 0), _fx_catch_0);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_2, 0, &v_3, 0), _fx_catch_0);
                FX_THROW(&v_3, false, _fx_catch_0);
             }
             else {
@@ -32933,7 +33059,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__B5N16Ast__env_entry_tR9Ast__id_tBR1
                   const fx_str_t strs_1[] = { slit_1, v_4, slit_2, v_5 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_1, 4, &v_6), _fx_catch_0);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_6, &v_7, 0), _fx_catch_0);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_6, 0, &v_7, 0), _fx_catch_0);
                FX_THROW(&v_7, false, _fx_catch_0);
             }
          }
@@ -32947,7 +33073,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__B5N16Ast__env_entry_tR9Ast__id_tBR1
             const fx_str_t strs_2[] = { slit_3, v_8, slit_4, v_9 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_2, 4, &v_10), _fx_catch_0);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_10, &v_11, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_10, 0, &v_11, 0), _fx_catch_0);
          FX_THROW(&v_11, false, _fx_catch_0);
       }
 
@@ -33214,7 +33340,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_0[] = { slit_0, v_5, slit_1, v_6 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_0, 4, &v_7), _fx_catch_4);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(eloc_0, &v_7, &v_8, 0), _fx_catch_4);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(eloc_0, &v_7, 0, &v_8, 0), _fx_catch_4);
                FX_THROW(&v_8, false, _fx_catch_4);
             }
             FX_CALL(
@@ -33620,7 +33746,7 @@ FX_EXTERN_C int
          }
          if (t_0) {
             fx_str_t slit_0 = FX_MAKE_STR("generic variants may not implement any interfaces");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&dvar_loc_0, &slit_0, &v_10, 0), _fx_catch_3);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&dvar_loc_0, &slit_0, 0, &v_10, 0), _fx_catch_3);
             FX_THROW(&v_10, false, _fx_catch_3);
          }
          FX_CALL(
@@ -33668,7 +33794,7 @@ FX_EXTERN_C int
          }
          fx_exn_t v_18 = {0};
          fx_str_t slit_1 = FX_MAKE_STR("interfaces should be declared at a module level");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&di_loc_0, &slit_1, &v_18, 0), _fx_catch_4);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&di_loc_0, &slit_1, 0, &v_18, 0), _fx_catch_4);
          FX_THROW(&v_18, false, _fx_catch_4);
 
       _fx_catch_4: ;
@@ -34016,7 +34142,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_0[] = { slit_0, v_23, slit_1, v_24, slit_2 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_0, 5, &v_25), _fx_catch_3);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&dvar_loc_0, &v_25, &v_26, 0), _fx_catch_3);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&dvar_loc_0, &v_25, 0, &v_26, 0), _fx_catch_3);
                FX_THROW(&v_26, false, _fx_catch_3);
 
             _fx_catch_3: ;
@@ -34128,7 +34254,7 @@ FX_EXTERN_C int
                const fx_str_t strs_1[] = { slit_3, v_34, slit_4, v_35, slit_5 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_1, 5, &v_36), _fx_catch_7);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&di_loc_0, &v_36, &v_37, 0), _fx_catch_7);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&di_loc_0, &v_36, 0, &v_37, 0), _fx_catch_7);
             FX_THROW(&v_37, false, _fx_catch_7);
 
          _fx_catch_7: ;
@@ -34222,7 +34348,7 @@ FX_EXTERN_C int
                   const fx_str_t strs_2[] = { slit_6, v_43, slit_7 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_44), _fx_catch_9);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&di_loc_0, &v_44, &v_45, 0), _fx_catch_9);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&di_loc_0, &v_44, 0, &v_45, 0), _fx_catch_9);
                FX_THROW(&v_45, false, _fx_catch_9);
             }
             _fx_R9Ast__id_t f1_0;
@@ -34421,7 +34547,7 @@ FX_EXTERN_C int
    else {
       fx_exn_t v_14 = {0};
       fx_str_t slit_0 = FX_MAKE_STR("incorrect function type");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &slit_0, &v_14, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &slit_0, 0, &v_14, 0), _fx_catch_0);
       FX_THROW(&v_14, false, _fx_catch_0);
 
    _fx_catch_0: ;
@@ -34476,7 +34602,7 @@ FX_EXTERN_C int
             const fx_str_t strs_0[] = { slit_1, v_20, slit_2 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_21), _fx_catch_2);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &v_21, &v_22, 0), _fx_catch_2);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &v_21, 0, &v_22, 0), _fx_catch_2);
          FX_THROW(&v_22, false, _fx_catch_2);
 
       _fx_catch_2: ;
@@ -34660,7 +34786,7 @@ FX_EXTERN_C int
                if (!res_3) {
                   fx_exn_t v_36 = {0};
                   fx_str_t slit_4 = FX_MAKE_STR("types of all the parameters of global functions must be explicitly specified");
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &slit_4, &v_36, 0), _fx_catch_8);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &slit_4, 0, &v_36, 0), _fx_catch_8);
                   FX_THROW(&v_36, false, _fx_catch_8);
 
                _fx_catch_8: ;
@@ -34689,7 +34815,7 @@ _fx_endmatch_0: ;
    else {
       fx_exn_t v_37 = {0};
       fx_str_t slit_5 = FX_MAKE_STR("invalid return pattern after check");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &slit_5, &v_37, 0), _fx_catch_9);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &slit_5, 0, &v_37, 0), _fx_catch_9);
       FX_THROW(&v_37, false, _fx_catch_9);
 
    _fx_catch_9: ;
@@ -34755,7 +34881,7 @@ _fx_endmatch_0: ;
    if (v_41) {
       fx_str_t slit_6 =
          FX_MAKE_STR("return type of @ccode function must be explicitly specified and should not use type vars (\'t etc.)");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &slit_6, &v_12, 0), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &slit_6, 0, &v_12, 0), _fx_cleanup);
       FX_THROW(&v_12, false, _fx_cleanup);
    }
    _fx_copy_Rt6Map__t2R9Ast__id_tLN16Ast__env_entry_t(&env1_0, fx_result);
@@ -34952,7 +35078,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__Nt6option1T2N10Ast__typ_tLR9Ast__id
             const fx_str_t strs_0[] = { slit_0, v_4 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 2, &v_5), _fx_catch_3);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(df_loc_0, &v_5, &v_6, 0), _fx_catch_3);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(df_loc_0, &v_5, 0, &v_6, 0), _fx_catch_3);
          FX_THROW(&v_6, false, _fx_catch_3);
 
       _fx_catch_3: ;
@@ -34984,7 +35110,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__Nt6option1T2N10Ast__typ_tLR9Ast__id
          const fx_str_t strs_1[] = { slit_1, v_7, slit_2 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_8), _fx_catch_5);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(df_loc_0, &v_8, &v_9, 0), _fx_catch_5);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(df_loc_0, &v_8, 0, &v_9, 0), _fx_catch_5);
       FX_THROW(&v_9, false, _fx_catch_5);
 
    _fx_catch_5: ;
@@ -35040,7 +35166,7 @@ FX_EXTERN_C int
    }
    fx_exn_t v_6 = {0};
    fx_str_t slit_0 = FX_MAKE_STR("exceptions can only be defined at a module level");
-   FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&loc_0, &slit_0, &v_6, 0), _fx_catch_0);
+   FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&loc_0, &slit_0, 0, &v_6, 0), _fx_catch_0);
    FX_THROW(&v_6, false, _fx_catch_0);
 
 _fx_catch_0: ;
@@ -35593,7 +35719,7 @@ static int _fx_M13Ast_typecheckFM10check_typ_N10Ast__typ_t2N10Ast__typ_tR16Ast__
          const fx_str_t strs_0[] = { slit_1, v_6, slit_2 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_7), _fx_catch_3);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_7, &v_8, 0), _fx_catch_3);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_7, 0, &v_8, 0), _fx_catch_3);
       FX_THROW(&v_8, false, _fx_catch_3);
 
    _fx_catch_3: ;
@@ -35862,7 +35988,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__Nt6option1N10Ast__typ_t1N16Ast__env
             const fx_str_t strs_0[] = { slit_0, v_0, slit_1 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_1), _fx_catch_0);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_1, &v_2, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_1, 0, &v_2, 0), _fx_catch_0);
          FX_THROW(&v_2, false, _fx_catch_0);
       }
 
@@ -35924,7 +36050,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__Nt6option1N10Ast__typ_t1N16Ast__env
                const fx_str_t strs_1[] = { slit_2, v_6, slit_3 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_7), _fx_catch_1);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_7, &v_8, 0), _fx_catch_1);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_7, 0, &v_8, 0), _fx_catch_1);
             FX_THROW(&v_8, false, _fx_catch_1);
          }
 
@@ -35963,7 +36089,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__Nt6option1N10Ast__typ_t1N16Ast__env
                const fx_str_t strs_2[] = { slit_4, v_9, slit_5 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_10), _fx_catch_4);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_10, &v_11, 0), _fx_catch_4);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_10, 0, &v_11, 0), _fx_catch_4);
             FX_THROW(&v_11, false, _fx_catch_4);
          }
          bool res_1;
@@ -36143,7 +36269,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__Nt6option1N10Ast__typ_t1N16Ast__env
                      const fx_str_t strs_3[] = { slit_6, v_30, slit_7 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_31), _fx_catch_6);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_31, &v_32, 0), _fx_catch_6);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_31, 0, &v_32, 0), _fx_catch_6);
                   FX_THROW(&v_32, false, _fx_catch_6);
 
                _fx_catch_6: ;
@@ -36471,7 +36597,7 @@ FX_EXTERN_C int
          const fx_str_t strs_0[] = { slit_0, v_0, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_1), _fx_cleanup);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &v_1, &v_2, 0), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &v_1, 0, &v_2, 0), _fx_cleanup);
       FX_THROW(&v_2, false, _fx_cleanup);
    }
    int_ nargs_0;
@@ -36500,7 +36626,7 @@ FX_EXTERN_C int
    }
    else {
       fx_str_t slit_2 = FX_MAKE_STR("internal error: the type of instantiated function is not a function");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &slit_2, &v_20, 0), _fx_catch_0);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &slit_2, 0, &v_20, 0), _fx_catch_0);
       FX_THROW(&v_20, false, _fx_catch_0);
    }
 
@@ -36550,7 +36676,7 @@ _fx_endmatch_0: ;
          const fx_str_t strs_1[] = { slit_3, v_23, slit_4, v_24, slit_5, v_25, slit_6 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_1, 7, &v_26), _fx_catch_1);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &v_26, &v_27, 0), _fx_catch_1);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &v_26, 0, &v_27, 0), _fx_catch_1);
       FX_THROW(&v_27, false, _fx_catch_1);
 
    _fx_catch_1: ;
@@ -36686,7 +36812,7 @@ _fx_endmatch_2: ;
    else {
       fx_exn_t v_37 = {0};
       fx_str_t slit_9 = FX_MAKE_STR("the function stack is empty for some reason");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &slit_9, &v_37, 0), _fx_catch_5);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &slit_9, 0, &v_37, 0), _fx_catch_5);
       FX_THROW(&v_37, false, _fx_catch_5);
 
    _fx_catch_5: ;
@@ -36731,7 +36857,7 @@ _fx_endmatch_3: ;
       }
       fx_exn_t v_38 = {0};
       fx_str_t slit_11 = FX_MAKE_STR("a method may not be a local function");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &slit_11, &v_38, 0), _fx_catch_7);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &slit_11, 0, &v_38, 0), _fx_catch_7);
       FX_THROW(&v_38, false, _fx_catch_7);
 
    _fx_catch_7: ;
@@ -36791,7 +36917,7 @@ _fx_endmatch_3: ;
                   const fx_str_t strs_2[] = { slit_12, v_44, slit_13 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_45), _fx_catch_10);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &v_45, &v_46, 0), _fx_catch_10);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &v_45, 0, &v_46, 0), _fx_catch_10);
                FX_THROW(&v_46, false, _fx_catch_10);
 
             _fx_catch_10: ;
@@ -36822,7 +36948,7 @@ _fx_endmatch_3: ;
             const fx_str_t strs_3[] = { slit_14, v_48, slit_15 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_49), _fx_catch_12);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &v_49, &v_50, 0), _fx_catch_12);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &v_49, 0, &v_50, 0), _fx_catch_12);
          FX_THROW(&v_50, false, _fx_catch_12);
 
       _fx_catch_12: ;
@@ -36836,7 +36962,7 @@ _fx_endmatch_3: ;
       fx_str_t slit_16 =
          FX_MAKE_STR(
             "internal error: non-empty arg list is expected, because self should have been added there automatically by the compiler");
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &slit_16, &v_51, 0), _fx_catch_13);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &slit_16, 0, &v_51, 0), _fx_catch_13);
       FX_THROW(&v_51, false, _fx_catch_13);
 
    _fx_catch_13: ;
@@ -36910,7 +37036,7 @@ _fx_endmatch_3: ;
                   const fx_str_t strs_4[] = { slit_17, v_56, slit_18, v_58 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_4, 4, &v_59), _fx_catch_14);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &v_59, &v_60, 0), _fx_catch_14);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &v_59, 0, &v_60, 0), _fx_catch_14);
                FX_THROW(&v_60, false, _fx_catch_14);
             }
             _fx_R9Ast__id_t v_76;
@@ -36946,7 +37072,7 @@ _fx_endmatch_3: ;
                      const fx_str_t strs_5[] = { slit_19, v_62, slit_20, v_64, slit_21, v_66, slit_22 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_5, 7, &v_67), _fx_catch_14);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&df_loc_0, &v_67, &v_68, 0), _fx_catch_14);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&df_loc_0, &v_67, 0, &v_68, 0), _fx_catch_14);
                   FX_THROW(&v_68, false, _fx_catch_14);
                }
                bool res_5;
@@ -36967,7 +37093,7 @@ _fx_endmatch_3: ;
                      const fx_str_t strs_6[] = { slit_23, v_70, slit_24, v_71, slit_25, v_73 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_6, 6, &v_74), _fx_catch_14);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &v_74, &v_75, 0), _fx_catch_14);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &v_74, 0, &v_75, 0), _fx_catch_14);
                   FX_THROW(&v_75, false, _fx_catch_14);
                }
                found_iface_0 = iname_i_0;
@@ -37276,8 +37402,8 @@ FX_EXTERN_C int
                                                             FX_MAKE_STR(
                                                                "the prototype of variant instance should be a variant");
                                                          FX_CALL(
-                                                            _fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &slit_3, &v_22, 0),
-                                                            _fx_catch_0);
+                                                            _fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &slit_3, 0, &v_22,
+                                                               0), _fx_catch_0);
                                                          FX_THROW(&v_22, false, _fx_catch_0);
 
                                                       _fx_catch_0: ;
@@ -37292,7 +37418,7 @@ FX_EXTERN_C int
                                                 }
                                                 fx_exn_t v_23 = {0};
                                                 fx_str_t slit_4 = FX_MAKE_STR("variant is expected here");
-                                                FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &slit_4, &v_23, 0),
+                                                FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &slit_4, 0, &v_23, 0),
                                                    _fx_catch_2);
                                                 FX_THROW(&v_23, false, _fx_catch_2);
 
@@ -37980,7 +38106,7 @@ FX_EXTERN_C int
          const fx_str_t strs_4[] = { slit_6, v_89, slit_7 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_4, 3, &v_90), _fx_catch_11);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(inst_loc_0, &v_90, &v_91, 0), _fx_catch_11);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(inst_loc_0, &v_90, 0, &v_91, 0), _fx_catch_11);
       FX_THROW(&v_91, false, _fx_catch_11);
 
    _fx_catch_11: ;
@@ -38239,7 +38365,7 @@ FX_EXTERN_C int
             const fx_str_t strs_0[] = { slit_0, v_29, slit_1, v_30, slit_2, v_31, slit_3 };
             FX_CALL(fx_strjoin(0, 0, 0, strs_0, 7, &v_32), _fx_catch_5);
          }
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&dvar_loc_0, &v_32, &v_33, 0), _fx_catch_5);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&dvar_loc_0, &v_32, 0, &v_33, 0), _fx_catch_5);
          FX_THROW(&v_33, false, _fx_catch_5);
 
       _fx_catch_5: ;
@@ -38411,7 +38537,7 @@ FX_EXTERN_C int
          const fx_str_t strs_1[] = { slit_4, v_48, slit_5, v_49, slit_6, v_50, slit_7, v_51, slit_8, v_52, slit_9 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_1, 11, &v_53), _fx_catch_10);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_53, &v_54, 0), _fx_catch_10);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_53, 0, &v_54, 0), _fx_catch_10);
       FX_THROW(&v_54, false, _fx_catch_10);
 
    _fx_catch_10: ;
@@ -38474,7 +38600,7 @@ FX_EXTERN_C int
                const fx_str_t strs_2[] = { slit_10, v_64, slit_11, v_65 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_2, 4, &v_66), _fx_catch_12);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_66, &v_67, 0), _fx_catch_12);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_66, 0, &v_67, 0), _fx_catch_12);
             FX_THROW(&v_67, false, _fx_catch_12);
 
          _fx_catch_12: ;
@@ -38626,7 +38752,7 @@ static int _fx_M13Ast_typecheckFM10__lambda__v5R9Ast__id_tR10Ast__loc_tR9Ast__id
          const fx_str_t strs_0[] = { slit_0, v_0, slit_1, v_1, slit_2, v_2, slit_3, v_3, slit_4 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 9, &v_4), _fx_cleanup);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(dvar_loc_0, &v_4, &v_5, 0), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(dvar_loc_0, &v_4, 0, &v_5, 0), _fx_cleanup);
       FX_THROW(&v_5, false, _fx_cleanup);
    }
 
@@ -38836,7 +38962,7 @@ static int
          const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_cleanup);
       }
-      FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &v_3, &v_4, 0), _fx_cleanup);
+      FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &v_3, 0, &v_4, 0), _fx_cleanup);
       FX_THROW(&v_4, false, _fx_cleanup);
    }
    else {
@@ -38953,7 +39079,7 @@ static int
       _fx_N10Ast__lit_t* l_0 = &vcase_0->t0;
       if (simple_pat_mode_0) {
          fx_str_t slit_0 = FX_MAKE_STR("literals are not allowed here");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_0, &slit_0, &v_0, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_0, &slit_0, 0, &v_0, 0), _fx_catch_0);
          FX_THROW(&v_0, false, _fx_catch_0);
       }
       FX_CALL(_fx_M3AstFM11get_lit_typN10Ast__typ_t1N10Ast__lit_t(l_0, &v_1, 0), _fx_catch_0);
@@ -38988,7 +39114,7 @@ static int
       v_5 = _fx_F6__eq__B2SS(&v_2, &slit_2, 0);
       if (v_5) {
          fx_str_t slit_3 = FX_MAKE_STR("\'_\' occured in PatIdent()");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_1, &slit_3, &v_3, 0), _fx_catch_1);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_1, &slit_3, 0, &v_3, 0), _fx_catch_1);
          FX_THROW(&v_3, false, _fx_catch_1);
       }
       _fx_R9Ast__id_t v_6;
@@ -39258,7 +39384,7 @@ static int
          if (v_14 == 0) {
             fx_exn_t v_22 = {0};
             fx_str_t slit_5 = FX_MAKE_STR("variant pattern is used with non-variant type");
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_3, &slit_5, &v_22, 0), _fx_catch_13);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_3, &slit_5, 0, &v_22, 0), _fx_catch_13);
             FX_THROW(&v_22, false, _fx_catch_13);
 
          _fx_catch_13: ;
@@ -39276,7 +39402,7 @@ static int
             FX_CALL(_fx_M13Ast_typecheckFM8length1_i1LT2R9Ast__id_tN10Ast__typ_t(v_14, &v_30, 0), _fx_catch_17);
             if (v_30 != 1) {
                fx_str_t slit_6 = FX_MAKE_STR("a label of multi-case variant may not be used in a formal function parameter");
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_3, &slit_6, &v_23, 0), _fx_catch_17);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_3, &slit_6, 0, &v_23, 0), _fx_catch_17);
                FX_THROW(&v_23, false, _fx_catch_17);
             }
             else {
@@ -39308,7 +39434,7 @@ static int
                         const fx_str_t strs_0[] = { slit_7, v_33, slit_8 };
                         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_34), _fx_catch_15);
                      }
-                     FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_3, &v_34, &v_35, 0), _fx_catch_15);
+                     FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_3, &v_34, 0, &v_35, 0), _fx_catch_15);
                      FX_THROW(&v_35, false, _fx_catch_15);
 
                   _fx_catch_15: ;
@@ -39334,7 +39460,7 @@ static int
                   const fx_str_t strs_1[] = { slit_9, v_37, slit_10 };
                   FX_CALL(fx_strjoin(0, 0, 0, strs_1, 3, &v_38), _fx_catch_16);
                }
-               FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_3, &v_38, &v_39, 0), _fx_catch_16);
+               FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_3, &v_38, 0, &v_39, 0), _fx_catch_16);
                FX_THROW(&v_39, false, _fx_catch_16);
 
             _fx_catch_16: ;
@@ -39358,7 +39484,7 @@ static int
                      const fx_str_t strs_2[] = { slit_11, v_26, slit_12 };
                      FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_27), _fx_catch_17);
                   }
-                  FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_3, &v_27, &v_28, 0), _fx_catch_17);
+                  FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_3, &v_27, 0, &v_28, 0), _fx_catch_17);
                   FX_THROW(&v_28, false, _fx_catch_17);
                }
                FX_CALL(_fx_M3AstFM10PatVariantN10Ast__pat_t3RM4id_tLN10Ast__pat_tRM5loc_t(v_15, pl_4, loc_3, &v_29),
@@ -39501,7 +39627,7 @@ static int
                const fx_str_t strs_3[] = { slit_13, v_47, slit_14, v_49, slit_15 };
                FX_CALL(fx_strjoin(0, 0, 0, strs_3, 5, &v_50), _fx_catch_21);
             }
-            FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_4, &v_50, &v_51, 0), _fx_catch_21);
+            FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_4, &v_50, 0, &v_51, 0), _fx_catch_21);
             FX_THROW(&v_51, false, _fx_catch_21);
 
          _fx_catch_21: ;
@@ -39617,7 +39743,7 @@ static int
       FX_CALL(_fx_M3AstFM7TypListN10Ast__typ_t1N10Ast__typ_t(t1_0, &t2_0), _fx_catch_26);
       if (simple_pat_mode_0) {
          fx_str_t slit_16 = FX_MAKE_STR("\'::\' pattern is not allowed here");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_5, &slit_16, &v_58, 0), _fx_catch_26);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_5, &slit_16, 0, &v_58, 0), _fx_catch_26);
          FX_THROW(&v_58, false, _fx_catch_26);
       }
       fx_str_t slit_17 = FX_MAKE_STR("\'::\' pattern is used with non-list type");
@@ -39823,7 +39949,7 @@ static int
       _fx_R10Ast__loc_t* loc_10 = &vcase_10->t1;
       if (simple_pat_mode_0) {
          fx_str_t slit_21 = FX_MAKE_STR("\'|\' pattern is not allowed here");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(loc_10, &slit_21, &v_74, 0), _fx_catch_32);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(loc_10, &slit_21, 0, &v_74, 0), _fx_catch_32);
          FX_THROW(&v_74, false, _fx_catch_32);
       }
       _fx_LN10Ast__pat_t lstend_6 = 0;
@@ -39919,7 +40045,7 @@ FX_EXTERN_C int
       if (!v_5) {
          fx_str_t slit_0 =
             FX_MAKE_STR("the case expression type does not match the whole expression type (or the type of previous case(s))");
-         FX_CALL(_fx_M3AstFM11compile_errE2RM5loc_tS(&e1_loc_0, &slit_0, &v_3, 0), _fx_catch_0);
+         FX_CALL(_fx_M3AstFM11compile_errE3RM5loc_tSLS(&e1_loc_0, &slit_0, 0, &v_3, 0), _fx_catch_0);
          FX_THROW(&v_3, false, _fx_catch_0);
       }
       FX_CALL(

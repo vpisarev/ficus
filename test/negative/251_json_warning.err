@@ -1,0 +1,1 @@
+{"file": "251_json_warning.fx", "line0": 6, "col0": 5, "line1": 6, "col1": 9, "precision": "exact", "severity": "warning", "message": "implicit return type of module-level function 'norm' (inferred: double)", "suggestions": []}

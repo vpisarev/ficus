@@ -46,7 +46,12 @@ type options_t =
     // -fmax-errors); the report ends with a "further diagnostics suppressed"
     // line when the cap binds. Structural cascade suppression should keep runs
     // well under this; the cap is a backstop for pathological inputs.
-    max_errors: int = 100
+    max_errors: int = 100;
+    // lsp-1: diagnostic output format. "human" (default) is the gcc/clang-style
+    // caret text; "json" emits one JSON object per diagnostic (jsonl on stdout)
+    // for a language server / IDE to consume. Only the diagnostic printer honors
+    // this; -Werror and -fmax-errors semantics are unchanged.
+    diag_format: string = "human"
 }
 
 fun default_options() = options_t {}
@@ -122,6 +127,9 @@ where options can be some of:
                     100); the rest are summarized as 'further diagnostics
                     suppressed'. The type checker recovers from an error and
                     keeps going, so one run reports many independent problems.
+    -diag-format=FMT Diagnostic output format: 'human' (default, caret text) or
+                    'json' (one JSON object per diagnostic, jsonl on stdout, for
+                    a language server / IDE). Human format is unchanged.
     -o <output_name> Output file name (by default it matches the
                     input filename without .fx extension)
     -D symbol       Define 'symbol=true' for preprocessor
@@ -235,6 +243,11 @@ fun parse_options(): bool {
                 | Some(n) when n > 0 => opt.max_errors = n
                 | _ => println(f"invalid -fmax-errors value '{vstr}' (expected a positive integer)"); ok = false
                 }
+                next
+            | opt_str :: next when opt_str.startswith("-diag-format=") =>
+                val vstr = opt_str["-diag-format=".length():]
+                if vstr == "human" || vstr == "json" { opt.diag_format = vstr }
+                else { println(f"invalid -diag-format value '{vstr}' (expected 'human' or 'json')"); ok = false }
                 next
             | "-verbose" :: next =>
                 opt.verbose = true; next
