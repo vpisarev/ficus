@@ -160,14 +160,47 @@ flag was added.
   (`test/test_basic.fx`, `EXPECT_THROWS(..., AssertError)`) became
   `AssertError("")`.
 
+## Backtick retirement (completed, same branch)
+
+The whole backtick `` `expr` `` context-capture notation is now gone, in order:
+
+1. **Full macro API in UTest** — one macro per name (comparison EQ/NE/LT/LE/GT/GE,
+   NEAR, bool EXPECT/ASSERT with optional message, THROWS/NO_THROWS) replacing the
+   2-3 backtick/errctx function overloads each; one helper set via a `fatal` flag.
+2. **Arity overloading (variant B)** — same-named macros with different parameter
+   counts coexist; the pre-probe picks by arity (mirrors function overloading).
+   Keyword/optional params are *not* in v1 (a `msg=x` call becomes a trailing
+   record, bumping arity). Variant A (positional defaults) was rejected — it would
+   make macro calls read unlike function calls.
+3. **All 35 test files migrated** by a comment/string/char/f-string-aware Python
+   scanner (handled the transpose operator `A'`, nested f-strings, `msg=`→
+   positional); then old functions removed and `EXPECT_*_`→`EXPECT_*` renamed.
+4. **`assert` migrated to a macro** (old `fun assert` bool/4-tuple forms removed);
+   the ~280 backtick `assert(`cond`)` sites in `lib/NN` rewritten to
+   `assert(cond)`. Fixed a latent `| AssertError =>`→`| AssertError _ =>` catch
+   (fallout of `AssertError: string`).
+5. **Backtick lexer removed** — a code-position backtick now errors with "notation
+   was removed" (negative golden 805); `errctx`, the `fun assert` forms, and the
+   backquote lexer state are all gone.
+
+**Key correction (name resolution).** A macro resolves in the CALLER's env — as if
+its body were pasted inline at the call site. Always-imported names (`==`,
+`string`, Builtins ops) resolve there and pick up the caller's LOCAL overloads
+(e.g. a hand-written `string` for a recursive variant); a macro's OWN
+non-base-module names must be qualified (`UTest.test_report_cmp_`). So the
+comparison/formatting is done inline (unqualified, lazy on failure) and only the
+pre-stringified, non-generic report is delegated to a qualified UTest helper.
+Design §4 was rewritten with this. Multi-line asserts extract the full span
+(`@string` across lines; `@line` = the outermost call site).
+
+Net: UTest 620→294 lines; `lib/NN` ~280 asserts de-backticked; the lexer shed the
+backquote path.
+
 ## Deferred (next sessions)
 
 - **E2 / for-wrappers**: `@for_expr` category + the loop-argument grammar node;
   rewrite `all/exists/find/filter` as macros and delete the compiler special
   forms (the compiler LoC then *shrinks*); K-form equivalence vs the special-form
   lowering as the oracle.
-- **Backtick retirement**: migrate UTest + the unit tests onto `assert_` /
-  `EXPECT_*_`, then delete the errctx/backtick machinery and the `fun assert`
-  forms.
 - **Statement-form macros** (`with f = File.open(…) { … }`) — grammar reserved,
   production sketched, implementation later.
