@@ -8,7 +8,6 @@
 import Hashmap
 import Ast
 import LexerUtils as Lxu
-import Filename
 
 type lloc_t = Lxu.lloc_t
 type stream_t = Lxu.stream_t
@@ -268,8 +267,6 @@ fun make_lexer(strm: stream_t): (void -> (list[token_t, lloc_t], lloc_t, lloc_t)
                         // Just create a new lexer with the same string
                         // or its substring of interest - it's a cheap operation.
     var prev_dot = false
-    var backquote_pos = -1
-    var backquote_loc = (0, 0)
     var fmt: format_t? = None
     var expect_neg_number = false
 
@@ -781,26 +778,12 @@ fun make_lexer(strm: stream_t): (void -> (list[token_t, lloc_t], lloc_t, lloc_t)
                     [:: (CMP(Ast.CmpGT), loc)]
                 }
             | '`' =>
-                if backquote_pos < 0 {
-                    backquote_pos = pos
-                    backquote_loc = getloc(pos-1)
-                    paren_stack = (LPAREN(true), backquote_loc) :: paren_stack
-                    [:: (LPAREN(true), loc)]
-                } else {
-                    val verb = buf[backquote_pos:pos-1]
-                    val endloc = getloc(pos)
-                    backquote_pos = -1
-                    new_exp = false
-                    match paren_stack {
-                    | (LPAREN _, _) :: rest =>
-                        paren_stack = rest
-                    | _ =>
-                        throw Lxu.LexerError(loc, "Unexpected '`', check parens")
-                    }
-                    [::(COMMA, endloc), (LITERAL(Ast.LitString(verb)), backquote_loc), (COMMA, endloc),
-                    (LITERAL(Ast.LitString(Filename.basename(strm.fname))), backquote_loc), (COMMA, endloc),
-                    (LITERAL(Ast.LitInt(backquote_loc.0 :> int64)), backquote_loc), (RPAREN, endloc)]
-                }
+                // macro-1: the backtick `expr` context-capture notation was
+                // removed. assert / EXPECT_* / ASSERT_* are macros now and grab
+                // the call site and the source text via @file/@line/@string.
+                throw Lxu.LexerError(getloc(pos-1),
+                    "the backtick `...` context-capture notation was removed; \
+                     call assert(cond) / EXPECT_EQ(a, b) / ... directly")
             | '\0' =>
                 match paren_stack {
                 | (_, l) :: _ => throw Lxu.LexerError(loc,
