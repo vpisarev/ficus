@@ -2,8 +2,8 @@
 
 - [x] properly resolve instances of generic functions.
       Adjust the type checker not to stop at the first appropriate candidate.
-- [ ] new syntax for generic types and its instances: `t list => list[t]`
-  - [ ] Q: what would be a syntax for generic functions? `fun add[u, v, r](a: u, b: v): r {...}`?
+- [x] new syntax for generic types and its instances: `t list => list[t]`
+  - [x] Q: what would be a syntax for generic functions? `fun add[u, v, r](a: u, b: v): r {...}`?
 - [x] new syntax for fold: `fold acc = 0 for x <- arr {acc + x}` => `fold acc = 0 for x <- arr {acc += x}`
 - [ ] ~~add syntax to append elements to lists, vectors during fold?
       We already have runtime support for vector writers for vector comprehensions,
@@ -21,7 +21,7 @@
       escaped `f"{find(\"x\")}"` fails, with a misleading error. Locked by `basic.fstring_nested_literals`.)
       ~~not quite a new syntax: support string literals inside f-strings interpolations (see CLAUDE.md)~~
 - [ ] revise records:
-  - [ ] keep/drop/revise record update syntax?
+  - [x] keep/drop/revise record update syntax?
         `var pt = Point {x=5, y=10}; pt .= {y = pt.y+5}`.
         actually, we can simply write `pt.y += 5`. The syntax above might be useful for
         non-destructive record update (`pt.{y = pt.y + 5}`). But is it really useful in
@@ -47,7 +47,7 @@
 
       macro EXPECT_EQ[t](a: t, b: t): void = EXPECT_EQ_(a, b, @string(a), @string(b), @file, @line)
       ```
-- [ ] get rid of `` `...` `` notation. See macros above.
+- [x] get rid of `` `...` `` notation. See macros above.
 - [ ] ~~do we want a ternary selection operator? `(a ? b : c)` (we now use `if(a) {b} else {c}`)~~
 - [ ] support variadic functions, e.g. `println(a, b, c)`; `max(a, b, c, d)`.
       Almost the same syntax as with variadic tuples, just without `()` around `...` or `t ...`.
@@ -136,9 +136,9 @@
       line and put `^` mark below it where the error occured
 - [x] (added `tools/update_compiler.py`) regenerate bootstrap sources with a special compiler key or
       at least some python script (tools/update_compiler.py?)
-- [ ] compiler as a library? Currently compiler uses many global variables.
+- [ ] ~~compiler as a library? Currently compiler uses many global variables.
       It would be nice to be able to create a compiler instance and make some experiments with it
-      (build AST, K-form, generate final .c code etc.)
+      (build AST, K-form, generate final .c code etc.)~~
 
 # Optimizations:
 

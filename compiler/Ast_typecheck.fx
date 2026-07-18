@@ -1460,7 +1460,10 @@ fun lookup_id_opt(n: id_t, t: typ_t, env: env_t, sc: list[scope_t], loc: loc_t):
                         Some((i, t))
                     | _ => scan_(rest, viable)
                     }
-                | IdNone | IdTyp _ | IdVariant _ | IdInterface _ => scan_(rest, viable)
+                // a macro is intercepted by the ExpCall pre-probe before this
+                // type-based resolver runs; reaching it here means a macro name
+                // used in a non-call position -- skip it (it is not a value).
+                | IdNone | IdTyp _ | IdVariant _ | IdInterface _ | IdMacro _ => scan_(rest, viable)
                 }
             | EnvTyp _ => scan_(rest, viable)
             }
@@ -1629,6 +1632,164 @@ fun match_ty_templ_args(actual_ty_args: list[typ_t], templ_args: list[id_t],
     (b, b12346) into the environment and then analyze the subsequent expressions in
     the same scope using this augmented environment, but this is done in check_eseq() function.
 */
+
+/* ======================= macro-1: the expansion engine =======================
+   Macros are expanded at type-check time, interleaved with checking, in the
+   ExpCall pre-probe below. Expansion is a purely syntactic template copy with
+   (a) hole substitution -- each parameter reference is replaced by the raw,
+   unchecked argument AST; (b) automatic hygiene -- every binder the template
+   introduces is renamed to a fresh id, so it can neither capture nor be captured
+   by caller names; (c) the primitives @file/@line (the OUTERMOST call site, like
+   C's __LINE__) and @string(e) (the exact source text of e's argument). The
+   result is then handed to check_exp in the CALLER's env, so free names resolve
+   at the call site (the design's free-identifier-capture semantics) for free. */
+
+// the stack of active expansions: (macro name, call-site loc), innermost first.
+// Used for the depth limit and the "in expansion of ..." diagnostic chain.
+var macro_expansion_stack: list[(id_t, loc_t)] = []
+var macro_outer_loc: loc_t = noloc   // outermost (user) call site; @file/@line source
+val macro_max_depth = 256
+// only the innermost few expansions contribute a diagnostic note, so a deep
+// (e.g. runaway-recursion) chain stays readable instead of printing 256 frames.
+val macro_chain_note_cap = 8
+
+fun macro_loc_file(loc: loc_t): string =
+    if loc.m_idx >= 0 { Filename.basename(all_modules[loc.m_idx].dm_filename) } else { "unknown" }
+
+// full source span of an expression subtree (all node locs folded), for @string.
+fun macro_exp_span(e0: exp_t): loc_t {
+    var locs: list[loc_t] = []
+    fun collect_(e: exp_t, callb: ast_callb_t): exp_t {
+        locs = get_exp_loc(e) :: locs
+        walk_exp(e, callb)
+    }
+    val callb = ast_callb_t {ast_cb_exp=Some(collect_), ast_cb_typ=None, ast_cb_pat=None}
+    ignore(collect_(e0, callb))
+    loclist2loc(locs, get_exp_loc(e0))
+}
+
+// map every binder introduced by the template body to a fresh (hygienic) id.
+fun macro_collect_binders(tbody: exp_t, m_idx: int): idmap_t {
+    var hmap = empty_idmap
+    fun add_(i: id_t): void =
+        match hmap.find_opt(i) { | Some _ => {} | _ => hmap = hmap.add(i, dup_id(m_idx, i)) }
+    fun cb_pat(p: pat_t, callb: ast_callb_t): pat_t {
+        match p {
+        | PatIdent(i, _) => add_(i)
+        | PatAs(_, i, _) => add_(i)
+        | _ => {}
+        }
+        walk_pat(p, callb)
+    }
+    val callb = ast_callb_t {ast_cb_exp=None, ast_cb_typ=None, ast_cb_pat=Some(cb_pat)}
+    ignore(walk_exp(tbody, callb))
+    hmap
+}
+
+// one pass over a private copy of the template: substitute holes, rename binders
+// (and their references) via hmap, and lower the primitives.
+fun macro_transform(tbody: exp_t, pmap: Map.t[id_t, exp_t], hmap: idmap_t, outer_loc: loc_t): exp_t {
+    fun tr_exp(e: exp_t, callb: ast_callb_t): exp_t =
+        match e {
+        // @string(e): the exact source text of e's *argument*. Transform the
+        // inner expression first (so its holes become the caller's arg ASTs with
+        // real call-site spans), then read the folded span from the source.
+        | ExpCall(ExpIdent(sid, _), [:: inner], (_, sloc)) when sid == std__macro_string__ =>
+            val inner2 = tr_exp(inner, callb)
+            ExpLit(LitString(get_source_span(macro_exp_span(inner2))), (TypString, sloc))
+        | ExpIdent(i, (t, iloc)) =>
+            match pmap.find_opt(get_orig_id(i)) {
+            | Some(arg) => dup_exp(arg)   // hole: fresh copy so repeated uses don't alias
+            | _ =>
+                if i == std__macro_file__ { ExpLit(LitString(macro_loc_file(outer_loc)), (TypString, iloc)) }
+                else if i == std__macro_line__ { ExpLit(LitInt(int64(outer_loc.line0)), (TypInt, iloc)) }
+                else { match hmap.find_opt(i) { | Some(j) => ExpIdent(j, (t, iloc)) | _ => e } }
+            }
+        | _ => walk_exp(e, callb)
+        }
+    fun tr_pat(p: pat_t, callb: ast_callb_t): pat_t =
+        match p {
+        | PatIdent(i, loc) => (match hmap.find_opt(i) { | Some(j) => PatIdent(j, loc) | _ => p })
+        | PatAs(pp, i, loc) =>
+            val i2 = match hmap.find_opt(i) { | Some(j) => j | _ => i }
+            PatAs(check_n_walk_pat(pp, callb), i2, loc)
+        | _ => walk_pat(p, callb)
+        }
+    val callb = ast_callb_t {ast_cb_exp=Some(tr_exp), ast_cb_typ=None, ast_cb_pat=Some(tr_pat)}
+    tr_exp(tbody, callb)
+}
+
+/* the pre-probe: does a plain-identifier (or Module.name) callee resolve to a
+   macro, by NAME and arity only? Purely syntactic -- no type ranking, so the
+   -pr-resolve census for ordinary functions is untouched. The nearest lexical
+   binding's KIND decides: reaching an IdFun/IdDVal/IdExn before any macro means
+   this is an ordinary call (a local 'fun count' hides an imported macro, etc.). */
+fun macro_lookup(f0: exp_t, nargs: int, env: env_t, loc: loc_t): (ref[defmacro_t])? {
+    fun find_in(n: id_t, env2: env_t): (ref[defmacro_t])? {
+        fun scan(elist: list[env_entry_t]): (ref[defmacro_t])? =
+            match elist {
+            | EnvId({m=0}) :: rest => scan(rest)
+            | EnvId(i) :: rest =>
+                match id_info(i, loc) {
+                // macros overload by ARITY (macro-1 variant B): a same-named
+                // macro whose parameter count does not match the call is skipped
+                // so a sibling variant with the right arity can win. Reaching an
+                // ordinary callable first means this is not a macro call.
+                | IdMacro(dm) => if dm->dmac_params.length() == nargs { Some(dm) } else { scan(rest) }
+                | IdFun _ | IdDVal _ | IdExn _ => None
+                | _ => scan(rest)
+                }
+            | EnvTyp _ :: rest => scan(rest)
+            | [] => None
+            }
+        scan(find_all(n, env2))
+    }
+    match f0 {
+    | ExpIdent(n, _) => find_in(n, env)
+    | ExpMem(ExpIdent(mod_n, _), ExpIdent(mem_n, _), _) =>
+        match find_all(mod_n, env) {
+        | EnvId(mi) :: _ =>
+            (match id_info(mi, loc) { | IdModule m_idx => find_in(mem_n, get_module_env(m_idx)) | _ => None })
+        | _ => None
+        }
+    | _ => None
+    }
+}
+
+// expand one macro call and check the result.
+fun expand_macro(dm: ref[defmacro_t], args0: list[exp_t], env: env_t,
+                 sc: list[scope_t], ctx: ctx_t): exp_t {
+    val {dmac_name, dmac_params, dmac_body} = *dm
+    val (etyp, call_loc) = ctx
+    val curr_m_idx = curr_module(sc)
+    val depth = macro_expansion_stack.length()
+    if depth >= macro_max_depth {
+        throw compile_err(call_loc, f"macro expansion too deep (limit {macro_max_depth}); \
+            possible infinite macro recursion")
+    }
+    val is_outermost = depth == 0
+    val outer_loc = if is_outermost { call_loc } else { macro_outer_loc }
+    // parameter -> actual argument, matched positionally by the param's orig id
+    var pmap: Map.t[id_t, exp_t] = Map.empty(cmp_id)
+    for (pn, _) <- dmac_params, a <- args0 { pmap = pmap.add(get_orig_id(pn), a) }
+    val tbody = dup_exp(dmac_body)
+    val hmap = macro_collect_binders(tbody, curr_m_idx)
+    val expansion = macro_transform(tbody, pmap, hmap, outer_loc)
+    // recurse: the expansion may contain further macro calls. Track the chain and
+    // the outermost call site while we check it. The "in expansion of ..." note is
+    // only added for the innermost few frames (macro_chain_note_cap) so a runaway
+    // chain does not flood the diagnostic.
+    if is_outermost { macro_outer_loc = call_loc }
+    val note_this = depth < macro_chain_note_cap
+    macro_expansion_stack = (dmac_name, call_loc) :: macro_expansion_stack
+    if note_this { all_compile_err_ctx = f"in expansion of '{pp(dmac_name)}' at {call_loc}" :: all_compile_err_ctx }
+    val checked = check_exp(expansion, env, sc)
+    if note_this { all_compile_err_ctx = all_compile_err_ctx.tl() }
+    macro_expansion_stack = macro_expansion_stack.tl()
+    unify(get_exp_typ(checked), etyp, call_loc,
+        "the macro expansion type does not match the type expected at the call site")
+    checked
+}
 
 fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
     val (etyp, eloc) as ctx = get_exp_ctx(e)
@@ -2452,6 +2613,12 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
         unify(etyp, TypTuple(tl), eloc, "improper type of tuple elements or the number of elements")
         ExpMkTuple([::for e <- el { check_exp(e, env, sc) }], ctx)
     | ExpCall(f0, args0, _) =>
+        // macro-1 pre-probe: a plain-identifier (or Module.name) callee that
+        // names a macro is expanded here, BEFORE the ordinary call path checks
+        // the arguments. Misses fall through to the normal call resolution.
+        match macro_lookup(f0, args0.length(), env, eloc) {
+        | Some(dm) => expand_macro(dm, args0, env, sc, ctx)
+        | _ =>
         val f = dup_exp(f0)
         val args = args0.map(dup_exp)
         val arg_typs = [:: for a <- args { get_exp_typ(a) }]
@@ -2565,6 +2732,7 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
                 check_exp(new_exp, env, sc)
             | _ => throw ex
             }
+        }
         }
     | ExpAt(arr, border, interp, idxs, _) =>
         fun check_attr(arr: exp_t, border: border_t, interp: interpolate_t):
@@ -3246,7 +3414,7 @@ fun check_exp(e: exp_t, env: env_t, sc: list[scope_t]) {
               does not match the expected one '{typ2str(etyp)}'")
         ExpData(kind, fname, ctx)
     /* all the declarations are checked in check_eseq */
-    | DefVal(_, _, _, _) | DefFun _ | DefVariant _ | DefInterface _
+    | DefVal(_, _, _, _) | DefFun _ | DefVariant _ | DefInterface _ | DefMacro _
     | DefExn _ | DefTyp _ | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) =>
         throw compile_err(eloc, "internal err: should not get here; \
             all the declarations and directives must be handled in check_eseq")
@@ -3338,6 +3506,7 @@ fun check_eseq(eseq: list[exp_t], env: env_t, sc: list[scope_t], create_sc: bool
         env = match e {
         | DefFun(df) => reg_deffun(df, env, sc)
         | DefExn(de) => check_defexn(de, env, sc)
+        | DefMacro(dm) => reg_defmacro(dm, env, sc)
         | _ => env
         }
     }
@@ -3350,6 +3519,12 @@ fun check_eseq(eseq: list[exp_t], env: env_t, sc: list[scope_t], create_sc: bool
         val (eseq1, env1) =
         try {
             match e {
+            | DefMacro _ =>
+                // macros are compile-time only: registered in pass 1 (reg_defmacro)
+                // and expanded at their call sites (the ExpCall pre-probe). The
+                // definition itself produces no runtime code, so drop it here so
+                // it never reaches K-normalization. macro-1.
+                (eseq_acc, env)
             | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _)
             | DefTyp _ | DefVariant _ | DefInterface _ | DefExn _ =>
                 if idx == nexps - 1 && !is_glob_scope {
@@ -3901,6 +4076,24 @@ fun reg_deffun(df: ref[deffun_t], env: env_t, sc: list[scope_t])
     env1
 }
 
+/* macro-1: register a macro declaration. Unlike reg_deffun this does NOT
+   type-check the parameters or the body: a macro template contains parameter
+   'holes' and possibly free names that only resolve at the call site, so it is
+   not a well-typed expression on its own. We only give the macro a fresh unique
+   id, bind its name in the env (so calls see it), and store it in the symbol
+   table as IdMacro. Parameters keep their parsed (abstract) ids -- the same ids
+   the template body references -- so expansion matches holes by name. */
+fun reg_defmacro(dm: ref[defmacro_t], env: env_t, sc: list[scope_t]): env_t
+{
+    val {dmac_name, dmac_loc} = *dm
+    val curr_m_idx = curr_module(sc)
+    val dmac_name1 = dup_id(curr_m_idx, dmac_name)
+    val env1 = add_id_to_env(dmac_name, dmac_name1, env)
+    *dm = dm->{ dmac_name=dmac_name1, dmac_scope=sc, dmac_env=env1 }
+    set_id_entry(dmac_name1, IdMacro(dm))
+    env1
+}
+
 fun check_defexn(de: ref[defexn_t], env: env_t, sc: list[scope_t])
 {
     val {dexn_name=n0, dexn_typ=t, dexn_loc=loc} = *de
@@ -4020,7 +4213,7 @@ fun check_typ_and_collect_typ_vars(t: typ_t, env: env_t, r_opt_typ_vars: ref[ids
                 | EnvId({m=0}) => None
                 | EnvId(i) =>
                     match id_info(i, loc) {
-                    | IdNone | IdDVal _ | IdFun _ | IdExn _ | IdModule _ => None
+                    | IdNone | IdDVal _ | IdFun _ | IdExn _ | IdModule _ | IdMacro _ => None
                     | IdInterface (ref {di_name}) =>
                         if ty_args == [] { Some(TypApp([], di_name)) }
                         else {

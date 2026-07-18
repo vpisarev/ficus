@@ -925,7 +925,7 @@ fun NCXHWCtoNCHW(inp_t: Ast.nntensor_t)
     val N = inp_shape[0]
     val inp_C = inp_shape[1]
     val out_shape = [N, inp_C, \inp_shape[2:inp_ndims-1]]
-    assert(`inp_C == (C0 + C1 - 1)/C1`)
+    assert(inp_C == (C0 + C1 - 1)/C1)
     val out_data =
         [@parallel for n <- 0:N for c <- 0:C0 for j <- 0:plane_size
         { val c_plane = c/C1, c_ofs = c - c_plane*C1

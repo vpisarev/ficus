@@ -661,7 +661,7 @@ match op {
     val out = model.get_tensor(t_out)
     val out_scale = model.get_tensor(t_out_scale)
     val out_zp = model.get_tensor(t_out_zp)
-    assert(`kernel_shape.size() == 2 && inp.shape.shape.size() == 5`)
+    assert(kernel_shape.size() == 2 && inp.shape.shape.size() == 5)
     if *qconv_data == null || !model.isconst(t_weights) || !model.isconst(t_w_scale) ||
         !model.isconst(t_w_zp) || !model.isconst(t_bias) {
         val weights = model.get_tensor(t_weights)

@@ -34,7 +34,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
     var empty_names = true
     val ninputs = inputs.size()
 
-    assert(`ninputs == model.graph.inpargs.size()`)
+    assert(ninputs == model.graph.inpargs.size())
     if *model.profile {
         for i <- 0:Ast.nn_total_operations {
             model.perf_profile_time[i] = 0i64
@@ -46,7 +46,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
     for (inpname, inp)@i <- inputs {
         // check that either all input names are empty or none of them
         if i == 0 {empty_names = inpname == ""}
-        else {assert(`empty_names == (inpname == "")`)}
+        else {assert(empty_names == (inpname == ""))}
         val argidx =
             if inpname == "" {model.graph.inpargs[i]}
             else {
@@ -60,9 +60,9 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
         val arg = model.args[argidx]
         val inp_typ = inp.elemtype()
         //println(f"input #{i}: {arg}")
-        assert(`arg.argkind == Ast.NN_Arg_Input`)
-        assert(`arg.typ == inp_typ || (arg.typ == Type_F32 && inp_typ == Type_F16 && *model.use_fp16)`)
-        assert(`arg.shape.layout == inp.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown`)
+        assert(arg.argkind == Ast.NN_Arg_Input)
+        assert(arg.typ == inp_typ || (arg.typ == Type_F32 && inp_typ == Type_F16 && *model.use_fp16))
+        assert(arg.shape.layout == inp.shape.layout || arg.shape.layout == Ast.NN_Layout_Unknown)
         model.fit(argidx, inp.shape, inp_typ)
         Ast.copy_tensor_data(inp.data, model.tensors[argidx].data)
     }
@@ -74,7 +74,7 @@ fun run(model: Ast.nnmodel_t, inputs: (string, Ast.nntensor_t) []/*,
     // collect outputs
     [for argidx <- model.graph.outargs {
         val arg = model.args[argidx]
-        assert(`arg.argkind == Ast.NN_Arg_Output`)
+        assert(arg.argkind == Ast.NN_Arg_Output)
         (arg.name, model.tensors[argidx])
     }]
 }
@@ -135,7 +135,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             val branch = if f {then_branch} else {else_branch}
             run_graph(model, branch, outputs)
             val {outargs} = branch
-            assert(`outargs.size() == t_out.size()`)
+            assert(outargs.size() == t_out.size())
             for br_outidx <- outargs, outidx <- t_out {
                 val br_out = model.tensors[br_outidx]
                 model.fit(outidx, br_out.shape, br_out.elemtype())
@@ -145,11 +145,11 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             val {inpargs, outargs} = body
             val n_state_vars = t_v_in.size()
             val n_accums = t_v_out.size() - n_state_vars
-            assert(`n_accums >= 0`)
+            assert(n_accums >= 0)
             var trip_count =
                 if t_trip_count > 0 {
                     val t_data = model.tensors[t_trip_count].data
-                    assert(`t_data.total() == 1`)
+                    assert(t_data.total() == 1)
                     match t_data {
                     | Ast.NN_Data_Empty => None
                     | Ast.NN_Data_I32 data => Some(int64(data[0]))
@@ -161,7 +161,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
             var loop_condition =
                 if t_cond_in > 0 {
                     val t_data = model.tensors[t_cond_in].data
-                    assert(`t_data.total() == 1`)
+                    assert(t_data.total() == 1)
                     match t_data {
                     | Ast.NN_Data_Empty => true
                     | Ast.NN_Data_Bool data => data[0]
@@ -193,7 +193,7 @@ fun run_graph(model: Ast.nnmodel_t, graph: Ast.nngraph_t, outputs: (string, Ast.
                     }
                 if outarg_0 > 0 {
                     val l_data = model.tensors[outarg_0].data
-                    assert(`l_data.total() == 1`)
+                    assert(l_data.total() == 1)
                     loop_condition = match l_data {
                         | Ast.NN_Data_Bool data => data[0]
                         | _ => throw Ast.NNError("Loop's cond_out (if any) is expected to be Bool scalar")
@@ -292,12 +292,12 @@ fun top_k(t: Ast.nntensor_t, k: int)
 {
     val shape = t.shape.shape
     val ndims = shape.size()
-    assert(`k > 0`)
-    assert(`ndims == 1 || ndims == 2 || (ndims == 4 && shape[2] == 1 && shape[3] == 1)`)
+    assert(k > 0)
+    assert(ndims == 1 || ndims == 2 || (ndims == 4 && shape[2] == 1 && shape[3] == 1))
     val (nrows, ncols) = if ndims == 1 {(1, shape[0])} else {(shape[0], shape[1])}
     val k = min(k, ncols)
     val data = float(t)
-    assert(`data.size() == nrows*ncols`)
+    assert(data.size() == nrows*ncols)
     val temp = array(ncols, (0.f, 0))
     val result = array((nrows, k), (0, 0.f))
     for i <- 0:nrows {

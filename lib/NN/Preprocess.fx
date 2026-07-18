@@ -244,7 +244,7 @@ type image_preprocess_params_t =
 
 fun image_to_tensor(image: uint8x3 [,], params: image_preprocess_params_t, ntasks: int): Ast.nntensor_t
 {
-    assert(`params.layout == Ast.NN_Layout_NCHW || params.layout == Ast.NN_Layout_NHWC`)
+    assert(params.layout == Ast.NN_Layout_NCHW || params.layout == Ast.NN_Layout_NHWC)
     val image_size = image.size()
     val ratio_y = float(params.input_size.0)/image_size.0
     val ratio_x = float(params.input_size.1)/image_size.1

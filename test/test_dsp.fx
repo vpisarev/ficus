@@ -16,6 +16,6 @@ TEST("dsp.fft.fwd_inv", fun() {
             EXPECT_NE(signal, spectrum)
         }
         val restored = DSP.Fft.inv(spectrum, scale=1.f/n)
-        EXPECT_NEAR(`signal`, `restored`, 1e-5f)
+        EXPECT_NEAR(signal, restored, 1e-5f)
     }
 })

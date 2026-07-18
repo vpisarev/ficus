@@ -1,0 +1,3 @@
+803_macro_bad_category.fx:3:9: error: unknown macro parameter category '@blah'; expected @expr or @for_expr
+ 3 | macro m(x: @blah): int = x
+   |         ^

@@ -1577,12 +1577,12 @@ fun nnmodel_t.concat_inplace(t_inp: int, t_out: int)
     val out_ndims = out_shape.size()
     val inp_typ = inp.elemtype()
     val out_typ = out.elemtype()
-    assert(`inp_ndims+1 == out_ndims`)
-    assert(`inp_typ == out_typ`)
+    assert(inp_ndims+1 == out_ndims)
+    assert(inp_typ == out_typ)
     val new_shape = [for i <- 0:out_ndims {
         if i == 0 {out_shape[0] + 1}
         else {
-            assert(`inp_shape[i-1] == out_shape[i]`)
+            assert(inp_shape[i-1] == out_shape[i])
             out_shape[i]
         }}]
     val orig_out_data = out.data
@@ -1627,7 +1627,7 @@ fun nnmodel_t.use_counts(): int []
 
 fun normalize_axis(axis: int, ndims: int) {
     val axis = if axis < 0 {axis + ndims} else {axis}
-    assert(`0 <= axis <= ndims`)
+    assert(0 <= axis <= ndims)
     axis
 }
 

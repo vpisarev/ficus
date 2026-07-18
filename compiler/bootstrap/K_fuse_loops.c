@@ -1026,6 +1026,11 @@ typedef struct _fx_T2Nt11Map__tree_t2R9Ast__id_tR9Ast__id_tB {
 
 typedef struct {
    int_ rc;
+   fx_str_t data;
+} _fx_E11AssertError_data_t;
+
+typedef struct {
+   int_ rc;
    int_ data;
 } _fx_E4Exit_data_t;
 

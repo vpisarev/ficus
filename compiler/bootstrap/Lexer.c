@@ -295,11 +295,6 @@ typedef struct _fx_rLT2N14Lexer__token_tTa2i_data_t {
    struct _fx_LT2N14Lexer__token_tTa2i_data_t* data;
 } _fx_rLT2N14Lexer__token_tTa2i_data_t, *_fx_rLT2N14Lexer__token_tTa2i;
 
-typedef struct _fx_rTa2i_data_t {
-   int_ rc;
-   struct _fx_Ta2i data;
-} _fx_rTa2i_data_t, *_fx_rTa2i;
-
 typedef struct _fx_rNt6option1R8format_t_data_t {
    int_ rc;
    struct _fx_Nt6option1R8format_t data;
@@ -309,6 +304,11 @@ typedef struct _fx_T2iS {
    int_ t0;
    fx_str_t t1;
 } _fx_T2iS;
+
+typedef struct {
+   int_ rc;
+   fx_str_t data;
+} _fx_E11AssertError_data_t;
 
 typedef struct {
    int_ rc;
@@ -539,9 +539,9 @@ static void _fx_free_N14Lexer__token_t(struct _fx_N14Lexer__token_t* dst)
       fx_free_str(&dst->u.TYVAR); break;
    case 13:
       fx_free_str(&dst->u.DATA); break;
-   case 88:
+   case 89:
       _fx_free_N13Ast__binary_t(&dst->u.AUG_BINOP); break;
-   case 94:
+   case 95:
       fx_free_str(&dst->u.RESERVED); break;
    default:
       ;
@@ -561,9 +561,9 @@ static void _fx_copy_N14Lexer__token_t(struct _fx_N14Lexer__token_t* src, struct
       fx_copy_str(&src->u.TYVAR, &dst->u.TYVAR); break;
    case 13:
       fx_copy_str(&src->u.DATA, &dst->u.DATA); break;
-   case 88:
+   case 89:
       FX_COPY_PTR(src->u.AUG_BINOP, &dst->u.AUG_BINOP); break;
-   case 94:
+   case 95:
       fx_copy_str(&src->u.RESERVED, &dst->u.RESERVED); break;
    default:
       dst->u = src->u;
@@ -863,11 +863,6 @@ static int _fx_make_rLT2N14Lexer__token_tTa2i(
    FX_MAKE_REF_IMPL(_fx_rLT2N14Lexer__token_tTa2i, FX_COPY_PTR);
 }
 
-static int _fx_make_rTa2i(struct _fx_Ta2i* arg, struct _fx_rTa2i_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rTa2i, FX_COPY_SIMPLE_BY_PTR);
-}
-
 static int _fx_make_rNt6option1R8format_t(
    struct _fx_Nt6option1R8format_t* arg,
    struct _fx_rNt6option1R8format_t_data_t** fx_result)
@@ -947,70 +942,71 @@ _fx_N14Lexer__token_t _fx_g10Lexer__FUN = { 21 };
 _fx_N14Lexer__token_t _fx_g9Lexer__IF = { 22 };
 _fx_N14Lexer__token_t _fx_g13Lexer__INLINE = { 24 };
 _fx_N14Lexer__token_t _fx_g16Lexer__INTERFACE = { 25 };
-_fx_N14Lexer__token_t _fx_g12Lexer__MATCH = { 26 };
-_fx_N14Lexer__token_t _fx_g14Lexer__NOTHROW = { 27 };
-_fx_N14Lexer__token_t _fx_g15Lexer__OPERATOR = { 28 };
-_fx_N14Lexer__token_t _fx_g15Lexer__PARALLEL = { 29 };
-_fx_N14Lexer__token_t _fx_g13Lexer__PRAGMA = { 30 };
-_fx_N14Lexer__token_t _fx_g14Lexer__PRIVATE = { 31 };
-_fx_N14Lexer__token_t _fx_g11Lexer__PURE = { 32 };
-_fx_N14Lexer__token_t _fx_g12Lexer__THROW = { 35 };
-_fx_N14Lexer__token_t _fx_g10Lexer__TRY = { 36 };
-_fx_N14Lexer__token_t _fx_g11Lexer__TYPE = { 37 };
-_fx_N14Lexer__token_t _fx_g10Lexer__VAL = { 38 };
-_fx_N14Lexer__token_t _fx_g10Lexer__VAR = { 39 };
-_fx_N14Lexer__token_t _fx_g11Lexer__WHEN = { 40 };
-_fx_N14Lexer__token_t _fx_g11Lexer__WITH = { 41 };
-_fx_N14Lexer__token_t _fx_g12Lexer__UNZIP = { 43 };
-_fx_N14Lexer__token_t _fx_g24Lexer__STR_INTERP_LPAREN = { 45 };
-_fx_N14Lexer__token_t _fx_g13Lexer__RPAREN = { 46 };
-_fx_N14Lexer__token_t _fx_g14Lexer__RSQUARE = { 48 };
-_fx_N14Lexer__token_t _fx_g13Lexer__LBRACE = { 49 };
-_fx_N14Lexer__token_t _fx_g13Lexer__RBRACE = { 50 };
-_fx_N14Lexer__token_t _fx_g12Lexer__COMMA = { 51 };
-_fx_N14Lexer__token_t _fx_g10Lexer__DOT = { 52 };
-_fx_N14Lexer__token_t _fx_g16Lexer__SEMICOLON = { 53 };
-_fx_N14Lexer__token_t _fx_g12Lexer__COLON = { 54 };
-_fx_N14Lexer__token_t _fx_g10Lexer__BAR = { 55 };
-_fx_N14Lexer__token_t _fx_g11Lexer__CONS = { 56 };
-_fx_N14Lexer__token_t _fx_g11Lexer__CAST = { 57 };
-_fx_N14Lexer__token_t _fx_g17Lexer__BACK_ARROW = { 59 };
-_fx_N14Lexer__token_t _fx_g19Lexer__DOUBLE_ARROW = { 60 };
-_fx_N14Lexer__token_t _fx_g12Lexer__ARROW = { 61 };
-_fx_N14Lexer__token_t _fx_g15Lexer__QUESTION = { 62 };
-_fx_N14Lexer__token_t _fx_g10Lexer__EOF = { 63 };
-_fx_N14Lexer__token_t _fx_g12Lexer__SLASH = { 67 };
-_fx_N14Lexer__token_t _fx_g11Lexer__SYNC = { 68 };
-_fx_N14Lexer__token_t _fx_g14Lexer__PERCENT = { 69 };
-_fx_N14Lexer__token_t _fx_g12Lexer__POWER = { 70 };
-_fx_N14Lexer__token_t _fx_g15Lexer__DOT_STAR = { 71 };
-_fx_N14Lexer__token_t _fx_g16Lexer__DOT_SLASH = { 74 };
-_fx_N14Lexer__token_t _fx_g18Lexer__DOT_PERCENT = { 75 };
-_fx_N14Lexer__token_t _fx_g16Lexer__DOT_POWER = { 76 };
-_fx_N14Lexer__token_t _fx_g18Lexer__SHIFT_RIGHT = { 77 };
-_fx_N14Lexer__token_t _fx_g17Lexer__SHIFT_LEFT = { 78 };
-_fx_N14Lexer__token_t _fx_g18Lexer__BITWISE_AND = { 79 };
-_fx_N14Lexer__token_t _fx_g18Lexer__BITWISE_XOR = { 80 };
-_fx_N14Lexer__token_t _fx_g17Lexer__BITWISE_OR = { 81 };
-_fx_N14Lexer__token_t _fx_g12Lexer__TILDE = { 82 };
-_fx_N14Lexer__token_t _fx_g18Lexer__LOGICAL_AND = { 83 };
-_fx_N14Lexer__token_t _fx_g17Lexer__LOGICAL_OR = { 84 };
-_fx_N14Lexer__token_t _fx_g18Lexer__LOGICAL_NOT = { 85 };
-_fx_N14Lexer__token_t _fx_g12Lexer__EQUAL = { 86 };
-_fx_N14Lexer__token_t _fx_g16Lexer__DOT_EQUAL = { 87 };
-_fx_N14Lexer__token_t _fx_g16Lexer__SPACESHIP = { 89 };
-_fx_N14Lexer__token_t _fx_g20Lexer__DOT_SPACESHIP = { 91 };
-_fx_N14Lexer__token_t _fx_g11Lexer__SAME = { 93 };
-_fx_N14Lexer__token_t _fx_g12Lexer__PP_IF = { 95 };
-_fx_N14Lexer__token_t _fx_g15Lexer__PP_IFDEF = { 96 };
-_fx_N14Lexer__token_t _fx_g16Lexer__PP_IFNDEF = { 97 };
-_fx_N14Lexer__token_t _fx_g14Lexer__PP_ELIF = { 98 };
-_fx_N14Lexer__token_t _fx_g14Lexer__PP_ELSE = { 99 };
-_fx_N14Lexer__token_t _fx_g15Lexer__PP_ENDIF = { 100 };
-_fx_N14Lexer__token_t _fx_g16Lexer__PP_DEFINE = { 101 };
-_fx_N14Lexer__token_t _fx_g15Lexer__PP_UNDEF = { 102 };
-_fx_N14Lexer__token_t _fx_g15Lexer__PP_ERROR = { 103 };
-_fx_N14Lexer__token_t _fx_g17Lexer__PP_WARNING = { 104 };
+_fx_N14Lexer__token_t _fx_g12Lexer__MACRO = { 26 };
+_fx_N14Lexer__token_t _fx_g12Lexer__MATCH = { 27 };
+_fx_N14Lexer__token_t _fx_g14Lexer__NOTHROW = { 28 };
+_fx_N14Lexer__token_t _fx_g15Lexer__OPERATOR = { 29 };
+_fx_N14Lexer__token_t _fx_g15Lexer__PARALLEL = { 30 };
+_fx_N14Lexer__token_t _fx_g13Lexer__PRAGMA = { 31 };
+_fx_N14Lexer__token_t _fx_g14Lexer__PRIVATE = { 32 };
+_fx_N14Lexer__token_t _fx_g11Lexer__PURE = { 33 };
+_fx_N14Lexer__token_t _fx_g12Lexer__THROW = { 36 };
+_fx_N14Lexer__token_t _fx_g10Lexer__TRY = { 37 };
+_fx_N14Lexer__token_t _fx_g11Lexer__TYPE = { 38 };
+_fx_N14Lexer__token_t _fx_g10Lexer__VAL = { 39 };
+_fx_N14Lexer__token_t _fx_g10Lexer__VAR = { 40 };
+_fx_N14Lexer__token_t _fx_g11Lexer__WHEN = { 41 };
+_fx_N14Lexer__token_t _fx_g11Lexer__WITH = { 42 };
+_fx_N14Lexer__token_t _fx_g12Lexer__UNZIP = { 44 };
+_fx_N14Lexer__token_t _fx_g24Lexer__STR_INTERP_LPAREN = { 46 };
+_fx_N14Lexer__token_t _fx_g13Lexer__RPAREN = { 47 };
+_fx_N14Lexer__token_t _fx_g14Lexer__RSQUARE = { 49 };
+_fx_N14Lexer__token_t _fx_g13Lexer__LBRACE = { 50 };
+_fx_N14Lexer__token_t _fx_g13Lexer__RBRACE = { 51 };
+_fx_N14Lexer__token_t _fx_g12Lexer__COMMA = { 52 };
+_fx_N14Lexer__token_t _fx_g10Lexer__DOT = { 53 };
+_fx_N14Lexer__token_t _fx_g16Lexer__SEMICOLON = { 54 };
+_fx_N14Lexer__token_t _fx_g12Lexer__COLON = { 55 };
+_fx_N14Lexer__token_t _fx_g10Lexer__BAR = { 56 };
+_fx_N14Lexer__token_t _fx_g11Lexer__CONS = { 57 };
+_fx_N14Lexer__token_t _fx_g11Lexer__CAST = { 58 };
+_fx_N14Lexer__token_t _fx_g17Lexer__BACK_ARROW = { 60 };
+_fx_N14Lexer__token_t _fx_g19Lexer__DOUBLE_ARROW = { 61 };
+_fx_N14Lexer__token_t _fx_g12Lexer__ARROW = { 62 };
+_fx_N14Lexer__token_t _fx_g15Lexer__QUESTION = { 63 };
+_fx_N14Lexer__token_t _fx_g10Lexer__EOF = { 64 };
+_fx_N14Lexer__token_t _fx_g12Lexer__SLASH = { 68 };
+_fx_N14Lexer__token_t _fx_g11Lexer__SYNC = { 69 };
+_fx_N14Lexer__token_t _fx_g14Lexer__PERCENT = { 70 };
+_fx_N14Lexer__token_t _fx_g12Lexer__POWER = { 71 };
+_fx_N14Lexer__token_t _fx_g15Lexer__DOT_STAR = { 72 };
+_fx_N14Lexer__token_t _fx_g16Lexer__DOT_SLASH = { 75 };
+_fx_N14Lexer__token_t _fx_g18Lexer__DOT_PERCENT = { 76 };
+_fx_N14Lexer__token_t _fx_g16Lexer__DOT_POWER = { 77 };
+_fx_N14Lexer__token_t _fx_g18Lexer__SHIFT_RIGHT = { 78 };
+_fx_N14Lexer__token_t _fx_g17Lexer__SHIFT_LEFT = { 79 };
+_fx_N14Lexer__token_t _fx_g18Lexer__BITWISE_AND = { 80 };
+_fx_N14Lexer__token_t _fx_g18Lexer__BITWISE_XOR = { 81 };
+_fx_N14Lexer__token_t _fx_g17Lexer__BITWISE_OR = { 82 };
+_fx_N14Lexer__token_t _fx_g12Lexer__TILDE = { 83 };
+_fx_N14Lexer__token_t _fx_g18Lexer__LOGICAL_AND = { 84 };
+_fx_N14Lexer__token_t _fx_g17Lexer__LOGICAL_OR = { 85 };
+_fx_N14Lexer__token_t _fx_g18Lexer__LOGICAL_NOT = { 86 };
+_fx_N14Lexer__token_t _fx_g12Lexer__EQUAL = { 87 };
+_fx_N14Lexer__token_t _fx_g16Lexer__DOT_EQUAL = { 88 };
+_fx_N14Lexer__token_t _fx_g16Lexer__SPACESHIP = { 90 };
+_fx_N14Lexer__token_t _fx_g20Lexer__DOT_SPACESHIP = { 92 };
+_fx_N14Lexer__token_t _fx_g11Lexer__SAME = { 94 };
+_fx_N14Lexer__token_t _fx_g12Lexer__PP_IF = { 96 };
+_fx_N14Lexer__token_t _fx_g15Lexer__PP_IFDEF = { 97 };
+_fx_N14Lexer__token_t _fx_g16Lexer__PP_IFNDEF = { 98 };
+_fx_N14Lexer__token_t _fx_g14Lexer__PP_ELIF = { 99 };
+_fx_N14Lexer__token_t _fx_g14Lexer__PP_ELSE = { 100 };
+_fx_N14Lexer__token_t _fx_g15Lexer__PP_ENDIF = { 101 };
+_fx_N14Lexer__token_t _fx_g16Lexer__PP_DEFINE = { 102 };
+_fx_N14Lexer__token_t _fx_g15Lexer__PP_UNDEF = { 103 };
+_fx_N14Lexer__token_t _fx_g15Lexer__PP_ERROR = { 104 };
+_fx_N14Lexer__token_t _fx_g17Lexer__PP_WARNING = { 105 };
 _fx_Nt10Hashmap__t2ST2N14Lexer__token_ti _fx_g21Lexer__ficus_keywords = 0;
 FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t*, fx_exn_t*);
 
@@ -1020,7 +1016,9 @@ FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t*, void*);
 
 FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
+
+FX_EXTERN_C int _fx_F16make_AssertErrorE1S(fx_str_t*, fx_exn_t*);
 
 FX_EXTERN_C int _fx_M3AstFM7lit2strS1N10Ast__lit_t(struct _fx_N10Ast__lit_t*, fx_str_t*, void*);
 
@@ -1056,9 +1054,7 @@ FX_EXTERN_C void _fx_M3AstFM7LitBoolN10Ast__lit_t1B(bool, struct _fx_N10Ast__lit
 FX_EXTERN_C void _fx_M3AstFM7LitCharN10Ast__lit_t1C(char_, struct _fx_N10Ast__lit_t*);
 
 FX_EXTERN_C int
-   _fx_M5LexerFM7make_fpFPT3LT2N14Lexer__token_tTa2iTa2iTa2i09rTa2irirBrNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
-   struct _fx_rTa2i_data_t*,
-   struct _fx_ri_data_t*,
+   _fx_M5LexerFM7make_fpFPT3LT2N14Lexer__token_tTa2iTa2iTa2i07rBrNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
    struct _fx_rB_data_t*,
    struct _fx_rNt6option1R8format_t_data_t*,
    struct _fx_rB_data_t*,
@@ -1067,8 +1063,6 @@ FX_EXTERN_C int
    struct _fx_rB_data_t*,
    struct _fx_N20LexerUtils__stream_t_data_t*,
    struct _fx_FPT3LT2N14Lexer__token_tTa2iTa2iTa2i0*);
-
-FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M10LexerUtilsFM11skip_spacesT3CiB3N20LexerUtils__stream_tiB(
    struct _fx_N20LexerUtils__stream_t_data_t*,
@@ -1103,20 +1097,16 @@ FX_EXTERN_C int _fx_F3chrC1i(int_, char_*, void*);
 
 FX_EXTERN_C int _fx_F12parse_formatT2R8format_ti2Si(fx_str_t*, int_, struct _fx_T2R8format_ti*, void*);
 
-FX_EXTERN_C int _fx_M8FilenameFM8basenameS1S(fx_str_t*, fx_str_t*, void*);
-
 typedef struct {
    int_ rc;
    fx_free_t free_f;
-   struct _fx_rTa2i_data_t* t0;
-   struct _fx_ri_data_t* t1;
+   struct _fx_rB_data_t* t0;
+   struct _fx_rNt6option1R8format_t_data_t* t1;
    struct _fx_rB_data_t* t2;
-   struct _fx_rNt6option1R8format_t_data_t* t3;
-   struct _fx_rB_data_t* t4;
-   struct _fx_rLT2N14Lexer__token_tTa2i_data_t* t5;
-   struct _fx_ri_data_t* t6;
-   struct _fx_rB_data_t* t7;
-   struct _fx_N20LexerUtils__stream_t_data_t* t8;
+   struct _fx_rLT2N14Lexer__token_tTa2i_data_t* t3;
+   struct _fx_ri_data_t* t4;
+   struct _fx_rB_data_t* t5;
+   struct _fx_N20LexerUtils__stream_t_data_t* t6;
 } _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0_cldata_t;
 
 FX_EXTERN_C void _fx_free_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
@@ -1125,12 +1115,10 @@ FX_EXTERN_C void _fx_free_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2
    FX_FREE_REF_SIMPLE(&dst->t0);
    FX_FREE_REF_SIMPLE(&dst->t1);
    FX_FREE_REF_SIMPLE(&dst->t2);
-   FX_FREE_REF_SIMPLE(&dst->t3);
+   _fx_free_rLT2N14Lexer__token_tTa2i(&dst->t3);
    FX_FREE_REF_SIMPLE(&dst->t4);
-   _fx_free_rLT2N14Lexer__token_tTa2i(&dst->t5);
-   FX_FREE_REF_SIMPLE(&dst->t6);
-   FX_FREE_REF_SIMPLE(&dst->t7);
-   _fx_free_N20LexerUtils__stream_t(&dst->t8);
+   FX_FREE_REF_SIMPLE(&dst->t5);
+   _fx_free_N20LexerUtils__stream_t(&dst->t6);
    fx_free(dst);
 }
 
@@ -1499,12 +1487,15 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
 {
    fx_arr_t v_0 = {0};
    fx_arr_t v_1 = {0};
-   _fx_T2N14Lexer__token_ti v_2 = {0};
-   _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti v_3 = {0};
+   fx_str_t v_2 = {0};
+   fx_str_t v_3 = {0};
    fx_exn_t v_4 = {0};
+   _fx_T2N14Lexer__token_ti v_5 = {0};
+   _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti v_6 = {0};
+   fx_exn_t v_7 = {0};
    int fx_status = 0;
-   uint64_t v_5 = _fx_F4hashq1S(k_0, 0);
-   uint64_t hv_0 = v_5 & 9223372036854775807ULL;
+   uint64_t v_8 = _fx_F4hashq1S(k_0, 0);
+   uint64_t hv_0 = v_8 & 9223372036854775807ULL;
    fx_copy_arr(&hm_0->u.t.t4, &v_0);
    int_ idxsz_0 = FX_ARR_SIZE(v_0, 0);
    if (hm_0->u.t.t1 + 1 > idxsz_0 >> 1) {
@@ -1518,25 +1509,25 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
    int_ found_0 = -1;
    int_ insert_idx_0 = -1;
    int_ j_0 = (int_)hv_0 & (idxsz_0 - 1);
-   int_ v_6 = idxsz_0 + 14;
-   for (int_ i_0 = 0; i_0 < v_6; i_0++) {
+   int_ v_9 = idxsz_0 + 14;
+   for (int_ i_0 = 0; i_0 < v_9; i_0++) {
       _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti entry_0 = {0};
-      fx_str_t v_7 = {0};
+      fx_str_t v_10 = {0};
       FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, j_0), _fx_catch_0);
       int_ tidx_0 = *FX_PTR_1D(int_, hm_0->u.t.t4, j_0);
       if (tidx_0 >= 2) {
-         int_ v_8 = tidx_0 - 2;
-         FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, v_8), _fx_catch_0);
+         int_ v_11 = tidx_0 - 2;
+         FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, v_11), _fx_catch_0);
          _fx_copy_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(
-            FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, v_8), &entry_0);
-         bool v_9;
+            FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, v_11), &entry_0);
+         bool v_12;
          if (entry_0.hv == hv_0) {
-            fx_copy_str(&entry_0.key, &v_7); v_9 = _fx_F6__eq__B2SS(&v_7, k_0, 0);
+            fx_copy_str(&entry_0.key, &v_10); v_12 = _fx_F6__eq__B2SS(&v_10, k_0, 0);
          }
          else {
-            v_9 = false;
+            v_12 = false;
          }
-         if (v_9) {
+         if (v_12) {
             found_0 = tidx_0 - 2; FX_BREAK(_fx_catch_0);
          }
       }
@@ -1562,7 +1553,7 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
       j_0 = (int_)((uint64_t)(j_0 * 5 + 1) + perturb_0) & (idxsz_0 - 1);
 
    _fx_catch_0: ;
-      FX_FREE_STR(&v_7);
+      FX_FREE_STR(&v_10);
       _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&entry_0);
       FX_CHECK_BREAK();
       FX_CHECK_EXN(_fx_cleanup);
@@ -1577,52 +1568,65 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
       }
       if (t_1) {
          FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, insert_idx_0), _fx_cleanup);
-         int_* v_10 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
-         *v_10 = found_0 + 2;
+         int_* v_13 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
+         *v_13 = found_0 + 2;
          FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, j_0), _fx_cleanup);
-         int_* v_11 = FX_PTR_1D(int_, hm_0->u.t.t4, j_0);
-         *v_11 = 1;
+         int_* v_14 = FX_PTR_1D(int_, hm_0->u.t.t4, j_0);
+         *v_14 = 1;
       }
    }
    else if (insert_idx_0 >= 0) {
       found_0 = hm_0->u.t.t3 - 1;
       if (found_0 >= 0) {
          FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, found_0), _fx_cleanup);
-         _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_12 =
+         _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_15 =
             FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, found_0);
-         hm_0->u.t.t3 = (int_)(v_12->hv & 9223372036854775807ULL);
+         hm_0->u.t.t3 = (int_)(v_15->hv & 9223372036854775807ULL);
       }
       else {
          found_0 = hm_0->u.t.t2;
          hm_0->u.t.t2 = hm_0->u.t.t2 + 1;
          fx_copy_arr(&hm_0->u.t.t5, &v_1);
-         FX_CALL(_fx_F6assertv1B(found_0 < FX_ARR_SIZE(v_1, 0), 0), _fx_cleanup);
+         if (!(found_0 < FX_ARR_SIZE(v_1, 0))) {
+            FX_CALL(_fx_F6stringS1i(220, &v_2, 0), _fx_cleanup);
+            fx_str_t slit_0 = FX_MAKE_STR("Hashmap.fx:");
+            fx_str_t slit_1 = FX_MAKE_STR(": assertion \'found < size(hm.table)\' violation");
+            {
+               const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_cleanup);
+            }
+            FX_CALL(_fx_F16make_AssertErrorE1S(&v_3, &v_4), _fx_cleanup);
+            FX_THROW(&v_4, true, _fx_cleanup);
+         }
       }
-      _fx_copy_T2N14Lexer__token_ti(&hm_0->u.t.t0.data, &v_2);
-      _fx_make_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(hv_0, k_0, &v_2, &v_3);
+      _fx_copy_T2N14Lexer__token_ti(&hm_0->u.t.t0.data, &v_5);
+      _fx_make_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(hv_0, k_0, &v_5, &v_6);
       FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, found_0), _fx_cleanup);
-      _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_13 =
+      _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_16 =
          FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, found_0);
-      _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(v_13);
-      _fx_copy_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_3, v_13);
+      _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(v_16);
+      _fx_copy_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_6, v_16);
       FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, insert_idx_0), _fx_cleanup);
-      int_* v_14 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
-      *v_14 = found_0 + 2;
+      int_* v_17 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
+      *v_17 = found_0 + 2;
       hm_0->u.t.t1 = hm_0->u.t.t1 + 1;
    }
    else {
-      fx_str_t slit_0 = FX_MAKE_STR("cannot insert element (full Hashtable?!)");
-      FX_CALL(_fx_F9make_FailE1S(&slit_0, &v_4), _fx_cleanup);
-      FX_THROW(&v_4, true, _fx_cleanup);
+      fx_str_t slit_2 = FX_MAKE_STR("cannot insert element (full Hashtable?!)");
+      FX_CALL(_fx_F9make_FailE1S(&slit_2, &v_7), _fx_cleanup);
+      FX_THROW(&v_7, true, _fx_cleanup);
    }
    *fx_result = found_0;
 
 _fx_cleanup: ;
    FX_FREE_ARR(&v_0);
    FX_FREE_ARR(&v_1);
-   _fx_free_T2N14Lexer__token_ti(&v_2);
-   _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_3);
+   FX_FREE_STR(&v_2);
+   FX_FREE_STR(&v_3);
    fx_free_exn(&v_4);
+   _fx_free_T2N14Lexer__token_ti(&v_5);
+   _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_6);
+   fx_free_exn(&v_7);
    return fx_status;
 }
 
@@ -1749,67 +1753,67 @@ FX_EXTERN_C void _fx_M5LexerFM6IMPORTN14Lexer__token_t1B(bool arg0, struct _fx_N
 
 FX_EXTERN_C void _fx_M5LexerFM3REFN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 33;
+   fx_result->tag = 34;
    fx_result->u.REF = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM6RETURNN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 34;
+   fx_result->tag = 35;
    fx_result->u.RETURN = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM5WHILEN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 42;
+   fx_result->tag = 43;
    fx_result->u.WHILE = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM6LPARENN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 44;
+   fx_result->tag = 45;
    fx_result->u.LPAREN = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM7LSQUAREN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 47;
+   fx_result->tag = 48;
    fx_result->u.LSQUARE = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM9BACKSLASHN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 58;
+   fx_result->tag = 59;
    fx_result->u.BACKSLASH = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM5MINUSN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 64;
+   fx_result->tag = 65;
    fx_result->u.MINUS = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM4PLUSN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 65;
+   fx_result->tag = 66;
    fx_result->u.PLUS = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM4STARN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 66;
+   fx_result->tag = 67;
    fx_result->u.STAR = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM8DOT_PLUSN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 72;
+   fx_result->tag = 73;
    fx_result->u.DOT_PLUS = arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM9DOT_MINUSN14Lexer__token_t1B(bool arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 73;
+   fx_result->tag = 74;
    fx_result->u.DOT_MINUS = arg0;
 }
 
@@ -1817,7 +1821,7 @@ FX_EXTERN_C void _fx_M5LexerFM9AUG_BINOPN14Lexer__token_t1N13Ast__binary_t(
    struct _fx_N13Ast__binary_t_data_t* arg0,
    struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 88;
+   fx_result->tag = 89;
    FX_COPY_PTR(arg0, &fx_result->u.AUG_BINOP);
 }
 
@@ -1825,7 +1829,7 @@ FX_EXTERN_C void _fx_M5LexerFM3CMPN14Lexer__token_t1N12Ast__cmpop_t(
    struct _fx_N12Ast__cmpop_t* arg0,
    struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 90;
+   fx_result->tag = 91;
    fx_result->u.CMP = *arg0;
 }
 
@@ -1833,13 +1837,13 @@ FX_EXTERN_C void _fx_M5LexerFM7DOT_CMPN14Lexer__token_t1N12Ast__cmpop_t(
    struct _fx_N12Ast__cmpop_t* arg0,
    struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 92;
+   fx_result->tag = 93;
    fx_result->u.DOT_CMP = *arg0;
 }
 
 FX_EXTERN_C void _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(fx_str_t* arg0, struct _fx_N14Lexer__token_t* fx_result)
 {
-   fx_result->tag = 94;
+   fx_result->tag = 95;
    fx_copy_str(arg0, &fx_result->u.RESERVED);
 }
 
@@ -2061,497 +2065,503 @@ FX_EXTERN_C int _fx_M5LexerFM7tok2strTa2S1N14Lexer__token_t(
       goto _fx_endmatch_0;
    }
    if (tag_0 == 26) {
-      fx_str_t slit_52 = FX_MAKE_STR("MATCH");
-      fx_str_t slit_53 = FX_MAKE_STR("match");
+      fx_str_t slit_52 = FX_MAKE_STR("MACRO");
+      fx_str_t slit_53 = FX_MAKE_STR("macro");
       _fx_make_Ta2S(&slit_52, &slit_53, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 27) {
-      fx_str_t slit_54 = FX_MAKE_STR("NOTHROW");
-      fx_str_t slit_55 = FX_MAKE_STR("@nothrow");
+      fx_str_t slit_54 = FX_MAKE_STR("MATCH");
+      fx_str_t slit_55 = FX_MAKE_STR("match");
       _fx_make_Ta2S(&slit_54, &slit_55, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 28) {
-      fx_str_t slit_56 = FX_MAKE_STR("OPERATOR");
-      fx_str_t slit_57 = FX_MAKE_STR("operator");
+      fx_str_t slit_56 = FX_MAKE_STR("NOTHROW");
+      fx_str_t slit_57 = FX_MAKE_STR("@nothrow");
       _fx_make_Ta2S(&slit_56, &slit_57, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 29) {
-      fx_str_t slit_58 = FX_MAKE_STR("PARALLEL");
-      fx_str_t slit_59 = FX_MAKE_STR("@parallel");
+      fx_str_t slit_58 = FX_MAKE_STR("OPERATOR");
+      fx_str_t slit_59 = FX_MAKE_STR("operator");
       _fx_make_Ta2S(&slit_58, &slit_59, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 30) {
-      fx_str_t slit_60 = FX_MAKE_STR("PRAGMA");
-      fx_str_t slit_61 = FX_MAKE_STR("pragma");
+      fx_str_t slit_60 = FX_MAKE_STR("PARALLEL");
+      fx_str_t slit_61 = FX_MAKE_STR("@parallel");
       _fx_make_Ta2S(&slit_60, &slit_61, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 31) {
-      fx_str_t slit_62 = FX_MAKE_STR("PRIVATE");
-      fx_str_t slit_63 = FX_MAKE_STR("@private");
+      fx_str_t slit_62 = FX_MAKE_STR("PRAGMA");
+      fx_str_t slit_63 = FX_MAKE_STR("pragma");
       _fx_make_Ta2S(&slit_62, &slit_63, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 32) {
-      fx_str_t slit_64 = FX_MAKE_STR("PURE");
-      fx_str_t slit_65 = FX_MAKE_STR("@pure");
+      fx_str_t slit_64 = FX_MAKE_STR("PRIVATE");
+      fx_str_t slit_65 = FX_MAKE_STR("@private");
       _fx_make_Ta2S(&slit_64, &slit_65, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 33) {
+      fx_str_t slit_66 = FX_MAKE_STR("PURE");
+      fx_str_t slit_67 = FX_MAKE_STR("@pure");
+      _fx_make_Ta2S(&slit_66, &slit_67, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 34) {
       fx_str_t v_8 = {0};
       if (t_0->u.REF) {
-         fx_str_t slit_66 = FX_MAKE_STR("REF"); fx_copy_str(&slit_66, &v_8);
+         fx_str_t slit_68 = FX_MAKE_STR("REF"); fx_copy_str(&slit_68, &v_8);
       }
       else {
-         fx_str_t slit_67 = FX_MAKE_STR("REF"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_67, &v_8, 0), _fx_catch_5);
+         fx_str_t slit_69 = FX_MAKE_STR("REF"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_69, &v_8, 0), _fx_catch_5);
       }
-      fx_str_t slit_68 = FX_MAKE_STR("ref");
-      _fx_make_Ta2S(&v_8, &slit_68, fx_result);
+      fx_str_t slit_70 = FX_MAKE_STR("ref");
+      _fx_make_Ta2S(&v_8, &slit_70, fx_result);
 
    _fx_catch_5: ;
       FX_FREE_STR(&v_8);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 34) {
+   if (tag_0 == 35) {
       if (t_0->u.RETURN == false) {
-         fx_str_t slit_69 = FX_MAKE_STR("RETURN");
-         fx_str_t slit_70 = FX_MAKE_STR("return");
-         _fx_make_Ta2S(&slit_69, &slit_70, fx_result);
-         goto _fx_endmatch_0;
-      }
-   }
-   if (tag_0 == 34) {
-      if (t_0->u.RETURN == true) {
-         fx_str_t slit_71 = FX_MAKE_STR("RETURN_WITH");
-         fx_str_t slit_72 = FX_MAKE_STR("return_with");
+         fx_str_t slit_71 = FX_MAKE_STR("RETURN");
+         fx_str_t slit_72 = FX_MAKE_STR("return");
          _fx_make_Ta2S(&slit_71, &slit_72, fx_result);
          goto _fx_endmatch_0;
       }
    }
-   if (tag_0 == 68) {
-      fx_str_t slit_73 = FX_MAKE_STR("SYNC");
-      fx_str_t slit_74 = FX_MAKE_STR("@sync");
-      _fx_make_Ta2S(&slit_73, &slit_74, fx_result);
-      goto _fx_endmatch_0;
-   }
    if (tag_0 == 35) {
-      fx_str_t slit_75 = FX_MAKE_STR("THROW");
-      fx_str_t slit_76 = FX_MAKE_STR("throw");
+      if (t_0->u.RETURN == true) {
+         fx_str_t slit_73 = FX_MAKE_STR("RETURN_WITH");
+         fx_str_t slit_74 = FX_MAKE_STR("return_with");
+         _fx_make_Ta2S(&slit_73, &slit_74, fx_result);
+         goto _fx_endmatch_0;
+      }
+   }
+   if (tag_0 == 69) {
+      fx_str_t slit_75 = FX_MAKE_STR("SYNC");
+      fx_str_t slit_76 = FX_MAKE_STR("@sync");
       _fx_make_Ta2S(&slit_75, &slit_76, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 36) {
-      fx_str_t slit_77 = FX_MAKE_STR("TRY");
-      fx_str_t slit_78 = FX_MAKE_STR("try");
+      fx_str_t slit_77 = FX_MAKE_STR("THROW");
+      fx_str_t slit_78 = FX_MAKE_STR("throw");
       _fx_make_Ta2S(&slit_77, &slit_78, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 37) {
-      fx_str_t slit_79 = FX_MAKE_STR("TYPE");
-      fx_str_t slit_80 = FX_MAKE_STR("type");
+      fx_str_t slit_79 = FX_MAKE_STR("TRY");
+      fx_str_t slit_80 = FX_MAKE_STR("try");
       _fx_make_Ta2S(&slit_79, &slit_80, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 38) {
-      fx_str_t slit_81 = FX_MAKE_STR("VAL");
-      fx_str_t slit_82 = FX_MAKE_STR("val");
+      fx_str_t slit_81 = FX_MAKE_STR("TYPE");
+      fx_str_t slit_82 = FX_MAKE_STR("type");
       _fx_make_Ta2S(&slit_81, &slit_82, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 39) {
-      fx_str_t slit_83 = FX_MAKE_STR("VAR");
-      fx_str_t slit_84 = FX_MAKE_STR("var");
+      fx_str_t slit_83 = FX_MAKE_STR("VAL");
+      fx_str_t slit_84 = FX_MAKE_STR("val");
       _fx_make_Ta2S(&slit_83, &slit_84, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 40) {
-      fx_str_t slit_85 = FX_MAKE_STR("WHEN");
-      fx_str_t slit_86 = FX_MAKE_STR("when");
+      fx_str_t slit_85 = FX_MAKE_STR("VAR");
+      fx_str_t slit_86 = FX_MAKE_STR("var");
       _fx_make_Ta2S(&slit_85, &slit_86, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 41) {
-      fx_str_t slit_87 = FX_MAKE_STR("WITH");
-      fx_str_t slit_88 = FX_MAKE_STR("with");
+      fx_str_t slit_87 = FX_MAKE_STR("WHEN");
+      fx_str_t slit_88 = FX_MAKE_STR("when");
       _fx_make_Ta2S(&slit_87, &slit_88, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 42) {
+      fx_str_t slit_89 = FX_MAKE_STR("WITH");
+      fx_str_t slit_90 = FX_MAKE_STR("with");
+      _fx_make_Ta2S(&slit_89, &slit_90, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 43) {
       fx_str_t v_9 = {0};
       if (t_0->u.WHILE) {
-         fx_str_t slit_89 = FX_MAKE_STR("WHILE"); fx_copy_str(&slit_89, &v_9);
+         fx_str_t slit_91 = FX_MAKE_STR("WHILE"); fx_copy_str(&slit_91, &v_9);
       }
       else {
-         fx_str_t slit_90 = FX_MAKE_STR("WHILE"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_90, &v_9, 0), _fx_catch_6);
+         fx_str_t slit_92 = FX_MAKE_STR("WHILE"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_92, &v_9, 0), _fx_catch_6);
       }
-      fx_str_t slit_91 = FX_MAKE_STR("while");
-      _fx_make_Ta2S(&v_9, &slit_91, fx_result);
+      fx_str_t slit_93 = FX_MAKE_STR("while");
+      _fx_make_Ta2S(&v_9, &slit_93, fx_result);
 
    _fx_catch_6: ;
       FX_FREE_STR(&v_9);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 43) {
-      fx_str_t slit_92 = FX_MAKE_STR("UNZIP");
-      fx_str_t slit_93 = FX_MAKE_STR("@unzip");
-      _fx_make_Ta2S(&slit_92, &slit_93, fx_result);
+   if (tag_0 == 44) {
+      fx_str_t slit_94 = FX_MAKE_STR("UNZIP");
+      fx_str_t slit_95 = FX_MAKE_STR("@unzip");
+      _fx_make_Ta2S(&slit_94, &slit_95, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 44) {
+   if (tag_0 == 45) {
       fx_str_t v_10 = {0};
       if (t_0->u.LPAREN) {
-         fx_str_t slit_94 = FX_MAKE_STR("LPAREN"); fx_copy_str(&slit_94, &v_10);
+         fx_str_t slit_96 = FX_MAKE_STR("LPAREN"); fx_copy_str(&slit_96, &v_10);
       }
       else {
-         fx_str_t slit_95 = FX_MAKE_STR("LPAREN"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_95, &v_10, 0), _fx_catch_7);
+         fx_str_t slit_97 = FX_MAKE_STR("LPAREN"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_97, &v_10, 0), _fx_catch_7);
       }
-      fx_str_t slit_96 = FX_MAKE_STR("(");
-      _fx_make_Ta2S(&v_10, &slit_96, fx_result);
+      fx_str_t slit_98 = FX_MAKE_STR("(");
+      _fx_make_Ta2S(&v_10, &slit_98, fx_result);
 
    _fx_catch_7: ;
       FX_FREE_STR(&v_10);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 45) {
-      fx_str_t slit_97 = FX_MAKE_STR("STR_INTERP_LPAREN");
-      fx_str_t slit_98 = FX_MAKE_STR("<str_interp>{");
-      _fx_make_Ta2S(&slit_97, &slit_98, fx_result);
-      goto _fx_endmatch_0;
-   }
    if (tag_0 == 46) {
-      fx_str_t slit_99 = FX_MAKE_STR("RPAREN");
-      fx_str_t slit_100 = FX_MAKE_STR(")");
+      fx_str_t slit_99 = FX_MAKE_STR("STR_INTERP_LPAREN");
+      fx_str_t slit_100 = FX_MAKE_STR("<str_interp>{");
       _fx_make_Ta2S(&slit_99, &slit_100, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 47) {
+      fx_str_t slit_101 = FX_MAKE_STR("RPAREN");
+      fx_str_t slit_102 = FX_MAKE_STR(")");
+      _fx_make_Ta2S(&slit_101, &slit_102, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 48) {
       fx_str_t v_11 = {0};
       if (t_0->u.LSQUARE) {
-         fx_str_t slit_101 = FX_MAKE_STR("LSQUARE"); fx_copy_str(&slit_101, &v_11);
+         fx_str_t slit_103 = FX_MAKE_STR("LSQUARE"); fx_copy_str(&slit_103, &v_11);
       }
       else {
-         fx_str_t slit_102 = FX_MAKE_STR("LSQUARE"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_102, &v_11, 0), _fx_catch_8);
+         fx_str_t slit_104 = FX_MAKE_STR("LSQUARE"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_104, &v_11, 0), _fx_catch_8);
       }
-      fx_str_t slit_103 = FX_MAKE_STR("[");
-      _fx_make_Ta2S(&v_11, &slit_103, fx_result);
+      fx_str_t slit_105 = FX_MAKE_STR("[");
+      _fx_make_Ta2S(&v_11, &slit_105, fx_result);
 
    _fx_catch_8: ;
       FX_FREE_STR(&v_11);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 48) {
-      fx_str_t slit_104 = FX_MAKE_STR("RSQUARE");
-      fx_str_t slit_105 = FX_MAKE_STR("]");
-      _fx_make_Ta2S(&slit_104, &slit_105, fx_result);
-      goto _fx_endmatch_0;
-   }
    if (tag_0 == 49) {
-      fx_str_t slit_106 = FX_MAKE_STR("LBRACE");
-      fx_str_t slit_107 = FX_MAKE_STR("{");
+      fx_str_t slit_106 = FX_MAKE_STR("RSQUARE");
+      fx_str_t slit_107 = FX_MAKE_STR("]");
       _fx_make_Ta2S(&slit_106, &slit_107, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 50) {
-      fx_str_t slit_108 = FX_MAKE_STR("RBRACE");
-      fx_str_t slit_109 = FX_MAKE_STR("}");
+      fx_str_t slit_108 = FX_MAKE_STR("LBRACE");
+      fx_str_t slit_109 = FX_MAKE_STR("{");
       _fx_make_Ta2S(&slit_108, &slit_109, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 51) {
-      fx_str_t slit_110 = FX_MAKE_STR("COMMA");
-      fx_str_t slit_111 = FX_MAKE_STR(",");
+      fx_str_t slit_110 = FX_MAKE_STR("RBRACE");
+      fx_str_t slit_111 = FX_MAKE_STR("}");
       _fx_make_Ta2S(&slit_110, &slit_111, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 52) {
-      fx_str_t slit_112 = FX_MAKE_STR("DOT");
-      fx_str_t slit_113 = FX_MAKE_STR(".");
+      fx_str_t slit_112 = FX_MAKE_STR("COMMA");
+      fx_str_t slit_113 = FX_MAKE_STR(",");
       _fx_make_Ta2S(&slit_112, &slit_113, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 53) {
-      fx_str_t slit_114 = FX_MAKE_STR("SEMICOLON");
-      fx_str_t slit_115 = FX_MAKE_STR(";");
+      fx_str_t slit_114 = FX_MAKE_STR("DOT");
+      fx_str_t slit_115 = FX_MAKE_STR(".");
       _fx_make_Ta2S(&slit_114, &slit_115, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 54) {
-      fx_str_t slit_116 = FX_MAKE_STR("COLON");
-      fx_str_t slit_117 = FX_MAKE_STR(":");
+      fx_str_t slit_116 = FX_MAKE_STR("SEMICOLON");
+      fx_str_t slit_117 = FX_MAKE_STR(";");
       _fx_make_Ta2S(&slit_116, &slit_117, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 55) {
-      fx_str_t slit_118 = FX_MAKE_STR("BAR");
-      fx_str_t slit_119 = FX_MAKE_STR("|");
+      fx_str_t slit_118 = FX_MAKE_STR("COLON");
+      fx_str_t slit_119 = FX_MAKE_STR(":");
       _fx_make_Ta2S(&slit_118, &slit_119, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 56) {
-      fx_str_t slit_120 = FX_MAKE_STR("CONS");
-      fx_str_t slit_121 = FX_MAKE_STR("::");
+      fx_str_t slit_120 = FX_MAKE_STR("BAR");
+      fx_str_t slit_121 = FX_MAKE_STR("|");
       _fx_make_Ta2S(&slit_120, &slit_121, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 57) {
-      fx_str_t slit_122 = FX_MAKE_STR("CAST");
-      fx_str_t slit_123 = FX_MAKE_STR(":>");
+      fx_str_t slit_122 = FX_MAKE_STR("CONS");
+      fx_str_t slit_123 = FX_MAKE_STR("::");
       _fx_make_Ta2S(&slit_122, &slit_123, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 58) {
+      fx_str_t slit_124 = FX_MAKE_STR("CAST");
+      fx_str_t slit_125 = FX_MAKE_STR(":>");
+      _fx_make_Ta2S(&slit_124, &slit_125, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 59) {
       fx_str_t v_12 = {0};
       if (t_0->u.BACKSLASH) {
-         fx_str_t slit_124 = FX_MAKE_STR("BACKSLASH"); fx_copy_str(&slit_124, &v_12);
+         fx_str_t slit_126 = FX_MAKE_STR("BACKSLASH"); fx_copy_str(&slit_126, &v_12);
       }
       else {
-         fx_str_t slit_125 = FX_MAKE_STR("BACKSLASH");
-         FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_125, &v_12, 0), _fx_catch_9);
+         fx_str_t slit_127 = FX_MAKE_STR("BACKSLASH");
+         FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_127, &v_12, 0), _fx_catch_9);
       }
-      fx_str_t slit_126 = FX_MAKE_STR("\\");
-      _fx_make_Ta2S(&v_12, &slit_126, fx_result);
+      fx_str_t slit_128 = FX_MAKE_STR("\\");
+      _fx_make_Ta2S(&v_12, &slit_128, fx_result);
 
    _fx_catch_9: ;
       FX_FREE_STR(&v_12);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 61) {
-      fx_str_t slit_127 = FX_MAKE_STR("ARROW");
-      fx_str_t slit_128 = FX_MAKE_STR("->");
-      _fx_make_Ta2S(&slit_127, &slit_128, fx_result);
-      goto _fx_endmatch_0;
-   }
-   if (tag_0 == 59) {
-      fx_str_t slit_129 = FX_MAKE_STR("BACK_ARROW");
-      fx_str_t slit_130 = FX_MAKE_STR("<-");
+   if (tag_0 == 62) {
+      fx_str_t slit_129 = FX_MAKE_STR("ARROW");
+      fx_str_t slit_130 = FX_MAKE_STR("->");
       _fx_make_Ta2S(&slit_129, &slit_130, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 60) {
-      fx_str_t slit_131 = FX_MAKE_STR("DOUBLE_ARROW");
-      fx_str_t slit_132 = FX_MAKE_STR("=>");
+      fx_str_t slit_131 = FX_MAKE_STR("BACK_ARROW");
+      fx_str_t slit_132 = FX_MAKE_STR("<-");
       _fx_make_Ta2S(&slit_131, &slit_132, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 62) {
-      fx_str_t slit_133 = FX_MAKE_STR("QUESTION");
-      fx_str_t slit_134 = FX_MAKE_STR("?");
+   if (tag_0 == 61) {
+      fx_str_t slit_133 = FX_MAKE_STR("DOUBLE_ARROW");
+      fx_str_t slit_134 = FX_MAKE_STR("=>");
       _fx_make_Ta2S(&slit_133, &slit_134, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 63) {
-      fx_str_t slit_135 = FX_MAKE_STR("EOF");
-      fx_str_t slit_136 = FX_MAKE_STR("<EOF>");
+      fx_str_t slit_135 = FX_MAKE_STR("QUESTION");
+      fx_str_t slit_136 = FX_MAKE_STR("?");
       _fx_make_Ta2S(&slit_135, &slit_136, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 64) {
+      fx_str_t slit_137 = FX_MAKE_STR("EOF");
+      fx_str_t slit_138 = FX_MAKE_STR("<EOF>");
+      _fx_make_Ta2S(&slit_137, &slit_138, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 65) {
       fx_str_t v_13 = {0};
       if (t_0->u.MINUS) {
-         fx_str_t slit_137 = FX_MAKE_STR("MINUS"); fx_copy_str(&slit_137, &v_13);
+         fx_str_t slit_139 = FX_MAKE_STR("MINUS"); fx_copy_str(&slit_139, &v_13);
       }
       else {
-         fx_str_t slit_138 = FX_MAKE_STR("MINUS"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_138, &v_13, 0), _fx_catch_10);
+         fx_str_t slit_140 = FX_MAKE_STR("MINUS"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_140, &v_13, 0), _fx_catch_10);
       }
-      fx_str_t slit_139 = FX_MAKE_STR("-");
-      _fx_make_Ta2S(&v_13, &slit_139, fx_result);
+      fx_str_t slit_141 = FX_MAKE_STR("-");
+      _fx_make_Ta2S(&v_13, &slit_141, fx_result);
 
    _fx_catch_10: ;
       FX_FREE_STR(&v_13);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 65) {
+   if (tag_0 == 66) {
       fx_str_t v_14 = {0};
       if (t_0->u.PLUS) {
-         fx_str_t slit_140 = FX_MAKE_STR("PLUS"); fx_copy_str(&slit_140, &v_14);
+         fx_str_t slit_142 = FX_MAKE_STR("PLUS"); fx_copy_str(&slit_142, &v_14);
       }
       else {
-         fx_str_t slit_141 = FX_MAKE_STR("PLUS"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_141, &v_14, 0), _fx_catch_11);
+         fx_str_t slit_143 = FX_MAKE_STR("PLUS"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_143, &v_14, 0), _fx_catch_11);
       }
-      fx_str_t slit_142 = FX_MAKE_STR("+");
-      _fx_make_Ta2S(&v_14, &slit_142, fx_result);
+      fx_str_t slit_144 = FX_MAKE_STR("+");
+      _fx_make_Ta2S(&v_14, &slit_144, fx_result);
 
    _fx_catch_11: ;
       FX_FREE_STR(&v_14);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 66) {
+   if (tag_0 == 67) {
       fx_str_t v_15 = {0};
       if (t_0->u.STAR) {
-         fx_str_t slit_143 = FX_MAKE_STR("STAR"); fx_copy_str(&slit_143, &v_15);
+         fx_str_t slit_145 = FX_MAKE_STR("STAR"); fx_copy_str(&slit_145, &v_15);
       }
       else {
-         fx_str_t slit_144 = FX_MAKE_STR("STAR"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_144, &v_15, 0), _fx_catch_12);
+         fx_str_t slit_146 = FX_MAKE_STR("STAR"); FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_146, &v_15, 0), _fx_catch_12);
       }
-      fx_str_t slit_145 = FX_MAKE_STR("*");
-      _fx_make_Ta2S(&v_15, &slit_145, fx_result);
+      fx_str_t slit_147 = FX_MAKE_STR("*");
+      _fx_make_Ta2S(&v_15, &slit_147, fx_result);
 
    _fx_catch_12: ;
       FX_FREE_STR(&v_15);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 67) {
-      fx_str_t slit_146 = FX_MAKE_STR("SLASH");
-      fx_str_t slit_147 = FX_MAKE_STR("/");
-      _fx_make_Ta2S(&slit_146, &slit_147, fx_result);
-      goto _fx_endmatch_0;
-   }
-   if (tag_0 == 69) {
-      fx_str_t slit_148 = FX_MAKE_STR("PERCENT");
-      fx_str_t slit_149 = FX_MAKE_STR("%");
+   if (tag_0 == 68) {
+      fx_str_t slit_148 = FX_MAKE_STR("SLASH");
+      fx_str_t slit_149 = FX_MAKE_STR("/");
       _fx_make_Ta2S(&slit_148, &slit_149, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 70) {
-      fx_str_t slit_150 = FX_MAKE_STR("POWER");
-      fx_str_t slit_151 = FX_MAKE_STR("**");
+      fx_str_t slit_150 = FX_MAKE_STR("PERCENT");
+      fx_str_t slit_151 = FX_MAKE_STR("%");
       _fx_make_Ta2S(&slit_150, &slit_151, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 72) {
+   if (tag_0 == 71) {
+      fx_str_t slit_152 = FX_MAKE_STR("POWER");
+      fx_str_t slit_153 = FX_MAKE_STR("**");
+      _fx_make_Ta2S(&slit_152, &slit_153, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 73) {
       fx_str_t v_16 = {0};
       if (t_0->u.DOT_PLUS) {
-         fx_str_t slit_152 = FX_MAKE_STR("DOT_PLUS"); fx_copy_str(&slit_152, &v_16);
+         fx_str_t slit_154 = FX_MAKE_STR("DOT_PLUS"); fx_copy_str(&slit_154, &v_16);
       }
       else {
-         fx_str_t slit_153 = FX_MAKE_STR("DOT_PLUS");
-         FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_153, &v_16, 0), _fx_catch_13);
+         fx_str_t slit_155 = FX_MAKE_STR("DOT_PLUS");
+         FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_155, &v_16, 0), _fx_catch_13);
       }
-      fx_str_t slit_154 = FX_MAKE_STR(".+");
-      _fx_make_Ta2S(&v_16, &slit_154, fx_result);
+      fx_str_t slit_156 = FX_MAKE_STR(".+");
+      _fx_make_Ta2S(&v_16, &slit_156, fx_result);
 
    _fx_catch_13: ;
       FX_FREE_STR(&v_16);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 73) {
+   if (tag_0 == 74) {
       fx_str_t v_17 = {0};
       if (t_0->u.DOT_MINUS) {
-         fx_str_t slit_155 = FX_MAKE_STR("DOT_MINUS"); fx_copy_str(&slit_155, &v_17);
+         fx_str_t slit_157 = FX_MAKE_STR("DOT_MINUS"); fx_copy_str(&slit_157, &v_17);
       }
       else {
-         fx_str_t slit_156 = FX_MAKE_STR("DOT_MINUS");
-         FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_156, &v_17, 0), _fx_catch_14);
+         fx_str_t slit_158 = FX_MAKE_STR("DOT_MINUS");
+         FX_CALL(_fx_M6StringFM12decapitalizeS1S(&slit_158, &v_17, 0), _fx_catch_14);
       }
-      fx_str_t slit_157 = FX_MAKE_STR(".-");
-      _fx_make_Ta2S(&v_17, &slit_157, fx_result);
+      fx_str_t slit_159 = FX_MAKE_STR(".-");
+      _fx_make_Ta2S(&v_17, &slit_159, fx_result);
 
    _fx_catch_14: ;
       FX_FREE_STR(&v_17);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 71) {
-      fx_str_t slit_158 = FX_MAKE_STR("DOT_STAR");
-      fx_str_t slit_159 = FX_MAKE_STR(".*");
-      _fx_make_Ta2S(&slit_158, &slit_159, fx_result);
-      goto _fx_endmatch_0;
-   }
-   if (tag_0 == 74) {
-      fx_str_t slit_160 = FX_MAKE_STR("DOT_SLASH");
-      fx_str_t slit_161 = FX_MAKE_STR("./");
+   if (tag_0 == 72) {
+      fx_str_t slit_160 = FX_MAKE_STR("DOT_STAR");
+      fx_str_t slit_161 = FX_MAKE_STR(".*");
       _fx_make_Ta2S(&slit_160, &slit_161, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 75) {
-      fx_str_t slit_162 = FX_MAKE_STR("DOT_PERCENT");
-      fx_str_t slit_163 = FX_MAKE_STR(".%");
+      fx_str_t slit_162 = FX_MAKE_STR("DOT_SLASH");
+      fx_str_t slit_163 = FX_MAKE_STR("./");
       _fx_make_Ta2S(&slit_162, &slit_163, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 76) {
-      fx_str_t slit_164 = FX_MAKE_STR("DOT_POWER");
-      fx_str_t slit_165 = FX_MAKE_STR(".**");
+      fx_str_t slit_164 = FX_MAKE_STR("DOT_PERCENT");
+      fx_str_t slit_165 = FX_MAKE_STR(".%");
       _fx_make_Ta2S(&slit_164, &slit_165, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 78) {
-      fx_str_t slit_166 = FX_MAKE_STR("SHIFT_LEFT");
-      fx_str_t slit_167 = FX_MAKE_STR("<<");
+   if (tag_0 == 77) {
+      fx_str_t slit_166 = FX_MAKE_STR("DOT_POWER");
+      fx_str_t slit_167 = FX_MAKE_STR(".**");
       _fx_make_Ta2S(&slit_166, &slit_167, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 77) {
-      fx_str_t slit_168 = FX_MAKE_STR("SHIFT_RIGHT");
-      fx_str_t slit_169 = FX_MAKE_STR(">>");
+   if (tag_0 == 79) {
+      fx_str_t slit_168 = FX_MAKE_STR("SHIFT_LEFT");
+      fx_str_t slit_169 = FX_MAKE_STR("<<");
       _fx_make_Ta2S(&slit_168, &slit_169, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 79) {
-      fx_str_t slit_170 = FX_MAKE_STR("BITWISE_AND");
-      fx_str_t slit_171 = FX_MAKE_STR("&");
+   if (tag_0 == 78) {
+      fx_str_t slit_170 = FX_MAKE_STR("SHIFT_RIGHT");
+      fx_str_t slit_171 = FX_MAKE_STR(">>");
       _fx_make_Ta2S(&slit_170, &slit_171, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 80) {
-      fx_str_t slit_172 = FX_MAKE_STR("BITWISE_XOR");
-      fx_str_t slit_173 = FX_MAKE_STR("^");
+      fx_str_t slit_172 = FX_MAKE_STR("BITWISE_AND");
+      fx_str_t slit_173 = FX_MAKE_STR("&");
       _fx_make_Ta2S(&slit_172, &slit_173, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 81) {
-      fx_str_t slit_174 = FX_MAKE_STR("BITWISE_OR");
-      fx_str_t slit_175 = FX_MAKE_STR("|");
+      fx_str_t slit_174 = FX_MAKE_STR("BITWISE_XOR");
+      fx_str_t slit_175 = FX_MAKE_STR("^");
       _fx_make_Ta2S(&slit_174, &slit_175, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 82) {
-      fx_str_t slit_176 = FX_MAKE_STR("TILDE");
-      fx_str_t slit_177 = FX_MAKE_STR("~");
+      fx_str_t slit_176 = FX_MAKE_STR("BITWISE_OR");
+      fx_str_t slit_177 = FX_MAKE_STR("|");
       _fx_make_Ta2S(&slit_176, &slit_177, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 83) {
-      fx_str_t slit_178 = FX_MAKE_STR("LOGICAL_AND");
-      fx_str_t slit_179 = FX_MAKE_STR("&&");
+      fx_str_t slit_178 = FX_MAKE_STR("TILDE");
+      fx_str_t slit_179 = FX_MAKE_STR("~");
       _fx_make_Ta2S(&slit_178, &slit_179, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 84) {
-      fx_str_t slit_180 = FX_MAKE_STR("LOGICAL_OR");
-      fx_str_t slit_181 = FX_MAKE_STR("||");
+      fx_str_t slit_180 = FX_MAKE_STR("LOGICAL_AND");
+      fx_str_t slit_181 = FX_MAKE_STR("&&");
       _fx_make_Ta2S(&slit_180, &slit_181, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 85) {
-      fx_str_t slit_182 = FX_MAKE_STR("LOGICAL_NOT");
-      fx_str_t slit_183 = FX_MAKE_STR("!");
+      fx_str_t slit_182 = FX_MAKE_STR("LOGICAL_OR");
+      fx_str_t slit_183 = FX_MAKE_STR("||");
       _fx_make_Ta2S(&slit_182, &slit_183, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 86) {
-      fx_str_t slit_184 = FX_MAKE_STR("EQUAL");
-      fx_str_t slit_185 = FX_MAKE_STR("=");
+      fx_str_t slit_184 = FX_MAKE_STR("LOGICAL_NOT");
+      fx_str_t slit_185 = FX_MAKE_STR("!");
       _fx_make_Ta2S(&slit_184, &slit_185, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 87) {
-      fx_str_t slit_186 = FX_MAKE_STR("DOT_EQUAL");
-      fx_str_t slit_187 = FX_MAKE_STR(".=");
+      fx_str_t slit_186 = FX_MAKE_STR("EQUAL");
+      fx_str_t slit_187 = FX_MAKE_STR("=");
       _fx_make_Ta2S(&slit_186, &slit_187, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 88) {
+      fx_str_t slit_188 = FX_MAKE_STR("DOT_EQUAL");
+      fx_str_t slit_189 = FX_MAKE_STR(".=");
+      _fx_make_Ta2S(&slit_188, &slit_189, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 89) {
       fx_str_t v_18 = {0};
       fx_str_t v_19 = {0};
       fx_str_t v_20 = {0};
       fx_str_t v_21 = {0};
       _fx_N13Ast__binary_t o_0 = t_0->u.AUG_BINOP;
       FX_CALL(_fx_M3AstFM6stringS1N13Ast__binary_t(o_0, &v_18, 0), _fx_catch_15);
-      fx_str_t slit_188 = FX_MAKE_STR("AUG_BINOP(");
-      fx_str_t slit_189 = FX_MAKE_STR(")");
+      fx_str_t slit_190 = FX_MAKE_STR("AUG_BINOP(");
+      fx_str_t slit_191 = FX_MAKE_STR(")");
       {
-         const fx_str_t strs_3[] = { slit_188, v_18, slit_189 };
+         const fx_str_t strs_3[] = { slit_190, v_18, slit_191 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_19), _fx_catch_15);
       }
       FX_CALL(_fx_M3AstFM6stringS1N13Ast__binary_t(o_0, &v_20, 0), _fx_catch_15);
-      fx_str_t slit_190 = FX_MAKE_STR("=");
+      fx_str_t slit_192 = FX_MAKE_STR("=");
       {
-         const fx_str_t strs_4[] = { v_20, slit_190 };
+         const fx_str_t strs_4[] = { v_20, slit_192 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_4, 2, &v_21), _fx_catch_15);
       }
       _fx_make_Ta2S(&v_19, &v_21, fx_result);
@@ -2563,22 +2573,22 @@ FX_EXTERN_C int _fx_M5LexerFM7tok2strTa2S1N14Lexer__token_t(
       FX_FREE_STR(&v_18);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 89) {
-      fx_str_t slit_191 = FX_MAKE_STR("SPACESHIP");
-      fx_str_t slit_192 = FX_MAKE_STR("<=>");
-      _fx_make_Ta2S(&slit_191, &slit_192, fx_result);
+   if (tag_0 == 90) {
+      fx_str_t slit_193 = FX_MAKE_STR("SPACESHIP");
+      fx_str_t slit_194 = FX_MAKE_STR("<=>");
+      _fx_make_Ta2S(&slit_193, &slit_194, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 90) {
+   if (tag_0 == 91) {
       fx_str_t v_22 = {0};
       fx_str_t v_23 = {0};
       fx_str_t v_24 = {0};
       _fx_N12Ast__cmpop_t* c_0 = &t_0->u.CMP;
       FX_CALL(_fx_M3AstFM6stringS1N12Ast__cmpop_t(c_0, &v_22, 0), _fx_catch_16);
-      fx_str_t slit_193 = FX_MAKE_STR("CMP(");
-      fx_str_t slit_194 = FX_MAKE_STR(")");
+      fx_str_t slit_195 = FX_MAKE_STR("CMP(");
+      fx_str_t slit_196 = FX_MAKE_STR(")");
       {
-         const fx_str_t strs_5[] = { slit_193, v_22, slit_194 };
+         const fx_str_t strs_5[] = { slit_195, v_22, slit_196 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_5, 3, &v_23), _fx_catch_16);
       }
       FX_CALL(_fx_M3AstFM6stringS1N12Ast__cmpop_t(c_0, &v_24, 0), _fx_catch_16);
@@ -2590,29 +2600,29 @@ FX_EXTERN_C int _fx_M5LexerFM7tok2strTa2S1N14Lexer__token_t(
       FX_FREE_STR(&v_22);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 91) {
-      fx_str_t slit_195 = FX_MAKE_STR("DOT_SPACESHIP");
-      fx_str_t slit_196 = FX_MAKE_STR(".<=>");
-      _fx_make_Ta2S(&slit_195, &slit_196, fx_result);
+   if (tag_0 == 92) {
+      fx_str_t slit_197 = FX_MAKE_STR("DOT_SPACESHIP");
+      fx_str_t slit_198 = FX_MAKE_STR(".<=>");
+      _fx_make_Ta2S(&slit_197, &slit_198, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 92) {
+   if (tag_0 == 93) {
       fx_str_t v_25 = {0};
       fx_str_t v_26 = {0};
       fx_str_t v_27 = {0};
       fx_str_t v_28 = {0};
       _fx_N12Ast__cmpop_t* c_1 = &t_0->u.DOT_CMP;
       FX_CALL(_fx_M3AstFM6stringS1N12Ast__cmpop_t(c_1, &v_25, 0), _fx_catch_17);
-      fx_str_t slit_197 = FX_MAKE_STR("DOT_CMP(");
-      fx_str_t slit_198 = FX_MAKE_STR(")");
+      fx_str_t slit_199 = FX_MAKE_STR("DOT_CMP(");
+      fx_str_t slit_200 = FX_MAKE_STR(")");
       {
-         const fx_str_t strs_6[] = { slit_197, v_25, slit_198 };
+         const fx_str_t strs_6[] = { slit_199, v_25, slit_200 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_6, 3, &v_26), _fx_catch_17);
       }
       FX_CALL(_fx_M3AstFM6stringS1N12Ast__cmpop_t(c_1, &v_27, 0), _fx_catch_17);
-      fx_str_t slit_199 = FX_MAKE_STR(".");
+      fx_str_t slit_201 = FX_MAKE_STR(".");
       {
-         const fx_str_t strs_7[] = { slit_199, v_27 };
+         const fx_str_t strs_7[] = { slit_201, v_27 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_7, 2, &v_28), _fx_catch_17);
       }
       _fx_make_Ta2S(&v_26, &v_28, fx_result);
@@ -2624,19 +2634,19 @@ FX_EXTERN_C int _fx_M5LexerFM7tok2strTa2S1N14Lexer__token_t(
       FX_FREE_STR(&v_25);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 93) {
-      fx_str_t slit_200 = FX_MAKE_STR("SAME");
-      fx_str_t slit_201 = FX_MAKE_STR("===");
-      _fx_make_Ta2S(&slit_200, &slit_201, fx_result);
+   if (tag_0 == 94) {
+      fx_str_t slit_202 = FX_MAKE_STR("SAME");
+      fx_str_t slit_203 = FX_MAKE_STR("===");
+      _fx_make_Ta2S(&slit_202, &slit_203, fx_result);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 94) {
+   if (tag_0 == 95) {
       fx_str_t r_0 = {0};
-      fx_str_t slit_202 = FX_MAKE_STR("<reserved(");
+      fx_str_t slit_204 = FX_MAKE_STR("<reserved(");
       fx_str_t* s_2 = &t_0->u.RESERVED;
-      fx_str_t slit_203 = FX_MAKE_STR(")>");
+      fx_str_t slit_205 = FX_MAKE_STR(")>");
       {
-         const fx_str_t strs_8[] = { slit_202, *s_2, slit_203 };
+         const fx_str_t strs_8[] = { slit_204, *s_2, slit_205 };
          FX_CALL(fx_strjoin(0, 0, 0, strs_8, 3, &r_0), _fx_catch_18);
       }
       _fx_make_Ta2S(&r_0, &r_0, fx_result);
@@ -2645,64 +2655,64 @@ FX_EXTERN_C int _fx_M5LexerFM7tok2strTa2S1N14Lexer__token_t(
       FX_FREE_STR(&r_0);
       goto _fx_endmatch_0;
    }
-   if (tag_0 == 95) {
-      fx_str_t slit_204 = FX_MAKE_STR("PP_IF");
-      fx_str_t slit_205 = FX_MAKE_STR("@IF");
-      _fx_make_Ta2S(&slit_204, &slit_205, fx_result);
-      goto _fx_endmatch_0;
-   }
    if (tag_0 == 96) {
-      fx_str_t slit_206 = FX_MAKE_STR("PP_IFDEF");
-      fx_str_t slit_207 = FX_MAKE_STR("@IFDEF");
+      fx_str_t slit_206 = FX_MAKE_STR("PP_IF");
+      fx_str_t slit_207 = FX_MAKE_STR("@IF");
       _fx_make_Ta2S(&slit_206, &slit_207, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 97) {
-      fx_str_t slit_208 = FX_MAKE_STR("PP_IFNDEF");
-      fx_str_t slit_209 = FX_MAKE_STR("@IFNDEF");
+      fx_str_t slit_208 = FX_MAKE_STR("PP_IFDEF");
+      fx_str_t slit_209 = FX_MAKE_STR("@IFDEF");
       _fx_make_Ta2S(&slit_208, &slit_209, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 98) {
-      fx_str_t slit_210 = FX_MAKE_STR("PP_ELIF");
-      fx_str_t slit_211 = FX_MAKE_STR("@ELIF");
+      fx_str_t slit_210 = FX_MAKE_STR("PP_IFNDEF");
+      fx_str_t slit_211 = FX_MAKE_STR("@IFNDEF");
       _fx_make_Ta2S(&slit_210, &slit_211, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 99) {
-      fx_str_t slit_212 = FX_MAKE_STR("PP_ELSE");
-      fx_str_t slit_213 = FX_MAKE_STR("@ELSE");
+      fx_str_t slit_212 = FX_MAKE_STR("PP_ELIF");
+      fx_str_t slit_213 = FX_MAKE_STR("@ELIF");
       _fx_make_Ta2S(&slit_212, &slit_213, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 100) {
-      fx_str_t slit_214 = FX_MAKE_STR("PP_ENDIF");
-      fx_str_t slit_215 = FX_MAKE_STR("@ENDIF");
+      fx_str_t slit_214 = FX_MAKE_STR("PP_ELSE");
+      fx_str_t slit_215 = FX_MAKE_STR("@ELSE");
       _fx_make_Ta2S(&slit_214, &slit_215, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 101) {
-      fx_str_t slit_216 = FX_MAKE_STR("PP_DEFINE");
-      fx_str_t slit_217 = FX_MAKE_STR("@DEFINE");
+      fx_str_t slit_216 = FX_MAKE_STR("PP_ENDIF");
+      fx_str_t slit_217 = FX_MAKE_STR("@ENDIF");
       _fx_make_Ta2S(&slit_216, &slit_217, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 102) {
-      fx_str_t slit_218 = FX_MAKE_STR("PP_UNDEF");
-      fx_str_t slit_219 = FX_MAKE_STR("@UNDEF");
+      fx_str_t slit_218 = FX_MAKE_STR("PP_DEFINE");
+      fx_str_t slit_219 = FX_MAKE_STR("@DEFINE");
       _fx_make_Ta2S(&slit_218, &slit_219, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 103) {
-      fx_str_t slit_220 = FX_MAKE_STR("PP_ERROR");
-      fx_str_t slit_221 = FX_MAKE_STR("@ERROR");
+      fx_str_t slit_220 = FX_MAKE_STR("PP_UNDEF");
+      fx_str_t slit_221 = FX_MAKE_STR("@UNDEF");
       _fx_make_Ta2S(&slit_220, &slit_221, fx_result);
       goto _fx_endmatch_0;
    }
    if (tag_0 == 104) {
-      fx_str_t slit_222 = FX_MAKE_STR("PP_WARNING");
-      fx_str_t slit_223 = FX_MAKE_STR("@WARNING");
+      fx_str_t slit_222 = FX_MAKE_STR("PP_ERROR");
+      fx_str_t slit_223 = FX_MAKE_STR("@ERROR");
       _fx_make_Ta2S(&slit_222, &slit_223, fx_result);
+      goto _fx_endmatch_0;
+   }
+   if (tag_0 == 105) {
+      fx_str_t slit_224 = FX_MAKE_STR("PP_WARNING");
+      fx_str_t slit_225 = FX_MAKE_STR("@WARNING");
+      _fx_make_Ta2S(&slit_224, &slit_225, fx_result);
       goto _fx_endmatch_0;
    }
    FX_FAST_THROW(FX_EXN_NoMatchError, _fx_cleanup);
@@ -3464,8 +3474,6 @@ FX_EXTERN_C int _fx_M5LexerFM10make_lexerFPT3LT2N14Lexer__token_tTa2iTa2iTa2i01N
    _fx_rLT2N14Lexer__token_tTa2i paren_stack_ref_0 = 0;
    _fx_ri pos_ref_0 = 0;
    _fx_rB prev_dot_ref_0 = 0;
-   _fx_ri backquote_pos_ref_0 = 0;
-   _fx_rTa2i backquote_loc_ref_0 = 0;
    _fx_rNt6option1R8format_t fmt_ref_0 = 0;
    _fx_rB expect_neg_number_ref_0 = 0;
    int fx_status = 0;
@@ -3473,14 +3481,10 @@ FX_EXTERN_C int _fx_M5LexerFM10make_lexerFPT3LT2N14Lexer__token_tTa2iTa2iTa2i01N
    FX_CALL(_fx_make_rLT2N14Lexer__token_tTa2i(0, &paren_stack_ref_0), _fx_cleanup);
    FX_CALL(_fx_make_ri(strm_0->u.stream_t.t2, &pos_ref_0), _fx_cleanup);
    FX_CALL(_fx_make_rB(false, &prev_dot_ref_0), _fx_cleanup);
-   FX_CALL(_fx_make_ri(-1, &backquote_pos_ref_0), _fx_cleanup);
-   _fx_Ta2i backquote_loc_arg_0 = { 0, 0 };
-   FX_CALL(_fx_make_rTa2i(&backquote_loc_arg_0, &backquote_loc_ref_0), _fx_cleanup);
    FX_CALL(_fx_make_rNt6option1R8format_t(&_fx_g13Lexer__None1_, &fmt_ref_0), _fx_cleanup);
    FX_CALL(_fx_make_rB(false, &expect_neg_number_ref_0), _fx_cleanup);
-   _fx_M5LexerFM7make_fpFPT3LT2N14Lexer__token_tTa2iTa2iTa2i09rTa2irirBrNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
-      backquote_loc_ref_0, backquote_pos_ref_0, expect_neg_number_ref_0, fmt_ref_0, new_exp_ref_0, paren_stack_ref_0, pos_ref_0,
-      prev_dot_ref_0, strm_0, fx_result);
+   _fx_M5LexerFM7make_fpFPT3LT2N14Lexer__token_tTa2iTa2iTa2i07rBrNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
+      expect_neg_number_ref_0, fmt_ref_0, new_exp_ref_0, paren_stack_ref_0, pos_ref_0, prev_dot_ref_0, strm_0, fx_result);
 
 _fx_cleanup: ;
    FX_FREE_REF_SIMPLE(&new_exp_ref_0);
@@ -3489,8 +3493,6 @@ _fx_cleanup: ;
    }
    FX_FREE_REF_SIMPLE(&pos_ref_0);
    FX_FREE_REF_SIMPLE(&prev_dot_ref_0);
-   FX_FREE_REF_SIMPLE(&backquote_pos_ref_0);
-   FX_FREE_REF_SIMPLE(&backquote_loc_ref_0);
    FX_FREE_REF_SIMPLE(&fmt_ref_0);
    FX_FREE_REF_SIMPLE(&expect_neg_number_ref_0);
    return fx_status;
@@ -3717,15 +3719,13 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
    FX_CALL(fx_check_stack(), _fx_cleanup);
    _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0_cldata_t* cv_0 =
       (_fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0_cldata_t*)fx_fv;
-   _fx_N20LexerUtils__stream_t strm_0 = cv_0->t8;
-   _fx_Ta2i* backquote_loc_0 = &cv_0->t0->data;
-   int_* backquote_pos_0 = &cv_0->t1->data;
-   bool* expect_neg_number_0 = &cv_0->t2->data;
-   _fx_Nt6option1R8format_t* fmt_0 = &cv_0->t3->data;
-   bool* new_exp_0 = &cv_0->t4->data;
-   _fx_LT2N14Lexer__token_tTa2i* paren_stack_1 = &cv_0->t5->data;
-   int_* pos_0 = &cv_0->t6->data;
-   bool* prev_dot_0 = &cv_0->t7->data;
+   _fx_N20LexerUtils__stream_t strm_0 = cv_0->t6;
+   bool* expect_neg_number_0 = &cv_0->t0->data;
+   _fx_Nt6option1R8format_t* fmt_0 = &cv_0->t1->data;
+   bool* new_exp_0 = &cv_0->t2->data;
+   _fx_LT2N14Lexer__token_tTa2i* paren_stack_1 = &cv_0->t3->data;
+   int_* pos_0 = &cv_0->t4->data;
+   bool* prev_dot_0 = &cv_0->t5->data;
    fx_copy_str(&strm_0->u.stream_t.t3, &buf_0);
    int_ len_0;
    FX_CALL(_fx_M5LexerFM6lengthi1S(&buf_0, &len_0, 0), _fx_cleanup);
@@ -3758,12 +3758,12 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
          FX_COPY_PTR(*paren_stack_1, &paren_stack_0);
          bool res_1;
          if (paren_stack_0 != 0) {
-            if (paren_stack_0->hd.t0.tag == 44) {
+            if (paren_stack_0->hd.t0.tag == 45) {
                res_1 = true; goto _fx_endmatch_0;
             }
          }
          if (paren_stack_0 != 0) {
-            if (paren_stack_0->hd.t0.tag == 47) {
+            if (paren_stack_0->hd.t0.tag == 48) {
                res_1 = true; goto _fx_endmatch_0;
             }
          }
@@ -4169,14 +4169,14 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                         _fx_copy_N14Lexer__token_t(&t_15, &t_12);
                         _fx_free_N14Lexer__token_t(&t_15);
                      }
-                     else if (t_13->tag == 42) {
+                     else if (t_13->tag == 43) {
                         _fx_N14Lexer__token_t t_16 = {0};
                         _fx_M5LexerFM5WHILEN14Lexer__token_t1B(*new_exp_0, &t_16);
                         *new_exp_0 = true;
                         _fx_copy_N14Lexer__token_t(&t_16, &t_12);
                         _fx_free_N14Lexer__token_t(&t_16);
                      }
-                     else if (t_13->tag == 26) {
+                     else if (t_13->tag == 27) {
                         _fx_T2N14Lexer__token_tTa2i v_75 = {0};
                         _fx_LT2N14Lexer__token_tTa2i v_76 = 0;
                         _fx_make_T2N14Lexer__token_tTa2i(&_fx_g12Lexer__MATCH, &loc_0, &v_75);
@@ -4192,13 +4192,13 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                         }
                         _fx_free_T2N14Lexer__token_tTa2i(&v_75);
                      }
-                     else if (t_13->tag == 33) {
+                     else if (t_13->tag == 34) {
                         _fx_M5LexerFM3REFN14Lexer__token_t1B(*new_exp_0, &t_12);
                      }
-                     else if (t_13->tag == 100) {
+                     else if (t_13->tag == 101) {
                         *new_exp_0 = false; _fx_copy_N14Lexer__token_t(t_13, &t_12);
                      }
-                     else if (t_13->tag == 34) {
+                     else if (t_13->tag == 35) {
                         _fx_LT2N14Lexer__token_tTa2i paren_stack_2 = 0;
                         char_ v_77 = FX_STR_ELEM_ZERO(buf_0, *pos_0);
                         c_0 = v_77;
@@ -4235,12 +4235,12 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                               FX_COPY_PTR(*paren_stack_1, &paren_stack_2);
                               bool res_3;
                               if (paren_stack_2 != 0) {
-                                 if (paren_stack_2->hd.t0.tag == 44) {
+                                 if (paren_stack_2->hd.t0.tag == 45) {
                                     res_3 = true; goto _fx_endmatch_4;
                                  }
                               }
                               if (paren_stack_2 != 0) {
-                                 if (paren_stack_2->hd.t0.tag == 47) {
+                                 if (paren_stack_2->hd.t0.tag == 48) {
                                     res_3 = true; goto _fx_endmatch_4;
                                  }
                               }
@@ -4458,7 +4458,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      *new_exp_0 = false;
                      FX_COPY_PTR(*paren_stack_1, &paren_stack_3);
                      if (paren_stack_3 != 0) {
-                        if (paren_stack_3->hd.t0.tag == 44) {
+                        if (paren_stack_3->hd.t0.tag == 45) {
                            _fx_T2N14Lexer__token_tTa2i v_102 = {0};
                            _fx_LT2N14Lexer__token_tTa2i* rest_0 = &paren_stack_3->tl;
                            _fx_free_LT2N14Lexer__token_tTa2i(paren_stack_1);
@@ -4537,7 +4537,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      *new_exp_0 = false;
                      FX_COPY_PTR(*paren_stack_1, &paren_stack_4);
                      if (paren_stack_4 != 0) {
-                        if (paren_stack_4->hd.t0.tag == 47) {
+                        if (paren_stack_4->hd.t0.tag == 48) {
                            _fx_T2N14Lexer__token_tTa2i v_112 = {0};
                            _fx_LT2N14Lexer__token_tTa2i* rest_1 = &paren_stack_4->tl;
                            _fx_free_LT2N14Lexer__token_tTa2i(paren_stack_1);
@@ -4578,7 +4578,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      FX_COPY_PTR(v_115, paren_stack_1);
                      FX_COPY_PTR(*paren_stack_1, &paren_stack_5);
                      if (paren_stack_5 != 0) {
-                        if (paren_stack_5->hd.t0.tag == 49) {
+                        if (paren_stack_5->hd.t0.tag == 50) {
                            _fx_LT2N14Lexer__token_tTa2i v_117 = paren_stack_5->tl;
                            if (v_117 != 0) {
                               if (v_117->hd.t0.tag == 9) {
@@ -4618,9 +4618,9 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      if (paren_stack_5 != 0) {
                         _fx_LT2N14Lexer__token_tTa2i v_123 = paren_stack_5->tl;
                         if (v_123 != 0) {
-                           if (v_123->hd.t0.tag == 26) {
+                           if (v_123->hd.t0.tag == 27) {
                               _fx_T2N14Lexer__token_tTa2i* v_124 = &paren_stack_5->hd;
-                              if (v_124->t0.tag == 49) {
+                              if (v_124->t0.tag == 50) {
                                  _fx_T2N14Lexer__token_tTa2i v_125 = {0};
                                  _fx_T2N14Lexer__token_tTa2i v_126 = {0};
                                  _fx_LT2N14Lexer__token_tTa2i v_127 = 0;
@@ -4656,7 +4656,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      FX_COPY_PTR(v_130.t0, &v_131);
                      if (v_131 != 0) {
                         _fx_T2N14Lexer__token_tTa2i* v_133 = &v_131->hd;
-                        if (v_133->t0.tag == 81) {
+                        if (v_133->t0.tag == 82) {
                            _fx_T2N14Lexer__token_tTa2i v_134 = {0};
                            _fx_LT2N14Lexer__token_tTa2i v_135 = 0;
                            _fx_T2N14Lexer__token_tTa2i v_136 = {0};
@@ -4710,7 +4710,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      *new_exp_0 = false;
                      FX_COPY_PTR(*paren_stack_1, &paren_stack_6);
                      if (paren_stack_6 != 0) {
-                        if (paren_stack_6->hd.t0.tag == 45) {
+                        if (paren_stack_6->hd.t0.tag == 46) {
                            _fx_T4iSiB v_137 = {0};
                            fx_str_t s_1 = {0};
                            _fx_LT2N14Lexer__token_tTa2i v_138 = 0;
@@ -4845,10 +4845,10 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                         }
                      }
                      if (paren_stack_6 != 0) {
-                        if (paren_stack_6->hd.t0.tag == 55) {
+                        if (paren_stack_6->hd.t0.tag == 56) {
                            _fx_LT2N14Lexer__token_tTa2i v_162 = paren_stack_6->tl;
                            if (v_162 != 0) {
-                              if (v_162->hd.t0.tag == 49) {
+                              if (v_162->hd.t0.tag == 50) {
                                  _fx_T2N14Lexer__token_tTa2i v_163 = {0};
                                  _fx_LT2N14Lexer__token_tTa2i* rest_4 = &v_162->tl;
                                  _fx_free_LT2N14Lexer__token_tTa2i(paren_stack_1);
@@ -4864,7 +4864,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                         }
                      }
                      if (paren_stack_6 != 0) {
-                        if (paren_stack_6->hd.t0.tag == 49) {
+                        if (paren_stack_6->hd.t0.tag == 50) {
                            _fx_T2N14Lexer__token_tTa2i v_164 = {0};
                            _fx_LT2N14Lexer__token_tTa2i* rest_5 = &paren_stack_6->tl;
                            _fx_free_LT2N14Lexer__token_tTa2i(paren_stack_1);
@@ -4914,8 +4914,8 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                         if (paren_stack_7 != 0) {
                            _fx_LT2N14Lexer__token_tTa2i v_169 = paren_stack_7->tl;
                            if (v_169 != 0) {
-                              if (paren_stack_7->hd.t0.tag == 55) {
-                                 if (v_169->hd.t0.tag == 49) {
+                              if (paren_stack_7->hd.t0.tag == 56) {
+                                 if (v_169->hd.t0.tag == 50) {
                                     _fx_T2N14Lexer__token_tTa2i v_170 = {0};
                                     _fx_make_T2N14Lexer__token_tTa2i(&_fx_g10Lexer__BAR, &loc_0, &v_170);
                                     FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_170, 0, true, &tokens_0), _fx_catch_32);
@@ -5508,7 +5508,7 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      _fx_LT2N14Lexer__token_tTa2i paren_stack_8 = 0;
                      FX_COPY_PTR(*paren_stack_1, &paren_stack_8);
                      if (paren_stack_8 != 0) {
-                        if (paren_stack_8->hd.t0.tag == 45) {
+                        if (paren_stack_8->hd.t0.tag == 46) {
                            fx_exn_t curr_exn_0 = {0};
                            fx_exn_t v_259 = {0};
                            fx_exn_t v_260 = {0};
@@ -5718,179 +5718,73 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
                      _fx_free_N14Lexer__token_t(&v_284);
                   }
                   else if (c_2 == (char_)96) {
-                     _fx_N14Lexer__token_t v_291 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_292 = {0};
-                     _fx_LT2N14Lexer__token_tTa2i v_293 = 0;
-                     _fx_N14Lexer__token_t v_294 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_295 = {0};
-                     fx_str_t verb_0 = {0};
-                     _fx_LT2N14Lexer__token_tTa2i paren_stack_9 = 0;
-                     _fx_T2N14Lexer__token_tTa2i v_296 = {0};
-                     _fx_N10Ast__lit_t v_297 = {0};
-                     _fx_N14Lexer__token_t v_298 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_299 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_300 = {0};
-                     fx_str_t v_301 = {0};
-                     fx_str_t v_302 = {0};
-                     _fx_N10Ast__lit_t v_303 = {0};
-                     _fx_N14Lexer__token_t v_304 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_305 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_306 = {0};
-                     _fx_N10Ast__lit_t v_307 = {0};
-                     _fx_N14Lexer__token_t v_308 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_309 = {0};
-                     _fx_T2N14Lexer__token_tTa2i v_310 = {0};
-                     _fx_LT2N14Lexer__token_tTa2i v_311 = 0;
-                     if (*backquote_pos_0 < 0) {
-                        *backquote_pos_0 = *pos_0;
-                        _fx_Ta2i v_312;
-                        FX_CALL(_fx_M5LexerFM6getlocTa2i2iN20LexerUtils__stream_t(*pos_0 - 1, strm_0, &v_312, 0), _fx_catch_62);
-                        *backquote_loc_0 = v_312;
-                        _fx_M5LexerFM6LPARENN14Lexer__token_t1B(true, &v_291);
-                        _fx_make_T2N14Lexer__token_tTa2i(&v_291, backquote_loc_0, &v_292);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_292, *paren_stack_1, true, &v_293), _fx_catch_62);
-                        _fx_free_LT2N14Lexer__token_tTa2i(paren_stack_1);
-                        FX_COPY_PTR(v_293, paren_stack_1);
-                        _fx_M5LexerFM6LPARENN14Lexer__token_t1B(true, &v_294);
-                        _fx_make_T2N14Lexer__token_tTa2i(&v_294, &loc_0, &v_295);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_295, 0, true, &tokens_0), _fx_catch_62);
-                     }
-                     else {
-                        FX_CALL(fx_substr(&buf_0, *backquote_pos_0, *pos_0 - 1, 1, 0, &verb_0), _fx_catch_62);
-                        _fx_Ta2i endloc_0;
-                        FX_CALL(_fx_M5LexerFM6getlocTa2i2iN20LexerUtils__stream_t(*pos_0, strm_0, &endloc_0, 0), _fx_catch_62);
-                        *backquote_pos_0 = -1;
-                        *new_exp_0 = false;
-                        FX_COPY_PTR(*paren_stack_1, &paren_stack_9);
-                        if (paren_stack_9 != 0) {
-                           if (paren_stack_9->hd.t0.tag == 44) {
-                              _fx_LT2N14Lexer__token_tTa2i* rest_6 = &paren_stack_9->tl;
-                              _fx_free_LT2N14Lexer__token_tTa2i(paren_stack_1);
-                              FX_COPY_PTR(*rest_6, paren_stack_1);
-                              goto _fx_endmatch_14;
-                           }
-                        }
-                        fx_exn_t v_313 = {0};
-                        fx_str_t slit_20 = FX_MAKE_STR("Unexpected \'`\', check parens");
-                        FX_CALL(_fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(&loc_0, &slit_20, &v_313), _fx_catch_61);
-                        FX_THROW(&v_313, true, _fx_catch_61);
+                     fx_exn_t v_291 = {0};
+                     _fx_Ta2i v_292;
+                     FX_CALL(_fx_M5LexerFM6getlocTa2i2iN20LexerUtils__stream_t(*pos_0 - 1, strm_0, &v_292, 0), _fx_catch_61);
+                     fx_str_t slit_20 =
+                        FX_MAKE_STR(
+                           "the backtick `...` context-capture notation was removed; call assert(cond) / EXPECT_EQ(a, b) / ... directly");
+                     FX_CALL(_fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(&v_292, &slit_20, &v_291), _fx_catch_61);
+                     FX_THROW(&v_291, true, _fx_catch_61);
 
-                     _fx_catch_61: ;
-                        fx_free_exn(&v_313);
-
-                     _fx_endmatch_14: ;
-                        FX_CHECK_EXN(_fx_catch_62);
-                        _fx_make_T2N14Lexer__token_tTa2i(&_fx_g12Lexer__COMMA, &endloc_0, &v_296);
-                        _fx_M3AstFM9LitStringN10Ast__lit_t1S(&verb_0, &v_297);
-                        _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_297, &v_298);
-                        _fx_make_T2N14Lexer__token_tTa2i(&v_298, backquote_loc_0, &v_299);
-                        _fx_make_T2N14Lexer__token_tTa2i(&_fx_g12Lexer__COMMA, &endloc_0, &v_300);
-                        fx_copy_str(&strm_0->u.stream_t.t0, &v_301);
-                        FX_CALL(_fx_M8FilenameFM8basenameS1S(&v_301, &v_302, 0), _fx_catch_62);
-                        _fx_M3AstFM9LitStringN10Ast__lit_t1S(&v_302, &v_303);
-                        _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_303, &v_304);
-                        _fx_make_T2N14Lexer__token_tTa2i(&v_304, backquote_loc_0, &v_305);
-                        _fx_make_T2N14Lexer__token_tTa2i(&_fx_g12Lexer__COMMA, &endloc_0, &v_306);
-                        int_ v_314 = backquote_loc_0->t0;
-                        _fx_M3AstFM6LitIntN10Ast__lit_t1l((int64_t)v_314, &v_307);
-                        _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_307, &v_308);
-                        _fx_make_T2N14Lexer__token_tTa2i(&v_308, backquote_loc_0, &v_309);
-                        _fx_make_T2N14Lexer__token_tTa2i(&_fx_g13Lexer__RPAREN, &endloc_0, &v_310);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_310, 0, true, &v_311), _fx_catch_62);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_309, v_311, false, &v_311), _fx_catch_62);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_306, v_311, false, &v_311), _fx_catch_62);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_305, v_311, false, &v_311), _fx_catch_62);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_300, v_311, false, &v_311), _fx_catch_62);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_299, v_311, false, &v_311), _fx_catch_62);
-                        FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_296, v_311, true, &tokens_0), _fx_catch_62);
-                     }
-
-                  _fx_catch_62: ;
-                     if (v_311) {
-                        _fx_free_LT2N14Lexer__token_tTa2i(&v_311);
-                     }
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_310);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_309);
-                     _fx_free_N14Lexer__token_t(&v_308);
-                     _fx_free_N10Ast__lit_t(&v_307);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_306);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_305);
-                     _fx_free_N14Lexer__token_t(&v_304);
-                     _fx_free_N10Ast__lit_t(&v_303);
-                     FX_FREE_STR(&v_302);
-                     FX_FREE_STR(&v_301);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_300);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_299);
-                     _fx_free_N14Lexer__token_t(&v_298);
-                     _fx_free_N10Ast__lit_t(&v_297);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_296);
-                     if (paren_stack_9) {
-                        _fx_free_LT2N14Lexer__token_tTa2i(&paren_stack_9);
-                     }
-                     FX_FREE_STR(&verb_0);
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_295);
-                     _fx_free_N14Lexer__token_t(&v_294);
-                     if (v_293) {
-                        _fx_free_LT2N14Lexer__token_tTa2i(&v_293);
-                     }
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_292);
-                     _fx_free_N14Lexer__token_t(&v_291);
+                  _fx_catch_61: ;
+                     fx_free_exn(&v_291);
                   }
                   else if (c_2 == (char_)0) {
-                     _fx_LT2N14Lexer__token_tTa2i paren_stack_10 = 0;
-                     _fx_T2N14Lexer__token_tTa2i v_315 = {0};
-                     FX_COPY_PTR(*paren_stack_1, &paren_stack_10);
-                     if (paren_stack_10 != 0) {
-                        fx_str_t v_316 = {0};
-                        fx_str_t v_317 = {0};
-                        fx_str_t v_318 = {0};
-                        fx_exn_t v_319 = {0};
-                        FX_CALL(_fx_M5LexerFM8lloc2strS2Ta2iN20LexerUtils__stream_t(&paren_stack_10->hd.t1, strm_0, &v_316, 0),
-                           _fx_catch_63);
-                        FX_CALL(_fx_M5LexerFM6stringS1S(&v_316, &v_317, 0), _fx_catch_63);
+                     _fx_LT2N14Lexer__token_tTa2i paren_stack_9 = 0;
+                     _fx_T2N14Lexer__token_tTa2i v_293 = {0};
+                     FX_COPY_PTR(*paren_stack_1, &paren_stack_9);
+                     if (paren_stack_9 != 0) {
+                        fx_str_t v_294 = {0};
+                        fx_str_t v_295 = {0};
+                        fx_str_t v_296 = {0};
+                        fx_exn_t v_297 = {0};
+                        FX_CALL(_fx_M5LexerFM8lloc2strS2Ta2iN20LexerUtils__stream_t(&paren_stack_9->hd.t1, strm_0, &v_294, 0),
+                           _fx_catch_62);
+                        FX_CALL(_fx_M5LexerFM6stringS1S(&v_294, &v_295, 0), _fx_catch_62);
                         fx_str_t slit_21 = FX_MAKE_STR("some braces (around ");
                         fx_str_t slit_22 = FX_MAKE_STR(") are not closed");
                         {
-                           const fx_str_t strs_2[] = { slit_21, v_317, slit_22 };
-                           FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_318), _fx_catch_63);
+                           const fx_str_t strs_2[] = { slit_21, v_295, slit_22 };
+                           FX_CALL(fx_strjoin(0, 0, 0, strs_2, 3, &v_296), _fx_catch_62);
                         }
-                        FX_CALL(_fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(&loc_0, &v_318, &v_319), _fx_catch_63);
-                        FX_THROW(&v_319, true, _fx_catch_63);
+                        FX_CALL(_fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(&loc_0, &v_296, &v_297), _fx_catch_62);
+                        FX_THROW(&v_297, true, _fx_catch_62);
 
-                     _fx_catch_63: ;
-                        fx_free_exn(&v_319);
-                        FX_FREE_STR(&v_318);
-                        FX_FREE_STR(&v_317);
-                        FX_FREE_STR(&v_316);
+                     _fx_catch_62: ;
+                        fx_free_exn(&v_297);
+                        FX_FREE_STR(&v_296);
+                        FX_FREE_STR(&v_295);
+                        FX_FREE_STR(&v_294);
                      }
-                     FX_CHECK_EXN(_fx_catch_64);
-                     _fx_make_T2N14Lexer__token_tTa2i(&_fx_g10Lexer__EOF, &loc_0, &v_315);
-                     FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_315, 0, true, &tokens_0), _fx_catch_64);
+                     FX_CHECK_EXN(_fx_catch_63);
+                     _fx_make_T2N14Lexer__token_tTa2i(&_fx_g10Lexer__EOF, &loc_0, &v_293);
+                     FX_CALL(_fx_cons_LT2N14Lexer__token_tTa2i(&v_293, 0, true, &tokens_0), _fx_catch_63);
 
-                  _fx_catch_64: ;
-                     _fx_free_T2N14Lexer__token_tTa2i(&v_315);
-                     if (paren_stack_10) {
-                        _fx_free_LT2N14Lexer__token_tTa2i(&paren_stack_10);
+                  _fx_catch_63: ;
+                     _fx_free_T2N14Lexer__token_tTa2i(&v_293);
+                     if (paren_stack_9) {
+                        _fx_free_LT2N14Lexer__token_tTa2i(&paren_stack_9);
                      }
                   }
                   else {
-                     fx_str_t v_320 = {0};
-                     fx_str_t v_321 = {0};
-                     fx_exn_t v_322 = {0};
-                     FX_CALL(_fx_F6stringS1C(c_0, &v_320, 0), _fx_catch_65);
+                     fx_str_t v_298 = {0};
+                     fx_str_t v_299 = {0};
+                     fx_exn_t v_300 = {0};
+                     FX_CALL(_fx_F6stringS1C(c_0, &v_298, 0), _fx_catch_64);
                      fx_str_t slit_23 = FX_MAKE_STR("unrecognized character \'");
                      fx_str_t slit_24 = FX_MAKE_STR("\'");
                      {
-                        const fx_str_t strs_3[] = { slit_23, v_320, slit_24 };
-                        FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_321), _fx_catch_65);
+                        const fx_str_t strs_3[] = { slit_23, v_298, slit_24 };
+                        FX_CALL(fx_strjoin(0, 0, 0, strs_3, 3, &v_299), _fx_catch_64);
                      }
-                     FX_CALL(_fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(&loc_0, &v_321, &v_322), _fx_catch_65);
-                     FX_THROW(&v_322, true, _fx_catch_65);
+                     FX_CALL(_fx_M10LexerUtilsFM15make_LexerErrorE2Ta2iS(&loc_0, &v_299, &v_300), _fx_catch_64);
+                     FX_THROW(&v_300, true, _fx_catch_64);
 
-                  _fx_catch_65: ;
-                     fx_free_exn(&v_322);
-                     FX_FREE_STR(&v_321);
-                     FX_FREE_STR(&v_320);
+                  _fx_catch_64: ;
+                     fx_free_exn(&v_300);
+                     FX_FREE_STR(&v_299);
+                     FX_FREE_STR(&v_298);
                   }
                   FX_CHECK_EXN(_fx_cleanup);
                }
@@ -5898,9 +5792,9 @@ static int _fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0(
          }
       }
    }
-   _fx_Ta2i endloc_1;
-   FX_CALL(_fx_M5LexerFM6getlocTa2i2iN20LexerUtils__stream_t(*pos_0, strm_0, &endloc_1, 0), _fx_cleanup);
-   _fx_make_T3LT2N14Lexer__token_tTa2iTa2iTa2i(tokens_0, &loc_0, &endloc_1, fx_result);
+   _fx_Ta2i endloc_0;
+   FX_CALL(_fx_M5LexerFM6getlocTa2i2iN20LexerUtils__stream_t(*pos_0, strm_0, &endloc_0, 0), _fx_cleanup);
+   _fx_make_T3LT2N14Lexer__token_tTa2iTa2iTa2i(tokens_0, &loc_0, &endloc_0, fx_result);
 
 _fx_cleanup: ;
    FX_FREE_STR(&buf_0);
@@ -5979,16 +5873,14 @@ _fx_cleanup: ;
 }
 
 FX_EXTERN_C int
-   _fx_M5LexerFM7make_fpFPT3LT2N14Lexer__token_tTa2iTa2iTa2i09rTa2irirBrNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
-   struct _fx_rTa2i_data_t* arg0,
-   struct _fx_ri_data_t* arg1,
+   _fx_M5LexerFM7make_fpFPT3LT2N14Lexer__token_tTa2iTa2iTa2i07rBrNt6option1R8format_trBrLT2N14Lexer__token_tTa2irirBN20LexerUtils__stream_t(
+   struct _fx_rB_data_t* arg0,
+   struct _fx_rNt6option1R8format_t_data_t* arg1,
    struct _fx_rB_data_t* arg2,
-   struct _fx_rNt6option1R8format_t_data_t* arg3,
-   struct _fx_rB_data_t* arg4,
-   struct _fx_rLT2N14Lexer__token_tTa2i_data_t* arg5,
-   struct _fx_ri_data_t* arg6,
-   struct _fx_rB_data_t* arg7,
-   struct _fx_N20LexerUtils__stream_t_data_t* arg8,
+   struct _fx_rLT2N14Lexer__token_tTa2i_data_t* arg3,
+   struct _fx_ri_data_t* arg4,
+   struct _fx_rB_data_t* arg5,
+   struct _fx_N20LexerUtils__stream_t_data_t* arg6,
    struct _fx_FPT3LT2N14Lexer__token_tTa2iTa2iTa2i0* fx_result)
 {
    FX_MAKE_FP_IMPL_START(_fx_M5LexerFM10nexttokensT3LT2N14Lexer__token_tTa2iTa2iTa2i0_cldata_t,
@@ -6001,8 +5893,6 @@ FX_EXTERN_C int
    FX_COPY_PTR(arg4, &fcv->t4);
    FX_COPY_PTR(arg5, &fcv->t5);
    FX_COPY_PTR(arg6, &fcv->t6);
-   FX_COPY_PTR(arg7, &fcv->t7);
-   FX_COPY_PTR(arg8, &fcv->t8);
    return 0;
 }
 
@@ -6057,33 +5947,33 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_T2ST2N14Lexer__token_ti v_46 = {0};
    _fx_T2N14Lexer__token_ti v_47 = {0};
    _fx_T2ST2N14Lexer__token_ti v_48 = {0};
-   _fx_N10Ast__lit_t v_49 = {0};
-   _fx_N14Lexer__token_t v_50 = {0};
-   _fx_T2N14Lexer__token_ti v_51 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_52 = {0};
-   _fx_N10Ast__lit_t v_53 = {0};
-   _fx_N14Lexer__token_t v_54 = {0};
-   _fx_T2N14Lexer__token_ti v_55 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_56 = {0};
-   _fx_N14Lexer__token_t v_57 = {0};
-   _fx_T2N14Lexer__token_ti v_58 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_59 = {0};
+   _fx_T2N14Lexer__token_ti v_49 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_50 = {0};
+   _fx_N10Ast__lit_t v_51 = {0};
+   _fx_N14Lexer__token_t v_52 = {0};
+   _fx_T2N14Lexer__token_ti v_53 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_54 = {0};
+   _fx_N10Ast__lit_t v_55 = {0};
+   _fx_N14Lexer__token_t v_56 = {0};
+   _fx_T2N14Lexer__token_ti v_57 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_58 = {0};
+   _fx_N14Lexer__token_t v_59 = {0};
    _fx_T2N14Lexer__token_ti v_60 = {0};
    _fx_T2ST2N14Lexer__token_ti v_61 = {0};
    _fx_T2N14Lexer__token_ti v_62 = {0};
    _fx_T2ST2N14Lexer__token_ti v_63 = {0};
-   _fx_N14Lexer__token_t v_64 = {0};
-   _fx_T2N14Lexer__token_ti v_65 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_66 = {0};
-   _fx_N14Lexer__token_t v_67 = {0};
-   _fx_T2N14Lexer__token_ti v_68 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_69 = {0};
+   _fx_T2N14Lexer__token_ti v_64 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_65 = {0};
+   _fx_N14Lexer__token_t v_66 = {0};
+   _fx_T2N14Lexer__token_ti v_67 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_68 = {0};
+   _fx_N14Lexer__token_t v_69 = {0};
    _fx_T2N14Lexer__token_ti v_70 = {0};
    _fx_T2ST2N14Lexer__token_ti v_71 = {0};
-   _fx_N10Ast__lit_t v_72 = {0};
-   _fx_N14Lexer__token_t v_73 = {0};
-   _fx_T2N14Lexer__token_ti v_74 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_75 = {0};
+   _fx_T2N14Lexer__token_ti v_72 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_73 = {0};
+   _fx_N10Ast__lit_t v_74 = {0};
+   _fx_N14Lexer__token_t v_75 = {0};
    _fx_T2N14Lexer__token_ti v_76 = {0};
    _fx_T2ST2N14Lexer__token_ti v_77 = {0};
    _fx_T2N14Lexer__token_ti v_78 = {0};
@@ -6094,34 +5984,34 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_T2ST2N14Lexer__token_ti v_83 = {0};
    _fx_T2N14Lexer__token_ti v_84 = {0};
    _fx_T2ST2N14Lexer__token_ti v_85 = {0};
-   _fx_N14Lexer__token_t v_86 = {0};
-   _fx_T2N14Lexer__token_ti v_87 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_88 = {0};
+   _fx_T2N14Lexer__token_ti v_86 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_87 = {0};
+   _fx_N14Lexer__token_t v_88 = {0};
    _fx_T2N14Lexer__token_ti v_89 = {0};
    _fx_T2ST2N14Lexer__token_ti v_90 = {0};
-   _fx_N14Lexer__token_t v_91 = {0};
-   _fx_T2N14Lexer__token_ti v_92 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_93 = {0};
-   _fx_N14Lexer__token_t v_94 = {0};
-   _fx_T2N14Lexer__token_ti v_95 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_96 = {0};
-   _fx_N14Lexer__token_t v_97 = {0};
-   _fx_T2N14Lexer__token_ti v_98 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_99 = {0};
-   _fx_N14Lexer__token_t v_100 = {0};
-   _fx_T2N14Lexer__token_ti v_101 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_102 = {0};
+   _fx_T2N14Lexer__token_ti v_91 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_92 = {0};
+   _fx_N14Lexer__token_t v_93 = {0};
+   _fx_T2N14Lexer__token_ti v_94 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_95 = {0};
+   _fx_N14Lexer__token_t v_96 = {0};
+   _fx_T2N14Lexer__token_ti v_97 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_98 = {0};
+   _fx_N14Lexer__token_t v_99 = {0};
+   _fx_T2N14Lexer__token_ti v_100 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_101 = {0};
+   _fx_N14Lexer__token_t v_102 = {0};
    _fx_T2N14Lexer__token_ti v_103 = {0};
    _fx_T2ST2N14Lexer__token_ti v_104 = {0};
-   _fx_N14Lexer__token_t v_105 = {0};
-   _fx_T2N14Lexer__token_ti v_106 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_107 = {0};
-   _fx_N14Lexer__token_t v_108 = {0};
-   _fx_T2N14Lexer__token_ti v_109 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_110 = {0};
-   _fx_N14Lexer__token_t v_111 = {0};
-   _fx_T2N14Lexer__token_ti v_112 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_113 = {0};
+   _fx_T2N14Lexer__token_ti v_105 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_106 = {0};
+   _fx_N14Lexer__token_t v_107 = {0};
+   _fx_T2N14Lexer__token_ti v_108 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_109 = {0};
+   _fx_N14Lexer__token_t v_110 = {0};
+   _fx_T2N14Lexer__token_ti v_111 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_112 = {0};
+   _fx_N14Lexer__token_t v_113 = {0};
    _fx_T2N14Lexer__token_ti v_114 = {0};
    _fx_T2ST2N14Lexer__token_ti v_115 = {0};
    _fx_T2N14Lexer__token_ti v_116 = {0};
@@ -6132,9 +6022,9 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_T2ST2N14Lexer__token_ti v_121 = {0};
    _fx_T2N14Lexer__token_ti v_122 = {0};
    _fx_T2ST2N14Lexer__token_ti v_123 = {0};
-   _fx_N14Lexer__token_t v_124 = {0};
-   _fx_T2N14Lexer__token_ti v_125 = {0};
-   _fx_T2ST2N14Lexer__token_ti v_126 = {0};
+   _fx_T2N14Lexer__token_ti v_124 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_125 = {0};
+   _fx_N14Lexer__token_t v_126 = {0};
    _fx_T2N14Lexer__token_ti v_127 = {0};
    _fx_T2ST2N14Lexer__token_ti v_128 = {0};
    _fx_T2N14Lexer__token_ti v_129 = {0};
@@ -6159,7 +6049,9 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_T2ST2N14Lexer__token_ti v_148 = {0};
    _fx_T2N14Lexer__token_ti v_149 = {0};
    _fx_T2ST2N14Lexer__token_ti v_150 = {0};
-   _fx_LT2ST2N14Lexer__token_ti v_151 = 0;
+   _fx_T2N14Lexer__token_ti v_151 = {0};
+   _fx_T2ST2N14Lexer__token_ti v_152 = {0};
+   _fx_LT2ST2N14Lexer__token_ti v_153 = 0;
    int fx_status = 0;
    _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__FUN, 0, &v_0);
    _fx_make_T2N14Lexer__token_ti(&_fx_g9Lexer__AS, 1, &v_1);
@@ -6227,227 +6119,231 @@ FX_EXTERN_C int fx_init_Lexer(void)
    _fx_make_T2N14Lexer__token_ti(&_fx_g16Lexer__INTERFACE, 2, &v_45);
    fx_str_t slit_18 = FX_MAKE_STR("interface");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_18, &v_45, &v_46);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__MATCH, 2, &v_47);
-   fx_str_t slit_19 = FX_MAKE_STR("match");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__MACRO, 2, &v_47);
+   fx_str_t slit_19 = FX_MAKE_STR("macro");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_19, &v_47, &v_48);
-   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(64, NAN, &v_49);
-   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_49, &v_50);
-   _fx_make_T2N14Lexer__token_ti(&v_50, 0, &v_51);
-   fx_str_t slit_20 = FX_MAKE_STR("nan");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_20, &v_51, &v_52);
-   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(32, NAN, &v_53);
-   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_53, &v_54);
-   _fx_make_T2N14Lexer__token_ti(&v_54, 0, &v_55);
-   fx_str_t slit_21 = FX_MAKE_STR("nanf");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_21, &v_55, &v_56);
-   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&_fx_g14Lexer__LitNull, &v_57);
-   _fx_make_T2N14Lexer__token_ti(&v_57, 0, &v_58);
-   fx_str_t slit_22 = FX_MAKE_STR("null");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_22, &v_58, &v_59);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__OPERATOR, 0, &v_60);
-   fx_str_t slit_23 = FX_MAKE_STR("operator");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__MATCH, 2, &v_49);
+   fx_str_t slit_20 = FX_MAKE_STR("match");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_20, &v_49, &v_50);
+   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(64, NAN, &v_51);
+   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_51, &v_52);
+   _fx_make_T2N14Lexer__token_ti(&v_52, 0, &v_53);
+   fx_str_t slit_21 = FX_MAKE_STR("nan");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_21, &v_53, &v_54);
+   _fx_M3AstFM8LitFloatN10Ast__lit_t2id(32, NAN, &v_55);
+   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_55, &v_56);
+   _fx_make_T2N14Lexer__token_ti(&v_56, 0, &v_57);
+   fx_str_t slit_22 = FX_MAKE_STR("nanf");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_22, &v_57, &v_58);
+   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&_fx_g14Lexer__LitNull, &v_59);
+   _fx_make_T2N14Lexer__token_ti(&v_59, 0, &v_60);
+   fx_str_t slit_23 = FX_MAKE_STR("null");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_23, &v_60, &v_61);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g13Lexer__PRAGMA, 2, &v_62);
-   fx_str_t slit_24 = FX_MAKE_STR("pragma");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__OPERATOR, 0, &v_62);
+   fx_str_t slit_24 = FX_MAKE_STR("operator");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_24, &v_62, &v_63);
-   _fx_M5LexerFM3REFN14Lexer__token_t1B(true, &v_64);
-   _fx_make_T2N14Lexer__token_ti(&v_64, 3, &v_65);
-   fx_str_t slit_25 = FX_MAKE_STR("ref");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_25, &v_65, &v_66);
-   _fx_M5LexerFM6RETURNN14Lexer__token_t1B(false, &v_67);
-   _fx_make_T2N14Lexer__token_ti(&v_67, 2, &v_68);
-   fx_str_t slit_26 = FX_MAKE_STR("return");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_26, &v_68, &v_69);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__THROW, 2, &v_70);
-   fx_str_t slit_27 = FX_MAKE_STR("throw");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g13Lexer__PRAGMA, 2, &v_64);
+   fx_str_t slit_25 = FX_MAKE_STR("pragma");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_25, &v_64, &v_65);
+   _fx_M5LexerFM3REFN14Lexer__token_t1B(true, &v_66);
+   _fx_make_T2N14Lexer__token_ti(&v_66, 3, &v_67);
+   fx_str_t slit_26 = FX_MAKE_STR("ref");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_26, &v_67, &v_68);
+   _fx_M5LexerFM6RETURNN14Lexer__token_t1B(false, &v_69);
+   _fx_make_T2N14Lexer__token_ti(&v_69, 2, &v_70);
+   fx_str_t slit_27 = FX_MAKE_STR("return");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_27, &v_70, &v_71);
-   _fx_M3AstFM7LitBoolN10Ast__lit_t1B(true, &v_72);
-   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_72, &v_73);
-   _fx_make_T2N14Lexer__token_ti(&v_73, 0, &v_74);
-   fx_str_t slit_28 = FX_MAKE_STR("true");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_28, &v_74, &v_75);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__TRY, 2, &v_76);
-   fx_str_t slit_29 = FX_MAKE_STR("try");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__THROW, 2, &v_72);
+   fx_str_t slit_28 = FX_MAKE_STR("throw");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_28, &v_72, &v_73);
+   _fx_M3AstFM7LitBoolN10Ast__lit_t1B(true, &v_74);
+   _fx_M5LexerFM7LITERALN14Lexer__token_t1N10Ast__lit_t(&v_74, &v_75);
+   _fx_make_T2N14Lexer__token_ti(&v_75, 0, &v_76);
+   fx_str_t slit_29 = FX_MAKE_STR("true");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_29, &v_76, &v_77);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__TYPE, 2, &v_78);
-   fx_str_t slit_30 = FX_MAKE_STR("type");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__TRY, 2, &v_78);
+   fx_str_t slit_30 = FX_MAKE_STR("try");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_30, &v_78, &v_79);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__VAL, 2, &v_80);
-   fx_str_t slit_31 = FX_MAKE_STR("val");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__TYPE, 2, &v_80);
+   fx_str_t slit_31 = FX_MAKE_STR("type");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_31, &v_80, &v_81);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__VAR, 2, &v_82);
-   fx_str_t slit_32 = FX_MAKE_STR("var");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__VAL, 2, &v_82);
+   fx_str_t slit_32 = FX_MAKE_STR("val");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_32, &v_82, &v_83);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__WHEN, 1, &v_84);
-   fx_str_t slit_33 = FX_MAKE_STR("when");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g10Lexer__VAR, 2, &v_84);
+   fx_str_t slit_33 = FX_MAKE_STR("var");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_33, &v_84, &v_85);
-   _fx_M5LexerFM5WHILEN14Lexer__token_t1B(true, &v_86);
-   _fx_make_T2N14Lexer__token_ti(&v_86, 2, &v_87);
-   fx_str_t slit_34 = FX_MAKE_STR("while");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_34, &v_87, &v_88);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__WITH, 1, &v_89);
-   fx_str_t slit_35 = FX_MAKE_STR("with");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__WHEN, 1, &v_86);
+   fx_str_t slit_34 = FX_MAKE_STR("when");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_34, &v_86, &v_87);
+   _fx_M5LexerFM5WHILEN14Lexer__token_t1B(true, &v_88);
+   _fx_make_T2N14Lexer__token_ti(&v_88, 2, &v_89);
+   fx_str_t slit_35 = FX_MAKE_STR("while");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_35, &v_89, &v_90);
-   fx_str_t slit_36 = FX_MAKE_STR("__fold_result__");
-   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_36, &v_91);
-   _fx_make_T2N14Lexer__token_ti(&v_91, -1, &v_92);
+   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__WITH, 1, &v_91);
+   fx_str_t slit_36 = FX_MAKE_STR("with");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_36, &v_91, &v_92);
    fx_str_t slit_37 = FX_MAKE_STR("__fold_result__");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_37, &v_92, &v_93);
-   fx_str_t slit_38 = FX_MAKE_STR("__lambda__");
-   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_38, &v_94);
-   _fx_make_T2N14Lexer__token_ti(&v_94, -1, &v_95);
+   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_37, &v_93);
+   _fx_make_T2N14Lexer__token_ti(&v_93, -1, &v_94);
+   fx_str_t slit_38 = FX_MAKE_STR("__fold_result__");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_38, &v_94, &v_95);
    fx_str_t slit_39 = FX_MAKE_STR("__lambda__");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_39, &v_95, &v_96);
-   fx_str_t slit_40 = FX_MAKE_STR("__kwargs__");
-   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_40, &v_97);
-   _fx_make_T2N14Lexer__token_ti(&v_97, -1, &v_98);
+   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_39, &v_96);
+   _fx_make_T2N14Lexer__token_ti(&v_96, -1, &v_97);
+   fx_str_t slit_40 = FX_MAKE_STR("__lambda__");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_40, &v_97, &v_98);
    fx_str_t slit_41 = FX_MAKE_STR("__kwargs__");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_41, &v_98, &v_99);
-   fx_str_t slit_42 = FX_MAKE_STR("__pat__");
-   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_42, &v_100);
-   _fx_make_T2N14Lexer__token_ti(&v_100, -1, &v_101);
+   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_41, &v_99);
+   _fx_make_T2N14Lexer__token_ti(&v_99, -1, &v_100);
+   fx_str_t slit_42 = FX_MAKE_STR("__kwargs__");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_42, &v_100, &v_101);
    fx_str_t slit_43 = FX_MAKE_STR("__pat__");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_43, &v_101, &v_102);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__CCODE, 2, &v_103);
-   fx_str_t slit_44 = FX_MAKE_STR("@ccode");
+   _fx_M5LexerFM8RESERVEDN14Lexer__token_t1S(&slit_43, &v_102);
+   _fx_make_T2N14Lexer__token_ti(&v_102, -1, &v_103);
+   fx_str_t slit_44 = FX_MAKE_STR("__pat__");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_44, &v_103, &v_104);
-   fx_str_t slit_45 = FX_MAKE_STR("binary");
-   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_45, &v_105);
-   _fx_make_T2N14Lexer__token_ti(&v_105, 2, &v_106);
-   fx_str_t slit_46 = FX_MAKE_STR("@data");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_46, &v_106, &v_107);
-   fx_str_t slit_47 = FX_MAKE_STR("binary_le");
-   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_47, &v_108);
-   _fx_make_T2N14Lexer__token_ti(&v_108, 2, &v_109);
-   fx_str_t slit_48 = FX_MAKE_STR("@data_le");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_48, &v_109, &v_110);
-   fx_str_t slit_49 = FX_MAKE_STR("binary_be");
-   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_49, &v_111);
-   _fx_make_T2N14Lexer__token_ti(&v_111, 2, &v_112);
-   fx_str_t slit_50 = FX_MAKE_STR("@data_be");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_50, &v_112, &v_113);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g13Lexer__INLINE, 2, &v_114);
-   fx_str_t slit_51 = FX_MAKE_STR("@inline");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__CCODE, 2, &v_105);
+   fx_str_t slit_45 = FX_MAKE_STR("@ccode");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_45, &v_105, &v_106);
+   fx_str_t slit_46 = FX_MAKE_STR("binary");
+   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_46, &v_107);
+   _fx_make_T2N14Lexer__token_ti(&v_107, 2, &v_108);
+   fx_str_t slit_47 = FX_MAKE_STR("@data");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_47, &v_108, &v_109);
+   fx_str_t slit_48 = FX_MAKE_STR("binary_le");
+   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_48, &v_110);
+   _fx_make_T2N14Lexer__token_ti(&v_110, 2, &v_111);
+   fx_str_t slit_49 = FX_MAKE_STR("@data_le");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_49, &v_111, &v_112);
+   fx_str_t slit_50 = FX_MAKE_STR("binary_be");
+   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_50, &v_113);
+   _fx_make_T2N14Lexer__token_ti(&v_113, 2, &v_114);
+   fx_str_t slit_51 = FX_MAKE_STR("@data_be");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_51, &v_114, &v_115);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__NOTHROW, 2, &v_116);
-   fx_str_t slit_52 = FX_MAKE_STR("@nothrow");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g13Lexer__INLINE, 2, &v_116);
+   fx_str_t slit_52 = FX_MAKE_STR("@inline");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_52, &v_116, &v_117);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PARALLEL, 2, &v_118);
-   fx_str_t slit_53 = FX_MAKE_STR("@parallel");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__NOTHROW, 2, &v_118);
+   fx_str_t slit_53 = FX_MAKE_STR("@nothrow");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_53, &v_118, &v_119);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__PRIVATE, 2, &v_120);
-   fx_str_t slit_54 = FX_MAKE_STR("@private");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PARALLEL, 2, &v_120);
+   fx_str_t slit_54 = FX_MAKE_STR("@parallel");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_54, &v_120, &v_121);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__SYNC, 1, &v_122);
-   fx_str_t slit_55 = FX_MAKE_STR("@sync");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__PRIVATE, 2, &v_122);
+   fx_str_t slit_55 = FX_MAKE_STR("@private");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_55, &v_122, &v_123);
-   fx_str_t slit_56 = FX_MAKE_STR("text");
-   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_56, &v_124);
-   _fx_make_T2N14Lexer__token_ti(&v_124, 2, &v_125);
-   fx_str_t slit_57 = FX_MAKE_STR("@text");
-   _fx_make_T2ST2N14Lexer__token_ti(&slit_57, &v_125, &v_126);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__PURE, 2, &v_127);
-   fx_str_t slit_58 = FX_MAKE_STR("@pure");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__SYNC, 1, &v_124);
+   fx_str_t slit_56 = FX_MAKE_STR("@sync");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_56, &v_124, &v_125);
+   fx_str_t slit_57 = FX_MAKE_STR("text");
+   _fx_M5LexerFM4DATAN14Lexer__token_t1S(&slit_57, &v_126);
+   _fx_make_T2N14Lexer__token_ti(&v_126, 2, &v_127);
+   fx_str_t slit_58 = FX_MAKE_STR("@text");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_58, &v_127, &v_128);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__UNZIP, 2, &v_129);
-   fx_str_t slit_59 = FX_MAKE_STR("@unzip");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g11Lexer__PURE, 2, &v_129);
+   fx_str_t slit_59 = FX_MAKE_STR("@pure");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_59, &v_129, &v_130);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__PP_IF, 2, &v_131);
-   fx_str_t slit_60 = FX_MAKE_STR("@if");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__UNZIP, 2, &v_131);
+   fx_str_t slit_60 = FX_MAKE_STR("@unzip");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_60, &v_131, &v_132);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_IFDEF, 2, &v_133);
-   fx_str_t slit_61 = FX_MAKE_STR("@ifdef");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g12Lexer__PP_IF, 2, &v_133);
+   fx_str_t slit_61 = FX_MAKE_STR("@if");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_61, &v_133, &v_134);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g16Lexer__PP_IFNDEF, 2, &v_135);
-   fx_str_t slit_62 = FX_MAKE_STR("@ifndef");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_IFDEF, 2, &v_135);
+   fx_str_t slit_62 = FX_MAKE_STR("@ifdef");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_62, &v_135, &v_136);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__PP_ELIF, 1, &v_137);
-   fx_str_t slit_63 = FX_MAKE_STR("@elif");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g16Lexer__PP_IFNDEF, 2, &v_137);
+   fx_str_t slit_63 = FX_MAKE_STR("@ifndef");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_63, &v_137, &v_138);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__PP_ELSE, 1, &v_139);
-   fx_str_t slit_64 = FX_MAKE_STR("@else");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__PP_ELIF, 1, &v_139);
+   fx_str_t slit_64 = FX_MAKE_STR("@elif");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_64, &v_139, &v_140);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_ENDIF, 3, &v_141);
-   fx_str_t slit_65 = FX_MAKE_STR("@endif");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g14Lexer__PP_ELSE, 1, &v_141);
+   fx_str_t slit_65 = FX_MAKE_STR("@else");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_65, &v_141, &v_142);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g16Lexer__PP_DEFINE, 2, &v_143);
-   fx_str_t slit_66 = FX_MAKE_STR("@define");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_ENDIF, 3, &v_143);
+   fx_str_t slit_66 = FX_MAKE_STR("@endif");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_66, &v_143, &v_144);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_UNDEF, 2, &v_145);
-   fx_str_t slit_67 = FX_MAKE_STR("@undef");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g16Lexer__PP_DEFINE, 2, &v_145);
+   fx_str_t slit_67 = FX_MAKE_STR("@define");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_67, &v_145, &v_146);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_ERROR, 2, &v_147);
-   fx_str_t slit_68 = FX_MAKE_STR("@error");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_UNDEF, 2, &v_147);
+   fx_str_t slit_68 = FX_MAKE_STR("@undef");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_68, &v_147, &v_148);
-   _fx_make_T2N14Lexer__token_ti(&_fx_g17Lexer__PP_WARNING, 2, &v_149);
-   fx_str_t slit_69 = FX_MAKE_STR("@warning");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g15Lexer__PP_ERROR, 2, &v_149);
+   fx_str_t slit_69 = FX_MAKE_STR("@error");
    _fx_make_T2ST2N14Lexer__token_ti(&slit_69, &v_149, &v_150);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_150, 0, true, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_148, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_146, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_144, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_142, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_140, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_138, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_136, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_134, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_132, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_130, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_128, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_126, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_123, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_121, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_119, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_117, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_115, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_113, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_110, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_107, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_104, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_102, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_99, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_96, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_93, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_90, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_88, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_85, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_83, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_81, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_79, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_77, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_75, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_71, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_69, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_66, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_63, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_61, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_59, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_56, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_52, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_48, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_46, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_44, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_41, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_39, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_35, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_31, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_29, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_27, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_24, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_22, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_20, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_16, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_14, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_12, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_10, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_8, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_6, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_4, v_151, false, &v_151), _fx_cleanup);
-   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_2, v_151, false, &v_151), _fx_cleanup);
-   fx_str_t slit_70 = FX_MAKE_STR("");
+   _fx_make_T2N14Lexer__token_ti(&_fx_g17Lexer__PP_WARNING, 2, &v_151);
+   fx_str_t slit_70 = FX_MAKE_STR("@warning");
+   _fx_make_T2ST2N14Lexer__token_ti(&slit_70, &v_151, &v_152);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_152, 0, true, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_150, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_148, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_146, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_144, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_142, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_140, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_138, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_136, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_134, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_132, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_130, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_128, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_125, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_123, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_121, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_119, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_117, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_115, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_112, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_109, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_106, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_104, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_101, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_98, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_95, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_92, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_90, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_87, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_85, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_83, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_81, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_79, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_77, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_73, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_71, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_68, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_65, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_63, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_61, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_58, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_54, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_50, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_48, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_46, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_44, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_41, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_39, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_35, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_31, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_29, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_27, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_24, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_22, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_20, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_16, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_14, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_12, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_10, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_8, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_6, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_4, v_153, false, &v_153), _fx_cleanup);
+   FX_CALL(_fx_cons_LT2ST2N14Lexer__token_ti(&v_2, v_153, false, &v_153), _fx_cleanup);
+   fx_str_t slit_71 = FX_MAKE_STR("");
    FX_CALL(
-      _fx_M5LexerFM9from_listNt10Hashmap__t2ST2N14Lexer__token_ti3ST2N14Lexer__token_tiLT2ST2N14Lexer__token_ti(&slit_70, &v_0,
-         v_151, &_fx_g21Lexer__ficus_keywords, 0), _fx_cleanup);
+      _fx_M5LexerFM9from_listNt10Hashmap__t2ST2N14Lexer__token_ti3ST2N14Lexer__token_tiLT2ST2N14Lexer__token_ti(&slit_71, &v_0,
+         v_153, &_fx_g21Lexer__ficus_keywords, 0), _fx_cleanup);
 
 _fx_cleanup: ;
    _fx_free_T2N14Lexer__token_ti(&v_0);
@@ -6499,33 +6395,33 @@ _fx_cleanup: ;
    _fx_free_T2ST2N14Lexer__token_ti(&v_46);
    _fx_free_T2N14Lexer__token_ti(&v_47);
    _fx_free_T2ST2N14Lexer__token_ti(&v_48);
-   _fx_free_N10Ast__lit_t(&v_49);
-   _fx_free_N14Lexer__token_t(&v_50);
-   _fx_free_T2N14Lexer__token_ti(&v_51);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_52);
-   _fx_free_N10Ast__lit_t(&v_53);
-   _fx_free_N14Lexer__token_t(&v_54);
-   _fx_free_T2N14Lexer__token_ti(&v_55);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_56);
-   _fx_free_N14Lexer__token_t(&v_57);
-   _fx_free_T2N14Lexer__token_ti(&v_58);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_59);
+   _fx_free_T2N14Lexer__token_ti(&v_49);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_50);
+   _fx_free_N10Ast__lit_t(&v_51);
+   _fx_free_N14Lexer__token_t(&v_52);
+   _fx_free_T2N14Lexer__token_ti(&v_53);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_54);
+   _fx_free_N10Ast__lit_t(&v_55);
+   _fx_free_N14Lexer__token_t(&v_56);
+   _fx_free_T2N14Lexer__token_ti(&v_57);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_58);
+   _fx_free_N14Lexer__token_t(&v_59);
    _fx_free_T2N14Lexer__token_ti(&v_60);
    _fx_free_T2ST2N14Lexer__token_ti(&v_61);
    _fx_free_T2N14Lexer__token_ti(&v_62);
    _fx_free_T2ST2N14Lexer__token_ti(&v_63);
-   _fx_free_N14Lexer__token_t(&v_64);
-   _fx_free_T2N14Lexer__token_ti(&v_65);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_66);
-   _fx_free_N14Lexer__token_t(&v_67);
-   _fx_free_T2N14Lexer__token_ti(&v_68);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_69);
+   _fx_free_T2N14Lexer__token_ti(&v_64);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_65);
+   _fx_free_N14Lexer__token_t(&v_66);
+   _fx_free_T2N14Lexer__token_ti(&v_67);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_68);
+   _fx_free_N14Lexer__token_t(&v_69);
    _fx_free_T2N14Lexer__token_ti(&v_70);
    _fx_free_T2ST2N14Lexer__token_ti(&v_71);
-   _fx_free_N10Ast__lit_t(&v_72);
-   _fx_free_N14Lexer__token_t(&v_73);
-   _fx_free_T2N14Lexer__token_ti(&v_74);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_75);
+   _fx_free_T2N14Lexer__token_ti(&v_72);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_73);
+   _fx_free_N10Ast__lit_t(&v_74);
+   _fx_free_N14Lexer__token_t(&v_75);
    _fx_free_T2N14Lexer__token_ti(&v_76);
    _fx_free_T2ST2N14Lexer__token_ti(&v_77);
    _fx_free_T2N14Lexer__token_ti(&v_78);
@@ -6536,34 +6432,34 @@ _fx_cleanup: ;
    _fx_free_T2ST2N14Lexer__token_ti(&v_83);
    _fx_free_T2N14Lexer__token_ti(&v_84);
    _fx_free_T2ST2N14Lexer__token_ti(&v_85);
-   _fx_free_N14Lexer__token_t(&v_86);
-   _fx_free_T2N14Lexer__token_ti(&v_87);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_88);
+   _fx_free_T2N14Lexer__token_ti(&v_86);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_87);
+   _fx_free_N14Lexer__token_t(&v_88);
    _fx_free_T2N14Lexer__token_ti(&v_89);
    _fx_free_T2ST2N14Lexer__token_ti(&v_90);
-   _fx_free_N14Lexer__token_t(&v_91);
-   _fx_free_T2N14Lexer__token_ti(&v_92);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_93);
-   _fx_free_N14Lexer__token_t(&v_94);
-   _fx_free_T2N14Lexer__token_ti(&v_95);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_96);
-   _fx_free_N14Lexer__token_t(&v_97);
-   _fx_free_T2N14Lexer__token_ti(&v_98);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_99);
-   _fx_free_N14Lexer__token_t(&v_100);
-   _fx_free_T2N14Lexer__token_ti(&v_101);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_102);
+   _fx_free_T2N14Lexer__token_ti(&v_91);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_92);
+   _fx_free_N14Lexer__token_t(&v_93);
+   _fx_free_T2N14Lexer__token_ti(&v_94);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_95);
+   _fx_free_N14Lexer__token_t(&v_96);
+   _fx_free_T2N14Lexer__token_ti(&v_97);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_98);
+   _fx_free_N14Lexer__token_t(&v_99);
+   _fx_free_T2N14Lexer__token_ti(&v_100);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_101);
+   _fx_free_N14Lexer__token_t(&v_102);
    _fx_free_T2N14Lexer__token_ti(&v_103);
    _fx_free_T2ST2N14Lexer__token_ti(&v_104);
-   _fx_free_N14Lexer__token_t(&v_105);
-   _fx_free_T2N14Lexer__token_ti(&v_106);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_107);
-   _fx_free_N14Lexer__token_t(&v_108);
-   _fx_free_T2N14Lexer__token_ti(&v_109);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_110);
-   _fx_free_N14Lexer__token_t(&v_111);
-   _fx_free_T2N14Lexer__token_ti(&v_112);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_113);
+   _fx_free_T2N14Lexer__token_ti(&v_105);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_106);
+   _fx_free_N14Lexer__token_t(&v_107);
+   _fx_free_T2N14Lexer__token_ti(&v_108);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_109);
+   _fx_free_N14Lexer__token_t(&v_110);
+   _fx_free_T2N14Lexer__token_ti(&v_111);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_112);
+   _fx_free_N14Lexer__token_t(&v_113);
    _fx_free_T2N14Lexer__token_ti(&v_114);
    _fx_free_T2ST2N14Lexer__token_ti(&v_115);
    _fx_free_T2N14Lexer__token_ti(&v_116);
@@ -6574,9 +6470,9 @@ _fx_cleanup: ;
    _fx_free_T2ST2N14Lexer__token_ti(&v_121);
    _fx_free_T2N14Lexer__token_ti(&v_122);
    _fx_free_T2ST2N14Lexer__token_ti(&v_123);
-   _fx_free_N14Lexer__token_t(&v_124);
-   _fx_free_T2N14Lexer__token_ti(&v_125);
-   _fx_free_T2ST2N14Lexer__token_ti(&v_126);
+   _fx_free_T2N14Lexer__token_ti(&v_124);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_125);
+   _fx_free_N14Lexer__token_t(&v_126);
    _fx_free_T2N14Lexer__token_ti(&v_127);
    _fx_free_T2ST2N14Lexer__token_ti(&v_128);
    _fx_free_T2N14Lexer__token_ti(&v_129);
@@ -6601,8 +6497,10 @@ _fx_cleanup: ;
    _fx_free_T2ST2N14Lexer__token_ti(&v_148);
    _fx_free_T2N14Lexer__token_ti(&v_149);
    _fx_free_T2ST2N14Lexer__token_ti(&v_150);
-   if (v_151) {
-      _fx_free_LT2ST2N14Lexer__token_ti(&v_151);
+   _fx_free_T2N14Lexer__token_ti(&v_151);
+   _fx_free_T2ST2N14Lexer__token_ti(&v_152);
+   if (v_153) {
+      _fx_free_LT2ST2N14Lexer__token_ti(&v_153);
    }
    return fx_status;
 }

@@ -355,6 +355,7 @@ type exp_t =
     | DefTyp: ref[deftyp_t]
     | DefVariant: ref[defvariant_t]
     | DefInterface: ref[definterface_t]
+    | DefMacro: ref[defmacro_t]
     | DirImport: (list[int, id_t], loc_t)
     | DirImportFrom: (int, list[id_t], loc_t)
     | DirPragma: (list[string], loc_t)
@@ -480,6 +481,30 @@ type definterface_t =
     di_scope: list[scope_t]; di_loc: loc_t
 }
 
+/* macro-1: declarative syntax-template macros. A macro is a module-scoped,
+   function-like citizen (imported like a function; it shares the value
+   namespace), but it is expanded at type-check time -- see the ExpCall
+   pre-probe in Ast_typecheck -- rather than compiled to code. Its body
+   (dmac_body) is an ordinary parsed exp_t 'template': a reference to a
+   parameter is a bare ExpIdent(param) 'hole' that expansion replaces with the
+   raw (unchecked) argument AST; binders introduced inside the template are made
+   hygienic (fresh name@NNN) at expansion time. dmac_params pairs each parameter
+   id with its category (only MacroArgExpr in v1; MacroArgForExpr is reserved for
+   the for-wrapper family). Every macro parameter has a category -- there are no
+   plain typed macro parameters. */
+type macro_arg_cat_t =
+    | MacroArgExpr        // @expr  -- an arbitrary expression argument
+    | MacroArgForExpr     // @for_expr -- a loop/comprehension argument (v1: reserved)
+
+type defmacro_t =
+{
+    dmac_name: id_t; dmac_templ_args: list[id_t];
+    dmac_params: list[(id_t, macro_arg_cat_t)];
+    dmac_rt: typ_t; dmac_body: exp_t;
+    dmac_flags: fun_flags_t; dmac_scope: list[scope_t];
+    dmac_loc: loc_t; dmac_env: env_t
+}
+
 type pragmas_t =
 {
     pragma_cpp: bool;
@@ -494,6 +519,7 @@ type id_info_t =
     | IdTyp: ref[deftyp_t]
     | IdVariant: ref[defvariant_t]
     | IdInterface: ref[definterface_t]
+    | IdMacro: ref[defmacro_t]
     | IdModule: int
 
 type defmodule_t =
@@ -508,6 +534,13 @@ type defmodule_t =
     var dm_parsed: bool
     var dm_block_idx: int
     dm_table: vector[id_info_t]
+    // the module's source text, retained after parsing so that diagnostics
+    // (the '^~~~' caret) and the macro '@string(e)' primitive can extract exact
+    // source spans without re-reading the file. dm_line_offsets[k] is the char
+    // index in dm_source where line (k+1) begins (line numbers are 1-based, so
+    // dm_line_offsets[0] == 0). Built once, in Parser.parse. macro-1.
+    var dm_source: string
+    var dm_line_offsets: int []
 }
 fun default_module() =
     defmodule_t {
@@ -516,7 +549,8 @@ fun default_module() =
         dm_deps=[], dm_env=empty_env,
         dm_parsed=false, dm_real=false,
         dm_table=vector(0, IdNone),
-        dm_block_idx=-1
+        dm_block_idx=-1,
+        dm_source="", dm_line_offsets=[]
     }
 
 /* Coarse compilation stage, tracked for diagnostic precision (diag-1). It is
@@ -644,27 +678,85 @@ fun compile_err(loc: loc_t, msg: string, ~suggestions: list[string] = []) {
     CompileError(loc, whole_msg, diag)
 }
 
-// diag-1: source-excerpt rendering for diagnostics. Lines are read lazily (only
-// when a diagnostic is actually shown) and cached per module. loc_t carries a
-// full span {line0,col0 .. line1,col1}. Precision is stage-honest: in the
-// frontend (is_frontend_stage) locations are exact and we draw a gcc/clang
-// caret '^~~~'; past the AST they drift, so we print the source line WITHOUT a
-// caret rather than point confidently at an innocent column. One renderer
-// serves both errors and warnings.
-var src_lines_cache: Hashmap.t[int, list[string]] = Hashmap.empty(16, -1, ([]: list[string]))
+// diag-1 / macro-1: source-excerpt rendering for diagnostics and the '@string'
+// macro primitive. The source text and per-line offsets are retained on the
+// module (dm_source / dm_line_offsets, built once in Parser.parse), so both a
+// single line (for the caret) and an arbitrary span (for @string) are extracted
+// in O(1) + O(span) with no file re-reads -- important because @string sits in
+// the normal build path, not just the error path. loc_t carries a full span
+// {line0,col0 .. line1,col1}. Precision is stage-honest: in the frontend
+// (is_frontend_stage) locations are exact and we draw a gcc/clang caret '^~~~';
+// past the AST they drift, so we print the source line WITHOUT a caret rather
+// than point confidently at an innocent column. One renderer serves both errors
+// and warnings.
+
+// char index where 1-based `lineno` begins in module m_idx's source, or -1.
+fun line_start_offset(m_idx: int, lineno: int): int {
+    if m_idx < 0 || lineno < 1 { -1 }
+    else {
+        val offs = all_modules[m_idx].dm_line_offsets
+        if lineno <= size(offs) { offs[lineno-1] } else { -1 }
+    }
+}
 
 fun get_source_line(m_idx: int, lineno: int): string {
-    if m_idx < 0 || lineno < 1 { "" }
+    val start = line_start_offset(m_idx, lineno)
+    if start < 0 { "" }
     else {
-        val lines = match src_lines_cache.find_opt(m_idx) {
-            | Some(ls) => ls
-            | _ =>
-                val ls = try { File.read_utf8(all_modules[m_idx].dm_filename).split('\n', allow_empty=true) }
-                         catch { | _ => ([]: list[string]) }
-                src_lines_cache.add(m_idx, ls)
-                ls
+        val src = all_modules[m_idx].dm_source
+        val offs = all_modules[m_idx].dm_line_offsets
+        var e = if lineno < size(offs) { offs[lineno] } else { src.length() }
+        // strip the trailing newline (and a preceding CR, for CRLF files)
+        if e > start && src[e-1] == '\n' { e -= 1 }
+        if e > start && src[e-1] == '\r' { e -= 1 }
+        src[start:e].copy()
+    }
+}
+
+// macro-1: exact source text of a span, for '@string(e)'. Columns are 1-based
+// char positions (the lexer counts one column per source char), matching the
+// char-indexed dm_source, so a char-index slice is exact. Returns "" if the
+// span is unusable (unknown module, or the file was not retained).
+//
+// AST node locs never cover a trailing CLOSING delimiter (a call's span is its
+// callee..last-arg, an index's is base..last-index -- the ')' / ']' is a bare
+// token owned by no node). So when the folded span leaves brackets unclosed, we
+// extend the end over exactly that many matching closers (skipping whitespace),
+// which recovers `foo(a, b)` / `a[i]` / `(x, y)` verbatim. Brackets inside
+// string/char literals do not count.
+fun get_source_span(loc: loc_t): string {
+    val start = line_start_offset(loc.m_idx, loc.line0)
+    val lstart = line_start_offset(loc.m_idx, loc.line1)
+    if start < 0 || lstart < 0 || loc.col0 < 1 || loc.col1 < 1 { "" }
+    else {
+        val src = all_modules[loc.m_idx].dm_source
+        val srclen = src.length()
+        val b = min(start + loc.col0 - 1, srclen)
+        val e0 = min(lstart + loc.col1 - 1, srclen)
+        if b > e0 { "" }
+        else {
+            // count brackets left open within [b, e0), ignoring literals
+            var depth = 0, i = b, in_str = false, in_chr = false
+            while i < e0 {
+                val c = src[i]
+                if in_str { if c == '\\' {i += 1} else if c == '"' {in_str = false} }
+                else if in_chr { if c == '\\' {i += 1} else if c == '\'' {in_chr = false} }
+                else if c == '"' { in_str = true }
+                else if c == '\'' { in_chr = true }
+                else if c == '(' || c == '[' || c == '{' { depth += 1 }
+                else if (c == ')' || c == ']' || c == '}') && depth > 0 { depth -= 1 }
+                i += 1
             }
-        if 1 <= lineno <= lines.length() { lines.nth(lineno-1) } else { "" }
+            // extend the end over `depth` trailing closers (whitespace allowed)
+            var e = e0
+            while depth > 0 && e < srclen {
+                val c = src[e]
+                if c == ')' || c == ']' || c == '}' { depth -= 1; e += 1 }
+                else if c == ' ' || c == '\t' || c == '\n' || c == '\r' { e += 1 }
+                else { break }
+            }
+            src[b:e].copy()
+        }
     }
 }
 
@@ -898,6 +990,7 @@ fun get_exp_ctx(e: exp_t)
     | DefTyp (ref {dt_loc}) => (TypDecl, dt_loc)
     | DefVariant (ref {dvar_loc}) => (TypDecl, dvar_loc)
     | DefInterface (ref {di_loc}) => (TypDecl, di_loc)
+    | DefMacro (ref {dmac_loc}) => (TypDecl, dmac_loc)
     | DirImport(_, l) => (TypDecl, l)
     | DirImportFrom(_, _, l) => (TypDecl, l)
     | DirPragma(_, l) => (TypDecl, l)
@@ -945,7 +1038,8 @@ fun find_module(mname: id_t, mfname: string) =
             dm_idx=m_idx, dm_defs=[], dm_deps=[],
             dm_env=empty_env, dm_parsed=false, dm_real=true,
             dm_table=vector(0, IdNone),
-            dm_block_idx=-1
+            dm_block_idx=-1,
+            dm_source="", dm_line_offsets=[]
         }
         val saved_modules = all_modules
         all_modules =
@@ -1039,6 +1133,7 @@ fun get_scope(id_info: id_info_t) {
     | IdTyp (ref {dt_scope}) => dt_scope
     | IdVariant (ref {dvar_scope}) => dvar_scope
     | IdInterface (ref {di_scope}) => di_scope
+    | IdMacro (ref {dmac_scope}) => dmac_scope
     | IdModule _ => []
     }
 
@@ -1050,6 +1145,7 @@ fun get_idinfo_loc(id_info: id_info_t) {
     | IdTyp (ref {dt_loc}) => dt_loc
     | IdVariant (ref {dvar_loc}) => dvar_loc
     | IdInterface (ref {di_loc}) => di_loc
+    | IdMacro (ref {dmac_loc}) => dmac_loc
     | _ => noloc
     }
 
@@ -1062,6 +1158,10 @@ fun get_idinfo_typ(id_info: id_info_t, loc: loc_t): typ_t =
     | IdTyp (ref {dt_typ}) => dt_typ
     | IdVariant (ref {dvar_alias}) => dvar_alias
     | IdInterface (ref {di_name}) => TypApp([], di_name)
+    // a macro is not a runtime value; it is intercepted by the ExpCall
+    // pre-probe before type-based resolution. If its name still reaches normal
+    // lookup (macro used as a value), TypDecl will fail to unify -- an error.
+    | IdMacro _ => TypDecl
     | IdNone => throw compile_err(loc, "ast: attempt to request type of non-existing symbol")
     }
 
@@ -1076,6 +1176,7 @@ fun get_idinfo_private_flag(id_info: id_info_t) {
     | IdTyp _ => false
     | IdVariant _ => false
     | IdInterface _ => false
+    | IdMacro (ref {dmac_flags}) => dmac_flags.fun_flag_private
     | IdModule _ => true
     }
 
@@ -1742,6 +1843,10 @@ fun walk_exp(e: exp_t, callb: ast_callb_t) {
         }
         e
     | DefInterface(di) => e
+    | DefMacro(dm) =>
+        val {dmac_rt, dmac_body} = *dm
+        *dm = dm->{dmac_rt=walk_typ_(dmac_rt), dmac_body=walk_exp_(dmac_body)}
+        e
     | DirImport(_, _) => e
     | DirImportFrom(_, _, _) => e
     | DirPragma(_, _) => e
@@ -1788,6 +1893,7 @@ fun dup_exp_(e: exp_t, callb: ast_callb_t): exp_t =
     | DefTyp(r) => walk_exp(DefTyp(ref *r), callb)
     | DefVariant(r) => walk_exp(DefVariant(ref *r), callb)
     | DefInterface(r) => walk_exp(DefInterface(ref *r), callb)
+    | DefMacro(r) => walk_exp(DefMacro(ref *r), callb)
     | _ => walk_exp(e, callb)
     }
 
@@ -1905,12 +2011,19 @@ val (std__String__, builtin_ids) = std_id("String", builtin_ids)
 val (std__Char__, builtin_ids) = std_id("Char", builtin_ids)
 val (std__Array__, builtin_ids) = std_id("Array", builtin_ids)
 val (std__Rrbvec__, builtin_ids) = std_id("Rrbvec", builtin_ids)
+// macro-1 primitives: uninterpreted placeholder ids stored inside macro
+// templates. `@file`/`@line` parse to ExpIdent of the first two; `@string(e)`
+// parses to ExpCall(ExpIdent(std__macro_string__), [e]). The engine replaces
+// them with literals at expansion time (call-site file/line, argument source
+// text). Outside a macro expansion they never resolve -- an error.
+val (std__macro_file__, builtin_ids) = std_id("__macro_file__", builtin_ids)
+val (std__macro_line__, builtin_ids) = std_id("__macro_line__", builtin_ids)
+val (std__macro_string__, builtin_ids) = std_id("__macro_string__", builtin_ids)
 
 fun init_all(): void
 {
     freeze_ids = false
     compiler_stage = CompilerInit
-    src_lines_cache.clear()
     all_names.clear()
     all_strhash.clear()
     all_c_inc_dirs.clear()

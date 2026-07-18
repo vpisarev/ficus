@@ -75,10 +75,10 @@ TEST("array.nested_comprehension", fun() {
 
 TEST("array.stat", fun() {
     val arr = [ 1, 2, 3, 4, 5 ]
-    EXPECT_EQ(`sum(arr)`, double(1+2+3+4+5))
-    EXPECT_NEAR(`mean(arr)`, double(1+2+3+4+5)/5, 1e-5)
-    EXPECT_NEAR(`normL2(arr)`, 7.416198487095663, 1e-5)
-    EXPECT_EQ(`normInf(arr)`, 5)
+    EXPECT_EQ(sum(arr), double(1+2+3+4+5))
+    EXPECT_NEAR(mean(arr), double(1+2+3+4+5)/5, 1e-5)
+    EXPECT_NEAR(normL2(arr), 7.416198487095663, 1e-5)
+    EXPECT_EQ(normInf(arr), 5)
 })
 
 TEST("array.solve", fun() {
@@ -91,8 +91,8 @@ TEST("array.solve", fun() {
     val b = [ 4.; 5.; 6.; 7. ]
     val x = A\b
     val Ainv = A\1
-    EXPECT_NEAR(`A*x`, `b`, 1e-10)
-    EXPECT_NEAR(`A*Ainv`, `I`, 1e-10)
+    EXPECT_NEAR(A*x, b, 1e-10)
+    EXPECT_NEAR(A*Ainv, I, 1e-10)
 })
 
 TEST("array.tuple_index", fun() {
@@ -126,17 +126,17 @@ TEST("array.tuple_index", fun() {
     val A1ref = copy(A1)
     A1 += B1
     add1(A1ref, B1)
-    EXPECT_EQ(`A1`, `A1ref`)
+    EXPECT_EQ(A1, A1ref)
 
     val A2ref = copy(A2)
     A2 += B2
     add2(A2ref, B2)
-    EXPECT_EQ(`A2`, `A2ref`)
+    EXPECT_EQ(A2, A2ref)
 
     val A3ref = copy(A3)
     A3 += B3
     add3(A3ref, B3)
-    EXPECT_EQ(`A3`, `A3ref`)
+    EXPECT_EQ(A3, A3ref)
 })
 
 TEST("array.bounding_box", fun() {

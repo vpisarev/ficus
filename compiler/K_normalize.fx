@@ -741,6 +741,11 @@ fun exp2kexp(e: exp_t, code: kcode_t, tref: bool, sc: list[scope_t])
     | DefExn _ => (KExpNop(eloc), code)
     // interface declarations are handled in batch in transform_all_types_and_cons
     | DefInterface _ => (KExpNop(eloc), code)
+    // macros are compile-time only: expanded at their call sites during
+    // typechecking and normally dropped by check_eseq. Like the other
+    // declaration forms above, K-normalization simply discards any that reach
+    // it. macro-1.
+    | DefMacro _ => (KExpNop(eloc), code)
     | DirImport(_, _) => (KExpNop(eloc), code)
     | DirImportFrom(_, _, _) => (KExpNop(eloc), code)
     | DirPragma(_, _) => (KExpNop(eloc), code)

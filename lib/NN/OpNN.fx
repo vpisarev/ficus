@@ -122,8 +122,8 @@ match op {
 | Ast.NN_SoftMax {axis, t_inp, t_out} =>
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
-    assert(`inp.shape.shape.size() >= 2`)
-    assert(`axis == 1 || axis == -1`)
+    assert(inp.shape.shape.size() >= 2)
+    assert(axis == 1 || axis == -1)
     run_softmax(inp, out, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

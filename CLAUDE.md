@@ -90,8 +90,28 @@ spans. **Gotcha (FB-020): `typ_t` carries NO source location**.
 Ficus is underrepresented in training data; don't improvise from OCaml/Rust
 intuition — read `doc/ficustut.md` and existing code. Verified traps:
 
-- Reserved words can't be identifiers: `ref`, `nan`, `nanf`, `null` (+ the
-  obvious keywords). Misuse gives a confusing "pattern is expected" error.
+- Reserved words can't be identifiers: `ref`, `nan`, `nanf`, `null`, `macro`
+  (macro-1) (+ the obvious keywords). Misuse gives a confusing "pattern is
+  expected" / "new line or ';' is expected" error.
+- **Macros (macro-1)** are declarative syntax templates, expanded at TYPECHECK
+  time (in the `check_exp` `ExpCall` pre-probe), hygienic by default:
+  `macro name(p: @expr, ...) [: rt] { template }` (or `= expr`; no `{| ... }`
+  shorthand). A hole is a bare parameter name; primitives `@file`/`@line`
+  (outermost call site) and `@string(e)` (e's exact source text). Expansion
+  resolves free names at the CALL site, so exported macros qualify their helpers
+  (`Module.helper(...)`). Macros **overload by arity** (like functions:
+  `EXPECT_EQ_(a,b)` + `EXPECT_EQ_(a,b,note)`); keyword/optional params are NOT
+  supported yet (a `msg=x` call bumps arity via a trailing record).
+  A macro resolves in the CALLER's env (as if pasted inline there): base
+  auto-imported names (`==`, `string`, Builtins ops) resolve for free and pick up
+  the caller's LOCAL overloads; but a macro's OWN non-base-module names must be
+  qualified (`UTest.helper`). `assert` (Builtins) and the UTest `EXPECT_*`/
+  `ASSERT_*`/`EXPECT_THROWS`/`EXPECT_NEAR` families are now macros (the old
+  backtick/`errctx` functions are gone; `assert(cond)` prints file:line + the
+  source of `cond`). `-pr-ast` shows the post-expansion AST.
+  **Editing a bootstrap stdlib module (Builtins/…) to USE `macro` needs a regen
+  before `make` works from a clean tree** — `update_compiler.py --no-make`.
+  Details: `docs/macro1_report.md` / `docs/macro_design.md`.
 - **Generics (generics-1) are bracketed & prefix, params UPPERCASE and
   DECLARED**: `list[T]`, `Map.t[K, V]`, `ref[T]`, `T?` (option); `type
   tree_t[K, D] = …`, `fun add[U, V, R](a: U, b: V): R`, `operator ==[T](…)`,
