@@ -476,53 +476,123 @@ fun test_parse_options(args: list[string], title: string, more_opts: string): (b
     parse(args)
 }
 
-/* ============ macro-1: backtick-free assertion macros ============
-   The macros below capture the call site (@file/@line) and the compared
-   expressions' source text (@string) automatically, so a test writes
-   `EXPECT_EQ_(f(x), y)` with no backtick `...` context quoting. Each macro is a
-   thin wrapper that evaluates every argument EXACTLY ONCE by passing it, once,
-   to a backing helper (the helper's parameters are the single evaluation). The
-   helper names are qualified (UTest.expect_*_) so they resolve at any call
-   site's env, per the macro hygiene rules. These coexist with the existing
-   backtick-based EXPECT and ASSERT functions; the unit tests migrate onto them
-   in a later step, after which the backtick forms retire. */
+/* ============ macro-1: backtick-free EXPECT_ / ASSERT_ macros ============
+   These capture the call site (@file/@line) and the compared expressions'
+   source text (@string) automatically, so a test writes `EXPECT_EQ_(f(x), y)`
+   with no backtick `...` context quoting. Each macro is a thin wrapper that
+   evaluates every argument EXACTLY ONCE by passing it, once, to a backing
+   helper (the helper's parameters are the single evaluation). The helper names
+   are qualified (UTest.test_*_) so they resolve at any call site's env.
 
-fun expect_report_cmp_[T](a: T, b: T, op: string, astr: string, bstr: string,
-                          fname: string, lineno: int): void
+   ONE helper serves both the EXPECT_ (non-fatal: mark the test failed and
+   continue) and the ASSERT_ (fatal: throw TestAssertError) families via a
+   `fatal` flag; the macro pair supplies false / true. Optional trailing `msg`
+   is a separate arity (macro-1 variant B). These coexist with the old
+   backtick-based EXPECT/ASSERT functions until the tests migrate over. */
+
+fun test_fail_(fatal: bool): void =
+    if fatal { throw TestAssertError } else { g_test_state.currstatus = false }
+
+fun test_report_cmp_[T](a: T, b: T, op: string, astr: string, bstr: string,
+                        fname: string, lineno: int, fatal: bool): void
 {
-    print(f"{fname}:{lineno}: Unexpected result of comparison {astr} {op} {bstr}.\nActual: ")
+    print(f"{fname}:{lineno}: comparison '{astr} {op} {bstr}' failed.\nActual: ")
     println(a)
     print("Expected: ")
     println(b)
-    g_test_state.currstatus = false
+    test_fail_(fatal)
 }
 
-fun expect_eq_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if a == b {} else { expect_report_cmp_(a, b, "==", astr, bstr, fname, lineno) }
-fun expect_ne_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if a != b {} else { expect_report_cmp_(a, b, "!=", astr, bstr, fname, lineno) }
-fun expect_lt_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if a < b {} else { expect_report_cmp_(a, b, "<", astr, bstr, fname, lineno) }
-fun expect_le_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if a <= b {} else { expect_report_cmp_(a, b, "<=", astr, bstr, fname, lineno) }
-fun expect_gt_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if a > b {} else { expect_report_cmp_(a, b, ">", astr, bstr, fname, lineno) }
-fun expect_ge_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if a >= b {} else { expect_report_cmp_(a, b, ">=", astr, bstr, fname, lineno) }
+fun test_cmp_eq_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if a == b {} else { test_report_cmp_(a, b, "==", astr, bstr, fname, lineno, fatal) }
+fun test_cmp_ne_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if a != b {} else { test_report_cmp_(a, b, "!=", astr, bstr, fname, lineno, fatal) }
+fun test_cmp_lt_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if a < b {} else { test_report_cmp_(a, b, "<", astr, bstr, fname, lineno, fatal) }
+fun test_cmp_le_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if a <= b {} else { test_report_cmp_(a, b, "<=", astr, bstr, fname, lineno, fatal) }
+fun test_cmp_gt_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if a > b {} else { test_report_cmp_(a, b, ">", astr, bstr, fname, lineno, fatal) }
+fun test_cmp_ge_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if a >= b {} else { test_report_cmp_(a, b, ">=", astr, bstr, fname, lineno, fatal) }
 
-fun expect_near_[T](a: T, b: T, eps: T, astr: string, bstr: string, fname: string, lineno: int): void =
-    if normInf(a, b) <= eps {} else {
-        print(f"{fname}:{lineno}: Unexpected result of comparison abs({astr} - {bstr}) <= {eps}.\nActual: ")
-        println(a)
-        print("Expected: ")
-        println(b)
-        g_test_state.currstatus = false
+fun test_report_near_[U](a: U, b: U, epsstr: string, astr: string, bstr: string,
+                         fname: string, lineno: int, fatal: bool): void
+{
+    print(f"{fname}:{lineno}: comparison 'abs({astr} - {bstr}) <= {epsstr}' failed.\nActual: ")
+    println(a)
+    print("Expected: ")
+    println(b)
+    test_fail_(fatal)
+}
+// scalar / tuple / array all reach normInf(a, b); one overload per value shape
+fun test_near_[T](a: T, b: T, eps: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if normInf(a, b) <= eps {} else { test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal) }
+fun test_near_[T](a: T [+], b: T [+], eps: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if normInf(a, b) <= eps {} else { test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal) }
+fun test_near_[T](a: (T...), b: (T...), eps: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if normInf(a, b) <= eps {} else { test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal) }
+
+fun test_bool_(c: bool, cstr: string, msg: string, fname: string, lineno: int, fatal: bool): void =
+    if c {} else {
+        val extra = if msg != "" { f": {msg}" } else { "" }
+        println(f"{fname}:{lineno}: '{cstr}' failed{extra}")
+        test_fail_(fatal)
     }
 
-macro EXPECT_EQ_(a: @expr, b: @expr): void { UTest.expect_eq_(a, b, @string(a), @string(b), @file, @line) }
-macro EXPECT_NE_(a: @expr, b: @expr): void { UTest.expect_ne_(a, b, @string(a), @string(b), @file, @line) }
-macro EXPECT_LT_(a: @expr, b: @expr): void { UTest.expect_lt_(a, b, @string(a), @string(b), @file, @line) }
-macro EXPECT_LE_(a: @expr, b: @expr): void { UTest.expect_le_(a, b, @string(a), @string(b), @file, @line) }
-macro EXPECT_GT_(a: @expr, b: @expr): void { UTest.expect_gt_(a, b, @string(a), @string(b), @file, @line) }
-macro EXPECT_GE_(a: @expr, b: @expr): void { UTest.expect_ge_(a, b, @string(a), @string(b), @file, @line) }
-macro EXPECT_NEAR_(a: @expr, b: @expr, eps: @expr): void { UTest.expect_near_(a, b, eps, @string(a), @string(b), @file, @line) }
+fun test_throws_(f: void->void, ref_exn: exn, fstr: string, msg: string,
+                 fname: string, lineno: int, fatal: bool): void
+{
+    val extra = if msg != "" { f": {msg}" } else { "" }
+    try {
+        f()
+        println(f"{fname}:{lineno}: '{fstr}' did not throw{extra}")
+        println(f"Expected: throws '{ref_exn}'")
+        test_fail_(fatal)
+    } catch {
+    | e when e.__tag__ == ref_exn.__tag__ => {}
+    | e =>
+        println(f"{fname}:{lineno}: '{fstr}' threw the wrong exception{extra}")
+        println(f"Actual: '{e}'\nExpected: '{ref_exn}'")
+        test_fail_(fatal)
+    }
+}
+
+fun test_no_throws_(f: void->void, fstr: string, msg: string,
+                    fname: string, lineno: int, fatal: bool): void
+{
+    val extra = if msg != "" { f": {msg}" } else { "" }
+    try { f() }
+    catch { | e =>
+        println(f"{fname}:{lineno}: '{fstr}' threw '{e}'{extra}")
+        test_fail_(fatal)
+    }
+}
+
+// --- comparison family (EXPECT_ = non-fatal, ASSERT_ = fatal) ---
+macro EXPECT_EQ_(a: @expr, b: @expr): void { UTest.test_cmp_eq_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_NE_(a: @expr, b: @expr): void { UTest.test_cmp_ne_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_LT_(a: @expr, b: @expr): void { UTest.test_cmp_lt_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_LE_(a: @expr, b: @expr): void { UTest.test_cmp_le_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_GT_(a: @expr, b: @expr): void { UTest.test_cmp_gt_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_GE_(a: @expr, b: @expr): void { UTest.test_cmp_ge_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_NEAR_(a: @expr, b: @expr, eps: @expr): void { UTest.test_near_(a, b, eps, @string(a), @string(b), @file, @line, false) }
+macro ASSERT_EQ_(a: @expr, b: @expr): void { UTest.test_cmp_eq_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_NE_(a: @expr, b: @expr): void { UTest.test_cmp_ne_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_LT_(a: @expr, b: @expr): void { UTest.test_cmp_lt_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_LE_(a: @expr, b: @expr): void { UTest.test_cmp_le_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_GT_(a: @expr, b: @expr): void { UTest.test_cmp_gt_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_GE_(a: @expr, b: @expr): void { UTest.test_cmp_ge_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_NEAR_(a: @expr, b: @expr, eps: @expr): void { UTest.test_near_(a, b, eps, @string(a), @string(b), @file, @line, true) }
+
+// --- bool family, with an optional trailing message (arity overload) ---
+macro EXPECT_(c: @expr): void { UTest.test_bool_(c, @string(c), "", @file, @line, false) }
+macro EXPECT_(c: @expr, msg: @expr): void { UTest.test_bool_(c, @string(c), msg, @file, @line, false) }
+macro ASSERT_(c: @expr): void { UTest.test_bool_(c, @string(c), "", @file, @line, true) }
+macro ASSERT_(c: @expr, msg: @expr): void { UTest.test_bool_(c, @string(c), msg, @file, @line, true) }
+
+// --- exception family (the argument is a void->void thunk) ---
+macro EXPECT_THROWS_(f: @expr, ref_exn: @expr): void { UTest.test_throws_(f, ref_exn, @string(f), "", @file, @line, false) }
+macro EXPECT_THROWS_(f: @expr, ref_exn: @expr, msg: @expr): void { UTest.test_throws_(f, ref_exn, @string(f), msg, @file, @line, false) }
+macro EXPECT_NO_THROWS_(f: @expr): void { UTest.test_no_throws_(f, @string(f), "", @file, @line, false) }
+macro EXPECT_NO_THROWS_(f: @expr, msg: @expr): void { UTest.test_no_throws_(f, @string(f), msg, @file, @line, false) }
