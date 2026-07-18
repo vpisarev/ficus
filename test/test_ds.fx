@@ -14,37 +14,37 @@ TEST("ds.set", fun()
     val icmp = (cmp: (int, int)->int)
     val scmp = (cmp: (string, string)->int)
 
-    EXPECT_EQ(`icmp(5, 3)`, 1)
-    EXPECT_EQ(`scmp("bar", "baz")`, -1)
-    EXPECT_EQ(`scmp("foo", "foo")`, 0)
+    EXPECT_EQ_(icmp(5, 3), 1)
+    EXPECT_EQ_(scmp("bar", "baz"), -1)
+    EXPECT_EQ_(scmp("foo", "foo"), 0)
 
     type intset = Set.t[int]
     type strset = Set.t[string]
 
     val s1 = Set.from_list(icmp, [:: 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1, -1, -2, -3 ])
-    EXPECT_EQ(`s1.list()`, [:: -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
+    EXPECT_EQ_(s1.list(), [:: -3, -2, -1, 1, 2, 3, 4, 5, 6 ])
     val s2 = Set.from_list(icmp, [:: 100, -1, 4, -2, 7 ])
 
     val d12 = s1.diff(s2)
-    EXPECT_EQ(`d12.list()`, [:: -3, 1, 2, 3, 5, 6 ])
-    EXPECT_EQ(`d12.size`, 6)
+    EXPECT_EQ_(d12.list(), [:: -3, 1, 2, 3, 5, 6 ])
+    EXPECT_EQ_(d12.size, 6)
 
     val u12 = s1.union(s2)
-    EXPECT_EQ(`u12.list()`, [:: -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 100 ])
-    EXPECT_EQ(`u12.size`, 11)
-    EXPECT_EQ(`u12.minelem()`, -3)
-    EXPECT_EQ(`u12.maxelem()`, 100)
+    EXPECT_EQ_(u12.list(), [:: -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 100 ])
+    EXPECT_EQ_(u12.size, 11)
+    EXPECT_EQ_(u12.minelem(), -3)
+    EXPECT_EQ_(u12.maxelem(), 100)
 
     val i12 = s2.intersect(s1)
-    EXPECT_EQ(`i12.list()`, [:: -2, -1, 4 ])
-    EXPECT_EQ(`i12.size`, 3)
+    EXPECT_EQ_(i12.list(), [:: -2, -1, 4 ])
+    EXPECT_EQ_(i12.size, 3)
 
     val fold sum0 = 0 for i <- u12.list() {sum0 += i}
     val sum1 = u12.foldl(fun (i, s) {s + i}, 0)
     val sum2 = u12.foldr(fun (i, s) {s + i}, 0)
-    EXPECT_EQ(`sum1`, sum0)
-    EXPECT_EQ(`sum2`, sum0)
-    EXPECT_EQ(`u12.map(fun (i) {i*i})`, [:: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 ])
+    EXPECT_EQ_(sum1, sum0)
+    EXPECT_EQ_(sum2, sum0)
+    EXPECT_EQ_(u12.map(fun (i) {i*i}), [:: 9, 4, 1, 1, 4, 9, 16, 25, 36, 49, 10000 ])
     val phrase = "This is a very simple test for the standard and not \
         so simple implementation of binary set".split(' ', allow_empty=true)
     val refres = [:: "This", "a", "and", "binary", "for", "implementation", "is", "not",
@@ -52,7 +52,7 @@ TEST("ds.set", fun()
                     "test", "the", "very"]
 
     val s1 = Set.from_list(scmp, phrase)
-    EXPECT_EQ(`s1.list()`, refres)
+    EXPECT_EQ_(s1.list(), refres)
 })
 
 TEST("dst.hashset", fun()
