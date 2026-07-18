@@ -1894,8 +1894,8 @@ fun gen_ccode(cmods: list[cmodule_t], kmod: kmodule_t, c_fdecls: ccode_t, mod_in
                 (false, dummy_exp, CExp(chk) :: ccode)
             | (IntrinMakeFPbyFCV, [:: AtomId(fname)]) =>
                 val (dst_exp, ccode) = get_dstexp(dstexp_r, "make_fp_by_fcv", ctyp, ccode, kloc)
-                val macro = CExp(make_call( std_FX_MAKE_FP_BY_FCV, [:: make_id_t_exp(fname, std_CTypVoidPtr, kloc), dst_exp], CTypVoid, kloc ))
-                (false, dummy_exp, macro :: ccode)
+                val macro_exp = CExp(make_call( std_FX_MAKE_FP_BY_FCV, [:: make_id_t_exp(fname, std_CTypVoidPtr, kloc), dst_exp], CTypVoid, kloc ))
+                (false, dummy_exp, macro_exp :: ccode)
             | (IntrinGEMM, [:: m1, t1, rs1, re1, rd1, cs1, ce1, cd1, m2, t2, rs2, re2, rd2, cs2, ce2, cd2]) =>
                 fun handle_idx(range_idx: atom_t, deflt: int64) = match range_idx {
                     | AtomLit(KLitNil _) => AtomLit(KLitInt(deflt))
@@ -2003,9 +2003,9 @@ fun gen_ccode(cmods: list[cmodule_t], kmod: kmodule_t, c_fdecls: ccode_t, mod_in
                     }
                 val elem_ctyp = C_gen_types.ktyp2ctyp(et, kloc)
                 val {ktp_complex} = K_annotate.get_ktprops(et, kloc)
-                val macro = if ktp_complex {get_id("FX_VEC_PUSH_BACK")}
+                val macro_id = if ktp_complex {get_id("FX_VEC_PUSH_BACK")}
                             else {get_id("FX_VEC_PUSH_BACK_FAST")}
-                val push = make_call(macro, [:: CExpTyp(elem_ctyp, kloc), vec_exp, elem_exp, lbl],
+                val push = make_call(macro_id, [:: CExpTyp(elem_ctyp, kloc), vec_exp, elem_exp, lbl],
                                      CTypVoid, kloc)
                 (false, dummy_exp, CExp(push) :: ccode)
             | (IntrinVecPopBack, [:: vec]) =>
@@ -2017,9 +2017,9 @@ fun gen_ccode(cmods: list[cmodule_t], kmod: kmodule_t, c_fdecls: ccode_t, mod_in
                         f"cgen: __intrin_pop__ applied to a non-vector type {t}")
                     }
                 val {ktp_complex} = K_annotate.get_ktprops(et, kloc)
-                val macro = if ktp_complex {get_id("FX_VEC_POP_BACK")}
+                val macro_id = if ktp_complex {get_id("FX_VEC_POP_BACK")}
                             else {get_id("FX_VEC_POP_BACK_FAST")}
-                val pop = make_call(macro, [:: vec_exp, lbl], CTypVoid, kloc)
+                val pop = make_call(macro_id, [:: vec_exp, lbl], CTypVoid, kloc)
                 (false, dummy_exp, CExp(pop) :: ccode)
             | (IntrinVecSplice, [:: vec, a, b, delta, rhs]) =>
                 // vec[a:b:delta] = rhs (rhs NULL/empty => deletion). The mask

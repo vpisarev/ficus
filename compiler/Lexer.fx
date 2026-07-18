@@ -19,7 +19,7 @@ type token_t =
     | APOS | AS | AT | BREAK | CATCH | CCODE | CLASS | CONTINUE
     | DO | DATA: string | ELLIPSIS | ELSE | EXCEPTION | FINALLY
     | FOLD | FOR: bool | FROM | FUN | IF | IMPORT: bool
-    | INLINE | INTERFACE | MATCH | NOTHROW | OPERATOR
+    | INLINE | INTERFACE | MACRO | MATCH | NOTHROW | OPERATOR
     | PARALLEL | PRAGMA | PRIVATE | PURE | REF: bool | RETURN: bool
     | THROW | TRY | TYPE | VAL | VAR | WHEN | WITH | WHILE: bool
     | UNZIP | LPAREN: bool | STR_INTERP_LPAREN | RPAREN
@@ -64,6 +64,7 @@ fun tok2str(t: token_t)
     | IMPORT(ne) => (ne2u(ne, "IMPORT"), "import")
     | INLINE => ("INLINE", "@inline")
     | INTERFACE => ("INTERFACE", "interface")
+    | MACRO => ("MACRO", "macro")
     | MATCH => ("MATCH", "match")
     | NOTHROW => ("NOTHROW", "@nothrow")
     | OPERATOR => ("OPERATOR", "operator")
@@ -197,7 +198,7 @@ var ficus_keywords = Hashmap.from_list("", (FUN, 0),
     ("fun", (FUN, 2)), ("inf", (LITERAL(Ast.LitFloat(64, inf)), 0)),
     ("inff", (LITERAL(Ast.LitFloat(32, inf)), 0)),
     ("if", (IF, 2)), ("import", (IMPORT(true), 3)), ("interface", (INTERFACE, 2)),
-    ("match", (MATCH, 2)), ("nan", (LITERAL(Ast.LitFloat(64, nan)), 0)),
+    ("macro", (MACRO, 2)), ("match", (MATCH, 2)), ("nan", (LITERAL(Ast.LitFloat(64, nan)), 0)),
     ("nanf", (LITERAL(Ast.LitFloat(32, nan)), 0)),
     ("null", (LITERAL(Ast.LitNull), 0)), ("operator", (OPERATOR, 0)),
     ("pragma", (PRAGMA, 2)), ("ref", (REF(true), 3)),

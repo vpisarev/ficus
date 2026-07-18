@@ -760,7 +760,7 @@ TEST("basic.assert", fun()
 {
     val k = -1
     EXPECT_NO_THROWS(`fun () { assert (0 == k-k) }`, msg="assert(0=0)")
-    EXPECT_THROWS(`fun () { assert (1 == k-k) }`, AssertError)
+    EXPECT_THROWS(`fun () { assert (1 == k-k) }`, AssertError(""))
 })
 
 /*TEST("basic.stack_overflow", fun()

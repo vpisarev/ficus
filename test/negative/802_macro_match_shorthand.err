@@ -1,0 +1,3 @@
+802_macro_match_shorthand.fx:3:34: error: a 'match'-shorthand body ('{| ... }') is not allowed for a macro; write a full expression
+ 3 | macro classify(e: @expr): string {| 0 => "zero" | _ => "nonzero" }
+   |                                  ^

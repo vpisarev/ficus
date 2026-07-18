@@ -18,7 +18,7 @@ val __ficus_version__ = (__ficus_major__, __ficus_minor__, __ficus_patchlevel__)
 val __ficus_version_str__ = f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}{__ficus_suffix__}"
 
 exception ASCIIError
-exception AssertError
+exception AssertError: string
 exception BadArgError
 exception Break
 exception DimError
@@ -52,9 +52,16 @@ type scalar_t =
     | Type_I64 | Type_U64 | Type_F16 | Type_BF16
     | Type_F32 | Type_F64 | Type_Bool | Type_Char
 
-fun assert(f: bool): void = if !f {throw AssertError}
-// TODO: probably, we need AssertError to get a string argument or have alternative AssertErrorArg with such a argument
+fun assert(f: bool): void = if !f {throw AssertError("assertion failed")}
 fun assert((f, f_str, fname, lineno): (bool, string, string, int)): void = if !f {throw Fail(f"{fname}:{lineno}: Assertion '{f_str}' failed")}
+
+// macro-1: the backtick-free assert. Unlike the function forms above it captures
+// the call site (@file/@line) and the asserted expression's source text
+// (@string) automatically -- no `...`-quoting needed. This is the API the unit
+// tests will migrate to (then the function forms + backtick capture retire).
+macro assert_(e: @expr): void {
+    if !e { throw AssertError(f"{@file}:{@line}: assertion '{@string(e)}' violation") }
+}
 
 fun ignore[T](_: T): void {}
 @nothrow fun always_use[T](x: T): void = @ccode {}

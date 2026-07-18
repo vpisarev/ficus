@@ -253,6 +253,27 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.str("]]")
             pp.end()
         }
+    | DefMacro dm =>
+        val {dmac_name, dmac_templ_args, dmac_params, dmac_rt, dmac_body, dmac_loc} = *dm
+        pp.begin(0); pp.begin()
+        match dmac_templ_args {
+        | [] => {}
+        | _ =>
+            pp.begin(); pp.str("template<"); pprint_templ_args(pp, dmac_templ_args)
+            pp.str(">"); pp.end(); pp.space()
+        }
+        pp.str("macro "); ppid(pp, dmac_name)
+        pp.str("("); pp.cut()
+        for (n, cat)@i <- dmac_params {
+            if i > 0 { pp.str(","); pp.space() }
+            ppid(pp, n); pp.str(": ")
+            pp.str(match cat { | MacroArgExpr => "@expr" | MacroArgForExpr => "@for_expr" })
+        }
+        pp.cut(); pp.str("):"); pp.space()
+        pprint_typ(pp, dmac_rt, dmac_loc); pp.space(); pp.str("=")
+        pp.end(); pp.space()
+        pprint_exp_as_block(pp, dmac_body)
+        pp.end(); pp.newline()
     | DefExn (ref {dexn_name, dexn_typ, dexn_loc}) =>
         pp.begin(); pp.str("exception "); ppid(pp, dexn_name)
         match dexn_typ {
@@ -587,7 +608,7 @@ fun pprint_exp(pp: PP.t, e: exp_t): void
             pp.str("@ccode "); pp.space(); pp.str("\""); pp.str(s); pp.str("\"")
         | ExpData(kind, fname, _) =>
             pp.str(f"@data({kind}) '{fname}'")
-        | DefVal(_, _, _, _) | DefFun _ | DefExn _ | DefTyp _ | DefInterface _
+        | DefVal(_, _, _, _) | DefFun _ | DefExn _ | DefTyp _ | DefInterface _ | DefMacro _
         | DefVariant _ | DirImport(_, _) | DirImportFrom(_, _, _) | DirPragma(_, _) | ExpSeq(_, _) => {}
         }
         pp.end()

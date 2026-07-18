@@ -346,6 +346,11 @@ typedef struct _fx_T2R10Ast__loc_tS {
    fx_str_t t1;
 } _fx_T2R10Ast__loc_tS;
 
+typedef struct _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t {
+   int_ rc;
+   struct _fx_Rt6Map__t2R9Ast__id_tR9Ast__id_t data;
+} _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t, *_fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t;
+
 typedef struct _fx_T2R9Ast__id_tN14K_form__ktyp_t {
    struct _fx_R9Ast__id_t t0;
    struct _fx_N14K_form__ktyp_t_data_t* t1;
@@ -1094,11 +1099,6 @@ typedef struct _fx_rNt10Hashset__t1R9Ast__id_t_data_t {
    struct _fx_Nt10Hashset__t1R9Ast__id_t_data_t* data;
 } _fx_rNt10Hashset__t1R9Ast__id_t_data_t, *_fx_rNt10Hashset__t1R9Ast__id_t;
 
-typedef struct _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t {
-   int_ rc;
-   struct _fx_Rt6Map__t2R9Ast__id_tR9Ast__id_t data;
-} _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t, *_fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t;
-
 typedef struct _fx_FPLN14K_form__kexp_t8LN14K_form__kexp_tLN14K_form__kexp_tR17K_form__k_callb_trirRt6Map__t2R9Ast__id_tR9Ast__id_tBrBNt10Hashset__t1R9Ast__id_t {
    int (*fp)(
       struct _fx_LN14K_form__kexp_t_data_t*, struct _fx_LN14K_form__kexp_t_data_t*, struct _fx_R17K_form__k_callb_t*,
@@ -1117,6 +1117,11 @@ typedef struct _fx_LT2R9Ast__id_tN14K_form__kexp_t_data_t {
    struct _fx_LT2R9Ast__id_tN14K_form__kexp_t_data_t* tl;
    struct _fx_T2R9Ast__id_tN14K_form__kexp_t hd;
 } _fx_LT2R9Ast__id_tN14K_form__kexp_t_data_t, *_fx_LT2R9Ast__id_tN14K_form__kexp_t;
+
+typedef struct {
+   int_ rc;
+   fx_str_t data;
+} _fx_E11AssertError_data_t;
 
 typedef struct {
    int_ rc;
@@ -1708,6 +1713,18 @@ static void _fx_make_T2R10Ast__loc_tS(struct _fx_R10Ast__loc_t* t0, fx_str_t* t1
 {
    fx_result->t0 = *t0;
    fx_copy_str(t1, &fx_result->t1);
+}
+
+static void _fx_free_rRt6Map__t2R9Ast__id_tR9Ast__id_t(struct _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t** dst)
+{
+   FX_FREE_REF_IMPL(_fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t, _fx_free_Rt6Map__t2R9Ast__id_tR9Ast__id_t);
+}
+
+static int _fx_make_rRt6Map__t2R9Ast__id_tR9Ast__id_t(
+   struct _fx_Rt6Map__t2R9Ast__id_tR9Ast__id_t* arg,
+   struct _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t** fx_result)
+{
+   FX_MAKE_REF_IMPL(_fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t, _fx_copy_Rt6Map__t2R9Ast__id_tR9Ast__id_t);
 }
 
 static void _fx_free_T2R9Ast__id_tN14K_form__ktyp_t(struct _fx_T2R9Ast__id_tN14K_form__ktyp_t* dst)
@@ -3721,18 +3738,6 @@ static int _fx_make_rNt10Hashset__t1R9Ast__id_t(
    struct _fx_rNt10Hashset__t1R9Ast__id_t_data_t** fx_result)
 {
    FX_MAKE_REF_IMPL(_fx_rNt10Hashset__t1R9Ast__id_t, FX_COPY_PTR);
-}
-
-static void _fx_free_rRt6Map__t2R9Ast__id_tR9Ast__id_t(struct _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t** dst)
-{
-   FX_FREE_REF_IMPL(_fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t, _fx_free_Rt6Map__t2R9Ast__id_tR9Ast__id_t);
-}
-
-static int _fx_make_rRt6Map__t2R9Ast__id_tR9Ast__id_t(
-   struct _fx_Rt6Map__t2R9Ast__id_tR9Ast__id_t* arg,
-   struct _fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t_data_t** fx_result)
-{
-   FX_MAKE_REF_IMPL(_fx_rRt6Map__t2R9Ast__id_tR9Ast__id_t, _fx_copy_Rt6Map__t2R9Ast__id_tR9Ast__id_t);
 }
 
 static void _fx_free_T2Nt11Map__tree_t2R9Ast__id_tR9Ast__id_tB(struct _fx_T2Nt11Map__tree_t2R9Ast__id_tR9Ast__id_tB* dst)

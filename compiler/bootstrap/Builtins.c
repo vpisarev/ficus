@@ -39,6 +39,7 @@ static int _fx_cons_LS(fx_str_t* hd, struct _fx_LS_data_t* tl, bool addref_tl, s
    FX_MAKE_LIST_IMPL(_fx_LS, fx_copy_str);
 }
 
+int _FX_EXN_E11AssertError = 0;
 int _FX_EXN_E4Exit = 0;
 int _FX_EXN_E4Fail = 0;
 int_ _fx_g15__ficus_major__ =
@@ -62,7 +63,18 @@ FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 FX_EXTERN_C int _fx_F6stringS1S(fx_str_t*, fx_str_t*, void*);
 
 fx_exn_t _fx_E10ASCIIErrorv = {0};
-fx_exn_t _fx_E11AssertErrorv = {0};
+fx_exn_info_t _fx_E11AssertError_info = {0};
+typedef struct {
+   int_ rc;
+   fx_str_t data;
+} _fx_E11AssertError_data_t;
+
+FX_EXTERN_C void _fx_free_E11AssertError(_fx_E11AssertError_data_t* dst)
+{
+   FX_FREE_STR(&dst->data);
+   fx_free(dst);
+}
+
 fx_exn_t _fx_E11BadArgErrorv = {0};
 fx_exn_t _fx_E5Breakv = {0};
 fx_exn_t _fx_E8DimErrorv = {0};
@@ -105,6 +117,13 @@ fx_exn_t _fx_E18StackOverflowErrorv = {0};
 fx_exn_t _fx_E17TypeMismatchErrorv = {0};
 fx_exn_t _fx_E16VecModifiedErrorv = {0};
 fx_exn_t _fx_E13ZeroStepErrorv = {0};
+FX_EXTERN_C int _fx_F16make_AssertErrorE1S(fx_str_t* arg0, fx_exn_t* fx_result)
+{
+   FX_MAKE_EXN_IMPL_START(_FX_EXN_E11AssertError, _fx_E11AssertError_data_t, _fx_E11AssertError_info);
+   fx_copy_str(arg0, &exn_data->data);
+   return 0;
+}
+
 FX_EXTERN_C int _fx_F9make_ExitE1i(int_ arg0, fx_exn_t* fx_result)
 {
    FX_MAKE_EXN_IMPL_START(_FX_EXN_E4Exit, _fx_E4Exit_data_t, _fx_E4Exit_info);
@@ -121,12 +140,16 @@ FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result)
 
 FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv)
 {
+   fx_exn_t v_0 = {0};
    int fx_status = 0;
    if (!f_0) {
-      FX_FAST_THROW(FX_EXN_AssertError, _fx_cleanup);
+      fx_str_t slit_0 = FX_MAKE_STR("assertion failed");
+      FX_CALL(_fx_F16make_AssertErrorE1S(&slit_0, &v_0), _fx_cleanup);
+      FX_THROW(&v_0, true, _fx_cleanup);
    }
 
 _fx_cleanup: ;
+   fx_free_exn(&v_0);
    return fx_status;
 }
 
@@ -465,7 +488,7 @@ FX_EXTERN_C int fx_init_Builtins(void)
    fx_str_t v_2 = {0};
    fx_str_t v_3 = {0};
    FX_REG_SIMPLE_STD_EXN(FX_EXN_ASCIIError, _fx_E10ASCIIErrorv);
-   FX_REG_SIMPLE_STD_EXN(FX_EXN_AssertError, _fx_E11AssertErrorv);
+   FX_REG_EXN("AssertError", _FX_EXN_E11AssertError, _fx_E11AssertError_info, _fx_free_E11AssertError);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_BadArgError, _fx_E11BadArgErrorv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_Break, _fx_E5Breakv);
    FX_REG_SIMPLE_STD_EXN(FX_EXN_DimError, _fx_E8DimErrorv);

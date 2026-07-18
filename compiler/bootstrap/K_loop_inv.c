@@ -932,6 +932,11 @@ typedef struct _fx_FPT3LN14K_form__kexp_tLT3N14K_form__kexp_tLT2R9Ast__id_tN13K_
 
 typedef struct {
    int_ rc;
+   fx_str_t data;
+} _fx_E11AssertError_data_t;
+
+typedef struct {
+   int_ rc;
    int_ data;
 } _fx_E4Exit_data_t;
 

@@ -472,6 +472,19 @@ fun parse_atomic_exp(ts: tklist_t): (tklist_t, exp_t)
             if done { break }
         }
         (vts, ExpMkArray(result.rev(), make_new_ctx(l1)))
+    // macro-1 primitives. An unknown '@name' lexes as AT + IDENT(name); we turn
+    // @file / @line / @string into reserved placeholder ids that the macro engine
+    // substitutes at expansion time. @string is used as @string(e), so it parses
+    // to a plain ident here and the enclosing call-suffix makes it ExpCall.
+    | (AT, l1) :: (IDENT(_, mname), l2) :: rest =>
+        val prim = match mname {
+            | "file" => std__macro_file__
+            | "line" => std__macro_line__
+            | "string" => std__macro_string__
+            | _ => throw parse_err(ts, f"unknown macro primitive '@{mname}'; \
+                        expected @file, @line or @string")
+            }
+        (rest, ExpIdent(prim, make_new_ctx(loclist2loc([:: l1, l2], l1))))
     | (t, _) :: _ =>
         throw parse_err(ts, f"unxpected token '{tok2str(t).1}'. An identifier, literal or expression enclosed in '( )', '[ ]' or '[: :]' brackets is expected here")
     | _ =>
@@ -918,6 +931,9 @@ fun parse_expseq(ts: tklist_t, toplevel: bool): (tklist_t, list[exp_t])
         | (INLINE, _) :: _ | (FUN, _) :: _ | (OPERATOR, _) :: _ =>
             val (ts, defun) = parse_defun(ts)
             extend_expseq_(ts, defun :: result)
+        | (MACRO, l1) :: rest =>
+            val (ts, defmac) = parse_defmacro(rest, l1)
+            extend_expseq_(ts, defmac :: result)
         | (EXCEPTION, l1) :: rest =>
             if !toplevel { throw parse_err(ts, "exceptions can only be defined at module level") }
             val (ts, i) = match rest {
@@ -1383,6 +1399,72 @@ fun parse_defun(ts: tklist_t): (tklist_t, exp_t)
             fun_flag_inline=is_inline,
             fun_flag_method_of=class_id,
             fun_flag_have_keywords=have_keywords}, loc)
+}
+
+/* macro-1: parse a macro declaration
+      macro name [ [typarams] ] ( param: @cat, ... ) [ : rettype ] { template }
+   or the one-liner  macro name(...) = expr .
+   Every parameter carries a category (@expr / @for_expr) -- there are no plain
+   typed macro parameters. The body is ordinary Ficus syntax parsed here at
+   definition time; a bare reference to a parameter inside it is a 'hole' that
+   expansion (in the typechecker) substitutes with the actual argument AST. */
+fun parse_defmacro(ts: tklist_t, macro_l: loc_t): (tklist_t, exp_t)
+{
+    val (ts, mname, name_loc) = match ts {
+        | (IDENT(_, i), l) :: rest => (rest, get_id(i), l)
+        | _ => throw parse_err(ts, "a macro name (identifier) is expected after 'macro'")
+        }
+    // optional declared type params `macro name[T,...](...)`
+    val (ts, tparams) = match ts {
+        | (LSQUARE _, _) :: rest => parse_bracket_tyvars_(rest, false, [])
+        | _ => (ts, [])
+        }
+    val ts = match ts {
+        | (LPAREN _, _) :: rest => rest
+        | _ => throw parse_err(ts, "'(' is expected after the macro name")
+        }
+    fun parse_mparams_(ts: tklist_t, expect_comma: bool,
+                       acc: list[(id_t, macro_arg_cat_t)]): (tklist_t, list[(id_t, macro_arg_cat_t)]) =
+        match ts {
+        | (RPAREN, _) :: rest => (rest, acc.rev())
+        | (COMMA, _) :: rest =>
+            if expect_comma { parse_mparams_(rest, false, acc) }
+            else { throw parse_err(ts, "extra ','?") }
+        | (IDENT(_, i), _) :: (COLON, _) :: (AT, _) :: (IDENT(_, c), _) :: rest =>
+            if expect_comma { throw parse_err(ts, "',' is expected") }
+            val cat = match c {
+                | "expr" => MacroArgExpr
+                | "for_expr" => MacroArgForExpr
+                | _ => throw parse_err(ts, f"unknown macro parameter category '@{c}'; \
+                            expected @expr or @for_expr")
+                }
+            parse_mparams_(rest, true, (get_id(i), cat) :: acc)
+        | _ =>
+            throw parse_err(ts, "a macro parameter 'name: @expr' (or '@for_expr') is expected")
+        }
+    val (ts, params) = parse_mparams_(ts, false, [])
+    // optional return-type annotation (checked on the expanded form)
+    val (ts, rt) = match ts {
+        | (COLON, _) :: rest => parse_typespec(rest)
+        | _ => (ts, make_new_typ())
+        }
+    val (ts, body) = match ts {
+        // the implicit 'match'-shorthand body ('{| pat => ... }') is deliberately
+        // NOT allowed for macros -- a macro body must be a full expression.
+        | (LBRACE, _) :: (BAR, _) :: _ =>
+            throw parse_err(ts, "a 'match'-shorthand body ('{| ... }') is not allowed \
+                for a macro; write a full expression")
+        | (LBRACE, _) :: _ => parse_block(ts)
+        | (EQUAL, _) :: rest => parse_exp(rest, allow_mkrecord=true)
+        | _ => throw parse_err(ts, "a macro body ('{ ... }' or '= expr') is expected")
+        }
+    val dm = ref (defmacro_t {
+        dmac_name = mname, dmac_templ_args = tparams,
+        dmac_params = params, dmac_rt = rt, dmac_body = body,
+        dmac_flags = default_fun_flags(),
+        dmac_scope = [], dmac_loc = name_loc, dmac_env = empty_env
+        })
+    (ts, DefMacro(dm))
 }
 
 fun parse_complex_exp(ts: tklist_t): (tklist_t, exp_t)
@@ -2753,6 +2835,20 @@ fun parse(m_idx: int, preamble: list[token_t], inc_dirs: list[string]): bool
         | FileOpenError => throw ParseError(parser_ctx.default_loc, "cannot open file")
         | IOError => throw ParseError(parser_ctx.default_loc, "cannot read file")
         }
+    // retain the source text + line-start offsets on the module so diagnostics
+    // (the caret) and the macro '@string' primitive can extract exact spans
+    // without re-reading the file (macro-1). One linear scan of the in-memory
+    // buffer; getstring/get_ccode report only line *deltas*, so a per-newline
+    // push inside the lexer would miss newlines within multi-line strings/ccode.
+    // Stored here (before parsing) so a parse error still gets a source caret;
+    // written into all_modules[m_idx] too, since the local `dm` copy is only
+    // flushed back at the end of a successful parse.
+    val buflen = strm.buf.length()
+    val src_offsets = [ for p <- 0 :: [:: for i <- 0:buflen when strm.buf[i] == '\n' {i+1}] {p} ]
+    dm.dm_source = strm.buf
+    dm.dm_line_offsets = src_offsets
+    all_modules[m_idx].dm_source = strm.buf
+    all_modules[m_idx].dm_line_offsets = src_offsets
     val lexer = make_lexer(strm)
 
     // [TODO] perhaps, need to avoid fetching all the tokens at once

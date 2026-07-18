@@ -777,6 +777,11 @@ typedef struct _fx_FPLN15C_form__cstmt_t4LN15C_form__cstmt_tR17C_form__c_callb_t
 
 typedef struct {
    int_ rc;
+   fx_str_t data;
+} _fx_E11AssertError_data_t;
+
+typedef struct {
+   int_ rc;
    int_ data;
 } _fx_E4Exit_data_t;
 

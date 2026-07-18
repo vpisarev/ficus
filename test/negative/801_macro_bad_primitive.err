@@ -1,0 +1,3 @@
+801_macro_bad_primitive.fx:3:26: error: unknown macro primitive '@bogus'; expected @file, @line or @string
+ 3 | macro m(e: @expr): int = @bogus
+   |                          ^~~~~~~

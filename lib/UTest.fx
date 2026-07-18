@@ -475,3 +475,54 @@ fun test_parse_options(args: list[string], title: string, more_opts: string): (b
     }
     parse(args)
 }
+
+/* ============ macro-1: backtick-free assertion macros ============
+   The macros below capture the call site (@file/@line) and the compared
+   expressions' source text (@string) automatically, so a test writes
+   `EXPECT_EQ_(f(x), y)` with no backtick `...` context quoting. Each macro is a
+   thin wrapper that evaluates every argument EXACTLY ONCE by passing it, once,
+   to a backing helper (the helper's parameters are the single evaluation). The
+   helper names are qualified (UTest.expect_*_) so they resolve at any call
+   site's env, per the macro hygiene rules. These coexist with the existing
+   backtick-based EXPECT and ASSERT functions; the unit tests migrate onto them
+   in a later step, after which the backtick forms retire. */
+
+fun expect_report_cmp_[T](a: T, b: T, op: string, astr: string, bstr: string,
+                          fname: string, lineno: int): void
+{
+    print(f"{fname}:{lineno}: Unexpected result of comparison {astr} {op} {bstr}.\nActual: ")
+    println(a)
+    print("Expected: ")
+    println(b)
+    g_test_state.currstatus = false
+}
+
+fun expect_eq_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if a == b {} else { expect_report_cmp_(a, b, "==", astr, bstr, fname, lineno) }
+fun expect_ne_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if a != b {} else { expect_report_cmp_(a, b, "!=", astr, bstr, fname, lineno) }
+fun expect_lt_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if a < b {} else { expect_report_cmp_(a, b, "<", astr, bstr, fname, lineno) }
+fun expect_le_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if a <= b {} else { expect_report_cmp_(a, b, "<=", astr, bstr, fname, lineno) }
+fun expect_gt_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if a > b {} else { expect_report_cmp_(a, b, ">", astr, bstr, fname, lineno) }
+fun expect_ge_[T](a: T, b: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if a >= b {} else { expect_report_cmp_(a, b, ">=", astr, bstr, fname, lineno) }
+
+fun expect_near_[T](a: T, b: T, eps: T, astr: string, bstr: string, fname: string, lineno: int): void =
+    if normInf(a, b) <= eps {} else {
+        print(f"{fname}:{lineno}: Unexpected result of comparison abs({astr} - {bstr}) <= {eps}.\nActual: ")
+        println(a)
+        print("Expected: ")
+        println(b)
+        g_test_state.currstatus = false
+    }
+
+macro EXPECT_EQ_(a: @expr, b: @expr): void { UTest.expect_eq_(a, b, @string(a), @string(b), @file, @line) }
+macro EXPECT_NE_(a: @expr, b: @expr): void { UTest.expect_ne_(a, b, @string(a), @string(b), @file, @line) }
+macro EXPECT_LT_(a: @expr, b: @expr): void { UTest.expect_lt_(a, b, @string(a), @string(b), @file, @line) }
+macro EXPECT_LE_(a: @expr, b: @expr): void { UTest.expect_le_(a, b, @string(a), @string(b), @file, @line) }
+macro EXPECT_GT_(a: @expr, b: @expr): void { UTest.expect_gt_(a, b, @string(a), @string(b), @file, @line) }
+macro EXPECT_GE_(a: @expr, b: @expr): void { UTest.expect_ge_(a, b, @string(a), @string(b), @file, @line) }
+macro EXPECT_NEAR_(a: @expr, b: @expr, eps: @expr): void { UTest.expect_near_(a, b, eps, @string(a), @string(b), @file, @line) }

@@ -1,0 +1,13 @@
+804_macro_depth_limit.fx:5:28: error: macro expansion too deep (limit 256); possible infinite macro recursion
+ 5 | macro pb(e: @expr): void { pa(e) }
+   |                            ^~
+ in expansion of 'pb' at 804_macro_depth_limit.fx:4:28
+ in expansion of 'pa' at 804_macro_depth_limit.fx:5:28
+ in expansion of 'pb' at 804_macro_depth_limit.fx:4:28
+ in expansion of 'pa' at 804_macro_depth_limit.fx:5:28
+ in expansion of 'pb' at 804_macro_depth_limit.fx:4:28
+ in expansion of 'pa' at 804_macro_depth_limit.fx:5:28
+ in expansion of 'pb' at 804_macro_depth_limit.fx:4:28
+ in expansion of 'pa' at 804_macro_depth_limit.fx:6:1
+
+1 errors occured during type checking.
