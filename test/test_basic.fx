@@ -12,40 +12,40 @@ import myops
 
 TEST("basic.version", fun()
 {
-    EXPECT_EQ(f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}{__ficus_suffix__}", f"{__ficus_version_str__}")
+    EXPECT_EQ_(f"{__ficus_major__}.{__ficus_minor__}.{__ficus_patchlevel__}{__ficus_suffix__}", f"{__ficus_version_str__}")
 })
 
 TEST("basic.myops.mad_ccode", fun()
 {
-    EXPECT_EQ(`myops.mad(1, 2, 3)`, 5)
+    EXPECT_EQ_(myops.mad(1, 2, 3), 5)
 })
 
 TEST("basic.limits", fun()
 {
-    EXPECT_EQ(__min__(0i8), -128i8)
-    EXPECT_EQ(__max__(0i8), 127i8)
-    EXPECT_EQ(__min__(0u8), 0u8)
-    EXPECT_EQ(__max__(0u8), 255u8)
-    EXPECT_EQ(__min__(0i16), -32768i16)
-    EXPECT_EQ(__max__(0i16), 32767i16)
-    EXPECT_EQ(__min__(0u16), 0u16)
-    EXPECT_EQ(__max__(0u16), 65535u16)
-    EXPECT_EQ(__min__(0i32), -2147483648i32)
-    EXPECT_EQ(__max__(0i32), 2147483647i32)
-    EXPECT_EQ(__min__(0u32), 0u32)
-    EXPECT_EQ(__max__(0u32), 4294967295u32)
-    EXPECT_EQ(__min__(0i64), -9223372036854775808i64)
-    EXPECT_EQ(__max__(0i64), 9223372036854775807i64)
-    EXPECT_EQ(__min__(0u64), 0u64)
-    EXPECT_EQ(__max__(0u64), 18446744073709551615u64)
-    EXPECT_EQ(__min__(0.f), -FLT_MAX)
-    EXPECT_LT(__min__(0.f), -3.4e38f)
-    EXPECT_EQ(__max__(0.f), FLT_MAX)
-    EXPECT_GT(__max__(0.f), 3.4e38f)
-    EXPECT_EQ(__min__(0.), -DBL_MAX)
-    EXPECT_LT(__min__(0.), -1.7e308)
-    EXPECT_EQ(__max__(0.), DBL_MAX)
-    EXPECT_GT(__max__(0.), 1.7e308)
+    EXPECT_EQ_(__min__(0i8), -128i8)
+    EXPECT_EQ_(__max__(0i8), 127i8)
+    EXPECT_EQ_(__min__(0u8), 0u8)
+    EXPECT_EQ_(__max__(0u8), 255u8)
+    EXPECT_EQ_(__min__(0i16), -32768i16)
+    EXPECT_EQ_(__max__(0i16), 32767i16)
+    EXPECT_EQ_(__min__(0u16), 0u16)
+    EXPECT_EQ_(__max__(0u16), 65535u16)
+    EXPECT_EQ_(__min__(0i32), -2147483648i32)
+    EXPECT_EQ_(__max__(0i32), 2147483647i32)
+    EXPECT_EQ_(__min__(0u32), 0u32)
+    EXPECT_EQ_(__max__(0u32), 4294967295u32)
+    EXPECT_EQ_(__min__(0i64), -9223372036854775808i64)
+    EXPECT_EQ_(__max__(0i64), 9223372036854775807i64)
+    EXPECT_EQ_(__min__(0u64), 0u64)
+    EXPECT_EQ_(__max__(0u64), 18446744073709551615u64)
+    EXPECT_EQ_(__min__(0.f), -FLT_MAX)
+    EXPECT_LT_(__min__(0.f), -3.4e38f)
+    EXPECT_EQ_(__max__(0.f), FLT_MAX)
+    EXPECT_GT_(__max__(0.f), 3.4e38f)
+    EXPECT_EQ_(__min__(0.), -DBL_MAX)
+    EXPECT_LT_(__min__(0.), -1.7e308)
+    EXPECT_EQ_(__max__(0.), DBL_MAX)
+    EXPECT_GT_(__max__(0.), 1.7e308)
 })
 
 TEST("basic.fib", fun()
@@ -108,10 +108,10 @@ TEST("basic.fib", fun()
         val fib2_i = fib2(i+1)
         val fib3_i = fib3(i+1)
         val fib4_i = fib_seq()
-        EXPECT_EQ(`fib_i`, `x`)
-        EXPECT_EQ(`fib2_i`, `x`)
-        EXPECT_EQ(`fib3_i`, `x`)
-        EXPECT_EQ(`fib4_i`, `x`)
+        EXPECT_EQ_(fib_i, x)
+        EXPECT_EQ_(fib2_i, x)
+        EXPECT_EQ_(fib3_i, x)
+        EXPECT_EQ_(fib4_i, x)
     }
 })
 
@@ -155,14 +155,14 @@ TEST("basic.find", fun()
     fun is_negative(x: int) {x < 0}
     fun is_five(x: int) {x == 5}
 
-    EXPECT_EQ(`find_iterative(a, is_negative)`, 3)
-    EXPECT_EQ(`find_fold(a, is_negative)`, 3)
-    EXPECT_EQ(`find_exn(a, is_negative)`, 3)
-    EXPECT_EQ(`find_return(a, is_negative)`, 3)
-    EXPECT_EQ(`find_iterative(a, is_five)`, -1)
-    EXPECT_EQ(`find_fold(a, is_five)`, -1)
-    EXPECT_EQ(`find_exn(a, is_five)`, -1)
-    EXPECT_EQ(`find_return(a, is_five)`, -1)
+    EXPECT_EQ_(find_iterative(a, is_negative), 3)
+    EXPECT_EQ_(find_fold(a, is_negative), 3)
+    EXPECT_EQ_(find_exn(a, is_negative), 3)
+    EXPECT_EQ_(find_return(a, is_negative), 3)
+    EXPECT_EQ_(find_iterative(a, is_five), -1)
+    EXPECT_EQ_(find_fold(a, is_five), -1)
+    EXPECT_EQ_(find_exn(a, is_five), -1)
+    EXPECT_EQ_(find_return(a, is_five), -1)
 })
 
 TEST("basic.make_empty_list", fun()
@@ -170,8 +170,8 @@ TEST("basic.make_empty_list", fun()
     fun make_null[T](a:T):list[T] = []
 
     val x = [:: 1, 2, 3]
-    EXPECT_EQ(`make_null(x).length()`, 0)
-    EXPECT_EQ(`(x :: make_null(x)).length()`, 1)
+    EXPECT_EQ_(make_null(x).length(), 0)
+    EXPECT_EQ_((x :: make_null(x)).length(), 1)
 })
 
 TEST("basic.math", fun()
@@ -182,14 +182,14 @@ TEST("basic.math", fun()
        sqrt(a*a + b*b) + myops.div3(a*a + b*b)
     }
 
-    EXPECT_NEAR(`c`, 13.3333333333, FLT_EPSILON*1.0)
-    EXPECT_NEAR(`atan(1.)*4`, M_PI, DBL_EPSILON*10)
-    EXPECT_NEAR(`exp(-1.)`, 0.36787944117144233, DBL_EPSILON*10)
+    EXPECT_NEAR_(c, 13.3333333333, FLT_EPSILON*1.0)
+    EXPECT_NEAR_(atan(1.)*4, M_PI, DBL_EPSILON*10)
+    EXPECT_NEAR_(exp(-1.), 0.36787944117144233, DBL_EPSILON*10)
     val alpha = (M_PI/3 :> float)
-    EXPECT_NEAR(`sin(alpha)`, 0.8660254037844386f, FLT_EPSILON*10)
-    EXPECT_NEAR(`cos(alpha)`, 0.5f, FLT_EPSILON*10)
-    EXPECT_EQ(`myops.sqr(5)`, 25)
-    EXPECT_NEAR(`myops.sqr(0.1)`, 0.01, double(FLT_EPSILON))
+    EXPECT_NEAR_(sin(alpha), 0.8660254037844386f, FLT_EPSILON*10)
+    EXPECT_NEAR_(cos(alpha), 0.5f, FLT_EPSILON*10)
+    EXPECT_EQ_(myops.sqr(5), 25)
+    EXPECT_NEAR_(myops.sqr(0.1), 0.01, double(FLT_EPSILON))
 })
 
 TEST("basic.list.pattern_match", fun()
@@ -202,16 +202,16 @@ TEST("basic.list.pattern_match", fun()
     }
 
     var lst : list[int] = []
-    EXPECT_EQ(`f(lst)`, (0, 0))
+    EXPECT_EQ_(f(lst), (0, 0))
 
     lst = [:: 1,]
-    EXPECT_EQ(`f(lst)`, (1, 1))
+    EXPECT_EQ_(f(lst), (1, 1))
 
     lst = [:: 1, 2]
-    EXPECT_EQ(`f(lst)`, (3, 2))
+    EXPECT_EQ_(f(lst), (3, 2))
 
     lst = [:: 1, 2, 3]
-    EXPECT_EQ(`f(lst)`, (-1, 56))
+    EXPECT_EQ_(f(lst), (-1, 56))
 })
 
 TEST("basic.matrix.multiply", fun()
@@ -222,8 +222,8 @@ TEST("basic.matrix.multiply", fun()
 
     val mn = m[4:5, round(b):round(b)+1] * n[2:3, 3:4]
 
-    EXPECT_EQ(`size(mn)`, (1, 1))
-    EXPECT_EQ(`mn[0, 0]`, 6.0)
+    EXPECT_EQ_(size(mn), (1, 1))
+    EXPECT_EQ_(mn[0, 0], 6.0)
 })
 
 TEST("basic.function.try_catch", fun()
@@ -238,8 +238,8 @@ TEST("basic.function.try_catch", fun()
             | Fail _ => println ("Intentional exception occured; no worries"); -1
         }
 
-    EXPECT_EQ(`foo(1)`, 7)
-    EXPECT_EQ(`foo(5)`, -1)
+    EXPECT_EQ_(foo(1), 7)
+    EXPECT_EQ_(foo(5), -1)
 })
 
 TEST("basic.types.templates", fun()
@@ -251,11 +251,11 @@ TEST("basic.types.templates", fun()
 
     // Check template_fun_t
     val my_func: template_fun_t[int, string] = fun (x:int) {string(x)}
-    EXPECT_EQ(`my_func(3)`, "3")
+    EXPECT_EQ_(my_func(3), "3")
 
     // Check template_fun2_t
     val my_func2 = fun (x:int) {x*3}
-    EXPECT_EQ(`my_func2(3)`, 9)
+    EXPECT_EQ_(my_func2(3), 9)
 
     // Check tuple_signature_t
     val my_func3: template_fun2_t[double] = fun (x:double) {x*-3.}
@@ -264,12 +264,12 @@ TEST("basic.types.templates", fun()
             3.25,
             (fun (f: template_fun2_t[int]) {my_func3} )
         )
-    EXPECT_EQ(`strange_tuple.0`, 3)
-    EXPECT_EQ(`strange_tuple.1`, 3.25)
-    EXPECT_EQ(`strange_tuple.2(my_func2)(3.0)`, -9.)
+    EXPECT_EQ_(strange_tuple.0, 3)
+    EXPECT_EQ_(strange_tuple.1, 3.25)
+    EXPECT_EQ_(strange_tuple.2(my_func2)(3.0), -9.)
 
     val ct_inst = C((A(cos) : ct[float, float]))
-    EXPECT_EQ(`match ct_inst { | C(A(f)) => f(0.f) | _ => -1.f }`, 1.0f)
+    EXPECT_EQ_(match ct_inst { | C(A(f)) => f(0.f) | _ => -1.f }, 1.0f)
 })
 
 TEST("basic.fstring_nested_literals", fun()
@@ -280,12 +280,12 @@ TEST("basic.fstring_nested_literals", fun()
     // long claimed this fails to parse, which was a misdiagnosis of the
     // escaped spelling f"{find(\"x\")}".
     fun wrap(s: string) = "<" + s + ">"
-    EXPECT_EQ(`f"{wrap("x")}"`, "<x>")
-    EXPECT_EQ(`f"{ "lit" + wrap("y") }"`, "lit<y>")
-    EXPECT_EQ(`f"pre {wrap("z" + "w")} post"`, "pre <zw> post")
-    EXPECT_EQ(`f"{wrap("}")}"`, "<}>")           // brace inside the literal
-    EXPECT_EQ(`f"{wrap("\"q\"")}"`, "<\"q\">")   // escapes inside the LITERAL are fine
-    EXPECT_EQ(`f"{f"{wrap("deep")}"}"`, "<deep>") // f-string inside f-string
+    EXPECT_EQ_(f"{wrap("x")}", "<x>")
+    EXPECT_EQ_(f"{ "lit" + wrap("y") }", "lit<y>")
+    EXPECT_EQ_(f"pre {wrap("z" + "w")} post", "pre <zw> post")
+    EXPECT_EQ_(f"{wrap("}")}", "<}>")           // brace inside the literal
+    EXPECT_EQ_(f"{wrap("\"q\"")}", "<\"q\">")   // escapes inside the LITERAL are fine
+    EXPECT_EQ_(f"{f"{wrap("deep")}"}", "<deep>") // f-string inside f-string
 })
 
 TEST("basic.record", fun()
@@ -294,9 +294,9 @@ TEST("basic.record", fun()
     val p = point_t {x=5, y=6}
     fun mkpt[T](x: T, y: T) = point_t {x=x, y=y}
 
-    EXPECT_EQ(`f"{p}"`, "{x=5, y=6}")
-    EXPECT_EQ(`f"{mkpt(1, 0).{x=7}}"`, "{x=7, y=0}")
-    EXPECT_EQ(`f"{mkpt(1.5, 0.).{y=7.}}"`, "{x=1.5, y=7.0}")
+    EXPECT_EQ_(f"{p}", "{x=5, y=6}")
+    EXPECT_EQ_(f"{mkpt(1, 0).{x=7}}", "{x=7, y=0}")
+    EXPECT_EQ_(f"{mkpt(1.5, 0.).{y=7.}}", "{x=1.5, y=7.0}")
 
     type rect_t[T] = {x: T; y: T; width: T; height: T}
 
@@ -310,14 +310,14 @@ TEST("basic.record", fun()
     val ir = rect_t {x=0, y=0, width=10, height=10}
     val fr = rect_t {x=0.f, y=0.f, width=10.f, height=10.f}
 
-    EXPECT_EQ(`contains(ir, ip)`, true)
-    EXPECT_EQ(`contains(fr, fp)`, false)
+    EXPECT_EQ_(contains(ir, ip), true)
+    EXPECT_EQ_(contains(fr, fp), false)
 
     val vtx0 = [:: (0, 0), (640, 0), (640, 480), (0, 480)]
     val vtx1 = [:: for (x, y) <- vtx0 {point_t {x=x*2, y=y*2}}]
     val vtx2 = [:: for {x, y} <- vtx1 {(x/2, y/2)}]
 
-    EXPECT_EQ(`vtx2`, `vtx0`)
+    EXPECT_EQ_(vtx2, vtx0)
 })
 
 TEST("basic.variant_with_record", fun()
@@ -334,7 +334,7 @@ TEST("basic.variant_with_record", fun()
     }
 
     val t = FF {h=0}
-    EXPECT_EQ(`string(next(t))`, "FF(1)")
+    EXPECT_EQ_(string(next(t)), "FF(1)")
 
     type rr = {h1: int; h2: int}
     type tt2 = FF2 : rr | Empty2
@@ -349,7 +349,7 @@ TEST("basic.variant_with_record", fun()
     }
 
     val t = FF2 (rr {h1=1, h2=-1})
-    EXPECT_EQ(`string(next(t))`, "FF2(2, -2)")
+    EXPECT_EQ_(string(next(t)), "FF2(2, -2)")
 
     type tt1 = FF1 : {h: int}
     fun next(t: tt1) {
@@ -363,7 +363,7 @@ TEST("basic.variant_with_record", fun()
     }
 
     val t = FF1 {h=100}
-    EXPECT_EQ(`string(next(t))`, "FF1(101)")
+    EXPECT_EQ_(string(next(t)), "FF1(101)")
 
     type tt15 = FF15 : {h: (int, int, int, bool, string)}
     fun next(t: tt15) {
@@ -376,7 +376,7 @@ TEST("basic.variant_with_record", fun()
     }
 
     val t = FF15 {h=(10, 10, 10, false, "10")}
-    EXPECT_EQ(`string(next(t))`, "FF15(11, 12, 13, true, \"100\")")
+    EXPECT_EQ_(string(next(t)), "FF15(11, 12, 13, true, \"100\")")
 })
 
 TEST("basic.ratio", fun()
@@ -413,7 +413,7 @@ TEST("basic.ratio", fun()
     fun string(Ratio(n, d): ratio_t) = f"{n}/{d}"
 
     val a = Ratio(33, 100), b = Ratio(85, 1000)
-    EXPECT_EQ(`string(a+b)`, "83/200")
+    EXPECT_EQ_(string(a+b), "83/200")
 
     // 2. record
     type ratio2_t = Ratio2: {num: int; denom: int}
@@ -448,7 +448,7 @@ TEST("basic.ratio", fun()
     fun string({num, denom}: ratio2_t) = f"{num}/{denom}"
 
     val a = Ratio2 {num=33, denom=100}, b = Ratio2 {num=85, denom=1000}
-    EXPECT_EQ(`string(a/b)`, "66/17")
+    EXPECT_EQ_(string(a/b), "66/17")
 })
 
 TEST("basic.self_assignment", fun()
@@ -481,22 +481,22 @@ TEST("basic.self_assignment", fun()
     }
 
     a = a
-    EXPECT_EQ(`a`, 5)
+    EXPECT_EQ_(a, 5)
     b = b
-    EXPECT_EQ(`b`, "0, 1, 2, 3, 4, 5, 6, 7, 8, 9")
+    EXPECT_EQ_(b, "0, 1, 2, 3, 4, 5, 6, 7, 8, 9")
     c = c
-    EXPECT_EQ(`c`, [[[1], [0], [0]], [[0], [1], [0]], [[0], [0], [1]]])
+    EXPECT_EQ_(c, [[[1], [0], [0]], [[0], [1], [0]], [[0], [0], [1]]])
     for i<-0:3 for j<-0:3 {c2[i][j] = c2[i][j]}
-    EXPECT_EQ(`c2`, [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]])
+    EXPECT_EQ_(c2, [[[1], [2], [3]], [[4], [5], [6]], [[7], [8], [9]]])
     d = d
     for i<-0:5 {(*d)[i] *= (*d)[i]}
-    EXPECT_EQ(`*d`, [1, 4, 9, 16, 25])
+    EXPECT_EQ_(*d, [1, 4, 9, 16, 25])
     e.0 = e.0
     e.1 = e.1
     e.2 = e.2
-    EXPECT_EQ(`e`, (1, "abc", [1, 2, 3]))
+    EXPECT_EQ_(e, (1, "abc", [1, 2, 3]))
     t = t
-    EXPECT_EQ(`t`, Node(5,
+    EXPECT_EQ_(t, Node(5,
         Node(1,
             Node(-1, Empty, Empty),
             Node(3, Empty, Empty)),
@@ -511,16 +511,16 @@ TEST("basic.ref", fun()
     val u : ref[string?] = ref None
 
     *u = y
-    EXPECT_EQ(`u->value_or("0")`, `y.value_or("1")`)
+    EXPECT_EQ_(u->value_or("0"), y.value_or("1"))
 
     val nested_ref: ref[ref[ref[int]]] = ref (ref (ref 5))
-    EXPECT_EQ(`***nested_ref`, 5)
+    EXPECT_EQ_(***nested_ref, 5)
 
     ***nested_ref -= 5
-    EXPECT_EQ(`***nested_ref`, 0)
+    EXPECT_EQ_(***nested_ref, 0)
 
     val tref = ref (1, 2, 3)
-    EXPECT_EQ(`tref->0 * tref->1 * tref->2`, 6)
+    EXPECT_EQ_(tref->0 * tref->1 * tref->2, 6)
 })
 
 TEST("basic.option", fun()
@@ -529,12 +529,12 @@ TEST("basic.option", fun()
     val y = Some("abc")
     val z: string? = None
 
-    EXPECT(x.isnone())
-    EXPECT(z.isnone())
-    EXPECT(y.issome())
-    EXPECT_EQ(`x.value_or(-1)`, -1)
-    EXPECT_EQ(`y.value_or("")`, "abc")
-    EXPECT_EQ(`Some((1, 2, 3)).value_or((0, 0, 0))`, (1, 2, 3))
+    EXPECT_(x.isnone())
+    EXPECT_(z.isnone())
+    EXPECT_(y.issome())
+    EXPECT_EQ_(x.value_or(-1), -1)
+    EXPECT_EQ_(y.value_or(""), "abc")
+    EXPECT_EQ_(Some((1, 2, 3)).value_or((0, 0, 0)), (1, 2, 3))
 })
 
 TEST("basic.types.variant", fun()
@@ -567,25 +567,25 @@ TEST("basic.types.variant", fun()
         }
     }
 
-    EXPECT_EQ(
-        `f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([::Int, Int], Int) :: [])})"`,
+    EXPECT_EQ_(
+        f"({tlist2str(Unit :: Array(Int) :: Var(ref Some(Bool)) :: Tuple(Int::Float::[]) :: Fun([::Int, Int], Int) :: [])})",
         "(void, int [], bool, (int, double), ((int, int) -> int))"
     )
-    EXPECT_EQ(`t2str(Var(ref None))`, "<unknown>")
+    EXPECT_EQ_(t2str(Var(ref None)), "<unknown>")
 })
 
 TEST("basic.list", fun()
 {
     val l = 1 :: 2 :: 3 :: []
     val l2 = [:: 1, 2, 3]
-    EXPECT_EQ(`l.length()`, 3)
-    EXPECT_THROWS(`fun () {println(l.tl().tl().tl().tl())}`, NullListError)
-    EXPECT_EQ(`l`, `l2`)
-    EXPECT_EQ(`l.hd()`, 1)
-    EXPECT_EQ(`l.tl()`, [:: 2, 3])
-    EXPECT_EQ(`l.hd() :: l.tl()`, l)
-    EXPECT_NE(`l`, 1 :: -1 :: 3 :: [])
-    EXPECT_EQ(`l <=> [:: 1, 2, 3, 4]`, -1)
+    EXPECT_EQ_(l.length(), 3)
+    EXPECT_THROWS_(fun () {println(l.tl().tl().tl().tl())}, NullListError)
+    EXPECT_EQ_(l, l2)
+    EXPECT_EQ_(l.hd(), 1)
+    EXPECT_EQ_(l.tl(), [:: 2, 3])
+    EXPECT_EQ_(l.hd() :: l.tl(), l)
+    EXPECT_NE_(l, 1 :: -1 :: 3 :: [])
+    EXPECT_EQ_(l <=> [:: 1, 2, 3, 4], -1)
 })
 
 TEST("basic.list.reverse", fun()
@@ -601,8 +601,8 @@ TEST("basic.list.reverse", fun()
     }
 
     val l = 1 :: 2 :: 3 :: []
-    EXPECT_EQ(`list_reverse(l)`, [:: 3, 2, 1])
-    EXPECT_EQ(`(-1 :: l).rev()`, [:: 3, 2, 1, -1])
+    EXPECT_EQ_(list_reverse(l), [:: 3, 2, 1])
+    EXPECT_EQ_((-1 :: l).rev(), [:: 3, 2, 1, -1])
 })
 
 TEST("basic.list.map", fun()
@@ -618,11 +618,11 @@ TEST("basic.list.map", fun()
     }
 
     val strings = list_map([:: 1, 2, 3], (string: int->string))
-    EXPECT_EQ(`strings`, [:: "1", "2", "3"])
+    EXPECT_EQ_(strings, [:: "1", "2", "3"])
 
     val cosines : list[double] = list_map([:: 1., 2., 3.], cos)
     val expected = [:: 0.5403023058681398, -0.4161468365471424, -0.9899924966004454]
-    EXPECT_NEAR(`cosines`, expected, DBL_EPSILON*10)
+    EXPECT_NEAR_(cosines, expected, DBL_EPSILON*10)
 })
 
 TEST("basic.list.zip", fun()
@@ -638,11 +638,11 @@ TEST("basic.list.zip", fun()
     }
 
     val zipped = list_zip([:: 1, 2, 3], [:: "a", "b", "c"])
-    EXPECT_EQ(`zipped.length()`, 3)
-    EXPECT_EQ(`zipped.tl().tl().hd()`, (3, "c"))
+    EXPECT_EQ_(zipped.length(), 3)
+    EXPECT_EQ_(zipped.tl().tl().hd(), (3, "c"))
 
     val triples = [:: for c <- "abcdef", i <- [:: 1, 2, 3, 4, 5, 6] {(i, i*i, c)}]
-    EXPECT_EQ(`triples`, [:: (1, 1, 'a'), (2, 4, 'b'), (3, 9, 'c'), (4, 16, 'd'), (5, 25, 'e'), (6, 36, 'f')])
+    EXPECT_EQ_(triples, [:: (1, 1, 'a'), (2, 4, 'b'), (3, 9, 'c'), (4, 16, 'd'), (5, 25, 'e'), (6, 36, 'f')])
 })
 
 TEST("basic.list.unzip", fun()
@@ -660,24 +660,24 @@ TEST("basic.list.unzip", fun()
 
     val ll = [:: ("a", 1), ("b", 2), ("c", 3)]
     val unzipped = list_unzip(ll)
-    EXPECT_EQ(`unzipped.0`, [:: "a", "b", "c"])
-    EXPECT_EQ(`unzipped.1`, [:: 1, 2, 3])
+    EXPECT_EQ_(unzipped.0, [:: "a", "b", "c"])
+    EXPECT_EQ_(unzipped.1, [:: 1, 2, 3])
     val unzipped2 = [:: @unzip for si <- ll {si}]
-    EXPECT_EQ(`unzipped2.0`, [:: "a", "b", "c"])
-    EXPECT_EQ(`unzipped2.1`, [:: 1, 2, 3])
+    EXPECT_EQ_(unzipped2.0, [:: "a", "b", "c"])
+    EXPECT_EQ_(unzipped2.1, [:: 1, 2, 3])
 })
 
 TEST("basic.list.sort", fun()
 {
-    EXPECT_EQ(`[::10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458, -460, 451, -11034, 8848].sort((<))`,
+    EXPECT_EQ_([::10, 355, 113, -1, 2, 26, 1, 1949, 0, 299792458, -460, 451, -11034, 8848].sort((<)),
         [::-11034, -460, -1, 0, 1, 2, 10, 26, 113, 355, 451, 1949, 8848, 299792458])
 })
 
 TEST("basic.myops", fun()
 {
     val x = myops.add_scaled([1.f, 2.f, 3.f], [4.f, 5.f, 6.f], 0.1f)[0]
-    EXPECT_NEAR(`x`, 1.4f, FLT_EPSILON*10)
-    EXPECT_EQ(`myops.sum_arr([for i <- 0:100 {i*i}])`, 328350)
+    EXPECT_NEAR_(x, 1.4f, FLT_EPSILON*10)
+    EXPECT_EQ_(myops.sum_arr([for i <- 0:100 {i*i}]), 328350)
 })
 
 TEST("basic.array.compose", fun()
@@ -685,7 +685,7 @@ TEST("basic.array.compose", fun()
     val m0 = [1, 2, 3]
     val m1 = [\m0, 4; 0, \m0]
 
-    EXPECT_EQ(`m1`, [ 1, 2, 3, 4; 0, 1, 2, 3 ])
+    EXPECT_EQ_(m1, [ 1, 2, 3, 4; 0, 1, 2, 3 ])
 
     val eye22 = [ 1., 0.;
                    0., 1. ]
@@ -696,13 +696,13 @@ TEST("basic.array.compose", fun()
                        0., 2., 0., 0.;
                        4., 0., 5., 0.;
                        0., 4., 0., 5. ]
-    EXPECT_EQ(`m1`, expected1)
+    EXPECT_EQ_(m1, expected1)
 
     val m2 = [ eye22 .+ eye22, eye22 .- eye22;
                 eye22 * 4.,    eye22 * 5. ]
     val expected2 = [ [ 2., 0.; 0., 2.], [ 0., 0.; 0., 0.];
                        [ 4., 0.; 0., 4.], [ 5., 0.; 0., 5.] ]
-    EXPECT_EQ(`m2`, expected2)
+    EXPECT_EQ_(m2, expected2)
 })
 
 TEST("basic.loop.squares", fun()
@@ -718,7 +718,7 @@ TEST("basic.loop.squares", fun()
         squares.rev()
     }
 
-    EXPECT_EQ(`gen_squares(4)`, [:: 0, 1, 4, 9])
+    EXPECT_EQ_(gen_squares(4), [:: 0, 1, 4, 9])
 })
 
 TEST("basic.overloaded", fun()
@@ -727,21 +727,21 @@ TEST("basic.overloaded", fun()
     // (tuples-as-short-vectors); the operands may still have different
     // element types. Mixed tuples like (1, "abc") no longer support `+`.
     val t = (1, 2) + (0.125, 0.25)
-    EXPECT_EQ(t, (1.125, 2.25))
+    EXPECT_EQ_(t, (1.125, 2.25))
     type point_t[T] = {x: T; y: T}
 
     operator + [T](p1: point_t[T], p2: point_t[T]) =
         point_t { x=p1.x + p2.x, y=p1.y + p2.y }
 
-    EXPECT_EQ(`(point_t {x=1, y=2}) + (point_t {x=0, y=100})`, point_t {x=1, y=102})
+    EXPECT_EQ_((point_t {x=1, y=2}) + (point_t {x=0, y=100}), point_t {x=1, y=102})
 })
 
 TEST("basic.types.conversions", fun()
 {
-    EXPECT_EQ(3.f, float(1) + 2)
+    EXPECT_EQ_(3.f, float(1) + 2)
 
     val my_pi = "3.14".to_double().value_or(0.0)
-    EXPECT_NEAR(`my_pi * 2`, 6.28, 1e-10)
+    EXPECT_NEAR_(my_pi * 2, 6.28, 1e-10)
 })
 
 TEST("basic.array.init_u", fun()
@@ -751,7 +751,7 @@ TEST("basic.array.init_u", fun()
     for i <- 0:m for j <- 0:n {
         if j >= i {a[i,j] = 1.}
     }
-    EXPECT_EQ(`a`, [ 1., 1., 1., 1.;
+    EXPECT_EQ_(a, [ 1., 1., 1., 1.;
                     0., 1., 1., 1.;
                     0., 0., 1., 1. ])
 })
@@ -759,8 +759,8 @@ TEST("basic.array.init_u", fun()
 TEST("basic.assert", fun()
 {
     val k = -1
-    EXPECT_NO_THROWS(`fun () { assert (0 == k-k) }`, msg="assert(0=0)")
-    EXPECT_THROWS(`fun () { assert (1 == k-k) }`, AssertError(""))
+    EXPECT_NO_THROWS_(fun () { assert (0 == k-k) }, "assert(0=0)")
+    EXPECT_THROWS_(fun () { assert (1 == k-k) }, AssertError(""))
 })
 
 /*TEST("basic.stack_overflow", fun()
@@ -772,19 +772,19 @@ TEST("basic.assert", fun()
 
 TEST("basic.string", fun()
 {
-    EXPECT_EQ(`"y" + "hello"[1:5] + "w"`, "yellow")
-    EXPECT_EQ(`"yellow"[:.-1]`, "yello")
-    EXPECT_EQ(`f"abc{2*2}def"`, "abc4def")
-    EXPECT_EQ(`f"abc{{2*2}}def"`, "abc{2*2}def")
-    EXPECT_EQ(`r"Dear (\w+),.+Best regards,\n(\w+)"`, "Dear (\\w+),.+Best regards,\\n(\\w+)")
+    EXPECT_EQ_("y" + "hello"[1:5] + "w", "yellow")
+    EXPECT_EQ_("yellow"[:.-1], "yello")
+    EXPECT_EQ_(f"abc{2*2}def", "abc4def")
+    EXPECT_EQ_(f"abc{{2*2}}def", "abc{2*2}def")
+    EXPECT_EQ_(r"Dear (\w+),.+Best regards,\n(\w+)", "Dear (\\w+),.+Best regards,\\n(\\w+)")
 
-    EXPECT_EQ(`", ".join([:: "a", "b", "c"])`, "a, b, c")
+    EXPECT_EQ_(", ".join([:: "a", "b", "c"]), "a, b, c")
 
     val str = "This is a sentence made of words separated by spaces."
-    EXPECT_EQ(`str.tokens(fun (c) {c == ' '})`,
+    EXPECT_EQ_(str.tokens(fun (c) {c == ' '}),
         [::"This", "is", "a", "sentence", "made", "of", "words", "separated", "by", "spaces."])
 
-    EXPECT_EQ(`"Привет! 你好吗?".length()`, 12)
+    EXPECT_EQ_("Привет! 你好吗?".length(), 12)
     println("NOTE: If you get a test failure here on Windows, set Windows locale to UTF-8, as described here:\n\
         https://superuser.com/questions/1033088/is-it-possible-to-set-locale-of-a-windows-application-to-utf-8")
 })
@@ -802,7 +802,7 @@ TEST("basic.templates.variants", fun()
     }
 
     val depth_list = [:: for n <- node_list {depth(n)}]
-    EXPECT_EQ(`depth_list`, [:: 0, 0, 1, 2])
+    EXPECT_EQ_(depth_list, [:: 0, 0, 1, 2])
 })
 
 TEST("basic.keyword_args", fun()
@@ -824,9 +824,9 @@ TEST("basic.keyword_args", fun()
     // Math.sqrt(double) under least-generic ranking -> ambiguity error, per the
     // decided policy (proposal §4/§10.Q2: no "fewer defaults" tie-break).
     // Passing a keyword makes the intent explicit and only the local sqrt viable.
-    EXPECT_NEAR(`sqrt(81.0, n=2)`, 9.0, 1e-10)
-    EXPECT_NEAR(`sqrt(-81.0, use_abs=true, n=4)`, 3.0, 1e-10)
-    EXPECT_NEAR(`sqrt(-27.f, n=3)`, -3.f, 1e-6f)
+    EXPECT_NEAR_(sqrt(81.0, n=2), 9.0, 1e-10)
+    EXPECT_NEAR_(sqrt(-81.0, use_abs=true, n=4), 3.0, 1e-10)
+    EXPECT_NEAR_(sqrt(-27.f, n=3), -3.f, 1e-6f)
 })
 
 TEST("basic.finally", fun()
@@ -854,19 +854,19 @@ TEST("basic.finally", fun()
         finally {
             finalized1 = "ok1"
         }
-    EXPECT_EQ(`res0`, 0)
-    EXPECT_EQ(`finalized0`, "ok0")
-    EXPECT_EQ(`res1`, 1)
-    EXPECT_EQ(`finalized1`, "ok1")
+    EXPECT_EQ_(res0, 0)
+    EXPECT_EQ_(finalized0, "ok0")
+    EXPECT_EQ_(res1, 1)
+    EXPECT_EQ_(finalized1, "ok1")
 })
 
 TEST("basic.format", fun() {
-    EXPECT_EQ(f"{M_PI:.5f}", "3.14159")
-    EXPECT_EQ(f"{(-1 :> uint8):#x}", "0xff")
-    EXPECT_EQ(f"{int(1e6):,}", "1,000,000")
-    EXPECT_EQ(f"{[sqrt(2.), sqrt(3.), sqrt(4.)]:.2g}", "[1.4, 1.7, 2]")
+    EXPECT_EQ_(f"{M_PI:.5f}", "3.14159")
+    EXPECT_EQ_(f"{(-1 :> uint8):#x}", "0xff")
+    EXPECT_EQ_(f"{int(1e6):,}", "1,000,000")
+    EXPECT_EQ_(f"{[sqrt(2.), sqrt(3.), sqrt(4.)]:.2g}", "[1.4, 1.7, 2]")
     val abc = "abc"
-    EXPECT_EQ(f"{abc:~^30}", "~~~~~~~~~~~~~abc~~~~~~~~~~~~~~")
+    EXPECT_EQ_(f"{abc:~^30}", "~~~~~~~~~~~~~abc~~~~~~~~~~~~~~")
 })
 
 TEST("basic.int64_min", fun() {
@@ -879,23 +879,23 @@ TEST("basic.int64_min", fun() {
     val folded = -9223372036854775807 - 1
     val data = [-9223372036854775807, 1]
     val runtime = data[0] - data[1]
-    EXPECT_EQ(folded, runtime)
-    EXPECT_EQ(folded, -9223372036854775807 - 1)
-    EXPECT_EQ(folded < 0, true)                  // signed: INT64_MIN < 0
-    EXPECT_EQ(folded / 2, -4611686018427387904)  // signed halving, not 2^62
-    EXPECT_EQ(folded % 7, -1)                     // remainder takes dividend sign
-    EXPECT_EQ(folded + 1, -9223372036854775807)  // INT64_MIN + 1
-    EXPECT_EQ(-folded - 1, 9223372036854775807)  // -(INT64_MIN) wraps; -1 -> MAX
+    EXPECT_EQ_(folded, runtime)
+    EXPECT_EQ_(folded, -9223372036854775807 - 1)
+    EXPECT_EQ_(folded < 0, true)                  // signed: INT64_MIN < 0
+    EXPECT_EQ_(folded / 2, -4611686018427387904)  // signed halving, not 2^62
+    EXPECT_EQ_(folded % 7, -1)                     // remainder takes dividend sign
+    EXPECT_EQ_(folded + 1, -9223372036854775807)  // INT64_MIN + 1
+    EXPECT_EQ_(-folded - 1, 9223372036854775807)  // -(INT64_MIN) wraps; -1 -> MAX
     // Assigning INT64_MIN to an explicit int64 lvalue used to be rejected by a
     // symmetric typechecker range [-(2^63-1), 2^63-1]; now the full two's-
     // complement min is accepted (consistent with int8/16/32).
     val min64 = -9223372036854775807i64 - 1i64
     var y = 0i64
     y = -9223372036854775808
-    EXPECT_EQ(y, min64)
+    EXPECT_EQ_(y, min64)
     val arr = [0i64, 0i64]
     arr[1] = -9223372036854775808
-    EXPECT_EQ(arr[1], min64)
+    EXPECT_EQ_(arr[1], min64)
 })
 
 TEST("basic.checked_read_side_effect", fun() {
@@ -907,14 +907,14 @@ TEST("basic.checked_read_side_effect", fun() {
     val ev: vector[int] = []
     val es: string = ""
     val er: rrbvec[int] = []
-    EXPECT_THROWS(fun() { ignore(ea[0]) },   OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(ea[.-1]) }, OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(ev[0]) },   OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(ev[.-1]) }, OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(es[0]) },   OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(es[.-1]) }, OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(er[0]) },   OutOfRangeError)
-    EXPECT_THROWS(fun() { ignore(er[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(ea[0]) },   OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(ea[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(ev[0]) },   OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(ev[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(es[0]) },   OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(es[.-1]) }, OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(er[0]) },   OutOfRangeError)
+    EXPECT_THROWS_(fun() { ignore(er[.-1]) }, OutOfRangeError)
     // a border read (.clip) never throws and stays eliminable -- no exception
-    EXPECT_EQ(ea.clip[0], 0)   // clip on empty -> clamps, returns default 0
+    EXPECT_EQ_(ea.clip[0], 0)   // clip on empty -> clamps, returns default 0
 })

@@ -24,7 +24,7 @@ TEST("rand.str.slice", fun() {
         val got = s[lo:hi]
         val rf = string([for k <- lo:hi {s[k]}])
         if got != rf {println(f"  [repro] {name} case={i} seed={seed} n={n} lo={lo} hi={hi}")}
-        EXPECT_EQ(got, rf)
+        EXPECT_EQ_(got, rf)
     }
 })
 
@@ -46,8 +46,8 @@ TEST("rand.str.find", fun() {
         if !ok || absent != -1 {
             println(f"  [repro] {name} case={i} seed={seed} s='{s}' needle='{needle}' fi={fi}")
         }
-        EXPECT(ok)
-        EXPECT_EQ(absent, -1)
+        EXPECT_(ok)
+        EXPECT_EQ_(absent, -1)
     }
 })
 
@@ -63,7 +63,7 @@ TEST("rand.str.split_join", fun() {
         var bad = parts.length() != toks.length()
         for p <- parts, t <- toks { if p != t {bad = true} }
         if bad {println(f"  [repro] {name} case={i} seed={seed} joined='{joined}'")}
-        EXPECT(!bad)
+        EXPECT_(!bad)
     }
 })
 
@@ -79,7 +79,7 @@ TEST("rand.str.concat", fun() {
         if n1 > 0 && s[0:n1] != s1 {bad = true}
         if n2 > 0 && s[n1:n1 + n2] != s2 {bad = true}
         if bad {println(f"  [repro] {name} case={i} seed={seed} n1={n1} n2={n2}")}
-        EXPECT(!bad)
+        EXPECT_(!bad)
     }
 })
 
@@ -92,6 +92,6 @@ TEST("rand.str.unicode_length", fun() {
         val s = rand_string(rng, n)                     // includes non-ASCII chars
         // length() counts characters (UTF-32), not bytes
         if s.length() != n {println(f"  [repro] {name} case={i} seed={seed} n={n} len={s.length()}")}
-        EXPECT_EQ(s.length(), n)
+        EXPECT_EQ_(s.length(), n)
     }
 })

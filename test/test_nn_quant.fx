@@ -21,7 +21,7 @@ TEST("NN.Quantized.quantizeLinear", fun()
     OpQuantized.run_quantize(Ast.mktensor(x, layout=Ast.NN_Layout_ND),
                             Ast.mktensor(y_scale, layout=Ast.NN_Layout_ND),
                             Ast.mktensor(y_zero_point), Ast.mktensor(y), axis, 4)
-    EXPECT_EQ(y, y_ref)
+    EXPECT_EQ_(y, y_ref)
 })
 
 // FIXME: commented off — this exercises a known DL-inference-engine bug in
@@ -80,7 +80,7 @@ TEST("NN.Quantized.add", fun()
                             Ast.mktensor(x1_scale), Ast.mktensor(x1_zp),
                             Ast.mktensor(x2_scale), Ast.mktensor(x2_zp),
                             Ast.mktensor(y_scale), Ast.mktensor(y_zp), 4)
-    EXPECT_NEAR(int(y), int(y_ref), 1)
+    EXPECT_NEAR_(int(y), int(y_ref), 1)
 })
 
 /*TEST("NN.Quantized.globalAvgPool", fun()
@@ -126,5 +126,5 @@ TEST("NN.Quantized.matmul", fun()
     OpGemm.run_qmatmul(Ast.mktensor(a), Ast.mktensor(b), Ast.mktensor(a_scale),
                        Ast.mktensor(a_zp), Ast.mktensor(b_scale), Ast.mktensor(b_zp),
                        Ast.mktensor(y_scale), Ast.mktensor(y_zp), Ast.mktensor(y), 4)
-    EXPECT_EQ(int(y), int(y_ref))
+    EXPECT_EQ_(int(y), int(y_ref))
 })

@@ -19,15 +19,15 @@ TEST("NN.TopK", fun()
 
     val largest = true
     OpReduce.run_top_k(inp, out, out_ind, axis, largest, true, k, 4)
-    EXPECT_EQ(`float(out.data).reshape(3, k)`,
+    EXPECT_EQ_(float(out.data).reshape(3, k),
         [3.0f, 2.0f, 1.0f; 7.0f, 6.0f, 5.0f; 11.0f, 10.0f, 9.0f])
-    EXPECT_EQ(`int(out_ind.data).reshape(3, k)`,
+    EXPECT_EQ_(int(out_ind.data).reshape(3, k),
         [3, 2, 1; 3, 2, 1; 0, 1, 2])
     val largest = false
     OpReduce.run_top_k(inp, out, out_ind, axis, largest, true, k, 4)
-    EXPECT_EQ(`float(out.data).reshape(3, k)`,
+    EXPECT_EQ_(float(out.data).reshape(3, k),
         [0.0f, 1.0f, 2.0f; 4.0f, 5.0f, 6.0f; 8.0f, 9.0f, 10.0f])
-    EXPECT_EQ(`int(out_ind.data).reshape(3, k)`,
+    EXPECT_EQ_(int(out_ind.data).reshape(3, k),
         [0, 1, 2; 0, 1, 2; 3, 2, 1])
 })
 
@@ -35,9 +35,9 @@ TEST("NN.NonZero", fun()
 {
     val inp = Ast.mktensor([1.f, 0.f; 1.f, 1.f])
     val (nz, coords, buf) = OpReduce.run_nonzero(inp, [], 4)
-    EXPECT_EQ(nz, 3)
-    EXPECT_EQ(`coords.reshape(2, 3)`, int64([0, 1, 1; 0, 0, 1]))
-    EXPECT_EQ(buf.size(), 48)
+    EXPECT_EQ_(nz, 3)
+    EXPECT_EQ_(coords.reshape(2, 3), int64([0, 1, 1; 0, 0, 1]))
+    EXPECT_EQ_(buf.size(), 48)
 })
 
 TEST("NN.Reduce", fun()
@@ -84,7 +84,7 @@ TEST("NN.Reduce", fun()
                 | Ast.NN_Data_FP32 out_data => out_data
                 | _ => ([]: float [])
             }
-            EXPECT_NEAR(`out_data`, `float(ref_data[test_case_idx])`, 1e-3f)
+            EXPECT_NEAR_(out_data, float(ref_data[test_case_idx]), 1e-3f)
             test_case_idx += 1
         }
     }

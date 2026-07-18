@@ -481,8 +481,17 @@ fun test_parse_options(args: list[string], title: string, more_opts: string): (b
    source text (@string) automatically, so a test writes `EXPECT_EQ_(f(x), y)`
    with no backtick `...` context quoting. Each macro is a thin wrapper that
    evaluates every argument EXACTLY ONCE by passing it, once, to a backing
-   helper (the helper's parameters are the single evaluation). The helper names
-   are qualified (UTest.test_*_) so they resolve at any call site's env.
+   helper (the helper's parameters are the single evaluation).
+
+   The helper calls are UNqualified (test_*_, not UTest.test_*_) ON PURPOSE: a
+   macro expands into -- and resolves in -- the CALLER's environment (unlike a
+   function, which resolves its body in its own module). A qualified call would
+   pin the generic helper's body to UTest's scope, so the printing `string(a)` /
+   comparison `a == b` would NOT see a user's LOCAL `string`/`==` overload for
+   the compared type (e.g. a hand-written `string` for a recursive variant).
+   Unqualified, the helper resolves at the call site, so those local overloads
+   are found. Callers therefore use `from UTest import *` (which brings in both
+   the macros and their helpers) -- see macro_design.md section 4.
 
    ONE helper serves both the EXPECT_ (non-fatal: mark the test failed and
    continue) and the ASSERT_ (fatal: throw TestAssertError) families via a
@@ -532,6 +541,17 @@ fun test_near_[T](a: T [+], b: T [+], eps: T, astr: string, bstr: string, fname:
     if normInf(a, b) <= eps {} else { test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal) }
 fun test_near_[T](a: (T...), b: (T...), eps: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
     if normInf(a, b) <= eps {} else { test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal) }
+// arrays of tuples: normInf over the whole array yields a tuple, so compare
+// element-wise (each element via normInf(tuple, tuple) -> scalar)
+fun test_near_[T](a: (T...) [+], b: (T...) [+], eps: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if exists(for ai <- a, bi <- b {normInf(ai, bi) > eps}) || size(a) != size(b) {
+        test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal)
+    }
+// lists compare element-wise (there is no normInf over a whole list)
+fun test_near_[T](a: list[T], b: list[T], eps: T, astr: string, bstr: string, fname: string, lineno: int, fatal: bool): void =
+    if exists(for ai <- a, bi <- b {normInf(ai, bi) > eps}) || a.length() != b.length() {
+        test_report_near_(a, b, f"{eps}", astr, bstr, fname, lineno, fatal)
+    }
 
 fun test_bool_(c: bool, cstr: string, msg: string, fname: string, lineno: int, fatal: bool): void =
     if c {} else {
@@ -570,29 +590,29 @@ fun test_no_throws_(f: void->void, fstr: string, msg: string,
 }
 
 // --- comparison family (EXPECT_ = non-fatal, ASSERT_ = fatal) ---
-macro EXPECT_EQ_(a: @expr, b: @expr): void { UTest.test_cmp_eq_(a, b, @string(a), @string(b), @file, @line, false) }
-macro EXPECT_NE_(a: @expr, b: @expr): void { UTest.test_cmp_ne_(a, b, @string(a), @string(b), @file, @line, false) }
-macro EXPECT_LT_(a: @expr, b: @expr): void { UTest.test_cmp_lt_(a, b, @string(a), @string(b), @file, @line, false) }
-macro EXPECT_LE_(a: @expr, b: @expr): void { UTest.test_cmp_le_(a, b, @string(a), @string(b), @file, @line, false) }
-macro EXPECT_GT_(a: @expr, b: @expr): void { UTest.test_cmp_gt_(a, b, @string(a), @string(b), @file, @line, false) }
-macro EXPECT_GE_(a: @expr, b: @expr): void { UTest.test_cmp_ge_(a, b, @string(a), @string(b), @file, @line, false) }
-macro EXPECT_NEAR_(a: @expr, b: @expr, eps: @expr): void { UTest.test_near_(a, b, eps, @string(a), @string(b), @file, @line, false) }
-macro ASSERT_EQ_(a: @expr, b: @expr): void { UTest.test_cmp_eq_(a, b, @string(a), @string(b), @file, @line, true) }
-macro ASSERT_NE_(a: @expr, b: @expr): void { UTest.test_cmp_ne_(a, b, @string(a), @string(b), @file, @line, true) }
-macro ASSERT_LT_(a: @expr, b: @expr): void { UTest.test_cmp_lt_(a, b, @string(a), @string(b), @file, @line, true) }
-macro ASSERT_LE_(a: @expr, b: @expr): void { UTest.test_cmp_le_(a, b, @string(a), @string(b), @file, @line, true) }
-macro ASSERT_GT_(a: @expr, b: @expr): void { UTest.test_cmp_gt_(a, b, @string(a), @string(b), @file, @line, true) }
-macro ASSERT_GE_(a: @expr, b: @expr): void { UTest.test_cmp_ge_(a, b, @string(a), @string(b), @file, @line, true) }
-macro ASSERT_NEAR_(a: @expr, b: @expr, eps: @expr): void { UTest.test_near_(a, b, eps, @string(a), @string(b), @file, @line, true) }
+macro EXPECT_EQ_(a: @expr, b: @expr): void { test_cmp_eq_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_NE_(a: @expr, b: @expr): void { test_cmp_ne_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_LT_(a: @expr, b: @expr): void { test_cmp_lt_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_LE_(a: @expr, b: @expr): void { test_cmp_le_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_GT_(a: @expr, b: @expr): void { test_cmp_gt_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_GE_(a: @expr, b: @expr): void { test_cmp_ge_(a, b, @string(a), @string(b), @file, @line, false) }
+macro EXPECT_NEAR_(a: @expr, b: @expr, eps: @expr): void { test_near_(a, b, eps, @string(a), @string(b), @file, @line, false) }
+macro ASSERT_EQ_(a: @expr, b: @expr): void { test_cmp_eq_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_NE_(a: @expr, b: @expr): void { test_cmp_ne_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_LT_(a: @expr, b: @expr): void { test_cmp_lt_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_LE_(a: @expr, b: @expr): void { test_cmp_le_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_GT_(a: @expr, b: @expr): void { test_cmp_gt_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_GE_(a: @expr, b: @expr): void { test_cmp_ge_(a, b, @string(a), @string(b), @file, @line, true) }
+macro ASSERT_NEAR_(a: @expr, b: @expr, eps: @expr): void { test_near_(a, b, eps, @string(a), @string(b), @file, @line, true) }
 
 // --- bool family, with an optional trailing message (arity overload) ---
-macro EXPECT_(c: @expr): void { UTest.test_bool_(c, @string(c), "", @file, @line, false) }
-macro EXPECT_(c: @expr, msg: @expr): void { UTest.test_bool_(c, @string(c), msg, @file, @line, false) }
-macro ASSERT_(c: @expr): void { UTest.test_bool_(c, @string(c), "", @file, @line, true) }
-macro ASSERT_(c: @expr, msg: @expr): void { UTest.test_bool_(c, @string(c), msg, @file, @line, true) }
+macro EXPECT_(c: @expr): void { test_bool_(c, @string(c), "", @file, @line, false) }
+macro EXPECT_(c: @expr, msg: @expr): void { test_bool_(c, @string(c), msg, @file, @line, false) }
+macro ASSERT_(c: @expr): void { test_bool_(c, @string(c), "", @file, @line, true) }
+macro ASSERT_(c: @expr, msg: @expr): void { test_bool_(c, @string(c), msg, @file, @line, true) }
 
 // --- exception family (the argument is a void->void thunk) ---
-macro EXPECT_THROWS_(f: @expr, ref_exn: @expr): void { UTest.test_throws_(f, ref_exn, @string(f), "", @file, @line, false) }
-macro EXPECT_THROWS_(f: @expr, ref_exn: @expr, msg: @expr): void { UTest.test_throws_(f, ref_exn, @string(f), msg, @file, @line, false) }
-macro EXPECT_NO_THROWS_(f: @expr): void { UTest.test_no_throws_(f, @string(f), "", @file, @line, false) }
-macro EXPECT_NO_THROWS_(f: @expr, msg: @expr): void { UTest.test_no_throws_(f, @string(f), msg, @file, @line, false) }
+macro EXPECT_THROWS_(f: @expr, ref_exn: @expr): void { test_throws_(f, ref_exn, @string(f), "", @file, @line, false) }
+macro EXPECT_THROWS_(f: @expr, ref_exn: @expr, msg: @expr): void { test_throws_(f, ref_exn, @string(f), msg, @file, @line, false) }
+macro EXPECT_NO_THROWS_(f: @expr): void { test_no_throws_(f, @string(f), "", @file, @line, false) }
+macro EXPECT_NO_THROWS_(f: @expr, msg: @expr): void { test_no_throws_(f, @string(f), msg, @file, @line, false) }

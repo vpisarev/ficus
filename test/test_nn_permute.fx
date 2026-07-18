@@ -23,7 +23,7 @@ TEST("NN.Gather.basic", fun()
     val out0 = array(8, 0.f).reshape(2, 2, 2)
     OpPermute.run_gather(axis, Ast.mktensor(data), Ast.mktensor(ind),
                          Ast.mktensor(out0), 4)
-    EXPECT_EQ(out0.reshape(2, 2, 2), float([
+    EXPECT_EQ_(out0.reshape(2, 2, 2), float([
           1.0, 1.2,
           2.3, 3.4,
           2.3, 3.4,
@@ -39,7 +39,7 @@ TEST("NN.Gather.basic", fun()
     OpPermute.run_gather(axis, Ast.mktensor(data),
                Ast.mktensor(ind.reshape(1, 2)),
                Ast.mktensor(out1), 4)
-    EXPECT_EQ(out1.reshape(3, 1, 2), float([
+    EXPECT_EQ_(out1.reshape(3, 1, 2), float([
             1.0, 1.9,
             2.3, 3.9,
             4.5, 5.9]).reshape(3, 1, 2))

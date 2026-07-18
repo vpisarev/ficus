@@ -22,20 +22,20 @@ fun gderef[T](r: ref[T]): T = *r
 fun ghead[T](l: list[T]): T? { | x :: _ => Some(x) | _ => None }
 
 TEST("generics1.fun_array_map", fun() {
-    EXPECT_EQ(gmap([1, 2, 3], fun (x: int) {x * 2}), [2, 4, 6])
-    EXPECT_EQ(gmap(["a", "bb"], fun (s: string) {s.length()}), [1, 2])
+    EXPECT_EQ_(gmap([1, 2, 3], fun (x: int) {x * 2}), [2, 4, 6])
+    EXPECT_EQ_(gmap(["a", "bb"], fun (s: string) {s.length()}), [1, 2])
 })
 
 TEST("generics1.fun_list_apps", fun() {
-    EXPECT_EQ(glen([:: 10, 20, 30]), 3)
-    EXPECT_EQ(gflatten([:: [:: 1, 2], [:: 3], [:: 4, 5]]), [:: 1, 2, 3, 4, 5])
+    EXPECT_EQ_(glen([:: 10, 20, 30]), 3)
+    EXPECT_EQ_(gflatten([:: [:: 1, 2], [:: 3], [:: 4, 5]]), [:: 1, 2, 3, 4, 5])
 })
 
 TEST("generics1.ref_and_option", fun() {
     val r = ref 42
-    EXPECT_EQ(gderef(r), 42)
-    EXPECT_EQ(ghead([:: 7, 8]), Some(7))
-    EXPECT_EQ(ghead(([] : list[int])), (None : int?))
+    EXPECT_EQ_(gderef(r), 42)
+    EXPECT_EQ_(ghead([:: 7, 8]), Some(7))
+    EXPECT_EQ_(ghead(([] : list[int])), (None : int?))
 })
 
 // --- multi-param record type ---
@@ -45,11 +45,11 @@ fun swap_pair[K, V](p: pair_t[K, V]): pair_t[V, K] = pair_t { key=p.value, value
 
 TEST("generics1.record_multiparam", fun() {
     val p = mkpair("x", 10)
-    EXPECT_EQ(p.key, "x")
-    EXPECT_EQ(p.value, 10)
+    EXPECT_EQ_(p.key, "x")
+    EXPECT_EQ_(p.value, 10)
     val q = swap_pair(p)
-    EXPECT_EQ(q.key, 10)
-    EXPECT_EQ(q.value, "x")
+    EXPECT_EQ_(q.key, 10)
+    EXPECT_EQ_(q.value, "x")
 })
 
 // --- variant type with a declared param, self-referential ---
@@ -65,15 +65,15 @@ fun tsum(t: tree_t[int]): int {
 
 TEST("generics1.variant_tree", fun() {
     val t = Node(Node(Leaf, 1, Leaf), 2, Node(Leaf, 3, Leaf))
-    EXPECT_EQ(tsize(t), 3)
-    EXPECT_EQ(tsum(t), 6)
+    EXPECT_EQ_(tsize(t), 3)
+    EXPECT_EQ_(tsum(t), 6)
 })
 
 // --- body-local annotations referencing a declared param ---
 fun singleton[T](x: T): list[T] { val y: list[T] = [:: x]; y }
 
 TEST("generics1.body_local_anno", fun() {
-    EXPECT_EQ(singleton(99), [:: 99])
+    EXPECT_EQ_(singleton(99), [:: 99])
 })
 
 // --- 2-D array of a param + tuple / function type args ---
@@ -85,16 +85,16 @@ fun sum2d[T](a: T [,], zero: T, add: (T, T) -> T): T {
 }
 
 TEST("generics1.array2d_and_fntype", fun() {
-    EXPECT_EQ(sum2d([1, 2; 3, 4], 0, fun (x: int, y: int) {x + y}), 10)
+    EXPECT_EQ_(sum2d([1, 2; 3, 4], 0, fun (x: int, y: int) {x + y}), 10)
 })
 
 // --- qualified multi-param application + the inference-annotation channel ---
 TEST("generics1.qualified_map", fun() {
     val m0: Map.t[string, int] = Map.empty(String.cmp)
     val m1 = m0.add("a", 1).add("b", 2)
-    EXPECT_EQ(m1.list().length(), 2)
+    EXPECT_EQ_(m1.list().length(), 2)
     val m2 = (Map.empty(String.cmp) : Map.t[string, int])
-    EXPECT_EQ(m2.list().length(), 0)
+    EXPECT_EQ_(m2.list().length(), 0)
 })
 
 // --- generic CLASS with methods (methods see the class params K/V via self,
@@ -107,11 +107,11 @@ fun mkbox[K, V](k: K, v: V): box_t[K, V] = box_t { k=k, v=v }
 
 TEST("generics1.generic_class_methods", fun() {
     val b = mkbox("id", 7)
-    EXPECT_EQ(b.getk(), "id")
-    EXPECT_EQ(b.getv(), 7)
+    EXPECT_EQ_(b.getk(), "id")
+    EXPECT_EQ_(b.getv(), 7)
     val b2 = b.withv([:: 1, 2, 3])
-    EXPECT_EQ(b2.getk(), "id")
-    EXPECT_EQ(b2.getv(), [:: 1, 2, 3])
+    EXPECT_EQ_(b2.getk(), "id")
+    EXPECT_EQ_(b2.getv(), [:: 1, 2, 3])
 })
 
 // --- generic operator with a declared param ---
@@ -120,5 +120,5 @@ operator + [T](a: tree_t[T], b: tree_t[T]): tree_t[T] =
 
 TEST("generics1.generic_operator", fun() {
     val a = Node(Leaf, 1, Leaf), b = Node(Leaf, 2, Leaf)
-    EXPECT_EQ(tsize(a + b), 2)
+    EXPECT_EQ_(tsize(a + b), 2)
 })

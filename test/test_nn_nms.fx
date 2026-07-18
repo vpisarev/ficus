@@ -31,8 +31,8 @@ TEST("NN.NonMaxSuppression.center_point", fun()
         OpNMS.run_nms(boxes, scores, max_output_boxes_per_class,
                       center_point_box, iou_threshold, score_threshold, [], 4)
 
-    EXPECT_EQ(`selected.reshape(n, 3)`, selected_ref)
-    EXPECT_EQ(`buf.size()`, n*3*8)
+    EXPECT_EQ_(selected.reshape(n, 3), selected_ref)
+    EXPECT_EQ_(buf.size(), n*3*8)
 })
 
 TEST("NN.NonMaxSuppression.suppress_by_IOU_and_scores", fun()
@@ -56,8 +56,8 @@ TEST("NN.NonMaxSuppression.suppress_by_IOU_and_scores", fun()
         OpNMS.run_nms(boxes, scores, max_output_boxes_per_class,
                       center_point_box, iou_threshold, score_threshold, [], 4)
 
-    EXPECT_EQ(`selected.reshape(n, 3)`, selected_ref)
-    EXPECT_EQ(`buf.size()`, n*3*8)
+    EXPECT_EQ_(selected.reshape(n, 3), selected_ref)
+    EXPECT_EQ_(buf.size(), n*3*8)
 })
 
 TEST("NN.NonMaxSuppression.two_classes", fun()
@@ -82,6 +82,6 @@ TEST("NN.NonMaxSuppression.two_classes", fun()
     val (n, selected, buf) = OpNMS.run_nms(boxes, scores,
                                     max_output_boxes_per_class, center_point_box,
                                     iou_threshold, score_threshold, [], 4)
-    EXPECT_EQ(`selected.reshape(n, 3)`, selected_ref)
-    EXPECT_EQ(`buf.size()`, n*3*8)
+    EXPECT_EQ_(selected.reshape(n, 3), selected_ref)
+    EXPECT_EQ_(buf.size(), n*3*8)
 })

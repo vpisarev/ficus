@@ -64,10 +64,10 @@ TEST("dst.hashset", fun()
                     "test", "the", "very"]
     val s2 = Hashset.empty(8, "")
     for w <- phrase {s2.add(w)}
-    EXPECT_EQ(`s2.list().sort((<))`, refres)
-    EXPECT_EQ(`s2.mem("simple") && s2.mem("very")`, true)
+    EXPECT_EQ_(s2.list().sort((<)), refres)
+    EXPECT_EQ_(s2.mem("simple") && s2.mem("very"), true)
     s2.remove("simple")
-    EXPECT_EQ(`s2.mem("this") || s2.mem("complex") || s2.mem("simple")`, false)
+    EXPECT_EQ_(s2.mem("this") || s2.mem("complex") || s2.mem("simple"), false)
 
     val s1 = Hashset.from_list(0, [:: 1, 2, 3, 100, 20, 30 ])
     val s2 = Hashset.from_list(5, [:: 1, 7, 3, 110, 20, 30 ])
@@ -75,8 +75,8 @@ TEST("dst.hashset", fun()
     s_inter.intersect(s2)
     val s_union = s1.copy()
     s_union.union(s2)
-    EXPECT_EQ(`s_inter.list().sort((<))`, [:: 1, 3, 20, 30 ])
-    EXPECT_EQ(`s_union.list().sort((<))`, [:: 1, 2, 3, 7, 20, 30, 100, 110 ])
+    EXPECT_EQ_(s_inter.list().sort((<)), [:: 1, 3, 20, 30 ])
+    EXPECT_EQ_(s_union.list().sort((<)), [:: 1, 2, 3, 7, 20, 30, 100, 110 ])
 })
 
 TEST("ds.map", fun()
@@ -104,7 +104,7 @@ TEST("ds.map", fun()
         ("seventh", 1), ("sixth", 1), ("swans", 6), ("tenth", 1), ("third", 1), ("to", 12),
         ("tree", 12), ("true", 12), ("turtle", 11), ("twelfth", 1)]
 
-    EXPECT_EQ(`wcounter.list()`, ll)
+    EXPECT_EQ_(wcounter.list(), ll)
 
     // An alternative, faster way to increment word counters is to use Map.update() function,
     // where we search for each word just once
@@ -117,12 +117,12 @@ TEST("ds.map", fun()
                 })
         }
 
-    EXPECT_EQ(`wcounter2.list()`, ll)
+    EXPECT_EQ_(wcounter2.list(), ll)
 
     val total_words_ref = fold c=0 for (_, ci) <- ll {c+=ci}
     val total_words = wcounter.foldl(fun (_, ci, c) {c + ci}, 0)
 
-    EXPECT_EQ(`total_words`, total_words_ref)
+    EXPECT_EQ_(total_words, total_words_ref)
 
     val fold wcounter_odd=wcounter, ll_odd=[] for (w, c) <- ll {
             if c % 2 == 0 {
@@ -133,7 +133,7 @@ TEST("ds.map", fun()
             }
         }
 
-    EXPECT_EQ(`wcounter_odd.list()`, `ll_odd.rev()`)
+    EXPECT_EQ_(wcounter_odd.list(), ll_odd.rev())
 })
 
 TEST("ds.hashmap", fun() {
@@ -176,10 +176,10 @@ TEST("ds.hashmap", fun() {
 
     val ll_fh = wcounter.list().sort((<))
     val odd_ll_fh = odd_wcounter.list().sort((<))
-    EXPECT_EQ(`ll_fh`, ll)
-    EXPECT_EQ(`odd_ll_fh`, odd_ll)
-    EXPECT_EQ(`wcounter.find_opt("doves").value_or(-1)`, 11)
-    EXPECT_EQ(`wcounter.find_opt("silver").value_or(-1)`, -1)
+    EXPECT_EQ_(ll_fh, ll)
+    EXPECT_EQ_(odd_ll_fh, odd_ll)
+    EXPECT_EQ_(wcounter.find_opt("doves").value_or(-1), 11)
+    EXPECT_EQ_(wcounter.find_opt("silver").value_or(-1), -1)
 })
 
 // Regression test for hashing of variable tuples '(...)' and records '{...}'
@@ -190,17 +190,17 @@ TEST("ds.tuple_hash", fun()
     type point_t = {x: int; y: int}
 
     // hashing is deterministic: equal keys (built differently) hash equally
-    EXPECT_EQ(`hash((3, 4))`, `hash((1+2, 2*2))`)
-    EXPECT_EQ(`hash((1, "ab", 2.5))`, `hash((1, "a"+"b", 2.5))`)
-    EXPECT_EQ(`hash(((1, 2), 3))`, `hash(((1, 2), 3))`)
-    EXPECT_EQ(`hash(point_t {x=1, y=2})`, `hash(point_t {x=1, y=2})`)
+    EXPECT_EQ_(hash((3, 4)), hash((1+2, 2*2)))
+    EXPECT_EQ_(hash((1, "ab", 2.5)), hash((1, "a"+"b", 2.5)))
+    EXPECT_EQ_(hash(((1, 2), 3)), hash(((1, 2), 3)))
+    EXPECT_EQ_(hash(point_t {x=1, y=2}), hash(point_t {x=1, y=2}))
 
     // tuples as hashset keys
     val s = Hashset.empty(16, (0, 0))
     for i <- 0:64 {s.add((i, i*i))}
-    EXPECT_EQ(`s.size()`, 64)
-    EXPECT_EQ(`s.mem((10, 100)) && s.mem((0, 0)) && s.mem((63, 63*63))`, true)
-    EXPECT_EQ(`s.mem((10, 99)) || s.mem((64, 64*64))`, false)
+    EXPECT_EQ_(s.size(), 64)
+    EXPECT_EQ_(s.mem((10, 100)) && s.mem((0, 0)) && s.mem((63, 63*63)), true)
+    EXPECT_EQ_(s.mem((10, 99)) || s.mem((64, 64*64)), false)
 
     // tuples as hashmap keys: every key round-trips, absent lookups miss
     val m = Hashmap.empty(16, (0, 0), -1)
@@ -208,20 +208,20 @@ TEST("ds.tuple_hash", fun()
     val nbad = fold nbad = 0 for i <- 0:200 {
         nbad += (if m.find_opt((i, i+1)).value_or(-1) == i*1000 {0} else {1})
     }
-    EXPECT_EQ(`nbad`, 0)
-    EXPECT_EQ(`m.size()`, 200)
-    EXPECT_EQ(`m.find_opt((500, 501)).value_or(-1)`, -1)
+    EXPECT_EQ_(nbad, 0)
+    EXPECT_EQ_(m.size(), 200)
+    EXPECT_EQ_(m.find_opt((500, 501)).value_or(-1), -1)
 
     // nested tuple keys
     val mn = Hashmap.empty(8, ((0, 0), 0), false)
     mn.add(((1, 2), 3), true)
-    EXPECT_EQ(`mn.find_opt(((1, 2), 3)).value_or(false)`, true)
-    EXPECT_EQ(`mn.find_opt(((1, 2), 4)).value_or(false)`, false)
+    EXPECT_EQ_(mn.find_opt(((1, 2), 3)).value_or(false), true)
+    EXPECT_EQ_(mn.find_opt(((1, 2), 4)).value_or(false), false)
 
     // record ('{...}') keys exercise hash(x: {...})
     val mr = Hashmap.empty(8, (point_t {x=0, y=0}), -1)
     mr.add(point_t {x=1, y=2}, 42)
     mr.add(point_t {x=3, y=4}, 99)
-    EXPECT_EQ(`mr.find_opt(point_t {x=1, y=2}).value_or(-1)`, 42)
-    EXPECT_EQ(`mr.find_opt(point_t {x=1, y=3}).value_or(-1)`, -1)
+    EXPECT_EQ_(mr.find_opt(point_t {x=1, y=2}).value_or(-1), 42)
+    EXPECT_EQ_(mr.find_opt(point_t {x=1, y=3}).value_or(-1), -1)
 })

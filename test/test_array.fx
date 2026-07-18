@@ -15,41 +15,41 @@ import Rrbvec
 TEST("array.border_matrix", fun() {
     // plain 1D array
     val a = [10, 20, 30, 40, 50]
-    EXPECT_EQ(a.clip[7], 50); EXPECT_EQ(a.clip[-3], 10)
-    EXPECT_EQ(a.zero[7], 0);  EXPECT_EQ(a.zero[2], 30)
-    EXPECT_EQ(a.wrap[7], 30); EXPECT_EQ(a.wrap[-1], 50)
-    EXPECT_EQ(a.wrap[-5], 10)          // idx == -n boundary (was FB-005)
-    EXPECT_EQ(a.wrap[-10], 10)         // multiple wraps
+    EXPECT_EQ_(a.clip[7], 50); EXPECT_EQ_(a.clip[-3], 10)
+    EXPECT_EQ_(a.zero[7], 0);  EXPECT_EQ_(a.zero[2], 30)
+    EXPECT_EQ_(a.wrap[7], 30); EXPECT_EQ_(a.wrap[-1], 50)
+    EXPECT_EQ_(a.wrap[-5], 10)          // idx == -n boundary (was FB-005)
+    EXPECT_EQ_(a.wrap[-10], 10)         // multiple wraps
     // plain 2D array (2x3): 0 1 2 / 3 4 5
     val m = [for i <- 0:2 for j <- 0:3 {i*3 + j}]
-    EXPECT_EQ(m.clip[5, 5], 5); EXPECT_EQ(m.clip[-1, -1], 0)
-    EXPECT_EQ(m.zero[9, 9], 0); EXPECT_EQ(m.zero[1, 2], 5)
-    EXPECT_EQ(m.wrap[-1, -1], 5); EXPECT_EQ(m.wrap[2, 3], 0)
+    EXPECT_EQ_(m.clip[5, 5], 5); EXPECT_EQ_(m.clip[-1, -1], 0)
+    EXPECT_EQ_(m.zero[9, 9], 0); EXPECT_EQ_(m.zero[1, 2], 5)
+    EXPECT_EQ_(m.wrap[-1, -1], 5); EXPECT_EQ_(m.wrap[2, 3], 0)
     // Vector
     val v = rrbvec(a)
-    EXPECT_EQ(v.clip[7], 50); EXPECT_EQ(v.zero[7], 0)
-    EXPECT_EQ(v.wrap[-5], 10); EXPECT_EQ(v.wrap[-1], 50)
+    EXPECT_EQ_(v.clip[7], 50); EXPECT_EQ_(v.zero[7], 0)
+    EXPECT_EQ_(v.wrap[-5], 10); EXPECT_EQ_(v.wrap[-1], 50)
     // string (char sequence)
     val s = "abcde"
-    EXPECT_EQ(s.clip[7], 'e'); EXPECT_EQ(s.zero[2], 'c')
-    EXPECT_EQ(s.wrap[-1], 'e'); EXPECT_EQ(s.wrap[-5], 'a')
+    EXPECT_EQ_(s.clip[7], 'e'); EXPECT_EQ_(s.zero[2], 'c')
+    EXPECT_EQ_(s.wrap[-1], 'e'); EXPECT_EQ_(s.wrap[-5], 'a')
 })
 
 // FB-004: an empty strided slice a[lo:lo:step] (step>=2) built a corrupt view
 // and segfaulted on any use. It must now be a well-formed size-0 array.
 TEST("array.empty_slice", fun() {
     val a = [1, 2, 3, 4, 5]
-    EXPECT_EQ(size(a[0:0:2]), 0)          // empty at start
-    EXPECT_EQ(size(a[2:2:2]), 0)          // empty in the middle
-    EXPECT_EQ(size(a[5:5:2]), 0)          // lo == hi == n
-    EXPECT_EQ(size(a[1:1:9]), 0)          // step > len
-    EXPECT_EQ(size(a[4:4:-2]), 0)         // empty, negative step
+    EXPECT_EQ_(size(a[0:0:2]), 0)          // empty at start
+    EXPECT_EQ_(size(a[2:2:2]), 0)          // empty in the middle
+    EXPECT_EQ_(size(a[5:5:2]), 0)          // lo == hi == n
+    EXPECT_EQ_(size(a[1:1:9]), 0)          // step > len
+    EXPECT_EQ_(size(a[4:4:-2]), 0)         // empty, negative step
     // a size-0 view is safe to compare / iterate
-    EXPECT_EQ(a[2:2:2] == [for k <- 2:2:2 {a[k]}], true)
-    var cnt = 0; for x <- a[2:2:2] {cnt += 1}; EXPECT_EQ(cnt, 0)
+    EXPECT_EQ_(a[2:2:2] == [for k <- 2:2:2 {a[k]}], true)
+    var cnt = 0; for x <- a[2:2:2] {cnt += 1}; EXPECT_EQ_(cnt, 0)
     // non-empty strided slices (both directions) still correct
-    EXPECT_EQ(a[0:5:2], [1, 3, 5])
-    EXPECT_EQ(a[4:0:-2], [5, 3])
+    EXPECT_EQ_(a[0:5:2], [1, 3, 5])
+    EXPECT_EQ_(a[4:0:-2], [5, 3])
 })
 
 // FB-006: indexing an array-of-arrays built by a NESTED comprehension used to
@@ -58,27 +58,27 @@ TEST("array.empty_slice", fun() {
 TEST("array.nested_comprehension", fun() {
     // 2-level int [] []
     val aa = [for i <- 0:3 {[for j <- 0:3 {i*10 + j}]}]
-    EXPECT_EQ(aa[0][0], 0); EXPECT_EQ(aa[1][2], 12); EXPECT_EQ(aa[2][1], 21)
+    EXPECT_EQ_(aa[0][0], 0); EXPECT_EQ_(aa[1][2], 12); EXPECT_EQ_(aa[2][1], 21)
     // 3-level int [] [] []
     val aaa = [for i <- 0:2 {[for j <- 0:2 {[for k <- 0:2 {i*100 + j*10 + k}]}]}]
-    EXPECT_EQ(aaa[1][0][1], 101); EXPECT_EQ(aaa[0][1][0], 10)
+    EXPECT_EQ_(aaa[1][0][1], 101); EXPECT_EQ_(aaa[0][1][0], 10)
     // 2-level with tuple elements
     val tt = [for i <- 0:2 {[for j <- 0:2 {(i, j, i + j)}]}]
-    EXPECT_EQ(tt[1][0], (1, 0, 1)); EXPECT_EQ(tt[0][1], (0, 1, 1))
+    EXPECT_EQ_(tt[1][0], (1, 0, 1)); EXPECT_EQ_(tt[0][1], (0, 1, 1))
     // comprehension vs literal vs list-comprehension must agree element-wise
     val byComp = [for i <- 0:2 {[for j <- 0:3 {i*10 + j}]}]
     val byLit  = [[0, 1, 2], [10, 11, 12]]
     val byList = [:: for i <- 0:2 {[for j <- 0:3 {i*10 + j}]}]
-    EXPECT_EQ(byComp[0], byLit[0]); EXPECT_EQ(byComp[1], byLit[1])
-    EXPECT_EQ(byComp[0], byList.hd()); EXPECT_EQ(byComp[1], byList.tl().hd())
+    EXPECT_EQ_(byComp[0], byLit[0]); EXPECT_EQ_(byComp[1], byLit[1])
+    EXPECT_EQ_(byComp[0], byList.hd()); EXPECT_EQ_(byComp[1], byList.tl().hd())
 })
 
 TEST("array.stat", fun() {
     val arr = [ 1, 2, 3, 4, 5 ]
-    EXPECT_EQ(`sum(arr)`, double(1+2+3+4+5))
-    EXPECT_NEAR(`mean(arr)`, double(1+2+3+4+5)/5, 1e-5)
-    EXPECT_NEAR(`normL2(arr)`, 7.416198487095663, 1e-5)
-    EXPECT_EQ(`normInf(arr)`, 5)
+    EXPECT_EQ_(sum(arr), double(1+2+3+4+5))
+    EXPECT_NEAR_(mean(arr), double(1+2+3+4+5)/5, 1e-5)
+    EXPECT_NEAR_(normL2(arr), 7.416198487095663, 1e-5)
+    EXPECT_EQ_(normInf(arr), 5)
 })
 
 TEST("array.solve", fun() {
@@ -91,8 +91,8 @@ TEST("array.solve", fun() {
     val b = [ 4.; 5.; 6.; 7. ]
     val x = A\b
     val Ainv = A\1
-    EXPECT_NEAR(`A*x`, `b`, 1e-10)
-    EXPECT_NEAR(`A*Ainv`, `I`, 1e-10)
+    EXPECT_NEAR_(A*x, b, 1e-10)
+    EXPECT_NEAR_(A*Ainv, I, 1e-10)
 })
 
 TEST("array.tuple_index", fun() {
@@ -126,17 +126,17 @@ TEST("array.tuple_index", fun() {
     val A1ref = copy(A1)
     A1 += B1
     add1(A1ref, B1)
-    EXPECT_EQ(`A1`, `A1ref`)
+    EXPECT_EQ_(A1, A1ref)
 
     val A2ref = copy(A2)
     A2 += B2
     add2(A2ref, B2)
-    EXPECT_EQ(`A2`, `A2ref`)
+    EXPECT_EQ_(A2, A2ref)
 
     val A3ref = copy(A3)
     A3 += B3
     add3(A3ref, B3)
-    EXPECT_EQ(`A3`, `A3ref`)
+    EXPECT_EQ_(A3, A3ref)
 })
 
 TEST("array.bounding_box", fun() {
@@ -160,7 +160,7 @@ TEST("array.bounding_box", fun() {
         0, 0, 0, 1, 0, 0, 0, 0
         ])
 
-    EXPECT_EQ(bounding_box(img), (2, 1, 5, 4))
+    EXPECT_EQ_(bounding_box(img), (2, 1, 5, 4))
 })
 
 TEST("array.fuse_inplace_stencil", fun() {
@@ -178,7 +178,7 @@ TEST("array.fuse_inplace_stencil", fun() {
     val smoothed = [for i <- 0:n { (arr.clip[i-1] + arr.clip[i] + arr.clip[i+1]) / 3 }]
     var k = 0
     for s <- smoothed { arr[k] = s; k += 1 }
-    EXPECT_EQ(arr, [40, 60, 90, 120, 140])
+    EXPECT_EQ_(arr, [40, 60, 90, 120, 140])
 })
 
 TEST("array.fuse_map_reduce", fun() {
@@ -192,10 +192,10 @@ TEST("array.fuse_map_reduce", fun() {
     val squares = [for i <- 0:n { i * i }]
     var s = 0
     for x <- squares { s += x }
-    EXPECT_EQ(s, 285)                        // 0+1+4+9+...+81 = 285
+    EXPECT_EQ_(s, 285)                        // 0+1+4+9+...+81 = 285
     // a second fusable shape: comprehension over a range, consumed once
     val evens = [for i <- 0:n { i * 2 }]
     var prod1 = 1
     for x <- evens { if x > 0 { prod1 *= x } }
-    EXPECT_EQ(prod1, 2*4*6*8*10*12*14*16*18) // product of the positive evens
+    EXPECT_EQ_(prod1, 2*4*6*8*10*12*14*16*18) // product of the positive evens
 })

@@ -97,6 +97,20 @@ visual noise; the LSP answers "what is this" with a click).
   practical exposure is small. Future refinement path, only if this bites:
   per-identifier `bind`/`mixin`-style knobs (Nim), not a wholesale flip to
   definition-site.
+- **Refinement (macro-1, from the UTest migration).** Qualifying a helper name
+  is right for a name-collision *shield*, but it must NOT be used for a **generic
+  helper whose body depends on user-overloadable operations** (`string`, `==`,
+  `+`, comparisons) applied to the macro's argument types. A macro expands into
+  the caller's env and resolves there — that is the *whole point*, and the
+  principled difference from a function, which resolves its body in its own
+  module. Calling such a helper **qualified** (`UTest.cmp_eq_(...)`) re-pins its
+  generic body to the helper's home module, so a user's LOCAL overload (e.g. a
+  hand-written `string` for a recursive variant defined in the test function)
+  becomes invisible and the expansion fails. Calling it **unqualified**
+  (`cmp_eq_(...)`, brought in by the caller's `from Module import *`) keeps the
+  whole chain resolving at the call site, so the local overloads are found. Rule
+  of thumb: qualify a helper only when its body is self-contained; leave it
+  unqualified when it must see the caller's overloads.
 
 ## 5. Primitives (built into the engine, not expressible as templates)
 

@@ -18,7 +18,7 @@ TEST("rand.arith.splitmix64_vectors", fun() {
     for e@i <- expected {
         val got = next_u64(rng)
         if got != e {println(f"  [repro] splitmix64 rrbvec {i}: got={got} expected={e}")}
-        EXPECT_EQ(got, e)
+        EXPECT_EQ_(got, e)
     }
 })
 
@@ -33,7 +33,7 @@ TEST("rand.arith.divmod_identity", fun() {
         val q = a / b, r = a % b
         val ok = q*b + r == a && abs(r) < abs(b)
         if !ok {println(f"  [repro] {name} case={i} seed={seed}: a={a} b={b} q={q} r={r}")}
-        EXPECT(ok)
+        EXPECT_(ok)
     }
 })
 
@@ -47,7 +47,7 @@ TEST("rand.arith.u8_wrap", fun() {
         val got = ((au + bu) :> uint8)                 // narrowing add wraps mod 256
         val rf = (((a + b) & 0xff) :> uint8)
         if got != rf {println(f"  [repro] {name} case={i} seed={seed}: {a}+{b} got={got} rf={rf}")}
-        EXPECT_EQ(got, rf)
+        EXPECT_EQ_(got, rf)
     }
 })
 
@@ -62,7 +62,7 @@ TEST("rand.arith.u32_shift", fun() {
         val got = ((xu >> n) :> int)                   // uint32 >> is logical (OK)
         val rf = x >> n                               // x >= 0, int >> is logical too
         if got != rf {println(f"  [repro] {name} case={i} seed={seed}: {x}>>{n} got={got} rf={rf}")}
-        EXPECT_EQ(got, rf)
+        EXPECT_EQ_(got, rf)
     }
 })
 
@@ -78,9 +78,9 @@ TEST("rand.arith.sat_casts", fun() {
         if g8 != r8 || gi8 != ri8 || g16 != r16 {
             println(f"  [repro] {name} case={i} seed={seed}: x={x}")
         }
-        EXPECT_EQ(g8, r8)
-        EXPECT_EQ(gi8, ri8)
-        EXPECT_EQ(g16, r16)
+        EXPECT_EQ_(g8, r8)
+        EXPECT_EQ_(gi8, ri8)
+        EXPECT_EQ_(g16, r16)
     }
 })
 
@@ -93,22 +93,22 @@ TEST("rand.arith.float_to_int_trunc", fun() {
         val got = int(x)                               // truncates toward zero
         val rf = if x >= 0.0 {int(floor(x))} else {-int(floor(-x))}
         if got != rf {println(f"  [repro] {name} case={i} seed={seed}: x={x} got={got} rf={rf}")}
-        EXPECT_EQ(got, rf)
+        EXPECT_EQ_(got, rf)
     }
 })
 
 TEST("rand.arith.nan_inf", fun() {
     val name = "rand.arith.nan_inf"
     val nanv = 0.0/0.0, pinf = 1.0/0.0, ninf = -1.0/0.0
-    EXPECT(isnan(nanv))
-    EXPECT(isinf(pinf) && isinf(ninf))
-    EXPECT(!isnan(pinf) && !isinf(nanv))
+    EXPECT_(isnan(nanv))
+    EXPECT_(isinf(pinf) && isinf(ninf))
+    EXPECT_(!isnan(pinf) && !isinf(nanv))
     for i <- 0:500 {
         val seed = case_seed(name, i)
         val rng = mk_rng(seed)
         val x = next_double(rng, -1e6, 1e6)
         val ok = !isnan(x) && !isinf(x) && isnan(x + nanv) && isinf(x + pinf)
         if !ok {println(f"  [repro] {name} case={i} seed={seed}: x={x}")}
-        EXPECT(ok)
+        EXPECT_(ok)
     }
 })
