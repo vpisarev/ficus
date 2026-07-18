@@ -65,6 +65,14 @@ primitives reuse the existing `@`-lexing: an unknown `@name` already lexes as
    functions is untouched. The **nearest lexical binding's KIND decides**:
    reaching an `IdFun`/`IdDVal`/`IdExn` before any macro means "ordinary call"
    (a local `fun count` hides an imported macro `count`, and vice versa).
+   **Macros overload by arity** (like functions): a same-named macro whose
+   parameter count does not match the call is skipped so a sibling variant with
+   the right arity can win (`macro EXPECT_EQ_(a,b)` + `macro EXPECT_EQ_(a,b,note)`
+   coexist). Keyword/optional parameters are *not* supported in v1 — the call
+   `m(a, b, msg=x)` folds the keyword into a trailing record, bumping the arity;
+   restoring `msg=`-style calls is a later engine step (kept off v1 deliberately,
+   since positional defaults would make macro calls read differently from
+   function calls).
 2. **Expansion** = one transform over a private `dup_exp` copy of the template:
    - **hole substitution** — each `ExpIdent(param)` → a fresh `dup_exp` of the
      actual argument (fresh copies so repeated holes don't alias);

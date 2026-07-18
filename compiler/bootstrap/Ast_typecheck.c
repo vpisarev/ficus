@@ -22962,6 +22962,7 @@ static int _fx_M13Ast_typecheckFM4scanNt6option1rR15Ast__defmacro_t3LN16Ast__env
          _fx_N16Ast__env_entry_t v_1 = elist_2->hd;
          if (FX_REC_VARIANT_TAG(v_1) == 1) {
             _fx_N14Ast__id_info_t v_2 = {0};
+            _fx_LN16Ast__env_entry_t rest_1 = elist_2->tl;
             FX_CALL(_fx_M3AstFM7id_infoN14Ast__id_info_t2RM4id_tRM5loc_t(&v_1->u.EnvId, loc_0, &v_2, 0), _fx_catch_2);
             int tag_0 = v_2.tag;
             if (tag_0 == 8) {
@@ -22978,9 +22979,7 @@ static int _fx_M13Ast_typecheckFM4scanNt6option1rR15Ast__defmacro_t3LN16Ast__env
                   FX_BREAK(_fx_catch_0);
                }
                else {
-                  _fx_free_Nt6option1rR15Ast__defmacro_t(&result_0);
-                  _fx_copy_Nt6option1rR15Ast__defmacro_t(&_fx_g22Ast_typecheck__None10_, &result_0);
-                  FX_BREAK(_fx_catch_0);
+                  _fx_free_LN16Ast__env_entry_t(&elist_1); FX_COPY_PTR(rest_1, &elist_1);
                }
 
             _fx_catch_0: ;
@@ -23010,9 +23009,8 @@ static int _fx_M13Ast_typecheckFM4scanNt6option1rR15Ast__defmacro_t3LN16Ast__env
             _fx_catch_1: ;
                goto _fx_endmatch_0;
             }
-            _fx_LN16Ast__env_entry_t* rest_1 = &elist_2->tl;
             _fx_free_LN16Ast__env_entry_t(&elist_1);
-            FX_COPY_PTR(*rest_1, &elist_1);
+            FX_COPY_PTR(rest_1, &elist_1);
 
          _fx_endmatch_0: ;
             FX_CHECK_EXN(_fx_catch_2);

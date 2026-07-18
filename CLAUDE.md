@@ -99,7 +99,10 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
   shorthand). A hole is a bare parameter name; primitives `@file`/`@line`
   (outermost call site) and `@string(e)` (e's exact source text). Expansion
   resolves free names at the CALL site, so exported macros qualify their helpers
-  (`Module.helper(...)`). Backtick-free `assert_` (Builtins) and
+  (`Module.helper(...)`). Macros **overload by arity** (like functions:
+  `EXPECT_EQ_(a,b)` + `EXPECT_EQ_(a,b,note)`); keyword/optional params are NOT
+  supported yet (a `msg=x` call bumps arity via a trailing record).
+  Backtick-free `assert_` (Builtins) and
   `EXPECT_*_`/`EXPECT_NEAR_` (UTest) are the E1 clients; the old backtick
   `EXPECT`/`ASSERT` forms still coexist. `-pr-ast` shows the post-expansion AST.
   **Editing Builtins/UTest to USE `macro` breaks `make`** (the old bootstrap

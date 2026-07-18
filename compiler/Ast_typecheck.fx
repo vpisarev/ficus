@@ -1731,7 +1731,11 @@ fun macro_lookup(f0: exp_t, nargs: int, env: env_t, loc: loc_t): (ref[defmacro_t
             | EnvId({m=0}) :: rest => scan(rest)
             | EnvId(i) :: rest =>
                 match id_info(i, loc) {
-                | IdMacro(dm) => if dm->dmac_params.length() == nargs { Some(dm) } else { None }
+                // macros overload by ARITY (macro-1 variant B): a same-named
+                // macro whose parameter count does not match the call is skipped
+                // so a sibling variant with the right arity can win. Reaching an
+                // ordinary callable first means this is not a macro call.
+                | IdMacro(dm) => if dm->dmac_params.length() == nargs { Some(dm) } else { scan(rest) }
                 | IdFun _ | IdDVal _ | IdExn _ => None
                 | _ => scan(rest)
                 }

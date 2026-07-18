@@ -23,6 +23,15 @@ TEST("macro.basic", fun() {
     EXPECT_EQ(sqr_(2 + 3), 25)          // (2+3)*(2+3), still 25
 })
 
+// macros overload by arity, exactly like functions (macro-1 variant B)
+macro pick_(a: @expr): int = a
+macro pick_(a: @expr, b: @expr): int = a * b
+
+TEST("macro.arity_overload", fun() {
+    EXPECT_EQ(pick_(7), 7)
+    EXPECT_EQ(pick_(6, 7), 42)
+})
+
 TEST("macro.hygiene", fun() {
     // a template-introduced binder 't' must NOT capture the caller's 't':
     // addt5_ has its own internal 'val t = 5', so the result is 100+5, not 5+5.
