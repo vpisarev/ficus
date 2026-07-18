@@ -17,7 +17,7 @@ from UTest import *
 TEST("ctrlflow.continue_arm_filter", fun() {
     val xs = [:: 1, 2, 0, 3, 0, 0, 4, 5]
     val r = [:: for e <- xs { match e { | 0 => continue | x => x } }]
-    EXPECT_EQ_(r, [:: 1, 2, 3, 4, 5])
+    EXPECT_EQ(r, [:: 1, 2, 3, 4, 5])
 })
 
 // continue as an if-branch value inside an array comprehension body is NOT a
@@ -29,7 +29,7 @@ TEST("ctrlflow.continue_if_branch_loop", fun() {
         sum += keep
     }
     // 1+2+4+5+7+8 = 27  (skip 0,3,6,9)
-    EXPECT_EQ_(sum, 27)
+    EXPECT_EQ(sum, 27)
 })
 
 // break as an if-branch value; a ref-counted string temp is live at the jump.
@@ -41,7 +41,7 @@ TEST("ctrlflow.break_if_branch_refcount", fun() {
         val keep = if w == "STOP" { break } else { tagged }
         acc += keep + " "
     }
-    EXPECT_EQ_(acc, "alpha! beta! ")
+    EXPECT_EQ(acc, "alpha! beta! ")
 })
 
 // break as a match-arm value.
@@ -53,7 +53,7 @@ TEST("ctrlflow.break_match_arm", fun() {
         // `last` keeps the value from the previous (x=2) iteration.
         last = match x { | v when v >= 5 => break | v => v }
     }
-    EXPECT_EQ_(last, 2)             // 3,1,4,2 assigned; at x=5 break skips the store
+    EXPECT_EQ(last, 2)             // 3,1,4,2 assigned; at x=5 break skips the store
 })
 
 // return WITH a value as a match-arm value (early exit out of a function).
@@ -62,8 +62,8 @@ TEST("ctrlflow.return_value_arm", fun() {
         for x <- xs { match x { | v when v > 0 => return v | _ => {} } }
         -1
     }
-    EXPECT_EQ_(first_pos([:: -3, -1, 0, 7, 2]), 7)
-    EXPECT_EQ_(first_pos([:: -3, -1]), -1)
+    EXPECT_EQ(first_pos([:: -3, -1, 0, 7, 2]), 7)
+    EXPECT_EQ(first_pos([:: -3, -1]), -1)
 })
 
 // bare return: same-line `{ return }` and `return` right before a `|` arm.
@@ -74,8 +74,8 @@ TEST("ctrlflow.bare_return", fun() {
         for i <- 0:n { if i == lim { return seen } else {}; seen += 1 }
         seen
     }
-    EXPECT_EQ_(stop_at(10, 4), 4)
-    EXPECT_EQ_(stop_at(10, 100), 10)
+    EXPECT_EQ(stop_at(10, 4), 4)
+    EXPECT_EQ(stop_at(10, 100), 10)
 
     // bare return before a match arm separator '|'
     var log = ""
@@ -83,7 +83,7 @@ TEST("ctrlflow.bare_return", fun() {
         match x { | 0 => return | v => log += f"nz{v};" }
     }
     classify(0); classify(7); classify(0); classify(3)
-    EXPECT_EQ_(log, "nz7;nz3;")
+    EXPECT_EQ(log, "nz7;nz3;")
 })
 
 // both branches of an `if` jump: the whole `if` is TypErr, the for-body stays
@@ -93,8 +93,8 @@ TEST("ctrlflow.both_branches_jump", fun() {
         for x <- xs { if x < 0 { return x } else { continue } }
         999
     }
-    EXPECT_EQ_(find_neg([:: 3, 5, -2, 8]), -2)
-    EXPECT_EQ_(find_neg([:: 3, 5, 8]), 999)
+    EXPECT_EQ(find_neg([:: 3, 5, -2, 8]), -2)
+    EXPECT_EQ(find_neg([:: 3, 5, 8]), 999)
 })
 
 // nested loops: break targets the INNERMOST loop (assert via a side-effect
@@ -108,7 +108,7 @@ TEST("ctrlflow.nested_break_innermost", fun() {
         }
     }
     // i=0 ->0, i=1 ->1, i=2 ->2, i=3 ->3  => 0+1+2+3 = 6
-    EXPECT_EQ_(hits, 6)
+    EXPECT_EQ(hits, 6)
 })
 
 // ref-counted 2D arrays live at a deep return jump: correctness proves the
@@ -128,9 +128,9 @@ TEST("ctrlflow.refcounted_matrix_at_return", fun() {
         -1
     }
     val r = scan(20, 0)          // s>=0 always -> returns on i=0
-    EXPECT_EQ_(r, 0)
+    EXPECT_EQ(r, 0)
     val r2 = scan(3, 1000000)    // never crosses -> falls through to -1
-    EXPECT_EQ_(r2, -1)
+    EXPECT_EQ(r2, -1)
 })
 
 // a match where EVERY arm jumps (all-jumping arms), used in statement position.
@@ -146,5 +146,5 @@ TEST("ctrlflow.all_arms_jump", fun() {
         }
         (pos, neg)
     }
-    EXPECT_EQ_(categorize([:: -2, 0, 3, 5, -1, 0]), (2, 2))
+    EXPECT_EQ(categorize([:: -2, 0, 3, 5, -1, 0]), (2, 2))
 })

@@ -39,6 +39,6 @@ TEST("color.hsv", fun() {
         round(rgb.*255.f)
     }]
 
-    EXPECT_NEAR_(hsv_arr, hsv_arr_ref, 0.01f)
-    EXPECT_NEAR_(rgb_arr, rgb_arr_ref, 1)
+    EXPECT_NEAR(hsv_arr, hsv_arr_ref, 0.01f)
+    EXPECT_NEAR(rgb_arr, rgb_arr_ref, 1)
 })

@@ -49,7 +49,7 @@ TEST("macro.single_evaluation", fun() {
     // EXPECT_EQ_ must evaluate each argument exactly once
     var calls = 0
     fun eff(): int { calls += 1; 42 }
-    EXPECT_EQ_(eff(), 42)
+    EXPECT_EQ(eff(), 42)
     EXPECT_EQ(calls, 1)
 })
 

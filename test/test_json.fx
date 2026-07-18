@@ -29,17 +29,17 @@ TEST("json.parse", fun() {
     | Json.Map(m) =>
         match m.assoc_opt("address") {
         | Some(Json.Map(m)) =>
-            EXPECT_EQ_(m.assoc("city"), Json.Str("Ленинград"))
-            EXPECT_EQ_(m.assoc("postalCode"), Json.Int(101101i64))
+            EXPECT_EQ(m.assoc("city"), Json.Str("Ленинград"))
+            EXPECT_EQ(m.assoc("postalCode"), Json.Int(101101i64))
         | _ => throw TestFailure("'address' is not found or is not a map")
         }
         match m.assoc_opt("phoneNumbers") {
-        | Some(Json.Seq(s)) => EXPECT_EQ_(s[1], Json.Str("916 123-4567"))
+        | Some(Json.Seq(s)) => EXPECT_EQ(s[1], Json.Str("916 123-4567"))
         | _ => throw TestFailure("'phoneNumbers' is not found or is not a sequence")
         }
     | _ => throw TestFailure("top-level json value is not a map")
     }
-    EXPECT_EQ_(string(js),
+    EXPECT_EQ(string(js),
 "{
    \"firstName\": \"Иван\",
    \"lastName\": \"Иванов\",
@@ -72,7 +72,7 @@ val sample_js = Json.Commented(
      ]))
 
 val pprinted = string(sample_js)
-EXPECT_EQ_(pprinted,
+EXPECT_EQ(pprinted,
 "// small Json pretty-printing example
 {
    \"ain't it cool?\": true,
@@ -163,14 +163,14 @@ TEST("json.escape_and_compact", fun() {
     ])
     val c = Json.string(js, compact=true)
     // compact is a single line (no embedded newline)
-    EXPECT_EQ_(c.contains('\n'), false)
+    EXPECT_EQ(c.contains('\n'), false)
     // the escapes are present and correct
-    EXPECT_EQ_(c.contains("\"pa\\\\th\""), true)      // key: backslash escaped
-    EXPECT_EQ_(c.contains("q\\\"u\\\\o\\nte"), true)  // value: quote, backslash, newline
-    EXPECT_EQ_(c.contains("x\\ty"), true)             // tab
-    EXPECT_EQ_(c.contains("\\u0007"), true)           // control char -> \u00XX
-    EXPECT_EQ_(c.contains("\\u001f"), true)
+    EXPECT_EQ(c.contains("\"pa\\\\th\""), true)      // key: backslash escaped
+    EXPECT_EQ(c.contains("q\\\"u\\\\o\\nte"), true)  // value: quote, backslash, newline
+    EXPECT_EQ(c.contains("x\\ty"), true)             // tab
+    EXPECT_EQ(c.contains("\\u0007"), true)           // control char -> \u00XX
+    EXPECT_EQ(c.contains("\\u001f"), true)
     // round-trip: parsing the compact form then re-serializing is idempotent
     val reparsed = Json.parse_string("test", c)
-    EXPECT_EQ_(Json.string(reparsed, compact=true), c)
+    EXPECT_EQ(Json.string(reparsed, compact=true), c)
 })

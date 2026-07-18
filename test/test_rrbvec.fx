@@ -13,11 +13,11 @@ TEST("rrbvec.simple", fun()
     val N = 10
     val a = rrbvec([0, 1, 4, 9, 16, 25, 36, 49, 64, 81])
     var arr = [for i <- 0:N {i*i}]
-    EXPECT_EQ_(size(a), 10)
-    EXPECT_EQ_(a, rrbvec(for i <- 0:N {i*i}))
-    EXPECT_EQ_(a, rrbvec(arr))
-    EXPECT_EQ_(a[5], 25)
-    EXPECT_EQ_(a[6:.-1][::-1] + a[:4], rrbvec([64, 49, 36, 0, 1, 4, 9]))
+    EXPECT_EQ(size(a), 10)
+    EXPECT_EQ(a, rrbvec(for i <- 0:N {i*i}))
+    EXPECT_EQ(a, rrbvec(arr))
+    EXPECT_EQ(a[5], 25)
+    EXPECT_EQ(a[6:.-1][::-1] + a[:4], rrbvec([64, 49, 36, 0, 1, 4, 9]))
     //EXPECT_EQ(a.wrap[-2], 64)
 })
 
@@ -26,16 +26,16 @@ TEST("rrbvec.comprehensions", fun()
     val N = 1000003
     val arr = [for i <- 0:N {i}]
     val vec = rrbvec([for i <- 0:N {float(i)}])
-    EXPECT_EQ_(size(vec), size(arr))
+    EXPECT_EQ(size(vec), size(arr))
     for x <- arr, y <- vec {
-        EXPECT_EQ_(float(x), y)
+        EXPECT_EQ(float(x), y)
         if float(x) != y {break}
     }
     val vec = rrbvec(for i <- 0:N {rrbvec([string(i)])})
     for x <- arr, y <- vec {
-        EXPECT_EQ_(size(y), 1)
+        EXPECT_EQ(size(y), 1)
         val str_x = string(x), y_0 = y[0]
-        EXPECT_EQ_(str_x, y_0)
+        EXPECT_EQ(str_x, y_0)
         if str_x != y_0 {break}
     }
 })
@@ -52,10 +52,10 @@ TEST("rrbvec.concat_slice", fun()
         vec += added_vec
         i = j
     }
-    EXPECT_EQ_(size(vec), N)
+    EXPECT_EQ(size(vec), N)
     for x@i <- vec {
         val y = float(i)
-        EXPECT_EQ_(x, y)
+        EXPECT_EQ(x, y)
         if x != y {break}
     }
 
@@ -68,10 +68,10 @@ TEST("rrbvec.concat_slice", fun()
     var vec2: rrbvec[float] = []
     // test the reverse at once
     for part <- parts[::-1] { vec2 = part + vec2 }
-    EXPECT_EQ_(size(vec2), N)
+    EXPECT_EQ(size(vec2), N)
     for x@i <- vec2 {
         val y = float(i)
-        EXPECT_EQ_(x, y)
+        EXPECT_EQ(x, y)
         if x != y {break}
     }
 })
@@ -89,11 +89,11 @@ TEST("rrbvec.find", fun()
         val wrap_idx = (big_idx % N) + (if big_idx < 0 {N} else {0})
         val x = simple_vec[idx]
         val xv = complex_vec[idx]
-        EXPECT_EQ_(x, idx)
-        EXPECT_EQ_(size(xv), 1)
-        EXPECT_EQ_(xv[0], idx)
-        EXPECT_EQ_(simple_vec.clip[big_idx], simple_vec[clip_idx])
-        EXPECT_EQ_(simple_vec.wrap[big_idx], simple_vec[wrap_idx])
-        EXPECT_EQ_(simple_vec.zero[big_idx], if big_idx == clip_idx {big_idx} else {0})
+        EXPECT_EQ(x, idx)
+        EXPECT_EQ(size(xv), 1)
+        EXPECT_EQ(xv[0], idx)
+        EXPECT_EQ(simple_vec.clip[big_idx], simple_vec[clip_idx])
+        EXPECT_EQ(simple_vec.wrap[big_idx], simple_vec[wrap_idx])
+        EXPECT_EQ(simple_vec.zero[big_idx], if big_idx == clip_idx {big_idx} else {0})
     }
 })

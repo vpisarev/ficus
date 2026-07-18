@@ -13,9 +13,9 @@ TEST("dsp.fft.fwd_inv", fun() {
         val signal = rng.uniform(n, -1.f, 1.f)
         val spectrum = DSP.Fft.fwd(signal)
         if n > 1 {
-            EXPECT_NE_(signal, spectrum)
+            EXPECT_NE(signal, spectrum)
         }
         val restored = DSP.Fft.inv(spectrum, scale=1.f/n)
-        EXPECT_NEAR_(signal, restored, 1e-5f)
+        EXPECT_NEAR(signal, restored, 1e-5f)
     }
 })

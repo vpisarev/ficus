@@ -23,7 +23,7 @@ TEST("rand.array.map", fun() {
         val rf = array(n, 0)
         for j <- 0:n {rf[j] = a[j]*2 + 1}
         if got != rf {println(f"  [repro] {name} case={i} seed={seed} n={n}")}
-        EXPECT_EQ_(got, rf)
+        EXPECT_EQ(got, rf)
     }
 })
 
@@ -38,7 +38,7 @@ TEST("rand.array.zip", fun() {
         val rf = array(n, 0)
         for j <- 0:n {rf[j] = a[j] - b[j]}
         if got != rf {println(f"  [repro] {name} case={i} seed={seed} n={n}")}
-        EXPECT_EQ_(got, rf)
+        EXPECT_EQ(got, rf)
     }
 })
 
@@ -52,7 +52,7 @@ TEST("rand.array.comp2d", fun() {
         val rf = array((m, n), 0)
         for i2 <- 0:m {for j2 <- 0:n {rf[i2, j2] = i2*100 + j2}}
         if got != rf {println(f"  [repro] {name} case={i} seed={seed} m={m} n={n}")}
-        EXPECT_EQ_(got, rf)
+        EXPECT_EQ(got, rf)
     }
 })
 
@@ -74,8 +74,8 @@ TEST("rand.array.slice", fun() {
         if gc != rc || gs != rs {
             println(f"  [repro] {name} case={i} seed={seed} n={n} lo={lo} hi={hi} step={step}")
         }
-        EXPECT_EQ_(gc, rc)
-        EXPECT_EQ_(gs, rs)
+        EXPECT_EQ(gc, rc)
+        EXPECT_EQ(gs, rs)
     }
 })
 
@@ -104,16 +104,16 @@ TEST("rand.array.border", fun() {
         if a.clip[idx] != cref || a.zero[idx] != zref || a.wrap[idx] != wref {
             println(f"  [repro] {name}[arr] case={i} seed={seed} n={n} idx={idx}")
         }
-        EXPECT_EQ_(a.clip[idx], cref)
-        EXPECT_EQ_(a.zero[idx], zref)
-        EXPECT_EQ_(a.wrap[idx], wref)
+        EXPECT_EQ(a.clip[idx], cref)
+        EXPECT_EQ(a.zero[idx], zref)
+        EXPECT_EQ(a.wrap[idx], wref)
         // Vector (FB-005)
         if v.clip[idx] != cref || v.zero[idx] != zref || v.wrap[idx] != wref {
             println(f"  [repro] {name}[vec] case={i} seed={seed} n={n} idx={idx}")
         }
-        EXPECT_EQ_(v.clip[idx], cref)
-        EXPECT_EQ_(v.zero[idx], zref)
-        EXPECT_EQ_(v.wrap[idx], wref)
+        EXPECT_EQ(v.clip[idx], cref)
+        EXPECT_EQ(v.zero[idx], zref)
+        EXPECT_EQ(v.wrap[idx], wref)
     }
 })
 
@@ -135,7 +135,7 @@ TEST("rand.array.nested_comp", fun() {
             }
         }
         if !ok { println(f"  [repro] {name} case={it} seed={seed} m={m} n={n}") }
-        EXPECT_EQ_(ok, true)
+        EXPECT_EQ(ok, true)
     }
 })
 
@@ -150,6 +150,6 @@ TEST("rand.array.fold", fun() {
         var rf = 0
         for x <- a {rf += x}
         if got != rf {println(f"  [repro] {name} case={i} seed={seed} n={n}")}
-        EXPECT_EQ_(got, rf)
+        EXPECT_EQ(got, rf)
     }
 })
