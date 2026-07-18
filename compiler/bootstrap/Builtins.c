@@ -138,21 +138,6 @@ FX_EXTERN_C int _fx_F9make_FailE1S(fx_str_t* arg0, fx_exn_t* fx_result)
    return 0;
 }
 
-FX_EXTERN_C int _fx_F6assertv1B(bool f_0, void* fx_fv)
-{
-   fx_exn_t v_0 = {0};
-   int fx_status = 0;
-   if (!f_0) {
-      fx_str_t slit_0 = FX_MAKE_STR("assertion failed");
-      FX_CALL(_fx_F16make_AssertErrorE1S(&slit_0, &v_0), _fx_cleanup);
-      FX_THROW(&v_0, true, _fx_cleanup);
-   }
-
-_fx_cleanup: ;
-   fx_free_exn(&v_0);
-   return fx_status;
-}
-
 FX_EXTERN_C int _fx_F4joinS2SA1S(fx_str_t* sep, fx_arr_t* strs, fx_str_t* fx_result, void* fx_fv)
 {
 

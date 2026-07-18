@@ -4,7 +4,7 @@
 */
 
 // macro-1: tests for the declarative macro engine (expansion, hygiene, the
-// @file/@line/@string primitives) and the backtick-free assert_ / EXPECT_*_
+// @file/@line/@string primitives) and the backtick-free assert / EXPECT_*
 // stdlib macros built on top of it.
 
 from UTest import *
@@ -70,15 +70,15 @@ TEST("macro.line_is_call_site", fun() {
 })
 
 TEST("macro.assert_pass", fun() {
-    assert_(1 + 1 == 2)
-    assert_(true)
+    assert(1 + 1 == 2)
+    assert(true)
     EXPECT_EQ(1, 1)                      // reached => no throw above
 })
 
 TEST("macro.assert_throw_message", fun() {
     var caught = "", threw = false
     try {
-        assert_(2 * 2 == 5)
+        assert(2 * 2 == 5)
     } catch {
         | AssertError(m) => threw = true; caught = m
     }

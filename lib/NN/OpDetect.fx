@@ -48,7 +48,7 @@ fun collect_boxes(yolo_outputs: Ast.nntensor_t [],
             | _ => throw Ast.NNError("floating-point tensors are expected as Yolo outputs")
             }
 
-        assert(`n == yolo_outputs[0].shape.shape[4]`)
+        assert(n == yolo_outputs[0].shape.shape[4])
         for y0 <- 0:output_size {
             for x0 <- 0:output_size {
                 for j <- 0:m {
@@ -179,7 +179,7 @@ fun yolov4_postprocess(yolo_outputs: Ast.nntensor_t [],
 fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
                     ~orig_image_size: (int*2), ~input_size: int)
 {
-    assert(`ssd_outputs.size() == 4`)
+    assert(ssd_outputs.size() == 4)
     val detection_boxes = ssd_outputs[0]
     val detection_classes = ssd_outputs[1]
     val detection_scores = ssd_outputs[2]
@@ -189,17 +189,17 @@ fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
     val dc_shape = detection_classes.shape.shape // N x K
     val ds_shape = detection_scores.shape.shape // N x K
     val nd_shape = num_detections.shape.shape // N
-    assert(`detection_boxes.elemtype() == Type_F32`)
-    assert(`detection_classes.elemtype() == Type_F32`)
-    assert(`detection_scores.elemtype() == Type_F32`)
-    assert(`num_detections.elemtype() == Type_F32`)
-    assert(`db_shape.size() == 3`)
-    assert(`dc_shape.size() == 2`)
-    assert(`ds_shape.size() == 2`)
-    assert(`nd_shape.size() == 1`)
-    assert(`db_shape[0] == dc_shape[0] && db_shape[0] == ds_shape[0] && db_shape[0] == nd_shape[0]`)
-    assert(`db_shape[1] == dc_shape[1] && db_shape[1] == ds_shape[1]`)
-    assert(`db_shape[2] == 4`)
+    assert(detection_boxes.elemtype() == Type_F32)
+    assert(detection_classes.elemtype() == Type_F32)
+    assert(detection_scores.elemtype() == Type_F32)
+    assert(num_detections.elemtype() == Type_F32)
+    assert(db_shape.size() == 3)
+    assert(dc_shape.size() == 2)
+    assert(ds_shape.size() == 2)
+    assert(nd_shape.size() == 1)
+    assert(db_shape[0] == dc_shape[0] && db_shape[0] == ds_shape[0] && db_shape[0] == nd_shape[0])
+    assert(db_shape[1] == dc_shape[1] && db_shape[1] == ds_shape[1])
+    assert(db_shape[2] == 4)
     val N = db_shape[0]
     val K = db_shape[1]
     val detection_boxes = match detection_boxes.data {
@@ -240,16 +240,16 @@ fun ssd_postprocess(ssd_outputs: Ast.nntensor_t [],
 
 fun tinyyolo_postprocess(ty_outputs: Ast.nntensor_t [], ~orig_image_size: (int*2), ~input_size: int)
 {
-    assert(`ty_outputs.size() == 3`)
+    assert(ty_outputs.size() == 3)
     val boxes = ty_outputs[0], scores = ty_outputs[1], selected = ty_outputs[2]
     val box_shape = boxes.shape.shape, scores_shape = scores.shape.shape
     val selected_shape = selected.shape.shape
-    assert(`box_shape.size() == 3`)
-    assert(`scores_shape.size() == 3`)
-    assert(`selected_shape.size() == 3`)
-    assert(`box_shape[0] == scores_shape[0]`)
-    assert(`box_shape[0] == 1`) // batch_size=1 is only supported for now
-    assert(`box_shape[1] == scores_shape[2]`)
+    assert(box_shape.size() == 3)
+    assert(scores_shape.size() == 3)
+    assert(selected_shape.size() == 3)
+    assert(box_shape[0] == scores_shape[0])
+    assert(box_shape[0] == 1) // batch_size=1 is only supported for now
+    assert(box_shape[1] == scores_shape[2])
     val box_data = float(boxes.data).reshape(box_shape[0], box_shape[1], box_shape[2])
     val scores_data = float(scores.data).reshape(scores_shape[0], scores_shape[1], scores_shape[2])
     val selected_data = float(selected.data).reshape(selected_shape[0], selected_shape[1], selected_shape[2])

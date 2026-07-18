@@ -105,7 +105,7 @@ fun assign_buffers(model: Ast.nnmodel_t)
     fun release_buffer(bufidx: int)
     {
         if bufidx >= 0 {
-            assert(`buf_usecounts[bufidx] > 0`)
+            assert(buf_usecounts[bufidx] > 0)
             buf_usecounts[bufidx] -= 1
             if buf_usecounts[bufidx] == 0 {
                 freebufs.push_back(bufidx)
@@ -115,9 +115,9 @@ fun assign_buffers(model: Ast.nnmodel_t)
 
     fun share_buffer(from_arg: int, to_arg: int)
     {
-        assert(`!model.isconst(from_arg) && !model.isconst(to_arg)`)
+        assert(!model.isconst(from_arg) && !model.isconst(to_arg))
         val from_buf = bufidxs[from_arg]
-        assert(`from_buf >= 0`)
+        assert(from_buf >= 0)
         val to_buf = bufidxs[to_arg]
         bufidxs[to_arg] = from_buf
         buf_usecounts[from_buf] += 1
@@ -215,7 +215,7 @@ fun assign_buffers(model: Ast.nnmodel_t)
                 val {outargs=then_outargs} = then_branch
                 val {outargs=else_outargs} = else_branch
                 val nouts = t_out.size()
-                assert(`then_outargs.size() == nouts && else_outargs.size() == nouts`)
+                assert(then_outargs.size() == nouts && else_outargs.size() == nouts)
                 for outarg <- t_out, then_outarg <- then_outargs, else_outarg <- else_outargs {
                     if !model.isconst(then_outarg) && usecounts[then_outarg] == 1 {
                         share_buffer(outarg, then_outarg)
@@ -240,11 +240,11 @@ fun assign_buffers(model: Ast.nnmodel_t)
                 val n_outargs = outargs.size()
                 val n_state_vars = t_v_in.size()
                 val n_accums = t_v_out.size() - n_state_vars
-                assert(`n_inpargs == 2 + n_state_vars`)
-                assert(`n_accums >= 0 && n_accums == n_outargs - n_state_vars - 1`)
+                assert(n_inpargs == 2 + n_state_vars)
+                assert(n_accums >= 0 && n_accums == n_outargs - n_state_vars - 1)
                 val inparg_0 = inpargs[0]
                 if inparg_0 > 0 && usecounts[inparg_0] > 0 {
-                    assert(`!model.isconst(inparg_0)`)
+                    assert(!model.isconst(inparg_0))
                     if !model.isconst(t_trip_count) {
                         share_buffer(t_trip_count, inparg_0)
                     } else {
@@ -257,7 +257,7 @@ fun assign_buffers(model: Ast.nnmodel_t)
                     val (v_inp, v_out) = if i < 0 { (t_cond_in, 0) }
                                          else { (t_v_in[i], t_v_out[i]) }
                     if inparg > 0 && usecounts[inparg] > 0 {
-                        assert(`!model.isconst(inparg)`)
+                        assert(!model.isconst(inparg))
                         if !model.isconst(v_inp) {
                             share_buffer(v_inp, inparg)
                         } else {

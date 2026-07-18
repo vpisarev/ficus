@@ -77,7 +77,7 @@ match op {
     val (inp_data, inp_shape) = [@unzip for idx@i <- t_inp {
             val t = model.get_tensor(idx)
             val etyp_i = t.data.elemtype()
-            assert(`etyp_0 == etyp_i`)
+            assert(etyp_0 == etyp_i)
             (t.data, t.shape.shape)
         }]
 
@@ -185,7 +185,7 @@ match op {
     match out.data {
     | Ast.NN_Data_I64 out_data =>
         val out_size = out_data.size()
-        assert(`out_size == end - start`)
+        assert(out_size == end - start)
         for i <- 0:out_size {
             out_data[i] = (inp_shape[i + start] :> int64)
         }
@@ -536,7 +536,7 @@ match op {
     val (out_data, out_shape) = [@unzip for idx@i <- t_out {
             val t = model.get_tensor(idx)
             val etyp_i = t.data.elemtype()
-            assert(`etyp_0 == etyp_i`)
+            assert(etyp_0 == etyp_i)
             (t.data, t.shape.shape)
         }]
     val axis = Ast.normalize_axis(axis, ndims)

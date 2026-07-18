@@ -46,7 +46,9 @@ int_ _fx_g14File__SEEK_END =
 (int)SEEK_END
 ;
 _fx_R7File__t _fx_g12File__stdout = {0};
-FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
+
+FX_EXTERN_C int _fx_F16make_AssertErrorE1S(fx_str_t*, fx_exn_t*);
 
 FX_EXTERN_C int _fx_M4FileFM13get_stdstreamRM1t1i(int_ i, struct _fx_R7File__t* fx_result, void* fx_fv)
 {
@@ -198,6 +200,9 @@ FX_EXTERN_C int _fx_M4FileFM14read_binary_u8A1b1S(fx_str_t* fname_0, fx_arr_t* f
    fx_cptr_t v_0 = 0;
    _fx_R7File__t f_0 = {0};
    fx_arr_t arr_0 = {0};
+   fx_str_t v_1 = {0};
+   fx_str_t v_2 = {0};
+   fx_exn_t v_3 = {0};
    int fx_status = 0;
    fx_str_t slit_0 = FX_MAKE_STR("rb");
    FX_CALL(_fx_M4FileFM5open_p3SSB(fname_0, &slit_0, false, &v_0, 0), _fx_cleanup);
@@ -207,18 +212,28 @@ FX_EXTERN_C int _fx_M4FileFM14read_binary_u8A1b1S(fx_str_t* fname_0, fx_arr_t* f
    FX_CALL(_fx_M4FileFM4telll1RM1t(&f_0, &sz_0, 0), _fx_cleanup);
    FX_CALL(_fx_M4FileFM4seekv3RM1tli(&f_0, 0LL, _fx_g14File__SEEK_SET, 0), _fx_cleanup);
    uint8_t* dstptr_0 = 0;
-   int_ v_1 = (int_)sz_0;
+   int_ v_4 = (int_)sz_0;
    {
-      const int_ shape_0[] = { v_1 };
+      const int_ shape_0[] = { v_4 };
       FX_CALL(fx_make_arr(1, shape_0, sizeof(uint8_t), 0, 0, 0, &arr_0), _fx_cleanup);
    }
    dstptr_0 = (uint8_t*)arr_0.data;
-   for (int_ i_0 = 0; i_0 < v_1; i_0++, dstptr_0++) {
+   for (int_ i_0 = 0; i_0 < v_4; i_0++, dstptr_0++) {
       *dstptr_0 = 0u;
    }
-   int_ v_2;
-   FX_CALL(_fx_M4FileFM4readi2RM1tA1b(&f_0, &arr_0, &v_2, 0), _fx_cleanup);
-   FX_CALL(_fx_F6assertv1B(v_2 == (int_)sz_0, 0), _fx_cleanup);
+   int_ v_5;
+   FX_CALL(_fx_M4FileFM4readi2RM1tA1b(&f_0, &arr_0, &v_5, 0), _fx_cleanup);
+   if (!(v_5 == (int_)sz_0)) {
+      FX_CALL(_fx_F6stringS1i(215, &v_1, 0), _fx_cleanup);
+      fx_str_t slit_1 = FX_MAKE_STR("File.fx:");
+      fx_str_t slit_2 = FX_MAKE_STR(": assertion \'f.read(arr) == int(sz)\' violation");
+      {
+         const fx_str_t strs_0[] = { slit_1, v_1, slit_2 };
+         FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_2), _fx_cleanup);
+      }
+      FX_CALL(_fx_F16make_AssertErrorE1S(&v_2, &v_3), _fx_cleanup);
+      FX_THROW(&v_3, true, _fx_cleanup);
+   }
    _fx_M4FileFM5closev1RM1t(&f_0, 0);
    fx_copy_arr(&arr_0, fx_result);
 
@@ -228,6 +243,9 @@ _fx_cleanup: ;
    }
    _fx_free_R7File__t(&f_0);
    FX_FREE_ARR(&arr_0);
+   FX_FREE_STR(&v_1);
+   FX_FREE_STR(&v_2);
+   fx_free_exn(&v_3);
    return fx_status;
 }
 

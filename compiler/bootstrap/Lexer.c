@@ -1026,7 +1026,9 @@ FX_EXTERN_C uint64_t _fx_F4hashq1S(fx_str_t*, void*);
 
 FX_EXTERN_C bool _fx_F6__eq__B2SS(fx_str_t*, fx_str_t*, void*);
 
-FX_EXTERN_C int _fx_F6assertv1B(bool, void*);
+FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
+
+FX_EXTERN_C int _fx_F16make_AssertErrorE1S(fx_str_t*, fx_exn_t*);
 
 FX_EXTERN_C int _fx_M3AstFM7lit2strS1N10Ast__lit_t(struct _fx_N10Ast__lit_t*, fx_str_t*, void*);
 
@@ -1073,8 +1075,6 @@ FX_EXTERN_C int
    struct _fx_rB_data_t*,
    struct _fx_N20LexerUtils__stream_t_data_t*,
    struct _fx_FPT3LT2N14Lexer__token_tTa2iTa2iTa2i0*);
-
-FX_EXTERN_C int _fx_F6stringS1i(int_, fx_str_t*, void*);
 
 FX_EXTERN_C int _fx_M10LexerUtilsFM11skip_spacesT3CiB3N20LexerUtils__stream_tiB(
    struct _fx_N20LexerUtils__stream_t_data_t*,
@@ -1505,12 +1505,15 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
 {
    fx_arr_t v_0 = {0};
    fx_arr_t v_1 = {0};
-   _fx_T2N14Lexer__token_ti v_2 = {0};
-   _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti v_3 = {0};
+   fx_str_t v_2 = {0};
+   fx_str_t v_3 = {0};
    fx_exn_t v_4 = {0};
+   _fx_T2N14Lexer__token_ti v_5 = {0};
+   _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti v_6 = {0};
+   fx_exn_t v_7 = {0};
    int fx_status = 0;
-   uint64_t v_5 = _fx_F4hashq1S(k_0, 0);
-   uint64_t hv_0 = v_5 & 9223372036854775807ULL;
+   uint64_t v_8 = _fx_F4hashq1S(k_0, 0);
+   uint64_t hv_0 = v_8 & 9223372036854775807ULL;
    fx_copy_arr(&hm_0->u.t.t4, &v_0);
    int_ idxsz_0 = FX_ARR_SIZE(v_0, 0);
    if (hm_0->u.t.t1 + 1 > idxsz_0 >> 1) {
@@ -1524,25 +1527,25 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
    int_ found_0 = -1;
    int_ insert_idx_0 = -1;
    int_ j_0 = (int_)hv_0 & (idxsz_0 - 1);
-   int_ v_6 = idxsz_0 + 14;
-   for (int_ i_0 = 0; i_0 < v_6; i_0++) {
+   int_ v_9 = idxsz_0 + 14;
+   for (int_ i_0 = 0; i_0 < v_9; i_0++) {
       _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti entry_0 = {0};
-      fx_str_t v_7 = {0};
+      fx_str_t v_10 = {0};
       FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, j_0), _fx_catch_0);
       int_ tidx_0 = *FX_PTR_1D(int_, hm_0->u.t.t4, j_0);
       if (tidx_0 >= 2) {
-         int_ v_8 = tidx_0 - 2;
-         FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, v_8), _fx_catch_0);
+         int_ v_11 = tidx_0 - 2;
+         FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, v_11), _fx_catch_0);
          _fx_copy_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(
-            FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, v_8), &entry_0);
-         bool v_9;
+            FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, v_11), &entry_0);
+         bool v_12;
          if (entry_0.hv == hv_0) {
-            fx_copy_str(&entry_0.key, &v_7); v_9 = _fx_F6__eq__B2SS(&v_7, k_0, 0);
+            fx_copy_str(&entry_0.key, &v_10); v_12 = _fx_F6__eq__B2SS(&v_10, k_0, 0);
          }
          else {
-            v_9 = false;
+            v_12 = false;
          }
-         if (v_9) {
+         if (v_12) {
             found_0 = tidx_0 - 2; FX_BREAK(_fx_catch_0);
          }
       }
@@ -1568,7 +1571,7 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
       j_0 = (int_)((uint64_t)(j_0 * 5 + 1) + perturb_0) & (idxsz_0 - 1);
 
    _fx_catch_0: ;
-      FX_FREE_STR(&v_7);
+      FX_FREE_STR(&v_10);
       _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&entry_0);
       FX_CHECK_BREAK();
       FX_CHECK_EXN(_fx_cleanup);
@@ -1583,52 +1586,65 @@ FX_EXTERN_C int _fx_M5LexerFM18find_idx_or_inserti2Nt10Hashmap__t2ST2N14Lexer__t
       }
       if (t_1) {
          FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, insert_idx_0), _fx_cleanup);
-         int_* v_10 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
-         *v_10 = found_0 + 2;
+         int_* v_13 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
+         *v_13 = found_0 + 2;
          FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, j_0), _fx_cleanup);
-         int_* v_11 = FX_PTR_1D(int_, hm_0->u.t.t4, j_0);
-         *v_11 = 1;
+         int_* v_14 = FX_PTR_1D(int_, hm_0->u.t.t4, j_0);
+         *v_14 = 1;
       }
    }
    else if (insert_idx_0 >= 0) {
       found_0 = hm_0->u.t.t3 - 1;
       if (found_0 >= 0) {
          FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, found_0), _fx_cleanup);
-         _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_12 =
+         _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_15 =
             FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, found_0);
-         hm_0->u.t.t3 = (int_)(v_12->hv & 9223372036854775807ULL);
+         hm_0->u.t.t3 = (int_)(v_15->hv & 9223372036854775807ULL);
       }
       else {
          found_0 = hm_0->u.t.t2;
          hm_0->u.t.t2 = hm_0->u.t.t2 + 1;
          fx_copy_arr(&hm_0->u.t.t5, &v_1);
-         FX_CALL(_fx_F6assertv1B(found_0 < FX_ARR_SIZE(v_1, 0), 0), _fx_cleanup);
+         if (!(found_0 < FX_ARR_SIZE(v_1, 0))) {
+            FX_CALL(_fx_F6stringS1i(220, &v_2, 0), _fx_cleanup);
+            fx_str_t slit_0 = FX_MAKE_STR("Hashmap.fx:");
+            fx_str_t slit_1 = FX_MAKE_STR(": assertion \'found < size(hm.table)\' violation");
+            {
+               const fx_str_t strs_0[] = { slit_0, v_2, slit_1 };
+               FX_CALL(fx_strjoin(0, 0, 0, strs_0, 3, &v_3), _fx_cleanup);
+            }
+            FX_CALL(_fx_F16make_AssertErrorE1S(&v_3, &v_4), _fx_cleanup);
+            FX_THROW(&v_4, true, _fx_cleanup);
+         }
       }
-      _fx_copy_T2N14Lexer__token_ti(&hm_0->u.t.t0.data, &v_2);
-      _fx_make_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(hv_0, k_0, &v_2, &v_3);
+      _fx_copy_T2N14Lexer__token_ti(&hm_0->u.t.t0.data, &v_5);
+      _fx_make_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(hv_0, k_0, &v_5, &v_6);
       FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t5, 0, found_0), _fx_cleanup);
-      _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_13 =
+      _fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti* v_16 =
          FX_PTR_1D(_fx_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti, hm_0->u.t.t5, found_0);
-      _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(v_13);
-      _fx_copy_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_3, v_13);
+      _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(v_16);
+      _fx_copy_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_6, v_16);
       FX_CHKIDX(FX_CHKIDX1(hm_0->u.t.t4, 0, insert_idx_0), _fx_cleanup);
-      int_* v_14 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
-      *v_14 = found_0 + 2;
+      int_* v_17 = FX_PTR_1D(int_, hm_0->u.t.t4, insert_idx_0);
+      *v_17 = found_0 + 2;
       hm_0->u.t.t1 = hm_0->u.t.t1 + 1;
    }
    else {
-      fx_str_t slit_0 = FX_MAKE_STR("cannot insert element (full Hashtable?!)");
-      FX_CALL(_fx_F9make_FailE1S(&slit_0, &v_4), _fx_cleanup);
-      FX_THROW(&v_4, true, _fx_cleanup);
+      fx_str_t slit_2 = FX_MAKE_STR("cannot insert element (full Hashtable?!)");
+      FX_CALL(_fx_F9make_FailE1S(&slit_2, &v_7), _fx_cleanup);
+      FX_THROW(&v_7, true, _fx_cleanup);
    }
    *fx_result = found_0;
 
 _fx_cleanup: ;
    FX_FREE_ARR(&v_0);
    FX_FREE_ARR(&v_1);
-   _fx_free_T2N14Lexer__token_ti(&v_2);
-   _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_3);
+   FX_FREE_STR(&v_2);
+   FX_FREE_STR(&v_3);
    fx_free_exn(&v_4);
+   _fx_free_T2N14Lexer__token_ti(&v_5);
+   _fx_free_Rt20Hashmap__hashentry_t2ST2N14Lexer__token_ti(&v_6);
+   fx_free_exn(&v_7);
    return fx_status;
 }
 

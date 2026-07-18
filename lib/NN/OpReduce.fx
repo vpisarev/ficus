@@ -343,15 +343,15 @@ match op {
     val out = model.get_tensor(t_out)
     val out_ind = model.get_tensor(t_out_ind)
     val tK = model.get_tensor(t_K).data
-    assert(`tK.total() == 1`)
+    assert(tK.total() == 1)
     val K = match tK {
         | Ast.NN_Data_I64 tK_data => int(tK_data[0])
         | _ => throw Ast.NNError("incorrect type of K tensor in topK: INT64 is expected\n")
         }
-    assert(`K >= 0`)
+    assert(K >= 0)
     val ndims = inp.shape.shape.size()
     val axis = Ast.normalize_axis(axis, ndims)
-    assert(`out.shape.shape == out_ind.shape.shape`)
+    assert(out.shape.shape == out_ind.shape.shape)
     run_top_k(inp, out, out_ind, axis, largest, sorted, K, *model.ntasks)
 | _ => throw Ast.NNError(f"unsupported operation '{op.name()}'")
 }

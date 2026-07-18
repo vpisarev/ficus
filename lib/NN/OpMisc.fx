@@ -144,7 +144,7 @@ fun run_range(out: Ast.nntensor_t,
               start: double, limit: double, delta: double): void
 {
     val nelems = max(ceil((limit - start)/delta), 0)
-    assert(`out.data.total() == nelems && out.shape.shape.size() == 1`)
+    assert(out.data.total() == nelems && out.shape.shape.size() == 1)
     match out.data {
     | Ast.NN_Data_FP32 data =>
         for i <- 0:nelems {data[i] = float(start + i*delta)}
@@ -166,9 +166,9 @@ match op {
     val limit = model.get_tensor(t_limit).data
     val delta = model.get_tensor(t_delta).data
     val out = model.get_tensor(t_out)
-    assert(`start.total() == 1`)
-    assert(`limit.total() == 1`)
-    assert(`delta.total() == 1`)
+    assert(start.total() == 1)
+    assert(limit.total() == 1)
+    assert(delta.total() == 1)
     val start = start.double_scalar_or(0.)
     val limit = limit.double_scalar_or(0.)
     val delta = delta.double_scalar_or(1.)

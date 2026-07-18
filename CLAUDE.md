@@ -102,12 +102,16 @@ intuition — read `doc/ficustut.md` and existing code. Verified traps:
   (`Module.helper(...)`). Macros **overload by arity** (like functions:
   `EXPECT_EQ_(a,b)` + `EXPECT_EQ_(a,b,note)`); keyword/optional params are NOT
   supported yet (a `msg=x` call bumps arity via a trailing record).
-  Backtick-free `assert_` (Builtins) and
-  `EXPECT_*_`/`EXPECT_NEAR_` (UTest) are the E1 clients; the old backtick
-  `EXPECT`/`ASSERT` forms still coexist. `-pr-ast` shows the post-expansion AST.
-  **Editing Builtins/UTest to USE `macro` breaks `make`** (the old bootstrap
-  FICUS0 can't parse it) — regen first: `update_compiler.py --no-make`. Details:
-  `docs/macro1_report.md` / `docs/macro_design.md`.
+  A macro resolves in the CALLER's env (as if pasted inline there): base
+  auto-imported names (`==`, `string`, Builtins ops) resolve for free and pick up
+  the caller's LOCAL overloads; but a macro's OWN non-base-module names must be
+  qualified (`UTest.helper`). `assert` (Builtins) and the UTest `EXPECT_*`/
+  `ASSERT_*`/`EXPECT_THROWS`/`EXPECT_NEAR` families are now macros (the old
+  backtick/`errctx` functions are gone; `assert(cond)` prints file:line + the
+  source of `cond`). `-pr-ast` shows the post-expansion AST.
+  **Editing a bootstrap stdlib module (Builtins/…) to USE `macro` needs a regen
+  before `make` works from a clean tree** — `update_compiler.py --no-make`.
+  Details: `docs/macro1_report.md` / `docs/macro_design.md`.
 - **Generics (generics-1) are bracketed & prefix, params UPPERCASE and
   DECLARED**: `list[T]`, `Map.t[K, V]`, `ref[T]`, `T?` (option); `type
   tree_t[K, D] = …`, `fun add[U, V, R](a: U, b: V): R`, `operator ==[T](…)`,

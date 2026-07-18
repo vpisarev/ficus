@@ -340,8 +340,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
             val rev_more_ops : list[Ast.nnop_t] = match node.op {
             | "Add" | "And" | "Div" | "Equal" | "Greater" | "GreaterOrEqual"
             | "Less" | "LessOrEqual" | "Mod" | "Mul" | "Or" | "Pow" | "Sub" | "Xor" =>
-                assert(`ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2)
+                assert(noutputs == 1)
                 val el_op = match node.op {
                     | "Add" => Ast.NN_Add
                     | "And" => Ast.NN_And
@@ -364,8 +364,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
             | "Ceil" | "Cos" | "Cosh" | "Erf" | "Exp" | "Floor" | "IsInf" | "IsNaN" | "Log"
             | "Neg" | "Not" | "Relu" | "Round" | "Sigmoid" | "Sign" | "Sin" | "Sinh"
             | "Softplus" | "Softsign" | "Sqrt" | "Tan" | "Tanh" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 val el_op = match node.op {
                     | "Abs" => Ast.NN_Abs | "Acos" => Ast.NN_Acos | "Acosh" => Ast.NN_Acosh
                     | "Asin" => Ast.NN_Asin | "Asinh" => Ast.NN_Asinh | "Atan" => Ast.NN_Atan
@@ -381,8 +381,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]
             | "Min" | "Max" | "Mean" | "Sum" =>
-                assert(`ninputs > 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs > 1)
+                assert(noutputs == 1)
                 val el_op = match node.op {
                     | "Min" => Ast.NN_Min | "Max" => Ast.NN_Max | "Mean" => Ast.NN_Mean | "Sum" => Ast.NN_Add
                     | _ => throw OnnxConvertError(f"unsupported element-wise operation {node.op}")
@@ -390,8 +390,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 [:: Ast.NN_Elemwise {name=name, el_op=el_op, t_inp=inputs, t_out=outputs[0]}]
             | "ReduceMin" | "ReduceMax" | "ReduceMean" | "ReduceProd" | "ReduceSum" | "ReduceSumSquare"
             | "ReduceL1" | "ReduceL2" | "ReduceLogSum" | "ReduceLogSumExp" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var axes = [], keepdims = 1
                 for a <- node.attrs {
                     | {name="axes"} => axes = attr2ints(a)
@@ -416,11 +416,11 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 val ismax = node.op == "MaxPool"
                 val quantized = node.op == "QLinearAveragePool"
                 if quantized {
-                    assert(`ninputs == 4 || ninputs == 5`)
+                    assert(ninputs == 4 || ninputs == 5)
                 } else {
-                    assert(`ninputs == 1`)
+                    assert(ninputs == 1)
                 }
-                assert(`noutputs == 1`)
+                assert(noutputs == 1)
                 var kernel_shape = [], strides = [], dilations = []
                 var pads = [], auto_pad = Ast.NN_Pad_None, count_include_pad = 0
                 var ceil_mode = 0, storage_order = 0, channels_last = 0
@@ -445,7 +445,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 if dilations == [] {dilations = array(dims, 1)}
                 val pads = autopad2pads(auto_pad, kernel_shape, pads)
                 val storage_order = if storage_order == 0 {Ast.NN_RowMajor} else {Ast.NN_ColumnMajor}
-                assert(`strides.size() == dims && dilations.size() == dims && pads.size() == dims*2`)
+                assert(strides.size() == dims && dilations.size() == dims && pads.size() == dims*2)
                 [:: if ismax {
                     Ast.NN_MaxPool {
                         name=name, attr=Ast.nnconv_attr_t {
@@ -490,8 +490,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_inp=inputs[0], t_scale=inputs[1], t_B=inputs[2],
                     t_mean=inputs[3], t_var=inputs[4], t_out=outputs[0] }]
             | "Cast" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var to = 0
                 for a <- node.attrs {
                     | {name="to"} => to = attr2int(a)
@@ -505,8 +505,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Cast { name=name, to=to, t_inp=inputs[0], t_out=outputs[0] }]
             | "Clip" =>
-                assert(`ninputs == 1 || ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1 || ninputs == 3)
+                assert(noutputs == 1)
                 var maxv = 3.402823e+38f, minv = -maxv
                 for a <- node.attrs {
                     | {name="min"} => minv = attr2float(a)
@@ -517,8 +517,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 val t_max = if ninputs == 3 {inputs[2]} else {get_const_tensor_arg(maxv)}
                 [:: Ast.NN_Clip {name=name, t_inp=inputs[0], t_min=t_min, t_max=t_max, t_out=outputs[0]}]
             | "Constant" =>
-                assert(`ninputs == 0`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 0)
+                assert(noutputs == 1)
                 var t = empty_tensor, count = 0
                 for a <- node.attrs {
                     | {name=("value"|"value_float"|"value_int"|"value_floats"|"value_ints")} =>
@@ -539,8 +539,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 vtensors[outputs[0]] = t
                 [] // there is no actual output operation
             | "ConstantOfShape" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var value = empty_tensor
                 for a <- node.attrs {
                     | {name="value"} => value = attr2tensor(a)
@@ -548,7 +548,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_ConstantOfShape { name=name, value=value, t_shape=inputs[0], t_out=outputs[0] }]
             | "Concat" =>
-                assert(`noutputs == 1`)
+                assert(noutputs == 1)
                 var axis = 0
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -556,8 +556,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Concat {name=name, axis=axis, t_inp=copy(inputs), t_out=outputs[0]}]
             | "Conv" | "ConvTranspose" =>
-                assert(`ninputs == 2 || ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2 || ninputs == 3)
+                assert(noutputs == 1)
                 val (conv_attr, out_padding, out_shape) = parse_conv_attr(node)
                 if node.op == "Conv" {
                     [:: Ast.NN_Conv {
@@ -580,8 +580,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                         t_out=outputs[0]}]
                 }
             | "DequantizeLinear" =>
-                assert(`ninputs == 2 || ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2 || ninputs == 3)
+                assert(noutputs == 1)
                 var axis = 1
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -594,8 +594,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_zp=(if ninputs >= 3 {inputs[2]} else {0}),
                     t_out=outputs[0] }]
             | "Dropout" =>
-                assert(`1 <= ninputs <= 3`)
-                assert(`noutputs == 1 || noutputs == 2`)
+                assert(1 <= ninputs <= 3)
+                assert(noutputs == 1 || noutputs == 2)
                 var seed=0
                 for a <- node.attrs {
                     | {name="seed"} => seed = attr2int(a)
@@ -606,8 +606,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                         0
                     } else {
                         val t_training_mode = inputs[2]
-                        assert(`vargs[t_training_mode].argkind == Ast.NN_Arg_Const`)
-                        assert(`vtensors[t_training_mode].data.total() == 1`)
+                        assert(vargs[t_training_mode].argkind == Ast.NN_Arg_Const)
+                        assert(vtensors[t_training_mode].data.total() == 1)
                         t_training_mode
                     }
                 [:: Ast.NN_Dropout {
@@ -617,12 +617,12 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_training_mode=t_training_mode,
                     t_out=outputs[0] }] // ignore the second output
             | "Expand" =>
-                assert(`ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2)
+                assert(noutputs == 1)
                 [:: Ast.NN_Expand { name=name, t_inp=inputs[0], t_shape=inputs[1], t_out=outputs[0] }]
             | "Flatten" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var axis=1
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -630,8 +630,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Flatten {name=name, axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
             | "Gather" =>
-                assert(`ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2)
+                assert(noutputs == 1)
                 var axis=0
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -642,8 +642,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_inp=inputs[0], t_ind=inputs[1],
                     t_out=outputs[0]}]
             | "Gemm" | "MatMul" =>
-                assert(`ninputs == 2 || ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2 || ninputs == 3)
+                assert(noutputs == 1)
                 var alpha=1.f, beta=1.f, transA=0, transB=0
                 for a <- node.attrs {
                     | {name="alpha"} => alpha = attr2float(a)
@@ -653,7 +653,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | _ => {}
                 }
                 if node.op == "MatMul" {
-                    assert(`ninputs == 2 && alpha == 1.f && transA == 0 && transB == 0`)
+                    assert(ninputs == 2 && alpha == 1.f && transA == 0 && transB == 0)
                 }
                 [:: Ast.NN_Gemm {
                     name=name, alpha=alpha, beta=beta,
@@ -662,16 +662,16 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_bias=(if ninputs == 3 {inputs[2]} else {0}),
                     t_out=outputs[0]}]
             | "GlobalAveragePool" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 [:: Ast.NN_GlobalAvgPool {name=name, t_inp=inputs[0], t_out=outputs[0]}]
             | "Identity" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 [:: Ast.NN_Identity {name=name, t_inp=inputs[0], t_out=outputs[0]}]
             | "If" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs >= 1`)
+                assert(ninputs == 1)
+                assert(noutputs >= 1)
                 var then_br = Ast.empty_graph(), else_br = Ast.empty_graph()
                 for a <- node.attrs {
                     | {name="then_branch", v=OAst.AttrGraph(g)} => then_br = convert_graph(g, nspace_+g.name, true)
@@ -684,8 +684,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     name=name, then_branch=then_br, else_branch=else_br,
                     t_inp=inputs[0], t_out=outputs}]
             | "LeakyRelu" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var alpha = 0.01f
                 for a <- node.attrs {
                     | {name="alpha"} => alpha = attr2float(a)
@@ -693,8 +693,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_LeakyRelu {name=name, alpha=alpha, t_inp=inputs[0], t_out=outputs[0]}]
             | "Loop" =>
-                assert(`ninputs >= 2`)
-                assert(`noutputs >= 1`)
+                assert(ninputs >= 2)
+                assert(noutputs >= 1)
                 var body = Ast.empty_graph()
                 for a <- node.attrs {
                     | {name="body", v=OAst.AttrGraph(g)} => body = convert_graph(g, nspace_+g.name, true)
@@ -706,8 +706,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_cond_in=inputs[1], t_v_in=inputs[2:],
                     t_v_out=outputs}]
             | "LRN" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var size = -1, alpha = 0.0001f, beta = 0.75f, bias = 1.0f
                 for a <- node.attrs {
                     | {name="alpha"} => alpha = attr2float(a)
@@ -716,13 +716,13 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     | {name="size"} => size = attr2int(a)
                     | _ => {}
                 }
-                assert(`size > 0`)
+                assert(size > 0)
                 [:: Ast.NN_LRN {
                     name=name, size=size, alpha=alpha,
                     beta=beta, bias=bias,
                     t_inp=inputs[0], t_out=outputs[0] }]
             | "NonMaxSuppression" =>
-                assert(`2 <= ninputs <= 5`)
+                assert(2 <= ninputs <= 5)
                 assert(noutputs == 1)
                 var center_point_box=0
                 for a <- node.attrs {
@@ -742,12 +742,12 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_score_threshold=t_score_threshold,
                     t_out=outputs[0] }]
             | "NonZero" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 [:: Ast.NN_NonZero { name=name, t_inp=inputs[0], t_out=outputs[0] }]
             | "QLinearAdd" =>
-                assert(`ninputs == 8`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 8)
+                assert(noutputs == 1)
                 [:: Ast.NN_QLinearAdd {
                     name=name,
                     t_A=inputs[0], t_A_scale=inputs[1], t_A_zp=inputs[2],
@@ -755,8 +755,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_out_scale=inputs[6], t_out_zp=inputs[7],
                     t_out=outputs[0]}]
             | "QLinearConv" =>
-                assert(`ninputs == 8 || ninputs == 9`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 8 || ninputs == 9)
+                assert(noutputs == 1)
                 val (conv_attr, _, _) = parse_conv_attr(node)
                 [:: Ast.NN_QLinearConv {
                     name=name, attr=conv_attr,
@@ -767,8 +767,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_bias=(if ninputs >= 8 {inputs[8]} else {0}),
                     t_out=outputs[0]}]
             | "QLinearGlobalAveragePool" =>
-                assert(`ninputs == 5`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 5)
+                assert(noutputs == 1)
                 var channels_last = 0
                 for a <- node.attrs {
                     | {name="channels_last"} => channels_last = attr2int(a)
@@ -780,8 +780,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_out_scale=inputs[3], t_out_zp=inputs[4],
                     t_out=outputs[0]}]
             | "QLinearMatMul" =>
-                assert(`ninputs == 8`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 8)
+                assert(noutputs == 1)
                 [:: Ast.NN_QLinearMatMul {
                     name=name,
                     t_A=inputs[0], t_A_scale=inputs[1], t_A_zp=inputs[2],
@@ -789,8 +789,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_out_scale=inputs[6], t_out_zp=inputs[7],
                     t_out=outputs[0]}]
             | "QuantizeLinear" =>
-                assert(`ninputs == 2 || ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2 || ninputs == 3)
+                assert(noutputs == 1)
                 var axis = 1
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -803,12 +803,12 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_zp=(if ninputs >= 3 {inputs[2]} else {0}),
                     t_out=outputs[0] }]
             | "Range" =>
-                assert(`ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 3)
+                assert(noutputs == 1)
                 [:: Ast.NN_Range { name=name, t_start=inputs[0], t_limit=inputs[1], t_delta=inputs[2], t_out=outputs[0] }]
             | "Reshape" =>
-                assert(`ninputs == 1 || ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1 || ninputs == 2)
+                assert(noutputs == 1)
                 var allowzero = 0, cshape = []
                 for a <- node.attrs {
                     | {name="allowzero"} => allowzero = attr2int(a)
@@ -820,8 +820,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     name=name, allowzero=allowzero != 0,
                     t_inp=inputs[0], t_shape=t_shape, t_out=outputs[0]}]
             | "Resize" =>
-                assert(`1 <= ninputs <= 4`)
-                assert(`noutputs == 1`)
+                assert(1 <= ninputs <= 4)
+                assert(noutputs == 1)
                 var coord_trans = "half_pixel", cubic_coeff_a = -0.75f,
                     exclude_outside = 0, extrapolation_value = 0.f,
                     mode = "nearest", nearest_mode = "round_prefer_floor"
@@ -867,8 +867,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     t_sizes=if ninputs > 3 {inputs[3]} else {0},
                     t_out=outputs[0]}]
             | "RoiAlign" =>
-                assert(`ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 3)
+                assert(noutputs == 1)
                 var coord_trans = "half_pixel", mode="avg",
                     output_height=1, output_width=1, sampling_ratio=0, spatial_scale=1.f
                 for a <- node.attrs {
@@ -894,8 +894,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     sampling_ratio=sampling_ratio, spatial_scale=spatial_scale,
                     t_inp=inputs[0], t_rois=inputs[1], t_batch_ind=inputs[2], t_out=outputs[0]}]
             | "Scatter" =>
-                assert(`ninputs == 3`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 3)
+                assert(noutputs == 1)
                 var axis = 0
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -904,8 +904,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 [:: Ast.NN_Scatter {name=name, axis=axis, t_data=inputs[0],
                     t_updates=inputs[1], t_indices=inputs[2], t_out=outputs[0]}]
             | "Shape" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var start = 0, end = 2147483647
                 for a <- node.attrs {
                     | {name="start"} => start = attr2int(a)
@@ -914,8 +914,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Shape {name=name, start=start, end=end, t_inp=inputs[0], t_out=outputs[0]}]
             | "Slice" =>
-                assert(`ninputs == 1 || (3 <= ninputs <= 5)`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1 || (3 <= ninputs <= 5))
+                assert(noutputs == 1)
                 var starts = [], ends = [], axes = [], steps = []
                 for a <- node.attrs {
                     | {name="starts"} => starts = attr2ints(a)
@@ -931,8 +931,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 [:: Ast.NN_Slice {name=name, t_inp=inputs[0], t_starts=t_starts, t_ends=t_ends,
                     t_axes=t_axes, t_steps=t_steps, t_out=outputs[0]}]
             | "Softmax" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var axis = -1
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -940,7 +940,7 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_SoftMax {name=name, axis=axis, t_inp=inputs[0], t_out=outputs[0]}]
             | "Split" =>
-                assert(`ninputs == 1 || ninputs == 2`)
+                assert(ninputs == 1 || ninputs == 2)
                 var axis = 0, split = []
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -952,8 +952,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 [:: Ast.NN_Split {
                     name=name, axis=axis, t_inp=inputs[0], t_split=t_split, t_out=outputs }]
             | "Squeeze" =>
-                assert(`ninputs == 1 || ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1 || ninputs == 2)
+                assert(noutputs == 1)
                 var axes = []
                 for a <- node.attrs {
                     | {name="axes"} => axes = attr2ints(a)
@@ -966,12 +966,12 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 [:: Ast.NN_Squeeze {
                     name=name, t_inp=inputs[0], t_axes=t_axes, t_out=outputs[0] }]
             | "Tile" =>
-                assert(`ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 2)
+                assert(noutputs == 1)
                 [:: Ast.NN_Tile {name=name, t_inp=inputs[0], t_repeats=inputs[1], t_out=outputs[0]}]
             | "TopK" =>
-                assert(`ninputs == 2`)
-                assert(`noutputs == 2`)
+                assert(ninputs == 2)
+                assert(noutputs == 2)
                 var axis = -1, largest = 1, sorted = 1
                 for a <- node.attrs {
                     | {name="axis"} => axis = attr2int(a)
@@ -983,8 +983,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                     name=name, axis=axis, largest=largest!=0, sorted=sorted!=0,
                     t_inp=inputs[0], t_K=inputs[1], t_out=outputs[0], t_out_ind=outputs[1]}]
             | "Transpose" =>
-                assert(`ninputs == 1`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1)
+                assert(noutputs == 1)
                 var perm = []
                 for a <- node.attrs {
                     | {name="perm"} => perm = attr2ints(a)
@@ -992,8 +992,8 @@ fun convert(onnx_model: OAst.model_t): Ast.nnmodel_t
                 }
                 [:: Ast.NN_Transpose {name=name, perm=perm, t_inp=inputs[0], t_out=outputs[0]}]
             | "Unsqueeze" =>
-                assert(`ninputs == 1 || ninputs == 2`)
-                assert(`noutputs == 1`)
+                assert(ninputs == 1 || ninputs == 2)
+                assert(noutputs == 1)
                 var axes = []
                 for a <- node.attrs {
                     | {name="axes"} => axes = attr2ints(a)

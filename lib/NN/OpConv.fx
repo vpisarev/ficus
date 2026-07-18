@@ -1059,7 +1059,7 @@ match op {
     val inp = model.get_tensor(t_inp)
     val out = model.get_tensor(t_out)
     val pb = model.get_tensor(t_passby)
-    assert(`kernel_shape.size() == 2 && inp.shape.shape.size() == 4`)
+    assert(kernel_shape.size() == 2 && inp.shape.shape.size() == 4)
     if *conv_data == null || !model.isconst(t_weights) || !model.isconst(t_bias) ||
         non_const_batch_norm || non_const_activ {
         //println(f"Conv: weights.data: {weights.data.elemtype()}, bias.data: {bias.data.elemtype()}")

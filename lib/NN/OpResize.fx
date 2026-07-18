@@ -329,7 +329,7 @@ match op {
     | Ast.NN_Inter_Linear =>
         val inp_typ = inp.elemtype()
         val out_typ = out.elemtype()
-        assert(`inp_typ == out_typ`)
+        assert(inp_typ == out_typ)
         run_resize_linear(inp_shape, inp.data, out_shape, out.data,
                           scales, sizes, roi, coord_trans, *model.ntasks)
     | _ => throw NotImplementedError
