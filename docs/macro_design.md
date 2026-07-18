@@ -97,20 +97,30 @@ visual noise; the LSP answers "what is this" with a click).
   practical exposure is small. Future refinement path, only if this bites:
   per-identifier `bind`/`mixin`-style knobs (Nim), not a wholesale flip to
   definition-site.
-- **Refinement (macro-1, from the UTest migration).** Qualifying a helper name
-  is right for a name-collision *shield*, but it must NOT be used for a **generic
-  helper whose body depends on user-overloadable operations** (`string`, `==`,
-  `+`, comparisons) applied to the macro's argument types. A macro expands into
-  the caller's env and resolves there — that is the *whole point*, and the
-  principled difference from a function, which resolves its body in its own
-  module. Calling such a helper **qualified** (`UTest.cmp_eq_(...)`) re-pins its
-  generic body to the helper's home module, so a user's LOCAL overload (e.g. a
-  hand-written `string` for a recursive variant defined in the test function)
-  becomes invisible and the expansion fails. Calling it **unqualified**
-  (`cmp_eq_(...)`, brought in by the caller's `from Module import *`) keeps the
-  whole chain resolving at the call site, so the local overloads are found. Rule
-  of thumb: qualify a helper only when its body is self-contained; leave it
-  unqualified when it must see the caller's overloads.
+- **The mental model (macro-1).** *A macro body behaves as if it were written
+  inline, verbatim, in the block where the call expands.* Every name in it
+  resolves exactly as if you had typed it there. Two consequences:
+  1. **Always-imported names resolve for free.** `==`, `string`, `+`, the other
+     Builtins/base-module operators are auto-imported into every module, so a
+     macro can use them unqualified and they resolve at the CALL site — picking
+     up a user's LOCAL overload (e.g. a hand-written `string`/`==` for a
+     recursive variant defined in the enclosing function). This is the whole
+     point and the principled difference from a function (whose body resolves in
+     its own module).
+  2. **A macro's OWN-module names must be qualified** — unless the macro lives in
+     a base auto-imported module (Builtins, List, …). A macro in `UTest` that
+     references `test_report_cmp_` / `g_test_state` must write
+     `UTest.test_report_cmp_` / `UTest.g_test_state`; otherwise the expansion
+     compiles only where the caller happened to `from UTest import *`. Qualified,
+     it works at any call site (`import UTest; UTest.EXPECT_EQ_(…)`).
+- **Design pattern that falls out (the UTest migration).** Do the
+  overload-dependent work — the comparison `a == b` and the value formatting
+  `string(a)`, both always-imported — INLINE in the macro so it binds to the
+  caller's overloads; hand only the already-stringified, NON-generic report to a
+  qualified own-module helper (`UTest.test_report_cmp_(astr, op, bstr, aval, bval,
+  …)`). A qualified call to a *generic* helper would instead re-pin its body to
+  the helper's home module and lose the local overloads, so keep the
+  overload-touching parts out of qualified generic helpers.
 
 ## 5. Primitives (built into the engine, not expressible as templates)
 
